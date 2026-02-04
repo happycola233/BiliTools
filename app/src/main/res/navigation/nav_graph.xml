@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/parseFragment">
+
+    <fragment
+        android:id="@+id/parseFragment"
+        android:name="com.happycola233.bilitools.ui.parse.ParseFragment"
+        android:label="@string/nav_parse" />
+
+    <fragment
+        android:id="@+id/downloadsFragment"
+        android:name="com.happycola233.bilitools.ui.downloads.DownloadsFragment"
+        android:label="@string/nav_downloads" />
+
+    <fragment
+        android:id="@+id/loginFragment"
+        android:name="com.happycola233.bilitools.ui.login.LoginFragment"
+        android:label="@string/nav_login" />
+
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.happycola233.bilitools.ui.settings.SettingsFragment"
+        android:label="@string/nav_settings" />
+</navigation>

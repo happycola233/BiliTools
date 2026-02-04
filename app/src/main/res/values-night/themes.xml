@@ -1,0 +1,110 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.BiliTools" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/md_theme_dark_primary</item>
+        <item name="colorOnPrimary">@color/md_theme_dark_onPrimary</item>
+        <item name="colorPrimaryContainer">@color/md_theme_dark_primaryContainer</item>
+        <item name="colorOnPrimaryContainer">@color/md_theme_dark_onPrimaryContainer</item>
+        <item name="colorSecondary">@color/md_theme_dark_secondary</item>
+        <item name="colorOnSecondary">@color/md_theme_dark_onSecondary</item>
+        <item name="colorSecondaryContainer">@color/md_theme_dark_secondaryContainer</item>
+        <item name="colorOnSecondaryContainer">@color/md_theme_dark_onSecondaryContainer</item>
+        <item name="colorTertiary">@color/md_theme_dark_tertiary</item>
+        <item name="colorOnTertiary">@color/md_theme_dark_onTertiary</item>
+        <item name="colorTertiaryContainer">@color/md_theme_dark_tertiaryContainer</item>
+        <item name="colorOnTertiaryContainer">@color/md_theme_dark_onTertiaryContainer</item>
+        <item name="colorError">@color/md_theme_dark_error</item>
+        <item name="colorOnError">@color/md_theme_dark_onError</item>
+        <item name="colorErrorContainer">@color/md_theme_dark_errorContainer</item>
+        <item name="colorOnErrorContainer">@color/md_theme_dark_onErrorContainer</item>
+        <item name="android:colorBackground">#FF111111</item>
+        <item name="colorOnBackground">@color/md_theme_dark_onBackground</item>
+        <item name="colorSurface">#FF111111</item>
+        <item name="colorOnSurface">@color/md_theme_dark_onSurface</item>
+        <item name="colorSurfaceVariant">@color/md_theme_dark_surfaceVariant</item>
+        <item name="colorOnSurfaceVariant">@color/md_theme_dark_onSurfaceVariant</item>
+        <item name="colorOutline">@color/md_theme_dark_outline</item>
+        <item name="colorOutlineVariant">@color/md_theme_dark_outlineVariant</item>
+        <item name="colorSurfaceContainerLowest">@color/md_theme_dark_surfaceContainerLowest</item>
+        <item name="colorSurfaceContainerLow">@color/md_theme_dark_surfaceContainerLow</item>
+        <item name="colorSurfaceContainer">@color/md_theme_dark_surfaceContainer</item>
+        <item name="colorSurfaceContainerHigh">@color/md_theme_dark_surfaceContainerHigh</item>
+        <item name="colorSurfaceContainerHighest">@color/md_theme_dark_surfaceContainerHighest</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+
+    <style name="ThemeOverlay.BiliTools.ColorBlue" parent="ThemeOverlay.Material3">
+        <item name="android:colorBackground">#FF111111</item>
+        <item name="colorSurface">#FF111111</item>
+        <item name="colorPrimary">#ACCDF6</item>
+        <item name="colorOnPrimary">#002F67</item>
+        <item name="colorPrimaryContainer">#104580</item>
+        <item name="colorOnPrimaryContainer">#D7E3FF</item>
+        <item name="colorSecondary">#BEC6DC</item>
+        <item name="colorOnSecondary">#283041</item>
+        <item name="colorSecondaryContainer">#3F4759</item>
+        <item name="colorOnSecondaryContainer">#DAE2F9</item>
+        <item name="colorTertiary">#E2BCE5</item>
+        <item name="colorOnTertiary">#422647</item>
+        <item name="colorTertiaryContainer">#5B3C60</item>
+        <item name="colorOnTertiaryContainer">#FFD6F9</item>
+    </style>
+
+    <style name="ThemeOverlay.BiliTools.ColorGreen" parent="ThemeOverlay.Material3">
+        <item name="android:colorBackground">#FF111111</item>
+        <item name="colorSurface">#FF111111</item>
+        <item name="colorPrimary">#8CD9A5</item>
+        <item name="colorOnPrimary">#00391A</item>
+        <item name="colorPrimaryContainer">#06522C</item>
+        <item name="colorOnPrimaryContainer">#C8FAD4</item>
+        <item name="colorSecondary">#B9CCBA</item>
+        <item name="colorOnSecondary">#243426</item>
+        <item name="colorSecondaryContainer">#3A4B3C</item>
+        <item name="colorOnSecondaryContainer">#D5E9D6</item>
+        <item name="colorTertiary">#A0CFD6</item>
+        <item name="colorOnTertiary">#00363D</item>
+        <item name="colorTertiaryContainer">#1F4D54</item>
+        <item name="colorOnTertiaryContainer">#BDEAF6</item>
+    </style>
+
+    <style name="ThemeOverlay.BiliTools.ColorOrange" parent="ThemeOverlay.Material3">
+        <item name="android:colorBackground">#FF111111</item>
+        <item name="colorSurface">#FF111111</item>
+        <item name="colorPrimary">#FFB875</item>
+        <item name="colorOnPrimary">#4B2800</item>
+        <item name="colorPrimaryContainer">#6B3B00</item>
+        <item name="colorOnPrimaryContainer">#FFDCC8</item>
+        <item name="colorSecondary">#E6BEAC</item>
+        <item name="colorOnSecondary">#432A1C</item>
+        <item name="colorSecondaryContainer">#5C4031</item>
+        <item name="colorOnSecondaryContainer">#FFDCC8</item>
+        <item name="colorTertiary">#C8CC97</item>
+        <item name="colorOnTertiary">#30330D</item>
+        <item name="colorTertiaryContainer">#464A21</item>
+        <item name="colorOnTertiaryContainer">#E4E7B1</item>
+    </style>
+
+    <style name="ThemeOverlay.BiliTools.ColorPink" parent="ThemeOverlay.Material3">
+        <item name="android:colorBackground">#FF111111</item>
+        <item name="colorSurface">#FF111111</item>
+        <item name="colorPrimary">#FFB1C8</item>
+        <item name="colorOnPrimary">#651137</item>
+        <item name="colorPrimaryContainer">#8E264E</item>
+        <item name="colorOnPrimaryContainer">#FFD9E2</item>
+        <item name="colorSecondary">#E5BDC4</item>
+        <item name="colorOnSecondary">#432930</item>
+        <item name="colorSecondaryContainer">#5D3F46</item>
+        <item name="colorOnSecondaryContainer">#FFD9E1</item>
+        <item name="colorTertiary">#F0BC96</item>
+        <item name="colorOnTertiary">#4A280D</item>
+        <item name="colorTertiaryContainer">#653E21</item>
+        <item name="colorOnTertiaryContainer">#FFDCC1</item>
+    </style>
+
+    <style name="ThemeOverlay.BiliTools.DarkPureBlack" parent="ThemeOverlay.Material3">
+        <item name="android:colorBackground">#FF000000</item>
+        <item name="colorSurface">#FF000000</item>
+    </style>
+</resources>

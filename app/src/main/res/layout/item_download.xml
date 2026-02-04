@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:clickable="true"
+    android:focusable="true"
+    android:background="?attr/selectableItemBackground"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="12dp"
+    android:paddingBottom="12dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <!-- Text Info -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/download_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                android:textColor="?attr/colorOnSurface"
+                android:ellipsize="end"
+                android:maxLines="2"
+                tools:text="P1. Episode 01" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="2dp">
+                
+                <TextView
+                    android:id="@+id/download_detail"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    tools:text="150 MB • 2.5 MB/s" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Action / Status -->
+         <com.google.android.material.button.MaterialButton
+            android:id="@+id/download_pause_resume"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:insetLeft="0dp"
+            android:insetTop="0dp"
+            android:insetRight="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:padding="8dp"
+            android:gravity="center"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconSize="24dp"
+            app:icon="@drawable/ic_pause_24"
+            app:iconTint="?attr/colorOnSurfaceVariant"
+            android:visibility="visible"
+            tools:visibility="visible" />
+
+         <com.google.android.material.button.MaterialButton
+            android:id="@+id/download_delete"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:insetLeft="0dp"
+            android:insetTop="0dp"
+            android:insetRight="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:padding="8dp"
+            android:gravity="center"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconSize="24dp"
+            app:icon="@drawable/ic_delete_24"
+            app:iconTint="?attr/colorError" />
+
+    </LinearLayout>
+    
+    <!-- Inline Progress Bar -->
+    <com.google.android.material.progressindicator.LinearProgressIndicator
+        android:id="@+id/download_progress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        app:trackThickness="4dp"
+        app:trackCornerRadius="2dp" 
+        app:trackColor="?attr/colorSurfaceVariant"
+        app:indicatorColor="?attr/colorPrimary" />
+
+    <!-- Hidden Views for Binding Compatibility -->
+    <ImageView android:id="@+id/download_icon" android:visibility="gone" android:layout_width="0dp" android:layout_height="0dp"/>
+    <TextView android:id="@+id/download_file" android:visibility="gone" android:layout_width="0dp" android:layout_height="0dp"/>
+    <TextView android:id="@+id/download_meta" android:visibility="gone" android:layout_width="0dp" android:layout_height="0dp"/>
+    <TextView android:id="@+id/download_status" android:visibility="gone" android:layout_width="0dp" android:layout_height="0dp"/>
+    <TextView android:id="@+id/download_location" android:visibility="gone" android:layout_width="0dp" android:layout_height="0dp"/>
+
+</LinearLayout>

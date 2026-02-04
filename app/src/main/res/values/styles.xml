@@ -1,0 +1,50 @@
+<resources>
+    <style name="Widget.BiliTools.BottomNavigation" parent="Widget.Material3.BottomNavigationView">
+        <item name="itemActiveIndicatorStyle">@style/Widget.BiliTools.BottomNavigation.ActiveIndicator</item>
+        <item name="itemIconSize">24dp</item>
+    </style>
+
+    <style name="Widget.BiliTools.BottomNavigation.ActiveIndicator"
+        parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
+        <item name="android:width">64dp</item>
+        <item name="android:height">32dp</item>
+        <item name="android:color">?attr/colorSecondaryContainer</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.BiliTools.Indicator</item>
+    </style>
+
+    <style name="ShapeAppearance.BiliTools.Indicator" parent="ShapeAppearance.Material3.Corner.Full">
+        <item name="cornerSize">16dp</item>
+    </style>
+
+    <style name="ShapeAppearance.BiliTools.Cover" parent="ShapeAppearance.Material3.Corner.Medium">
+        <item name="cornerSize">12dp</item>
+    </style>
+
+    <style name="Widget.BiliTools.DownloadProgress"
+        parent="Widget.Material3.LinearProgressIndicator">
+        <item name="trackThickness">6dp</item>
+        <item name="trackCornerRadius">3dp</item>
+        <item name="indicatorColor">?attr/colorPrimary</item>
+        <item name="trackColor">?attr/colorSurfaceVariant</item>
+    </style>
+
+    <style name="TextAppearance.BiliTools.Settings.Section" parent="TextAppearance.Material3.TitleMedium">
+        <item name="android:textSize">15sp</item>
+    </style>
+
+    <style name="TextAppearance.BiliTools.Settings.ItemTitle" parent="TextAppearance.Material3.BodyLarge">
+        <item name="android:textSize">15sp</item>
+    </style>
+
+    <style name="TextAppearance.BiliTools.Settings.ItemDescription" parent="TextAppearance.Material3.BodyMedium">
+        <item name="android:textSize">13sp</item>
+    </style>
+
+    <style name="TextAppearance.BiliTools.Settings.Disclaimer" parent="TextAppearance.Material3.BodySmall">
+        <item name="android:textSize">11sp</item>
+    </style>
+
+    <style name="TextAppearance.BiliTools.History.ToolbarTitle" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:textStyle">bold</item>
+    </style>
+</resources>
