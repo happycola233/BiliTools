@@ -9,6 +9,19 @@
 > [!NOTE]
 > 本项目复刻自 [btjawa/BiliTools](https://github.com/btjawa/BiliTools)，免费开源。
 
+## 📱 APP 截图
+
+<div align="center">
+
+| **首页（解析）** | **首页（下载与导出）** |
+|:---:|:---:|
+| <img src="./.github/images/Screenshot_2026-02-04-20-54-34-673_com.happycola233.bilitools.jpg" width="300" alt="Long Screenshot 1"> | <img src="./.github/images/Screenshot_2026-02-04-20-54-21-465_com.happycola233.bilitools.jpg" width="300" alt="Long Screenshot 2"> |
+
+| 下载页 | 个人页 | 设置页 |
+|:---:|:---:|:---:|
+| <img src="./.github/images/Screenshot_2026-02-04-20-55-01-655_com.happycola233.bilitools.jpg" width="250" alt="Detail 1"> | <img src="./.github/images/Screenshot_2026-02-04-20-55-38-588_com.happycola233.bilitools.jpg" width="250" alt="Detail 2"> | <img src="./.github/images/Screenshot_2026-02-04-20-55-40-984_com.happycola233.bilitools.jpg" width="250" alt="Detail 3"> |
+
+</div>
 
 ## ✨ 功能特性
 

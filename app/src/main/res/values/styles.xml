@@ -38,6 +38,8 @@
 
     <style name="TextAppearance.BiliTools.Settings.ItemDescription" parent="TextAppearance.Material3.BodyMedium">
         <item name="android:textSize">13sp</item>
+        <item name="android:lineHeight">16sp</item>
+        <item name="android:includeFontPadding">false</item>
     </style>
 
     <style name="TextAppearance.BiliTools.Settings.Disclaimer" parent="TextAppearance.Material3.BodySmall">

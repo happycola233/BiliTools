@@ -383,7 +383,9 @@ class MediaRepository(
         val autoSectionId = if (idType == "ep" && inputEpisodeId != null) {
             data.section
                 ?.firstOrNull { section ->
-                    section.episodes.any { ep -> ep.epId == inputEpisodeId || ep.id == inputEpisodeId }
+                    section.episodes.any { ep ->
+                        ep.epId == inputEpisodeId || ep.id == inputEpisodeId
+                    }
                 }
                 ?.id
         } else {
@@ -403,18 +405,21 @@ class MediaRepository(
             } else {
                 false
             }
+            val title = ep.showTitle?.takeIf { it.isNotBlank() }
+                ?: ep.title?.takeIf { it.isNotBlank() }
+                ?: "EP${index + 1}"
             MediaItem(
-                title = ep.showTitle?.takeIf { it.isNotBlank() } ?: ep.title.orEmpty(),
-                coverUrl = normalizeCoverUrl(ep.cover),
+                title = title,
+                coverUrl = normalizeCoverUrl(ep.cover ?: data.cover),
                 description = data.evaluate,
-                url = ep.shareUrl,
+                url = ep.shareUrl ?: data.shareUrl,
                 aid = ep.aid,
                 bvid = ep.bvid,
                 cid = ep.cid,
-                epid = ep.epId,
+                epid = ep.epId ?: ep.id,
                 ssid = data.seasonId,
-                duration = (ep.duration / 1000),
-                pubTime = ep.pubTime,
+                duration = ((ep.duration ?: 0) / 1000),
+                pubTime = ep.pubTime ?: 0L,
                 type = MediaType.Bangumi,
                 isTarget = isTargetEpisode,
                 index = index,
@@ -1814,15 +1819,15 @@ private data class BangumiSection(
 )
 
 private data class BangumiEpisode(
-    @Json(name = "aid") val aid: Long,
-    @Json(name = "bvid") val bvid: String,
-    @Json(name = "cid") val cid: Long,
-    @Json(name = "cover") val cover: String,
-    @Json(name = "duration") val duration: Int,
-    @Json(name = "ep_id") val epId: Long,
-    @Json(name = "id") val id: Long,
-    @Json(name = "pub_time") val pubTime: Long,
-    @Json(name = "share_url") val shareUrl: String,
+    @Json(name = "aid") val aid: Long? = null,
+    @Json(name = "bvid") val bvid: String? = null,
+    @Json(name = "cid") val cid: Long? = null,
+    @Json(name = "cover") val cover: String? = null,
+    @Json(name = "duration") val duration: Int? = null,
+    @Json(name = "ep_id") val epId: Long? = null,
+    @Json(name = "id") val id: Long? = null,
+    @Json(name = "pub_time") val pubTime: Long? = null,
+    @Json(name = "share_url") val shareUrl: String? = null,
     @Json(name = "show_title") val showTitle: String?,
     @Json(name = "title") val title: String?,
 )
