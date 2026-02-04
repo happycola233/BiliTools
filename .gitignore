@@ -35,3 +35,6 @@ google-services.json
 # OS-generated files
 .DS_Store
 Thumbs.db
+
+# Development files
+DevFile/
