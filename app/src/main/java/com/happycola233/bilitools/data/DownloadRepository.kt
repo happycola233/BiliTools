@@ -19,6 +19,7 @@ import com.happycola233.bilitools.data.model.DownloadGroup
 import com.happycola233.bilitools.data.model.DownloadItem
 import com.happycola233.bilitools.data.model.DownloadStatus
 import com.happycola233.bilitools.data.model.DownloadTaskType
+import com.happycola233.bilitools.download.DownloadForegroundService
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.coroutines.CancellationException
@@ -57,6 +58,8 @@ class DownloadRepository(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val _groups = MutableStateFlow<List<DownloadGroup>>(emptyList())
     val groups: StateFlow<List<DownloadGroup>> = _groups.asStateFlow()
+    private val _notificationState = MutableStateFlow(DownloadNotificationState())
+    val notificationState: StateFlow<DownloadNotificationState> = _notificationState.asStateFlow()
 
     private val httpClient by lazy {
         OkHttpClient.Builder()
@@ -413,6 +416,58 @@ class DownloadRepository(
             .forEach { resume(it.id) }
     }
 
+    fun pauseAllManaged() {
+        val ids = synchronized(lock) {
+            tasks.values
+                .filter { item ->
+                    isManagedTask(item) && when (item.status) {
+                        DownloadStatus.Pending,
+                        DownloadStatus.Running,
+                        DownloadStatus.Merging -> true
+                        else -> false
+                    }
+                }
+                .map { it.id }
+        }
+        ids.forEach { pause(it) }
+    }
+
+    fun resumeAllManaged() {
+        val ids = synchronized(lock) {
+            tasks.values
+                .filter { item ->
+                    isManagedTask(item) &&
+                        item.status == DownloadStatus.Paused &&
+                        item.userPaused
+                }
+                .map { it.id }
+        }
+        ids.forEach { resume(it) }
+    }
+
+    fun summarizeTaskOutcomes(taskIds: Set<Long>): DownloadOutcomeSummary {
+        if (taskIds.isEmpty()) return DownloadOutcomeSummary()
+        val snapshot = synchronized(lock) {
+            taskIds.mapNotNull { id -> tasks[id] }
+        }
+        var successCount = 0
+        var failedCount = 0
+        var cancelledCount = 0
+        snapshot.forEach { item ->
+            when (item.status) {
+                DownloadStatus.Success -> successCount++
+                DownloadStatus.Failed -> failedCount++
+                DownloadStatus.Cancelled -> cancelledCount++
+                else -> Unit
+            }
+        }
+        return DownloadOutcomeSummary(
+            successCount = successCount,
+            failedCount = failedCount,
+            cancelledCount = cancelledCount,
+        )
+    }
+
     fun deleteTask(id: Long, deleteFile: Boolean) {
         val item = tasks[id] ?: return
         deleteTasks(listOf(item), deleteFile)
@@ -451,6 +506,7 @@ class DownloadRepository(
 
     private fun startDownload(id: Long) {
         val state = downloadStates[id] ?: return
+        DownloadForegroundService.requestSync(context)
         downloadJobs.remove(id)?.cancel()
         val job = scope.launch {
             try {
@@ -691,6 +747,7 @@ class DownloadRepository(
 
     private fun startMergedDownloads(task: MergedDownload) {
         if (task.userPaused || task.failed || task.completed) return
+        DownloadForegroundService.requestSync(context)
         if (task.video.completed && task.audio.completed) {
             startMerge(task)
             return
@@ -1021,6 +1078,7 @@ class DownloadRepository(
 
     private fun updateGroups() {
         _groups.value = snapshotGroups()
+        _notificationState.value = snapshotNotificationState()
     }
 
     private fun snapshotGroups(): List<DownloadGroup> {
@@ -1042,6 +1100,84 @@ class DownloadRepository(
                 )
             }
         }.sortedByDescending { it.createdAt }
+    }
+
+    private fun snapshotNotificationState(): DownloadNotificationState {
+        return synchronized(lock) {
+            val managedTasks = tasks.values.filter { item -> isManagedTask(item) }
+            if (managedTasks.isEmpty()) {
+                return@synchronized DownloadNotificationState()
+            }
+
+            val activeStatuses = setOf(
+                DownloadStatus.Pending,
+                DownloadStatus.Running,
+                DownloadStatus.Paused,
+                DownloadStatus.Merging,
+            )
+            val foregroundStatuses = setOf(
+                DownloadStatus.Pending,
+                DownloadStatus.Running,
+                DownloadStatus.Merging,
+            )
+
+            val activeTasks = managedTasks.filter { item -> item.status in activeStatuses }
+            val foregroundTasks = activeTasks.filter { item -> item.status in foregroundStatuses }
+
+            val speedBytesPerSec = activeTasks.sumOf { item ->
+                if (item.status == DownloadStatus.Running) item.speedBytesPerSec else 0L
+            }
+
+            val sizeTasks = activeTasks.filter { item -> item.totalBytes > 0 }
+            val totalBytes = sizeTasks.sumOf { item -> item.totalBytes }
+            val downloadedBytes = sizeTasks.sumOf { item ->
+                item.downloadedBytes.coerceAtMost(item.totalBytes)
+            }
+
+            val progress = if (totalBytes > 0L) {
+                ((downloadedBytes * 100) / totalBytes).toInt().coerceIn(0, 100)
+            } else if (activeTasks.isNotEmpty()) {
+                activeTasks.map { item -> item.progress.coerceIn(0, 100) }.average().toInt()
+            } else {
+                0
+            }
+
+            val etaSeconds = if (speedBytesPerSec > 0L && totalBytes > downloadedBytes) {
+                (totalBytes - downloadedBytes) / speedBytesPerSec
+            } else {
+                null
+            }
+
+            val primaryTask = activeTasks
+                .sortedWith(
+                    compareBy<DownloadItem>(
+                        { item ->
+                            when (item.status) {
+                                DownloadStatus.Running -> 0
+                                DownloadStatus.Merging -> 1
+                                DownloadStatus.Pending -> 2
+                                DownloadStatus.Paused -> 3
+                                else -> 4
+                            }
+                        },
+                        { item -> -item.createdAt },
+                    ),
+                )
+                .firstOrNull()
+
+            DownloadNotificationState(
+                activeTaskIds = activeTasks.map { item -> item.id }.toSet(),
+                inProgressCount = foregroundTasks.size,
+                pausedCount = activeTasks.count { item -> item.status == DownloadStatus.Paused },
+                progress = progress,
+                downloadedBytes = downloadedBytes,
+                totalBytes = totalBytes,
+                speedBytesPerSec = speedBytesPerSec,
+                etaSeconds = etaSeconds,
+                primaryTitle = primaryTask?.title?.ifBlank { primaryTask.fileName },
+                hasForegroundWork = activeTasks.isNotEmpty(),
+            )
+        }
     }
 
     private fun schedulePersist() {
@@ -1493,6 +1629,7 @@ class DownloadRepository(
 
     private fun startMerge(task: MergedDownload) {
         if (task.isMerging || mergeJobs[task.id]?.isActive == true) return
+        DownloadForegroundService.requestSync(context)
         task.isMerging = true
         updateMergedProgress(task, true, null)
         mergeJobs[task.id] = scope.launch {
@@ -2158,3 +2295,22 @@ class DownloadRepository(
         private const val EXTRA_TASK_ID_START = -1_000_000_000L
     }
 }
+
+data class DownloadNotificationState(
+    val activeTaskIds: Set<Long> = emptySet(),
+    val inProgressCount: Int = 0,
+    val pausedCount: Int = 0,
+    val progress: Int = 0,
+    val downloadedBytes: Long = 0,
+    val totalBytes: Long = 0,
+    val speedBytesPerSec: Long = 0,
+    val etaSeconds: Long? = null,
+    val primaryTitle: String? = null,
+    val hasForegroundWork: Boolean = false,
+)
+
+data class DownloadOutcomeSummary(
+    val successCount: Int = 0,
+    val failedCount: Int = 0,
+    val cancelledCount: Int = 0,
+)

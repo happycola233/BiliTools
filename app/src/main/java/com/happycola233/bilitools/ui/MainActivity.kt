@@ -88,13 +88,21 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        handleOpenDownloadsIntent(intent)
         handleExternalDownloadIntent(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        handleOpenDownloadsIntent(intent)
         handleExternalDownloadIntent(intent)
+    }
+
+    private fun handleOpenDownloadsIntent(sourceIntent: Intent?) {
+        if (sourceIntent?.getBooleanExtra(EXTRA_OPEN_DOWNLOADS, false) != true) return
+        binding.viewPager.setCurrentItem(1, false)
+        sourceIntent.removeExtra(EXTRA_OPEN_DOWNLOADS)
     }
 
     private fun handleExternalDownloadIntent(sourceIntent: Intent?) {
@@ -118,6 +126,10 @@ class MainActivity : AppCompatActivity() {
         settings.themeColor.overlayStyleResOrNull()?.let { theme.applyStyle(it, true) }
         settings.darkPureBlackOverlayStyleResOrNull(resources.configuration.uiMode)
             ?.let { theme.applyStyle(it, true) }
+    }
+
+    companion object {
+        const val EXTRA_OPEN_DOWNLOADS = "extra_open_downloads"
     }
 }
 

@@ -1,6 +1,9 @@
 package com.happycola233.bilitools.ui.parse
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Build
 import android.view.ContextThemeWrapper
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -13,6 +16,8 @@ import android.net.NetworkCapabilities
 import android.widget.ArrayAdapter
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.core.text.HtmlCompat
 import androidx.core.widget.addTextChangedListener
 import androidx.fragment.app.Fragment
@@ -74,6 +79,18 @@ class ParseFragment : Fragment() {
     private var imageOptionIds: List<String> = emptyList()
     private val imageChips = mutableMapOf<String, Chip>()
     private var pendingExternalUrl: String? = null
+    private val requestNotificationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (!granted) {
+                context?.let { safeContext ->
+                    Toast.makeText(
+                        safeContext,
+                        getString(R.string.notification_permission_denied_tip),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }
+            }
+        }
 
     private var suppressUi = false
     private fun cacheScrollPosition() {
@@ -851,6 +868,7 @@ class ParseFragment : Fragment() {
     }
 
     private fun onDownloadClicked() {
+        requestNotificationPermissionIfNeeded()
         val settingsRepository = requireContext().appContainer.settingsRepository
         if (!settingsRepository.shouldConfirmCellularDownload() || !isOnCellularNetwork()) {
             viewModel.download()
@@ -864,6 +882,17 @@ class ParseFragment : Fragment() {
                 viewModel.download()
             }
             .show()
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val context = requireContext()
+        val granted = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.POST_NOTIFICATIONS,
+        ) == PackageManager.PERMISSION_GRANTED
+        if (granted) return
+        requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
     private fun isOnCellularNetwork(): Boolean {

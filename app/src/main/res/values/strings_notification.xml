@@ -1,0 +1,18 @@
+<resources>
+    <string name="notification_channel_download_progress_desc">显示下载进度与操作控制</string>
+    <string name="notification_channel_download_result_name">下载结果</string>
+    <string name="notification_channel_download_result_desc">显示下载任务完成情况</string>
+
+    <string name="notification_title_downloading_default">正在下载</string>
+    <string name="notification_title_downloading_multiple">%1$d 个任务下载中</string>
+    <string name="notification_title_paused_multiple">%1$d 个任务已暂停</string>
+    <string name="notification_content_progress_percent">%1$d%%</string>
+    <string name="notification_content_progress_bytes">%1$d%% %2$s/%3$s</string>
+    <string name="notification_content_paused_count">已暂停 %1$d 个</string>
+
+    <string name="notification_summary_all_completed">下载完成</string>
+    <string name="notification_summary_finished">下载已结束</string>
+    <string name="notification_summary_content">成功 %1$d，失败 %2$d，取消 %3$d</string>
+
+    <string name="notification_permission_denied_tip">通知权限被拒绝，下载仍会继续，但不会在通知栏显示进度。</string>
+</resources>
