@@ -375,7 +375,7 @@ class ParseFragment : Fragment() {
                     val isLoading = state.loading
                     binding.parseActionLoading.visibility = if (isLoading) View.VISIBLE else View.GONE
                     binding.parseAction.text = if (isLoading) "" else getString(R.string.parse_action)
-                    binding.parseAction.icon = if (isLoading) null else androidx.core.content.ContextCompat.getDrawable(requireContext(), R.drawable.ic_play_arrow_24)
+                    binding.parseAction.icon = if (isLoading) null else androidx.core.content.ContextCompat.getDrawable(requireContext(), R.drawable.ic_movie_filter_24)
                     binding.parseAction.isClickable = !isLoading
                     
                     binding.parseErrorCard.visibility =
@@ -408,7 +408,7 @@ class ParseFragment : Fragment() {
                     val isStreamLoading = state.streamLoading
                     binding.loadStreamLoading.visibility = if (isStreamLoading) View.VISIBLE else View.GONE
                     binding.loadStream.text = if (isStreamLoading) "" else getString(R.string.parse_load_stream)
-                    binding.loadStream.icon = if (isStreamLoading) null else androidx.core.content.ContextCompat.getDrawable(requireContext(), R.drawable.ic_play_arrow_24)
+                    binding.loadStream.icon = if (isStreamLoading) null else androidx.core.content.ContextCompat.getDrawable(requireContext(), R.drawable.ic_troubleshoot_24)
                     // Disable if loading stream OR if conditions not met (info/item missing or global loading)
                     binding.loadStream.isEnabled =
                         (info != null && item != null && !state.loading && !isStreamLoading && hasSelection)
