@@ -2,6 +2,7 @@ package com.happycola233.bilitools.ui.parse
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.Rect
 import android.os.Bundle
 import android.os.Build
 import android.view.ContextThemeWrapper
@@ -10,6 +11,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewConfiguration
+import android.view.ViewTreeObserver
 import android.view.inputmethod.EditorInfo
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -67,6 +69,8 @@ class ParseFragment : Fragment() {
     private var subtitleAdapter: ArrayAdapter<String>? = null
 
     private var pendingScrollY: Int? = null
+    private var pendingListAnchorTop: Int? = null
+    private var anchorFixScheduled = false
     private var currentPageIndex: Int = 1
     private var sectionTabs: List<MediaTab> = emptyList()
     private var mediaTypeOptions: List<Pair<MediaType?, String>> = emptyList()
@@ -97,6 +101,52 @@ class ParseFragment : Fragment() {
         if (pendingScrollY == null) {
             pendingScrollY = binding.root.scrollY
         }
+    }
+
+    private fun cacheListAnchor() {
+        if (pendingListAnchorTop != null) return
+        val root = binding.root
+        val list = binding.pageList
+        if (!list.isLaidOut || !list.isShown) return
+        val rootRect = Rect()
+        val listRect = Rect()
+        if (!root.getGlobalVisibleRect(rootRect) || !list.getGlobalVisibleRect(listRect)) return
+        if (!Rect.intersects(rootRect, listRect)) return
+        val rootLoc = IntArray(2)
+        val listLoc = IntArray(2)
+        root.getLocationInWindow(rootLoc)
+        list.getLocationInWindow(listLoc)
+        pendingListAnchorTop = listLoc[1] - rootLoc[1]
+    }
+
+    private fun scheduleListAnchorFix(anchorTop: Int) {
+        if (anchorFixScheduled) return
+        val root = binding.root
+        val list = binding.pageList
+        anchorFixScheduled = true
+        root.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
+            override fun onPreDraw(): Boolean {
+                val observer = root.viewTreeObserver
+                if (observer.isAlive) {
+                    observer.removeOnPreDrawListener(this)
+                }
+                anchorFixScheduled = false
+                if (!list.isLaidOut) return true
+                val rootLoc = IntArray(2)
+                val listLoc = IntArray(2)
+                root.getLocationInWindow(rootLoc)
+                list.getLocationInWindow(listLoc)
+                val currentTop = listLoc[1] - rootLoc[1]
+                val delta = currentTop - anchorTop
+                if (delta != 0) {
+                    val content = root.getChildAt(0)?.height ?: 0
+                    val maxScroll = (content - root.height).coerceAtLeast(0)
+                    val nextScroll = (root.scrollY + delta).coerceIn(0, maxScroll)
+                    root.scrollTo(0, nextScroll)
+                }
+                return true
+            }
+        })
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -202,11 +252,11 @@ class ParseFragment : Fragment() {
 
         itemListAdapter = ParseItemAdapter(
             onItemClick = { index ->
-                cacheScrollPosition()
+                cacheListAnchor()
                 viewModel.onItemRowClick(index)
             },
             onItemCheckToggle = { index, _ ->
-                cacheScrollPosition()
+                cacheListAnchor()
                 viewModel.toggleItemSelection(index)
             },
         )
@@ -396,6 +446,18 @@ class ParseFragment : Fragment() {
                         binding.optionsCard.visibility =
                             if (state.playUrlInfo == null) View.GONE else View.VISIBLE
                         val display = resolveVideoCardDisplay(state, info, item)
+                        val prevTitle = binding.title.text?.toString().orEmpty()
+                        val prevDesc = binding.desc.text?.toString().orEmpty()
+                        val prevStatVisible = binding.statScroll.visibility == View.VISIBLE
+                        val nextStatVisible = hasAnyStat(display.stat)
+                        if (
+                            pendingListAnchorTop == null &&
+                            (prevTitle != display.title ||
+                                prevDesc != display.description ||
+                                prevStatVisible != nextStatVisible)
+                        ) {
+                            cacheListAnchor()
+                        }
                         binding.title.text = display.title
                         binding.desc.text = display.description
                         binding.cover.load(display.coverUrl)
@@ -734,7 +796,13 @@ class ParseFragment : Fragment() {
                         Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
                         viewModel.clearNotice()
                     }
-                    pendingScrollY?.let { target ->
+                    pendingListAnchorTop?.let { anchor ->
+                        scheduleListAnchorFix(anchor)
+                        if (!state.loading && !state.streamLoading && !state.downloadStarting) {
+                            pendingListAnchorTop = null
+                            pendingScrollY = null
+                        }
+                    } ?: pendingScrollY?.let { target ->
                         binding.root.post {
                             val content = binding.root.getChildAt(0)?.height ?: 0
                             val maxScroll = (content - binding.root.height).coerceAtLeast(0)
@@ -1044,8 +1112,8 @@ class ParseFragment : Fragment() {
         return this?.takeIf { it.isNotBlank() } ?: fallback()
     }
 
-    private fun bindStats(stat: MediaStat) {
-        val hasAny = listOf(
+    private fun hasAnyStat(stat: MediaStat): Boolean {
+        return listOf(
             stat.play,
             stat.danmaku,
             stat.reply,
@@ -1054,6 +1122,10 @@ class ParseFragment : Fragment() {
             stat.favorite,
             stat.share,
         ).any { it != null }
+    }
+
+    private fun bindStats(stat: MediaStat) {
+        val hasAny = hasAnyStat(stat)
         binding.statScroll.visibility = if (hasAny) View.VISIBLE else View.GONE
         updateStat(binding.statPlayItem, binding.statPlayText, stat.play)
         updateStat(binding.statDanmakuItem, binding.statDanmakuText, stat.danmaku)
