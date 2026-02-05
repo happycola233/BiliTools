@@ -58,6 +58,11 @@ data class ImageOption(
     val label: String,
 )
 
+private data class ItemPresentationDetail(
+    val stat: MediaStat?,
+    val description: String?,
+)
+
 enum class QualityMode {
     Highest,
     Lowest,
@@ -109,6 +114,7 @@ data class ParseUiState(
     val warning: String? = null,
     val collectionPreviewIndex: Int? = null,
     val collectionPreviewStat: MediaStat? = null,
+    val selectedItemStat: MediaStat? = null,
     val lastDownload: DownloadItem? = null,
     val isLoggedIn: Boolean = false,
 )
@@ -131,6 +137,8 @@ class ParseViewModel(
     private val fullAudioIds = listOf(30280, 30232, 30216)
     private val offsetMap = mutableMapOf<Int, String>()
     private val collectionStatCache = mutableMapOf<String, MediaStat>()
+    private val itemStatCache = mutableMapOf<String, MediaStat>()
+    private val itemDescriptionCache = mutableMapOf<String, String>()
 
     init {
         refreshLoginState()
@@ -152,6 +160,8 @@ class ParseViewModel(
             _state.update { it.copy(loading = true, error = null, notice = null) }
             offsetMap.clear()
             collectionStatCache.clear()
+            itemStatCache.clear()
+            itemDescriptionCache.clear()
             runCatching {
                 val allowRaw = _state.value.selectedMediaType != null
                 val parsed = mediaRepository.parseInput(input, allowRaw)
@@ -191,6 +201,7 @@ class ParseViewModel(
                             warning = null,
                             collectionPreviewIndex = null,
                             collectionPreviewStat = null,
+                            selectedItemStat = info.list.getOrNull(defaultIndex)?.stat,
                             isLoggedIn = authRepository.isLoggedIn(),
                         ),
                     )
@@ -213,6 +224,8 @@ class ParseViewModel(
         val selectedType = _state.value.selectedMediaType
         offsetMap.clear()
         collectionStatCache.clear()
+        itemStatCache.clear()
+        itemDescriptionCache.clear()
         _state.value = ParseUiState(selectedMediaType = selectedType)
     }
 
@@ -233,6 +246,7 @@ class ParseViewModel(
                 it.copy(
                     selectedItemIndex = index,
                     selectedItemIndices = selectedItems,
+                    selectedItemStat = item.stat,
                     playUrlInfo = null,
                     videoStreams = emptyList(),
                     audioStreams = emptyList(),
@@ -276,6 +290,7 @@ class ParseViewModel(
                 it.copy(
                     selectedItemIndices = selected,
                     selectedItemIndex = nextCurrent,
+                    selectedItemStat = nextItem?.stat,
                     playUrlInfo = null,
                     videoStreams = emptyList(),
                     audioStreams = emptyList(),
@@ -289,7 +304,11 @@ class ParseViewModel(
                     warning = null,
                 )
             } else {
-                it.copy(selectedItemIndices = selected, selectedItemIndex = nextCurrent)
+                it.copy(
+                    selectedItemIndices = selected,
+                    selectedItemIndex = nextCurrent,
+                    selectedItemStat = info?.list?.getOrNull(nextCurrent)?.stat,
+                )
             }
             normalizeQualityModes(nextState)
         }
@@ -353,13 +372,24 @@ class ParseViewModel(
         }
         _state.update {
             normalizeQualityModes(
-                it.copy(selectedItemIndices = indices, selectedItemIndex = nextCurrent),
+                it.copy(
+                    selectedItemIndices = indices,
+                    selectedItemIndex = nextCurrent,
+                    selectedItemStat = it.items.getOrNull(nextCurrent)?.stat,
+                ),
             )
         }
     }
 
     fun clearSelectedItems() {
-        _state.update { normalizeQualityModes(it.copy(selectedItemIndices = emptyList())) }
+        _state.update {
+            normalizeQualityModes(
+                it.copy(
+                    selectedItemIndices = emptyList(),
+                    selectedItemStat = null,
+                ),
+            )
+        }
     }
 
     fun loadPage(page: Int) {
@@ -421,6 +451,7 @@ class ParseViewModel(
                             warning = null,
                             collectionPreviewIndex = null,
                             collectionPreviewStat = null,
+                            selectedItemStat = updated.list.getOrNull(defaultIndex)?.stat,
                         ),
                     )
                 }
@@ -486,6 +517,7 @@ class ParseViewModel(
                             warning = null,
                             collectionPreviewIndex = null,
                             collectionPreviewStat = null,
+                            selectedItemStat = updated.list.getOrNull(defaultIndex)?.stat,
                         ),
                     )
                 }
@@ -540,6 +572,7 @@ class ParseViewModel(
                             warning = null,
                             collectionPreviewIndex = null,
                             collectionPreviewStat = null,
+                            selectedItemStat = updated.list.getOrNull(defaultIndex)?.stat,
                         ),
                     )
                 }
@@ -1382,6 +1415,126 @@ class ParseViewModel(
                 selectedImageIds = selectedImageIds,
             )
         }
+        refreshSelectedItemPresentation(info, item)
+    }
+
+    private fun refreshSelectedItemPresentation(info: MediaInfo, item: MediaItem) {
+        val itemKey = itemCacheKey(item)
+        val cachedStat = itemKey?.let { itemStatCache[it] } ?: item.stat
+        val cachedDescription = itemKey?.let { itemDescriptionCache[it] }
+        val itemDescription = item.description.trim()
+
+        if (cachedStat != null || !cachedDescription.isNullOrBlank()) {
+            applySelectedItemPresentation(itemKey, cachedStat, cachedDescription)
+        }
+
+        if (!shouldFetchPresentationDetail(info, item) || itemKey == null) return
+        val needStat = cachedStat == null || !hasAnyStat(cachedStat)
+        val needDescription =
+            info.type == MediaType.Favorite &&
+                cachedDescription.isNullOrBlank() &&
+                itemDescription.isBlank()
+        if (!needStat && !needDescription) return
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val detail = fetchPresentationDetail(
+                item = item,
+                needStat = needStat,
+                needDescription = needDescription,
+            ) ?: return@launch
+            detail.stat?.let { itemStatCache[itemKey] = it }
+            detail.description?.takeIf { it.isNotBlank() }?.let { itemDescriptionCache[itemKey] = it }
+            applySelectedItemPresentation(itemKey, detail.stat, detail.description)
+        }
+    }
+
+    private suspend fun fetchPresentationDetail(
+        item: MediaItem,
+        needStat: Boolean,
+        needDescription: Boolean,
+    ): ItemPresentationDetail? {
+        val queryId = item.bvid?.takeIf { it.isNotBlank() } ?: item.aid?.toString() ?: return null
+        val nfo = runCatching {
+            mediaRepository.getMediaInfo(queryId, MediaType.Video).nfo
+        }.getOrNull() ?: return null
+
+        val stat = if (needStat && hasAnyStat(nfo.stat)) nfo.stat else null
+        val description = if (needDescription) {
+            nfo.intro?.trim()?.takeIf { it.isNotBlank() }
+        } else {
+            null
+        }
+        if (stat == null && description == null) return null
+        return ItemPresentationDetail(stat = stat, description = description)
+    }
+
+    private fun applySelectedItemPresentation(
+        itemKey: String?,
+        stat: MediaStat?,
+        description: String?,
+    ) {
+        _state.update { current ->
+            val currentIndex = current.selectedItemIndex
+            val currentItem = current.items.getOrNull(currentIndex) ?: return@update current
+            if (itemKey != null && itemCacheKey(currentItem) != itemKey) {
+                return@update current
+            }
+
+            var changed = false
+            var updatedItem = currentItem
+
+            if (!description.isNullOrBlank() && description != currentItem.description) {
+                updatedItem = updatedItem.copy(description = description)
+                changed = true
+            }
+
+            val resolvedStat = stat ?: updatedItem.stat
+            if (resolvedStat != null && resolvedStat != updatedItem.stat) {
+                updatedItem = updatedItem.copy(stat = resolvedStat)
+                changed = true
+            }
+
+            val updatedItems = if (changed) {
+                current.items.toMutableList().also { list ->
+                    list[currentIndex] = updatedItem
+                }
+            } else {
+                current.items
+            }
+
+            val nextSelectedItemStat = resolvedStat ?: current.selectedItemStat
+            if (!changed && nextSelectedItemStat == current.selectedItemStat) {
+                return@update current
+            }
+
+            current.copy(
+                items = updatedItems,
+                selectedItemStat = nextSelectedItemStat,
+            )
+        }
+    }
+
+    private fun shouldFetchPresentationDetail(info: MediaInfo, item: MediaItem): Boolean {
+        if (info.type != MediaType.Favorite && info.type != MediaType.WatchLater) return false
+        return item.bvid?.isNotBlank() == true || item.aid != null
+    }
+
+    private fun itemCacheKey(item: MediaItem): String? {
+        val bvid = item.bvid?.trim().orEmpty()
+        if (bvid.isNotBlank()) {
+            return "bvid:$bvid"
+        }
+        return item.aid?.let { aid -> "aid:$aid" }
+    }
+
+    private fun hasAnyStat(stat: MediaStat): Boolean {
+        return stat.play != null ||
+            stat.danmaku != null ||
+            stat.reply != null ||
+            stat.like != null ||
+            stat.coin != null ||
+            stat.favorite != null ||
+            stat.share != null
     }
 
     private fun updateStreamInfo() {

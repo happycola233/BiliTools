@@ -72,6 +72,7 @@ data class MediaItem(
     val title: String,
     val coverUrl: String,
     val description: String,
+    val stat: MediaStat? = null,
     val url: String,
     val duration: Int,
     val pubTime: Long,

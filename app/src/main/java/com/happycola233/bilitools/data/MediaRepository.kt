@@ -811,10 +811,22 @@ class MediaRepository(
         val data = listResp.data
         val baseIndex = (page - 1) * pageSize
         val list = data.medias.mapIndexed { index, item ->
+            val itemStat = item.cntInfo?.let { cnt ->
+                MediaStat(
+                    play = cnt.play,
+                    danmaku = cnt.danmaku,
+                    reply = cnt.reply,
+                    like = cnt.thumbUp ?: cnt.like,
+                    coin = cnt.coin,
+                    favorite = cnt.collect,
+                    share = cnt.share,
+                )
+            } ?: MediaStat()
             MediaItem(
                 title = item.title,
                 coverUrl = normalizeCoverUrl(item.cover),
-                description = data.info.intro,
+                description = item.intro?.takeIf { it.isNotBlank() } ?: "",
+                stat = itemStat,
                 url = "https://www.bilibili.com/video/${item.bvid}",
                 aid = item.id,
                 bvid = item.bvid,
@@ -2050,8 +2062,21 @@ private data class FavoriteMedia(
     @Json(name = "type") val type: Int,
     @Json(name = "title") val title: String,
     @Json(name = "cover") val cover: String,
+    @Json(name = "intro") val intro: String? = null,
+    @Json(name = "cnt_info") val cntInfo: FavoriteMediaCntInfo? = null,
     @Json(name = "duration") val duration: Int,
     @Json(name = "pubtime") val pubtime: Long,
+)
+
+private data class FavoriteMediaCntInfo(
+    @Json(name = "collect") val collect: Long? = null,
+    @Json(name = "play") val play: Long? = null,
+    @Json(name = "danmaku") val danmaku: Long? = null,
+    @Json(name = "thumb_up") val thumbUp: Long? = null,
+    @Json(name = "share") val share: Long? = null,
+    @Json(name = "reply") val reply: Long? = null,
+    @Json(name = "coin") val coin: Long? = null,
+    @Json(name = "like") val like: Long? = null,
 )
 
 private data class OpusPreviewResponse(

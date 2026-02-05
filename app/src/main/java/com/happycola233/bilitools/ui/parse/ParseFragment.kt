@@ -963,7 +963,7 @@ class ParseFragment : Fragment() {
                 title = title,
                 description = description,
                 coverUrl = coverUrl,
-                stat = info.nfo.stat,
+                stat = selectedItem?.stat ?: state.selectedItemStat ?: info.nfo.stat,
             )
         }
 
@@ -986,17 +986,29 @@ class ParseFragment : Fragment() {
         val title = selectedItem?.title?.trim().ifNullOrBlank {
             info.nfo.showTitle?.trim().orEmpty()
         }
+        val fallbackDescription = when (info.type) {
+            MediaType.Favorite,
+            MediaType.WatchLater,
+            -> ""
+            else -> info.nfo.intro?.trim().orEmpty()
+        }
         val description = selectedItem?.description?.trim().ifNullOrBlank {
-            info.nfo.intro?.trim().orEmpty()
+            fallbackDescription
         }
         val coverUrl = selectedItem?.coverUrl?.ifBlank { null }
             ?: info.nfo.thumbs.firstOrNull()?.url
             ?: ""
+        val stat = when (info.type) {
+            MediaType.Favorite,
+            MediaType.WatchLater,
+            -> selectedItem?.stat ?: state.selectedItemStat ?: MediaStat()
+            else -> selectedItem?.stat ?: state.selectedItemStat ?: info.nfo.stat
+        }
         return VideoCardDisplay(
             title = title,
             description = description,
             coverUrl = coverUrl,
-            stat = info.nfo.stat,
+            stat = stat,
         )
     }
 
