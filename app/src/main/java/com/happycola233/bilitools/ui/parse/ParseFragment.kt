@@ -20,6 +20,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.os.bundleOf
 import androidx.core.text.HtmlCompat
 import androidx.core.widget.addTextChangedListener
 import androidx.core.view.ViewCompat
@@ -54,6 +55,13 @@ import com.google.android.material.textfield.TextInputLayout
 import com.google.android.material.R as MaterialR
 import kotlinx.coroutines.launch
 
+/**
+ * Parse and download UI used by both:
+ * 1) Main app home page
+ * 2) External dialog entry (when another app shares/opens a URL)
+ *
+ * External behavior is controlled by [externalMode].
+ */
 class ParseFragment : Fragment() {
     private var _binding: FragmentParseBinding? = null
     private val binding get() = _binding!!
@@ -94,6 +102,12 @@ class ParseFragment : Fragment() {
     private var imageOptionIds: List<String> = emptyList()
     private val imageChips = mutableMapOf<String, Chip>()
     private var pendingExternalUrl: String? = null
+    // True when hosted by ExternalDownloadEntryActivity (dialog-style external flow).
+    private var externalMode = false
+    // External flow: close host after a download task is actually queued.
+    private var closeAfterDownloadQueued = false
+    // External flow: auto-trigger "load stream info" after parse succeeds.
+    private var autoLoadStreamPending = false
     private val requestNotificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (!granted) {
@@ -240,6 +254,9 @@ class ParseFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Read host mode once; MainActivity passes false, external dialog host passes true.
+        externalMode = arguments?.getBoolean(ARG_EXTERNAL_MODE, false) == true
+        // Shared URL from host activity enters through FragmentResult.
         parentFragmentManager.setFragmentResultListener(
             ExternalDownloadContract.RESULT_KEY,
             this,
@@ -261,20 +278,29 @@ class ParseFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        val appBar = requireActivity().findViewById<com.google.android.material.appbar.AppBarLayout>(R.id.app_bar)
-        offsetListener = com.google.android.material.appbar.AppBarLayout.OnOffsetChangedListener { _, verticalOffset ->
-            binding.parseQuickAction.translationY = -verticalOffset.toFloat()
-        }
-        appBar?.addOnOffsetChangedListener(offsetListener)
-        ViewCompat.setOnApplyWindowInsetsListener(binding.parseQuickAction) { v, windowInsets ->
-            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                val navHeight = (56 * resources.displayMetrics.density).toInt()
-                val spacing = 0
-                bottomMargin = navHeight + insets.bottom + spacing
-                rightMargin = (16 * resources.displayMetrics.density).toInt()
+        if (externalMode) {
+            // External dialog has no collapsing app bar; quick FAB is unnecessary/noisy here.
+            binding.parseQuickAction.visibility = View.GONE
+            binding.parseQuickAction.isEnabled = false
+            quickActionEnabled = false
+        } else {
+            val appBar =
+                requireActivity().findViewById<com.google.android.material.appbar.AppBarLayout>(R.id.app_bar)
+            offsetListener =
+                com.google.android.material.appbar.AppBarLayout.OnOffsetChangedListener { _, verticalOffset ->
+                    binding.parseQuickAction.translationY = -verticalOffset.toFloat()
+                }
+            appBar?.addOnOffsetChangedListener(offsetListener)
+            ViewCompat.setOnApplyWindowInsetsListener(binding.parseQuickAction) { v, windowInsets ->
+                val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+                v.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                    val navHeight = (56 * resources.displayMetrics.density).toInt()
+                    val spacing = 0
+                    bottomMargin = navHeight + insets.bottom + spacing
+                    rightMargin = (16 * resources.displayMetrics.density).toInt()
+                }
+                WindowInsetsCompat.CONSUMED
             }
-            WindowInsetsCompat.CONSUMED
         }
         binding.parseScroll.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
             v.isNestedScrollingEnabled = v.canScrollVertically(-1) || v.canScrollVertically(1)
@@ -592,6 +618,21 @@ class ParseFragment : Fragment() {
                         (info != null && item != null && !state.loading && !isStreamLoading && hasSelection)
                     binding.loadStream.isEnabled = loadStreamEnabled
                     quickActionLoadEnabled = loadStreamEnabled
+                    if (externalMode && autoLoadStreamPending) {
+                        // External URL flow:
+                        // parse(url) -> mediaInfo ready -> auto call loadStream() once.
+                        // This removes one manual click for the user.
+                        when {
+                            loadStreamEnabled && state.playUrlInfo == null -> {
+                                autoLoadStreamPending = false
+                                viewModel.loadStream()
+                            }
+                            // Stop auto-run when parse flow has ended with an error.
+                            !state.loading && !state.streamLoading && !state.error.isNullOrBlank() -> {
+                                autoLoadStreamPending = false
+                            }
+                        }
+                    }
 
                     // Download Button State
                     val isDownloadStarting = state.downloadStarting
@@ -916,6 +957,20 @@ class ParseFragment : Fragment() {
                         Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
                         viewModel.clearNotice()
                     }
+                    if (externalMode && closeAfterDownloadQueued) {
+                        // External dialog should dismiss only after enqueue succeeds.
+                        // We use lastDownload != null as the enqueue completion signal.
+                        when {
+                            state.lastDownload != null -> {
+                                closeAfterDownloadQueued = false
+                                (activity as? ExternalDownloadHost)?.onExternalDownloadQueued()
+                            }
+                            // If enqueue failed and state settled with an error, keep dialog open.
+                            !state.downloadStarting && !state.error.isNullOrBlank() -> {
+                                closeAfterDownloadQueued = false
+                            }
+                        }
+                    }
                     if (quickActionScrollPending && state.playUrlInfo != null) {
                         quickActionScrollPending = false
                         scrollToOptionsCard()
@@ -942,7 +997,8 @@ class ParseFragment : Fragment() {
                 }
                 launch {
                     settingsRepository.settings.collect { settings ->
-                        quickActionEnabled = settings.parseQuickActionEnabled
+                        // Quick action FAB is intentionally disabled in external dialog mode.
+                        quickActionEnabled = !externalMode && settings.parseQuickActionEnabled
                         updateQuickActionFab(latestState, quickActionEnabled)
                     }
                 }
@@ -970,6 +1026,9 @@ class ParseFragment : Fragment() {
         latestState = null
         quickActionScrollPending = false
         quickActionShown = false
+        // Reset external flow transient flags with view lifecycle.
+        closeAfterDownloadQueued = false
+        autoLoadStreamPending = false
     }
 
     override fun onStart() {
@@ -1067,6 +1126,8 @@ class ParseFragment : Fragment() {
         val url = pendingExternalUrl ?: return
         val binding = _binding ?: return
         pendingExternalUrl = null
+        // In external mode we chain parse -> auto loadStream.
+        autoLoadStreamPending = externalMode
 
         binding.inputLink.setText(url)
         binding.inputLink.setSelection(url.length)
@@ -1074,10 +1135,17 @@ class ParseFragment : Fragment() {
     }
 
     private fun onDownloadClicked() {
+        fun startDownloadAction() {
+            if (externalMode) {
+                // External flow closes host only after download is actually queued.
+                closeAfterDownloadQueued = true
+            }
+            viewModel.download()
+        }
         requestNotificationPermissionIfNeeded()
         val settingsRepository = requireContext().appContainer.settingsRepository
         if (!settingsRepository.shouldConfirmCellularDownload() || !isOnCellularNetwork()) {
-            viewModel.download()
+            startDownloadAction()
             return
         }
         MaterialAlertDialogBuilder(requireContext())
@@ -1085,7 +1153,7 @@ class ParseFragment : Fragment() {
             .setMessage(R.string.parse_mobile_confirm_message)
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton(R.string.parse_mobile_confirm_action) { _, _ ->
-                viewModel.download()
+                startDownloadAction()
             }
             .show()
     }
@@ -1290,4 +1358,21 @@ class ParseFragment : Fragment() {
             else -> value.toString()
         }
     }
+
+    interface ExternalDownloadHost {
+        // Called when external flow can safely close dialog and return to caller app.
+        fun onExternalDownloadQueued()
+    }
+
+    companion object {
+        private const val ARG_EXTERNAL_MODE = "arg_external_mode"
+
+        // Single entry to build fragment so host mode is explicit and easy to grep.
+        fun newInstance(externalMode: Boolean = false): ParseFragment {
+            return ParseFragment().apply {
+                arguments = bundleOf(ARG_EXTERNAL_MODE to externalMode)
+            }
+        }
+    }
 }
+

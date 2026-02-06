@@ -138,7 +138,8 @@ class MainPagerAdapter(activity: AppCompatActivity) : FragmentStateAdapter(activ
 
     override fun createFragment(position: Int): androidx.fragment.app.Fragment {
         return when (position) {
-            0 -> ParseFragment()
+            // Use factory so main mode and external mode share the same fragment class.
+            0 -> ParseFragment.newInstance()
             1 -> DownloadsFragment()
             2 -> LoginFragment()
             3 -> SettingsFragment()

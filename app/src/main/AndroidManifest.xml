@@ -19,12 +19,14 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.BiliTools">
 
+        <!-- External share/open entry: dialog-style UI for parse + download without full-screen jump. -->
         <activity
             android:name=".ui.ExternalDownloadEntryActivity"
             android:excludeFromRecents="true"
             android:exported="true"
-            android:launchMode="singleTask"
-            android:theme="@style/Theme.BiliTools">
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.BiliTools.ExternalDialog"
+            android:windowSoftInputMode="adjustResize">
 
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />

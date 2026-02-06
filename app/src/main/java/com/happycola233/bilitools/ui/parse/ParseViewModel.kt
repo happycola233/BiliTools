@@ -805,7 +805,16 @@ class ParseViewModel(
             return
         }
         viewModelScope.launch {
-            _state.update { it.copy(downloadStarting = true, error = null, notice = null) }
+            _state.update {
+                it.copy(
+                    downloadStarting = true,
+                    error = null,
+                    notice = null,
+                    // External dialog watches lastDownload to decide when it can close.
+                    // Reset before a new attempt to avoid stale success signal.
+                    lastDownload = null,
+                )
+            }
             withContext(Dispatchers.IO) {
                 downloadRepository.ensureLoaded()
             }

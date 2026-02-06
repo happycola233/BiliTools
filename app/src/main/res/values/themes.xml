@@ -31,6 +31,15 @@
         <item name="colorSurfaceContainerHighest">@color/md_theme_light_surfaceContainerHighest</item>
     </style>
 
+    <!-- Window style used by external share/open entry. -->
+    <style name="Theme.BiliTools.ExternalDialog" parent="Theme.BiliTools">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+
     <style name="ThemeOverlay.BiliTools.ColorBlue" parent="ThemeOverlay.Material3">
         <item name="colorPrimary">#2F7ADD</item>
         <item name="colorOnPrimary">#FFFFFF</item>

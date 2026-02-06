@@ -35,6 +35,15 @@
         <item name="android:windowLightNavigationBar">false</item>
     </style>
 
+    <!-- Night variant for external share/open dialog window. -->
+    <style name="Theme.BiliTools.ExternalDialog" parent="Theme.BiliTools">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+
     <style name="ThemeOverlay.BiliTools.ColorBlue" parent="ThemeOverlay.Material3">
         <item name="android:colorBackground">#FF111111</item>
         <item name="colorSurface">#FF111111</item>
