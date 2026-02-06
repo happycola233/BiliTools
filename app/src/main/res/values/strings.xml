@@ -336,6 +336,9 @@
     <string name="settings_add_metadata_desc">下载音频或视频完成后自动写入标题、封面等元信息。</string>
     <string name="settings_confirm_cellular">移动网络下载前确认</string>
     <string name="settings_confirm_cellular_desc">使用移动网络时，点击下载会先弹出确认提示。</string>
+    <string name="settings_parse_section">解析</string>
+    <string name="settings_parse_quick_action">解析页快捷悬浮按钮</string>
+    <string name="settings_parse_quick_action_desc">快速实现“加载信息”和“下载”操作。</string>
     <string name="settings_theme">主题</string>
     <string name="settings_theme_system">跟随系统</string>
     <string name="settings_theme_light">浅色</string>

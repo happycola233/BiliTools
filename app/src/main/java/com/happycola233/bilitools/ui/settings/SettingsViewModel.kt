@@ -31,6 +31,10 @@ class SettingsViewModel(
         settingsRepository.setConfirmCellularDownload(enabled)
     }
 
+    fun setParseQuickActionEnabled(enabled: Boolean) {
+        settingsRepository.setParseQuickActionEnabled(enabled)
+    }
+
     fun setDownloadRootFromTreeUri(uri: Uri): Boolean {
         return settingsRepository.setDownloadRootFromTreeUri(uri)
     }

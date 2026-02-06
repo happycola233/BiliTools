@@ -1,21 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.core.widget.NestedScrollView
+<androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorSurface"
-    android:fillViewport="true">
+    android:background="?attr/colorSurface">
 
-    <LinearLayout
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/parse_scroll"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingHorizontal="16dp"
-        android:paddingTop="16dp"
-        android:paddingBottom="100dp"
-        android:clipToPadding="false">
+        android:layout_height="match_parent"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="100dp"
+            android:clipToPadding="false">
 
         <!-- Input Section -->
         <com.google.android.material.card.MaterialCardView
@@ -1116,5 +1121,20 @@
                     tools:visibility="visible" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
-    </LinearLayout>
-</androidx.core.widget.NestedScrollView>
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/parse_quick_action"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="96dp"
+        android:contentDescription="@string/parse_load_stream"
+        android:visibility="gone"
+        app:backgroundTint="?attr/colorSecondaryContainer"
+        app:srcCompat="@drawable/ic_troubleshoot_24"
+        app:tint="?attr/colorOnSecondaryContainer" />
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

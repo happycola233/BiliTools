@@ -16,6 +16,7 @@ data class AppSettings(
     val darkModePureBlack: Boolean = false,
     val downloadRootRelativePath: String = SettingsRepository.DEFAULT_DOWNLOAD_ROOT,
     val confirmCellularDownload: Boolean = true,
+    val parseQuickActionEnabled: Boolean = true,
 )
 
 enum class AppThemeMode(val value: String) {
@@ -64,6 +65,8 @@ class SettingsRepository(context: Context) {
 
     fun shouldConfirmCellularDownload(): Boolean = _settings.value.confirmCellularDownload
 
+    fun shouldShowParseQuickAction(): Boolean = _settings.value.parseQuickActionEnabled
+
     fun setAddMetadata(enabled: Boolean) {
         val current = _settings.value
         if (current.addMetadata == enabled) return
@@ -100,6 +103,13 @@ class SettingsRepository(context: Context) {
         _settings.value = current.copy(confirmCellularDownload = enabled)
     }
 
+    fun setParseQuickActionEnabled(enabled: Boolean) {
+        val current = _settings.value
+        if (current.parseQuickActionEnabled == enabled) return
+        prefs.edit().putBoolean(KEY_PARSE_QUICK_ACTION, enabled).apply()
+        _settings.value = current.copy(parseQuickActionEnabled = enabled)
+    }
+
     fun setDownloadRootRelativePath(relativePath: String) {
         val normalized = normalizeDownloadRoot(relativePath)
         val current = _settings.value
@@ -128,6 +138,7 @@ class SettingsRepository(context: Context) {
                 prefs.getString(KEY_DOWNLOAD_ROOT_RELATIVE_PATH, DEFAULT_DOWNLOAD_ROOT),
             ),
             confirmCellularDownload = prefs.getBoolean(KEY_CONFIRM_CELLULAR_DOWNLOAD, true),
+            parseQuickActionEnabled = prefs.getBoolean(KEY_PARSE_QUICK_ACTION, true),
         )
     }
 
@@ -203,5 +214,6 @@ class SettingsRepository(context: Context) {
         private const val KEY_DARK_MODE_PURE_BLACK = "dark_mode_pure_black"
         private const val KEY_DOWNLOAD_ROOT_RELATIVE_PATH = "download_root_relative_path"
         private const val KEY_CONFIRM_CELLULAR_DOWNLOAD = "confirm_cellular_download"
+        private const val KEY_PARSE_QUICK_ACTION = "parse_quick_action"
     }
 }

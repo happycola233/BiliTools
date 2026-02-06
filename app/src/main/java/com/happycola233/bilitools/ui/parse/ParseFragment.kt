@@ -22,12 +22,16 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.text.HtmlCompat
 import androidx.core.widget.addTextChangedListener
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import coil.load
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.appContainer
@@ -71,6 +75,13 @@ class ParseFragment : Fragment() {
     private var pendingScrollY: Int? = null
     private var pendingListAnchorTop: Int? = null
     private var anchorFixScheduled = false
+    private var quickActionEnabled = false
+    private var quickActionLoadEnabled = false
+    private var quickActionDownloadEnabled = false
+    private var latestState: ParseUiState? = null
+    private var quickActionScrollPending = false
+    private var offsetListener: com.google.android.material.appbar.AppBarLayout.OnOffsetChangedListener? = null
+    private var quickActionShown = false
     private var currentPageIndex: Int = 1
     private var sectionTabs: List<MediaTab> = emptyList()
     private var mediaTypeOptions: List<Pair<MediaType?, String>> = emptyList()
@@ -99,13 +110,13 @@ class ParseFragment : Fragment() {
     private var suppressUi = false
     private fun cacheScrollPosition() {
         if (pendingScrollY == null) {
-            pendingScrollY = binding.root.scrollY
+            pendingScrollY = binding.parseScroll.scrollY
         }
     }
 
     private fun cacheListAnchor() {
         if (pendingListAnchorTop != null) return
-        val root = binding.root
+        val root = binding.parseScroll
         val list = binding.pageList
         if (!list.isLaidOut || !list.isShown) return
         val rootRect = Rect()
@@ -121,7 +132,7 @@ class ParseFragment : Fragment() {
 
     private fun scheduleListAnchorFix(anchorTop: Int) {
         if (anchorFixScheduled) return
-        val root = binding.root
+        val root = binding.parseScroll
         val list = binding.pageList
         anchorFixScheduled = true
         root.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
@@ -149,6 +160,84 @@ class ParseFragment : Fragment() {
         })
     }
 
+    private fun scrollToOptionsCard() {
+        val scroll = binding.parseScroll
+        val target = binding.optionsCard
+        scroll.post {
+            if (!target.isShown) return@post
+            val rect = Rect()
+            target.getDrawingRect(rect)
+            scroll.offsetDescendantRectToMyCoords(target, rect)
+            scroll.smoothScrollTo(0, rect.top)
+        }
+    }
+
+    private fun updateQuickActionFab(
+        state: ParseUiState? = latestState,
+        enabled: Boolean = quickActionEnabled,
+    ) {
+        val fab = binding.parseQuickAction
+        val loadEnabled = quickActionLoadEnabled
+        val downloadEnabled = quickActionDownloadEnabled
+        val shouldShow = enabled &&
+            state?.mediaInfo != null &&
+            (loadEnabled || downloadEnabled)
+        if (!shouldShow) {
+            if (quickActionShown) {
+                animateQuickAction(false)
+                quickActionShown = false
+            }
+            return
+        }
+        if (!quickActionShown) {
+            animateQuickAction(true)
+            quickActionShown = true
+        }
+        val hasInfo = state.playUrlInfo != null
+        fab.setImageResource(
+            if (hasInfo) R.drawable.ic_save_alt_24 else R.drawable.ic_troubleshoot_24,
+        )
+        fab.contentDescription = getString(
+            if (hasInfo) R.string.parse_download else R.string.parse_load_stream,
+        )
+        fab.isEnabled = if (hasInfo) downloadEnabled else loadEnabled
+    }
+
+    private fun animateQuickAction(show: Boolean) {
+        val fab = binding.parseQuickAction
+        fab.animate().cancel()
+        if (show) {
+            fab.visibility = View.VISIBLE
+            if (fab.alpha < 1f || fab.scaleX < 1f || fab.scaleY < 1f) {
+                fab.alpha = fab.alpha.takeIf { it > 0f } ?: 0f
+                fab.scaleX = fab.scaleX.takeIf { it > 0f } ?: 0.9f
+                fab.scaleY = fab.scaleY.takeIf { it > 0f } ?: 0.9f
+            } else {
+                fab.alpha = 0f
+                fab.scaleX = 0.9f
+                fab.scaleY = 0.9f
+            }
+            fab.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .setDuration(180)
+                .setInterpolator(FastOutSlowInInterpolator())
+                .start()
+        } else if (fab.visibility == View.VISIBLE) {
+            fab.animate()
+                .alpha(0f)
+                .scaleX(0.9f)
+                .scaleY(0.9f)
+                .setDuration(150)
+                .setInterpolator(FastOutSlowInInterpolator())
+                .withEndAction {
+                    fab.visibility = View.GONE
+                }
+                .start()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         parentFragmentManager.setFragmentResultListener(
@@ -172,13 +261,28 @@ class ParseFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        binding.root.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
+        val appBar = requireActivity().findViewById<com.google.android.material.appbar.AppBarLayout>(R.id.app_bar)
+        offsetListener = com.google.android.material.appbar.AppBarLayout.OnOffsetChangedListener { _, verticalOffset ->
+            binding.parseQuickAction.translationY = -verticalOffset.toFloat()
+        }
+        appBar?.addOnOffsetChangedListener(offsetListener)
+        ViewCompat.setOnApplyWindowInsetsListener(binding.parseQuickAction) { v, windowInsets ->
+            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                val navHeight = (56 * resources.displayMetrics.density).toInt()
+                val spacing = 0
+                bottomMargin = navHeight + insets.bottom + spacing
+                rightMargin = (16 * resources.displayMetrics.density).toInt()
+            }
+            WindowInsetsCompat.CONSUMED
+        }
+        binding.parseScroll.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
             v.isNestedScrollingEnabled = v.canScrollVertically(-1) || v.canScrollVertically(1)
         }
         binding.parseAction.setOnClickListener {
             binding.inputLink.clearFocus()
             binding.mediaTypeDropdown.clearFocus()
-            binding.root.requestFocus()
+            binding.parseScroll.requestFocus()
             hideKeyboard()
             val input = binding.inputLink.text?.toString().orEmpty()
             viewModel.parse(input)
@@ -231,15 +335,24 @@ class ParseFragment : Fragment() {
         setupDropdown(binding.mediaTypeLayout, binding.mediaTypeDropdown)
 
         binding.loadStream.setOnClickListener {
-            pendingScrollY = binding.root.scrollY
+            pendingScrollY = binding.parseScroll.scrollY
             binding.inputLink.clearFocus()
-            binding.root.requestFocus()
+            binding.parseScroll.requestFocus()
             hideKeyboard()
             viewModel.loadStream()
         }
         binding.download.setOnClickListener {
             cacheScrollPosition()
             onDownloadClicked()
+        }
+        binding.parseQuickAction.setOnClickListener {
+            val state = latestState ?: return@setOnClickListener
+            if (state.playUrlInfo == null) {
+                quickActionScrollPending = true
+                viewModel.loadStream()
+            } else {
+                onDownloadClicked()
+            }
         }
 
         binding.sectionDropdown.setOnItemClickListener { _, _, position, _ ->
@@ -417,10 +530,13 @@ class ParseFragment : Fragment() {
 
         consumePendingExternalUrl()
 
+        val settingsRepository = requireContext().appContainer.settingsRepository
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.state.collect { state ->
-                    suppressUi = true
+                launch {
+                    viewModel.state.collect { state ->
+                        latestState = state
+                        suppressUi = true
                     
                     val isLoading = state.loading
                     binding.parseActionLoading.visibility = if (isLoading) View.VISIBLE else View.GONE
@@ -472,8 +588,10 @@ class ParseFragment : Fragment() {
                     binding.loadStream.text = if (isStreamLoading) "" else getString(R.string.parse_load_stream)
                     binding.loadStream.icon = if (isStreamLoading) null else androidx.core.content.ContextCompat.getDrawable(requireContext(), R.drawable.ic_troubleshoot_24)
                     // Disable if loading stream OR if conditions not met (info/item missing or global loading)
-                    binding.loadStream.isEnabled =
+                    val loadStreamEnabled =
                         (info != null && item != null && !state.loading && !isStreamLoading && hasSelection)
+                    binding.loadStream.isEnabled = loadStreamEnabled
+                    quickActionLoadEnabled = loadStreamEnabled
 
                     // Download Button State
                     val isDownloadStarting = state.downloadStarting
@@ -482,7 +600,9 @@ class ParseFragment : Fragment() {
                     binding.download.icon = if (isDownloadStarting) null else androidx.core.content.ContextCompat.getDrawable(requireContext(), R.drawable.ic_save_alt_24)
                     // Disable if downloading starting OR if conditions not met (playUrl missing or global loading)
                     val streamReady = state.outputType == null || state.playUrlInfo != null
-                    binding.download.isEnabled = (!state.loading && !isDownloadStarting && hasSelection && streamReady)
+                    val downloadEnabled = (!state.loading && !isDownloadStarting && hasSelection && streamReady)
+                    binding.download.isEnabled = downloadEnabled
+                    quickActionDownloadEnabled = downloadEnabled
 
                     val sections = state.sections
                     val inCollection = state.collectionMode
@@ -796,6 +916,10 @@ class ParseFragment : Fragment() {
                         Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
                         viewModel.clearNotice()
                     }
+                    if (quickActionScrollPending && state.playUrlInfo != null) {
+                        quickActionScrollPending = false
+                        scrollToOptionsCard()
+                    }
                     pendingListAnchorTop?.let { anchor ->
                         scheduleListAnchorFix(anchor)
                         if (!state.loading && !state.streamLoading && !state.downloadStarting) {
@@ -803,16 +927,24 @@ class ParseFragment : Fragment() {
                             pendingScrollY = null
                         }
                     } ?: pendingScrollY?.let { target ->
-                        binding.root.post {
-                            val content = binding.root.getChildAt(0)?.height ?: 0
-                            val maxScroll = (content - binding.root.height).coerceAtLeast(0)
-                            binding.root.scrollTo(0, target.coerceIn(0, maxScroll))
+                        binding.parseScroll.post {
+                            val content = binding.parseScroll.getChildAt(0)?.height ?: 0
+                            val maxScroll = (content - binding.parseScroll.height).coerceAtLeast(0)
+                            binding.parseScroll.scrollTo(0, target.coerceIn(0, maxScroll))
                         }
                         if (!state.loading && !state.streamLoading && !state.downloadStarting) {
                             pendingScrollY = null
                         }
                     }
+                    updateQuickActionFab(state, quickActionEnabled)
                     suppressUi = false
+                }
+                }
+                launch {
+                    settingsRepository.settings.collect { settings ->
+                        quickActionEnabled = settings.parseQuickActionEnabled
+                        updateQuickActionFab(latestState, quickActionEnabled)
+                    }
                 }
             }
         }
@@ -820,6 +952,9 @@ class ParseFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        val appBar = requireActivity().findViewById<com.google.android.material.appbar.AppBarLayout>(R.id.app_bar)
+        offsetListener?.let { appBar?.removeOnOffsetChangedListener(it) }
+        offsetListener = null
         _binding = null
         itemListAdapter = null
         sectionAdapter = null
@@ -832,6 +967,9 @@ class ParseFragment : Fragment() {
         subtitleAdapter = null
         imageOptionIds = emptyList()
         imageChips.clear()
+        latestState = null
+        quickActionScrollPending = false
+        quickActionShown = false
     }
 
     override fun onStart() {
