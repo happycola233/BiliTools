@@ -5,6 +5,7 @@ import android.os.SystemClock
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewConfiguration
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
@@ -286,6 +287,7 @@ class DownloadsAdapter(
             DownloadTaskAdapter(onPauseResume, onRetry, onDelete, onTaskClick, onLocationClick)
         private val timeFormatter = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
         private val density = binding.root.context.resources.displayMetrics.density
+        private val touchSlop = ViewConfiguration.get(binding.root.context).scaledTouchSlop.toFloat()
         private val swipeTarget = (80f * density) + (8f * density)
         private val snapThreshold = swipeTarget / 2
         private val dismissThreshold = 140f * density
@@ -295,6 +297,7 @@ class DownloadsAdapter(
         private var downX = 0f
         private var downY = 0f
         private var isSwiping = false
+        private var movedBeyondTouchSlop = false
         private var initialTranslationX = 0f
         private var touchActiveGroupId: Long? = null
 
@@ -330,6 +333,7 @@ class DownloadsAdapter(
                         downY = event.rawY
                         initialTranslationX = v.translationX
                         isSwiping = false
+                        movedBeyondTouchSlop = false
                         touchActiveGroupId = group.id
                         // Close other if different
                         if (adapter.swipedGroupId != null && adapter.swipedGroupId != group.id) {
@@ -343,6 +347,12 @@ class DownloadsAdapter(
                     android.view.MotionEvent.ACTION_MOVE -> {
                         val dx = event.rawX - downX
                         val dy = event.rawY - downY
+
+                        if (!movedBeyondTouchSlop &&
+                            (Math.abs(dx) > touchSlop || Math.abs(dy) > touchSlop)
+                        ) {
+                            movedBeyondTouchSlop = true
+                        }
                         
                         if (!isSwiping && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10 * density) {
                             isSwiping = true
@@ -387,10 +397,10 @@ class DownloadsAdapter(
                                 }
                             }
                         } else {
-                            // It was a tap
-                            val dx = event.rawX - downX
-                            val dy = event.rawY - downY
-                            if (Math.abs(dx) < 10 * density && Math.abs(dy) < 10 * density) {
+                            // Expand/collapse only on ACTION_UP without scroll-like movement.
+                            if (event.actionMasked == android.view.MotionEvent.ACTION_UP &&
+                                !movedBeyondTouchSlop
+                            ) {
                                 if (adapter.swipedGroupId == group.id) {
                                     // If open, close
                                     adapter.closeSwipedItem()
@@ -401,6 +411,7 @@ class DownloadsAdapter(
                             }
                         }
                         isSwiping = false
+                        movedBeyondTouchSlop = false
                         touchActiveGroupId = null
                         true
                     }
