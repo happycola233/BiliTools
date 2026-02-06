@@ -49,4 +49,12 @@
     <style name="TextAppearance.BiliTools.History.ToolbarTitle" parent="TextAppearance.Material3.TitleLarge">
         <item name="android:textStyle">bold</item>
     </style>
+
+    <style name="TextAppearance.BiliTools.Main.CollapsedTitle" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="TextAppearance.BiliTools.Main.ExpandedTitle" parent="TextAppearance.Material3.HeadlineMedium">
+        <item name="android:textStyle">bold</item>
+    </style>
 </resources>
