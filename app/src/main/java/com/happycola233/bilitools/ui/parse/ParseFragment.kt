@@ -920,6 +920,11 @@ class ParseFragment : Fragment() {
                                 )
                                 chip.text = option.label
                                 chip.isCheckable = true
+                                val outputTemplate = binding.outputAv
+                                chip.checkedIcon =
+                                    outputTemplate.checkedIcon?.constantState?.newDrawable()?.mutate()
+                                chip.setCheckedIconTint(outputTemplate.checkedIconTint)
+                                chip.setCheckedIconVisible(outputTemplate.isCheckedIconVisible)
                                 chip.isFocusable = false
                                 chip.isFocusableInTouchMode = false
                                 chip.isChecked = state.selectedImageIds.contains(option.id)
