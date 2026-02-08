@@ -9,8 +9,10 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.DocumentsContract
 import android.text.Html
+import android.text.Spanned
 import android.text.SpannableStringBuilder
 import android.text.style.ImageSpan
+import android.text.style.LineHeightSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -23,12 +25,15 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.appcompat.app.AppCompatActivity
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.appContainer
 import com.happycola233.bilitools.data.AppThemeColor
 import com.happycola233.bilitools.data.AppThemeMode
+import com.happycola233.bilitools.data.UpdateCheckResult
 import com.happycola233.bilitools.databinding.FragmentSettingsBinding
 import com.happycola233.bilitools.ui.AppViewModelFactory
+import com.happycola233.bilitools.ui.update.UpdateDialog
 import kotlinx.coroutines.launch
 
 class SettingsFragment : Fragment() {
@@ -40,6 +45,7 @@ class SettingsFragment : Fragment() {
     }
 
     private var suppressUi = false
+    private var checkingUpdate = false
 
     private val openFolderLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree(),
@@ -70,6 +76,7 @@ class SettingsFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        val updateRepository = requireContext().appContainer.updateRepository
         binding.root.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
             v.isNestedScrollingEnabled = v.canScrollVertically(-1) || v.canScrollVertically(1)
         }
@@ -160,6 +167,15 @@ class SettingsFragment : Fragment() {
             val initialUri = buildInitialTreeUri(currentPath)
             openFolderLauncher.launch(initialUri)
         }
+        binding.checkUpdateContainer.setOnClickListener {
+            checkForUpdates(manual = true)
+        }
+
+        val versionName = normalizeVersionLabel(updateRepository.currentVersionName())
+        binding.checkUpdateValueText.text = buildCheckUpdateSummary(
+            currentVersion = versionName,
+            statusText = getString(R.string.settings_check_update_desc),
+        )
 
         val aboutIconSize = binding.aboutDescText.lineHeight
         val aboutIconTint = binding.aboutDescText.currentTextColor
@@ -190,6 +206,17 @@ class SettingsFragment : Fragment() {
                 start,
                 end,
                 flags
+            )
+        }
+        // Keep line height stable when inline icons are present.
+        if (aboutSpannable.isNotEmpty()) {
+            val lineHeightPx = binding.aboutDescText.lineHeight +
+                (4 * resources.displayMetrics.density).toInt()
+            aboutSpannable.setSpan(
+                LineHeightSpan.Standard(lineHeightPx),
+                0,
+                aboutSpannable.length,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
             )
         }
         binding.aboutDescText.text = aboutSpannable
@@ -224,6 +251,7 @@ class SettingsFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        checkingUpdate = false
         _binding = null
     }
 
@@ -241,6 +269,91 @@ class SettingsFragment : Fragment() {
                 treeId,
             )
         }.getOrNull()
+    }
+
+    private fun checkForUpdates(manual: Boolean) {
+        val binding = _binding ?: return
+        if (checkingUpdate) return
+        val updateRepository = requireContext().appContainer.updateRepository
+        val currentVersion = normalizeVersionLabel(updateRepository.currentVersionName())
+        checkingUpdate = true
+        binding.checkUpdateContainer.isEnabled = false
+        binding.checkUpdateValueText.text = buildCheckUpdateSummary(
+            currentVersion = currentVersion,
+            statusText = getString(R.string.settings_check_update_desc_checking),
+        )
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            val result = updateRepository.checkForUpdate()
+            val activeBinding = _binding ?: return@launch
+            when (result) {
+                is UpdateCheckResult.UpdateAvailable -> {
+                    activeBinding.checkUpdateValueText.text = getString(
+                        R.string.settings_check_update_desc_available,
+                        result.release.tagName,
+                    ).let { statusText ->
+                        buildCheckUpdateSummary(
+                            currentVersion = normalizeVersionLabel(result.currentVersion),
+                            statusText = statusText,
+                        )
+                    }
+                    (activity as? AppCompatActivity)?.let { host ->
+                        UpdateDialog.show(host, result.release, result.currentVersion)
+                    }
+                }
+
+                is UpdateCheckResult.UpToDate -> {
+                    activeBinding.checkUpdateValueText.text =
+                        buildCheckUpdateSummary(
+                            currentVersion = normalizeVersionLabel(result.currentVersion),
+                            statusText = getString(R.string.settings_check_update_desc_latest),
+                        )
+                    if (manual) {
+                        Toast.makeText(
+                            activeBinding.root.context,
+                            getString(R.string.settings_check_update_toast_latest),
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                }
+
+                is UpdateCheckResult.Failed -> {
+                    activeBinding.checkUpdateValueText.text =
+                        buildCheckUpdateSummary(
+                            currentVersion = normalizeVersionLabel(result.currentVersion),
+                            statusText = getString(R.string.settings_check_update_desc_failed),
+                        )
+                    if (manual) {
+                        Toast.makeText(
+                            activeBinding.root.context,
+                            getString(
+                                R.string.settings_check_update_toast_failed,
+                                result.errorMessage,
+                            ),
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                }
+            }
+            activeBinding.checkUpdateContainer.isEnabled = true
+            checkingUpdate = false
+        }
+    }
+
+    private fun buildCheckUpdateSummary(currentVersion: String, statusText: String): String {
+        return buildString {
+            append(getString(R.string.settings_about_version, currentVersion))
+            append('\n')
+            append(statusText)
+        }
+    }
+
+    private fun normalizeVersionLabel(version: String): String {
+        return version
+            .trim()
+            .removePrefix("v")
+            .removePrefix("V")
+            .ifBlank { "0" }
     }
 
     private class CenteredImageSpan(drawable: Drawable) : ImageSpan(drawable) {

@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.core.os.bundleOf
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -12,11 +13,14 @@ import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.appContainer
+import com.happycola233.bilitools.data.UpdateCheckResult
 import com.happycola233.bilitools.databinding.ActivityMainBinding
 import com.happycola233.bilitools.ui.downloads.DownloadsFragment
 import com.happycola233.bilitools.ui.login.LoginFragment
 import com.happycola233.bilitools.ui.parse.ParseFragment
 import com.happycola233.bilitools.ui.settings.SettingsFragment
+import com.happycola233.bilitools.ui.update.UpdateDialog
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -90,6 +94,9 @@ class MainActivity : AppCompatActivity() {
 
         handleOpenDownloadsIntent(intent)
         handleExternalDownloadIntent(intent)
+        if (savedInstanceState == null) {
+            checkForUpdatesInBackground()
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -126,6 +133,19 @@ class MainActivity : AppCompatActivity() {
         settings.themeColor.overlayStyleResOrNull()?.let { theme.applyStyle(it, true) }
         settings.darkPureBlackOverlayStyleResOrNull(resources.configuration.uiMode)
             ?.let { theme.applyStyle(it, true) }
+    }
+
+    private fun checkForUpdatesInBackground() {
+        lifecycleScope.launch {
+            when (val result = applicationContext.appContainer.updateRepository.checkForUpdate()) {
+                is UpdateCheckResult.UpdateAvailable -> {
+                    UpdateDialog.show(this@MainActivity, result.release, result.currentVersion)
+                }
+
+                is UpdateCheckResult.UpToDate -> Unit
+                is UpdateCheckResult.Failed -> Unit
+            }
+        }
     }
 
     companion object {

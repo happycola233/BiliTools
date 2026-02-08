@@ -358,6 +358,26 @@
     <string name="settings_download_location_invalid">所选目录无效，请选择 Download 目录或其子目录</string>
 
     <string name="settings_about_title">关于</string>
-    <string name="settings_about_desc"><![CDATA[本项目复刻自<a href="https://github.com/btjawa/BiliTools"><img src="ic_github_invertocat_black"/>btjawa/BiliTools</a>，开源于<a href="https://github.com/happycola233/BiliTools"><img src="ic_github_invertocat_black"/>happycola233/BiliTools</a><br/>本项目遵守 <a href="https://github.com/happycola233/BiliTools/blob/main/LICENSE">GPL-3.0-or-later</a> 开源协议]]></string>
+    <string name="settings_about_version">当前版本：v%1$s</string>
+    <string name="settings_check_update_title">检查更新</string>
+    <string name="settings_check_update_desc">点击检查是否有新版本</string>
+    <string name="settings_check_update_desc_checking">正在检查更新…</string>
+    <string name="settings_check_update_desc_available">发现新版本：%1$s</string>
+    <string name="settings_check_update_desc_latest">当前已是最新版本</string>
+    <string name="settings_check_update_desc_failed">检查失败，点击重试</string>
+    <string name="settings_check_update_toast_latest">当前已是最新版本</string>
+    <string name="settings_check_update_toast_failed">检查更新失败：%1$s</string>
+    <string name="settings_about_desc"><![CDATA[
+<b>本APP开源于</b>：<a href="https://github.com/happycola233/BiliTools"><img src="ic_github_invertocat_black"/>happycola233/BiliTools</a><br/>
+<b>上游项目</b>：<a href="https://github.com/btjawa/BiliTools"><img src="ic_github_invertocat_black"/>btjawa/BiliTools</a>（本项目基于其复刻与改进）<br/>
+<b>开源协议</b>：<a href="https://github.com/happycola233/BiliTools/blob/main/LICENSE">GPL-3.0-or-later</a>
+]]></string>
     <string name="settings_about_disclaimer">该应用用于持久化的所有数据均仅明文存储于用户本地！\n因使用本项目而产生的任何后果均由用户个人承担，与开发者无关，概不负责。\n“哔哩哔哩” 及 “Bilibili” 名称、LOGO及相关图形是上海幻电信息科技有限公司的注册商标或商标。\n本项目与哔哩哔哩及其关联公司无任何关联、合作、授权或背书等关系。</string>
+    <string name="update_dialog_title">发现新版本</string>
+    <string name="update_dialog_emoji">✨</string>
+    <string name="update_dialog_version">版本：%1$s</string>
+    <string name="update_dialog_version_diff">v%1$s   →   v%2$s</string>
+    <string name="update_dialog_notes_empty">该版本未提供更新说明。</string>
+    <string name="update_dialog_open_release">前往发布页</string>
+    <string name="update_dialog_open_release_failed">无法打开发布页</string>
 </resources>

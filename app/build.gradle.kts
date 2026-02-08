@@ -59,6 +59,7 @@ dependencies {
     implementation(libs.zxing.core)
     implementation(libs.coil)
     implementation(libs.coil.svg)
+    implementation(libs.markwon.core)
     implementation(libs.jaudiotagger)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
