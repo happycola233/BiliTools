@@ -1078,8 +1078,20 @@ class ParseFragment : Fragment() {
                             } else {
                                 val adapter = dropdown.adapter
                                 if (adapter != null && adapter.count > 0) {
-                                    dropdown.requestFocus()
-                                    dropdown.showDropDown()
+                                    // Reset any restored constraint so dropdown always shows full options.
+                                    if (adapter is android.widget.Filterable) {
+                                        adapter.filter.filter(null) { count ->
+                                            if (count > 0) {
+                                                dropdown.post {
+                                                    dropdown.requestFocus()
+                                                    dropdown.showDropDown()
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        dropdown.requestFocus()
+                                        dropdown.showDropDown()
+                                    }
                                 }
                             }
                             true
