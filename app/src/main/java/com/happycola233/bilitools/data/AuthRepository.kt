@@ -199,6 +199,9 @@ class AuthRepository(
             sign = accountInfo?.sign ?: data.sign,
             vipLabel = data.vipLabel?.text ?: accountInfo?.vip?.label?.text,
             vipLabelImageUrl = normalizeImageUrl(accountInfo?.vip?.label?.imgLabelHansStatic),
+            vipStatus = accountInfo?.vip?.status ?: data.vipStatus,
+            vipType = accountInfo?.vip?.type ?: data.vipType,
+            vipAvatarSubscript = accountInfo?.vip?.avatarSubscript ?: data.vipAvatarSubscript,
             topPhotoUrl = normalizeImageUrl(accountInfo?.topPhoto?.lImg),
             coins = accountInfo?.coins,
             following = stat?.following,
@@ -410,6 +413,9 @@ private data class NavData(
     @Json(name = "sign") val sign: String?,
     @Json(name = "level_info") val levelInfo: NavLevelInfo?,
     @Json(name = "vip_label") val vipLabel: NavVipLabel?,
+    @Json(name = "vipStatus") val vipStatus: Int?,
+    @Json(name = "vipType") val vipType: Int?,
+    @Json(name = "vip_avatar_subscript") val vipAvatarSubscript: Int?,
     @Json(name = "is_senior_member") val isSeniorMember: Int?,
 )
 
@@ -442,6 +448,7 @@ private data class UserInfoData(
 private data class UserVip(
     @Json(name = "status") val status: Int? = null,
     @Json(name = "type") val type: Int? = null,
+    @Json(name = "avatar_subscript") val avatarSubscript: Int? = null,
     @Json(name = "label") val label: UserVipLabel?,
 )
 

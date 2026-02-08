@@ -19,6 +19,7 @@ import coil.decode.SvgDecoder
 import coil.load
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.appContainer
+import com.happycola233.bilitools.data.model.UserInfo
 import com.happycola233.bilitools.databinding.FragmentLoginBinding
 import com.happycola233.bilitools.ui.AppViewModelFactory
 import com.happycola233.bilitools.ui.ExternalDownloadContract
@@ -223,15 +224,14 @@ class LoginFragment : Fragment() {
                     binding.accountSign.visibility = View.GONE
                 }
                 val vipLabel = info.vipLabelImageUrl
-                val vipText = info.vipLabel?.takeIf { it.isNotBlank() }
-                val hasVip = !vipLabel.isNullOrBlank() || !vipText.isNullOrBlank()
-                if (!vipLabel.isNullOrBlank()) {
+                val showVipBadge = shouldShowVipBadge(info)
+                if (showVipBadge && !vipLabel.isNullOrBlank()) {
                     binding.accountVipLabel.visibility = View.VISIBLE
                     binding.accountVipLabel.load(vipLabel)
                 } else {
                     binding.accountVipLabel.visibility = View.GONE
                 }
-                if (hasVip) {
+                if (showVipBadge) {
                     binding.accountVipBadge.visibility = View.VISIBLE
                     binding.accountVipBadge.load("file:///android_asset/big-vip.svg") {
                         decoderFactory(SvgDecoder.Factory())
@@ -426,5 +426,15 @@ class LoginFragment : Fragment() {
         binding.accountLevel.load(assetPath) {
             decoderFactory(SvgDecoder.Factory())
         }
+    }
+
+    private fun shouldShowVipBadge(info: UserInfo): Boolean {
+        info.vipAvatarSubscript?.let { return it == 1 }
+        val status = info.vipStatus
+        val type = info.vipType
+        if (status != null || type != null) {
+            return (status ?: 0) > 0 && (type ?: 0) > 0
+        }
+        return !info.vipLabelImageUrl.isNullOrBlank() || !info.vipLabel.isNullOrBlank()
     }
 }
