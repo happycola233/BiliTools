@@ -174,6 +174,57 @@
     <string name="downloads_empty">空空如也~</string>
     <string name="downloads_clear_completed">清除已完成记录</string>
     <string name="downloads_clear_all">清除全部记录</string>
+    <string name="downloads_multi_manage">批量管理</string>
+    <string name="downloads_multi_select_all">全选</string>
+    <string name="downloads_multi_unselect_all">取消全选</string>
+    <string name="downloads_multi_exit">退出</string>
+    <string name="downloads_multi_status">%1$d/%2$d 已选择</string>
+    <string name="downloads_multi_clear_records">清除记录</string>
+    <string name="downloads_multi_delete_files">删除文件</string>
+    <string name="downloads_multi_no_task">暂无可操作任务</string>
+    <string name="downloads_multi_confirm_clear_title">清除所选记录</string>
+    <string name="downloads_multi_confirm_clear_message"><![CDATA[
+已选择 <b>%1$d</b> 项，确认执行“清除记录”？
+<br/>
+<br/>
+<b>已完成任务</b>
+<br/>仅删除记录，不删除已下载文件
+<br/>
+<br/>
+<b>进行中任务</b>
+<br/>停止下载，并删除任务与临时文件
+]]></string>
+    <string name="downloads_multi_confirm_delete_title">删除所选文件与记录</string>
+    <string name="downloads_multi_confirm_delete_message"><![CDATA[
+已选择 <b>%1$d</b> 项，确认执行“删除文件”？
+<br/>
+<br/>
+<b>执行结果</b>
+<br/>删除任务、记录和本地文件（含临时文件）
+]]></string>
+    <string name="downloads_multi_confirm_running_note">包含下载中的任务，确认后会先停止下载再处理。</string>
+    <string name="downloads_multi_hint_default">选择项目组后可批量处理记录和文件。</string>
+    <string name="downloads_multi_hint_running"><![CDATA[
+<b>清除记录</b>
+<br/>已完成项目仅删记录
+<br/>进行中项目会停止并删除任务及临时文件
+<br/>
+<br/>
+<b>删除文件</b>
+<br/>删除任务、记录和文件
+]]></string>
+    <string name="downloads_multi_hint_no_file">所选项没有可删除的本地文件，可使用“清除记录”。</string>
+    <string name="downloads_multi_hint_has_file"><![CDATA[
+<b>清除记录</b>
+<br/>已完成项目仅删记录
+<br/>进行中项目会停止并删除任务及临时文件
+<br/>
+<br/>
+<b>删除文件</b>
+<br/>删除任务、记录和文件
+]]></string>
+    <string name="downloads_multi_done_clear">已清除 %1$d 项记录</string>
+    <string name="downloads_multi_done_delete">已处理 %1$d 项任务</string>
     <string name="downloads_group_summary">%1$d/%2$d 已完成 · %3$d%%</string>
     <string name="downloads_group_toggle">展开详情</string>
     <string name="downloads_group_pause">暂停该组</string>

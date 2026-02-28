@@ -54,6 +54,12 @@ class DownloadsViewModel(
         downloadRepository.deleteTask(id, deleteFile)
     }
 
+    fun deleteGroups(ids: Collection<Long>, deleteFile: Boolean) {
+        ids.forEach { id ->
+            downloadRepository.deleteGroup(id, deleteFile)
+        }
+    }
+
     fun clearCompleted() {
         downloadRepository.clearCompletedGroups()
     }

@@ -12,12 +12,16 @@ import android.view.View
 import android.view.ViewGroup
 import android.webkit.MimeTypeMap
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.widget.PopupMenu
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updateLayoutParams
+import androidx.core.view.updatePadding
+import androidx.core.text.HtmlCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -44,6 +48,11 @@ class DownloadsFragment : Fragment() {
 
     private lateinit var adapter: DownloadsAdapter
     private var offsetListener: com.google.android.material.appbar.AppBarLayout.OnOffsetChangedListener? = null
+    private var latestGroups: List<DownloadGroup> = emptyList()
+    private val selectedGroupIds = linkedSetOf<Long>()
+    private var selectionMode = false
+    private var batchUiVisible = false
+    private lateinit var backPressedCallback: OnBackPressedCallback
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -58,22 +67,27 @@ class DownloadsFragment : Fragment() {
         // Find AppBarLayout to fix FAB position during scroll
         val appBar = requireActivity().findViewById<com.google.android.material.appbar.AppBarLayout>(R.id.app_bar)
         offsetListener = com.google.android.material.appbar.AppBarLayout.OnOffsetChangedListener { _, verticalOffset ->
-             // Counteract the upward movement of the parent ViewPager by translating the FAB down
-             binding.downloadsClear.translationY = -verticalOffset.toFloat()
+            // Counteract the upward movement of the parent ViewPager by translating floating controls down
+            val translateY = -verticalOffset.toFloat()
+            binding.downloadsClear.translationY = translateY
+            binding.downloadsBatchBackdrop.translationY = translateY
+            binding.downloadsBatchPanel.translationY = translateY
         }
         appBar?.addOnOffsetChangedListener(offsetListener)
 
-        // Adjust FAB position to avoid being covered by Bottom Navigation Bar
-        ViewCompat.setOnApplyWindowInsetsListener(binding.downloadsClear) { v, windowInsets ->
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, windowInsets ->
             val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                // Bottom Nav height (adjusted to 56dp) + Insets + Spacing (0dp)
+            binding.downloadsClear.updateLayoutParams<ViewGroup.MarginLayoutParams> {
                 val navHeight = (56 * resources.displayMetrics.density).toInt()
-                val spacing = 0
-                bottomMargin = navHeight + insets.bottom + spacing
-                rightMargin = (16 * resources.displayMetrics.density).toInt() // Keep side margin at 16dp
+                bottomMargin = navHeight + insets.bottom
+                rightMargin = (16 * resources.displayMetrics.density).toInt()
             }
-            WindowInsetsCompat.CONSUMED
+            binding.downloadsBatchPanel.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                val navHeight = (56 * resources.displayMetrics.density).toInt()
+                bottomMargin = navHeight + insets.bottom + (8 * resources.displayMetrics.density).toInt()
+            }
+            updateListBottomPadding()
+            windowInsets
         }
 
         adapter = DownloadsAdapter(
@@ -116,6 +130,7 @@ class DownloadsFragment : Fragment() {
                  )
             },
             onLocationClick = { path -> copyLocation(path) },
+            onGroupSelectionToggle = { group -> toggleGroupSelection(group.id) },
         )
         binding.downloadsList.layoutManager = LinearLayoutManager(requireContext())
         binding.downloadsList.adapter = adapter
@@ -130,11 +145,34 @@ class DownloadsFragment : Fragment() {
         }
 
         binding.downloadsClear.setOnClickListener { showClearMenu(it) }
+        binding.downloadsBatchBackdrop.setOnClickListener { exitSelectionMode() }
+        binding.downloadsBatchExit.setOnClickListener { exitSelectionMode() }
+        binding.downloadsBatchSelectAll.setOnClickListener { toggleSelectAll() }
+        binding.downloadsBatchClearRecords.setOnClickListener { confirmBatchDelete(deleteFile = false) }
+        binding.downloadsBatchDeleteFiles.setOnClickListener { confirmBatchDelete(deleteFile = true) }
+
+        backPressedCallback = object : OnBackPressedCallback(false) {
+            override fun handleOnBackPressed() {
+                exitSelectionMode()
+            }
+        }
+        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, backPressedCallback)
+        updateSelectionUi()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.groups.collect { list ->
+                    latestGroups = list
+                    if (selectionMode) {
+                        if (list.isEmpty()) {
+                            selectedGroupIds.clear()
+                            selectionMode = false
+                        } else {
+                            selectedGroupIds.retainAll(list.map { it.id }.toSet())
+                        }
+                    }
                     adapter.submitFullList(buildSectionedList(list))
+                    updateSelectionUi()
                     val empty = list.isEmpty()
                     binding.downloadsEmptyState.visibility = if (empty) View.VISIBLE else View.GONE
                 }
@@ -177,6 +215,256 @@ class DownloadsFragment : Fragment() {
         )
         items.addAll(downloadedGroups.map { DownloadsListItem.GroupItem(it) })
         return items
+    }
+
+    private fun enterSelectionMode(initialGroupId: Long? = null) {
+        if (latestGroups.isEmpty()) {
+            Toast.makeText(requireContext(), getString(R.string.downloads_multi_no_task), Toast.LENGTH_SHORT).show()
+            return
+        }
+        selectionMode = true
+        if (initialGroupId != null) {
+            if (!selectedGroupIds.add(initialGroupId)) {
+                selectedGroupIds.remove(initialGroupId)
+            }
+        }
+        updateSelectionUi()
+    }
+
+    private fun exitSelectionMode(clearSelection: Boolean = true) {
+        selectionMode = false
+        if (clearSelection) {
+            selectedGroupIds.clear()
+        }
+        updateSelectionUi()
+    }
+
+    private fun toggleGroupSelection(groupId: Long) {
+        if (!selectionMode) {
+            enterSelectionMode(groupId)
+            return
+        }
+        if (!selectedGroupIds.add(groupId)) {
+            selectedGroupIds.remove(groupId)
+        }
+        updateSelectionUi()
+    }
+
+    private fun toggleSelectAll() {
+        if (!selectionMode) return
+        val allIds = latestGroups.map { it.id }
+        if (allIds.isEmpty()) return
+        val allSelected = selectedGroupIds.size == allIds.size && selectedGroupIds.containsAll(allIds)
+        selectedGroupIds.clear()
+        if (!allSelected) {
+            selectedGroupIds.addAll(allIds)
+        }
+        updateSelectionUi()
+    }
+
+    private fun updateSelectionUi() {
+        if (!::adapter.isInitialized || _binding == null) return
+        adapter.updateSelectionState(selectionMode, selectedGroupIds)
+        renderBatchUi(selectionMode)
+        if (::backPressedCallback.isInitialized) {
+            backPressedCallback.isEnabled = selectionMode
+        }
+
+        val total = latestGroups.size
+        val selected = selectedGroupIds.size
+        binding.downloadsBatchStatus.text = getString(R.string.downloads_multi_status, selected, total)
+        val allSelected = total > 0 && selected == total
+        binding.downloadsBatchSelectAll.text = getString(
+            if (allSelected) R.string.downloads_multi_unselect_all else R.string.downloads_multi_select_all,
+        )
+        val selectedGroups = latestGroups.filter { selectedGroupIds.contains(it.id) }
+        val hasSelection = selected > 0
+        val hasRunningTask = selectedGroups.any { hasInProgressTask(it) }
+        val clearEnabled = hasSelection
+        val deleteEnabled = hasSelection
+        binding.downloadsBatchClearRecords.isEnabled = clearEnabled
+        binding.downloadsBatchDeleteFiles.isEnabled = deleteEnabled
+        binding.downloadsBatchClearRecords.alpha = if (clearEnabled) 1f else 0.45f
+        binding.downloadsBatchDeleteFiles.alpha = if (deleteEnabled) 1f else 0.45f
+
+        val hintRes = when {
+            !hasSelection -> R.string.downloads_multi_hint_default
+            hasRunningTask -> R.string.downloads_multi_hint_running
+            else -> R.string.downloads_multi_hint_has_file
+        }
+        binding.downloadsBatchHint.text = asRichText(getString(hintRes))
+
+        updateListBottomPadding()
+    }
+
+    private fun renderBatchUi(visible: Boolean) {
+        if (_binding == null) return
+        if (batchUiVisible == visible) return
+        batchUiVisible = visible
+        val duration = 220L
+        val panel = binding.downloadsBatchPanel
+        val backdrop = binding.downloadsBatchBackdrop
+        val fab = binding.downloadsClear
+        val interpolator = FastOutSlowInInterpolator()
+
+        panel.animate().cancel()
+        backdrop.animate().cancel()
+        fab.animate().cancel()
+
+        if (visible) {
+            backdrop.visibility = View.VISIBLE
+            panel.visibility = View.VISIBLE
+            backdrop.alpha = 0f
+            panel.alpha = 0f
+            panel.scaleX = 0.98f
+            panel.scaleY = 0.98f
+            backdrop.animate()
+                .alpha(1f)
+                .setDuration(duration)
+                .setInterpolator(interpolator)
+                .start()
+            panel.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .setDuration(duration)
+                .setInterpolator(interpolator)
+                .withEndAction { updateListBottomPadding() }
+                .start()
+            fab.animate()
+                .alpha(0f)
+                .scaleX(0.92f)
+                .scaleY(0.92f)
+                .setDuration(180L)
+                .setInterpolator(interpolator)
+                .withEndAction {
+                    fab.visibility = View.GONE
+                    fab.scaleX = 1f
+                    fab.scaleY = 1f
+                }
+                .start()
+            return
+        }
+
+        fab.visibility = View.VISIBLE
+        fab.alpha = 0f
+        fab.scaleX = 0.92f
+        fab.scaleY = 0.92f
+        fab.animate()
+            .alpha(1f)
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(duration)
+            .setInterpolator(interpolator)
+            .start()
+        panel.animate()
+            .alpha(0f)
+            .scaleX(0.98f)
+            .scaleY(0.98f)
+            .setDuration(180L)
+            .setInterpolator(interpolator)
+            .withEndAction {
+                panel.visibility = View.GONE
+                panel.scaleX = 1f
+                panel.scaleY = 1f
+            }
+            .start()
+        backdrop.animate()
+            .alpha(0f)
+            .setDuration(180L)
+            .setInterpolator(interpolator)
+            .withEndAction { backdrop.visibility = View.GONE }
+            .start()
+    }
+
+    private fun updateListBottomPadding() {
+        if (_binding == null) return
+        val density = resources.displayMetrics.density
+        val basePadding = (88 * density).toInt()
+        val extraPadding = if (selectionMode) {
+            val panelHeight = binding.downloadsBatchPanel.height.takeIf { it > 0 } ?: (188 * density).toInt()
+            panelHeight + (20 * density).toInt()
+        } else {
+            0
+        }
+        val bottomPadding = basePadding + extraPadding
+        binding.downloadsList.updatePadding(bottom = bottomPadding)
+        binding.downloadsEmptyState.updatePadding(bottom = bottomPadding)
+    }
+
+    private fun confirmBatchDelete(deleteFile: Boolean) {
+        val selectedGroups = latestGroups.filter { selectedGroupIds.contains(it.id) }
+        if (selectedGroups.isEmpty()) {
+            Toast.makeText(requireContext(), getString(R.string.downloads_multi_no_task), Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (!deleteFile) {
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.downloads_multi_confirm_clear_title)
+                .setMessage(
+                    asRichText(
+                        getString(
+                            R.string.downloads_multi_confirm_clear_message,
+                            selectedGroups.size,
+                        ),
+                    ),
+                )
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.download_delete) { _, _ ->
+                    performBatchDelete(deleteFile = false)
+                }
+                .show()
+            return
+        }
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.downloads_multi_confirm_delete_title)
+            .setMessage(
+                asRichText(
+                    getString(
+                        R.string.downloads_multi_confirm_delete_message,
+                        selectedGroups.size,
+                    ),
+                ),
+            )
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.download_delete) { _, _ ->
+                performBatchDelete(deleteFile = true)
+            }
+            .show()
+    }
+
+    private fun hasInProgressTask(group: DownloadGroup): Boolean {
+        return group.tasks.any { task ->
+            when (task.status) {
+                DownloadStatus.Pending,
+                DownloadStatus.Running,
+                DownloadStatus.Paused,
+                DownloadStatus.Merging -> true
+                else -> false
+            }
+        }
+    }
+
+    private fun asRichText(text: String): CharSequence {
+        return HtmlCompat.fromHtml(text, HtmlCompat.FROM_HTML_MODE_LEGACY)
+    }
+
+    private fun performBatchDelete(deleteFile: Boolean) {
+        val targetIds = latestGroups
+            .map { it.id }
+            .filter { selectedGroupIds.contains(it) }
+        if (targetIds.isEmpty()) {
+            return
+        }
+        viewModel.deleteGroups(targetIds, deleteFile)
+        val toastRes = if (deleteFile) {
+            R.string.downloads_multi_done_delete
+        } else {
+            R.string.downloads_multi_done_clear
+        }
+        Toast.makeText(requireContext(), getString(toastRes, targetIds.size), Toast.LENGTH_SHORT).show()
+        exitSelectionMode()
     }
 
     private fun showTaskActions(item: DownloadItem) {
@@ -262,6 +550,10 @@ class DownloadsFragment : Fragment() {
         menu.menuInflater.inflate(R.menu.downloads_clear_menu, menu.menu)
         menu.setOnMenuItemClickListener { item ->
             when (item.itemId) {
+                R.id.action_batch_manage -> {
+                    enterSelectionMode()
+                    true
+                }
                 R.id.action_clear_completed -> {
                     viewModel.clearCompleted()
                     true
@@ -364,6 +656,7 @@ class DownloadsFragment : Fragment() {
         val appBar = requireActivity().findViewById<com.google.android.material.appbar.AppBarLayout>(R.id.app_bar)
         offsetListener?.let { appBar?.removeOnOffsetChangedListener(it) }
         offsetListener = null
+        batchUiVisible = false
         _binding = null
     }
 }

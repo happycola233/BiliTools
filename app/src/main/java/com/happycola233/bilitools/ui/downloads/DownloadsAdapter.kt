@@ -2,6 +2,7 @@ package com.happycola233.bilitools.ui.downloads
 
 import android.content.Context
 import android.os.SystemClock
+import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -18,6 +19,7 @@ import androidx.transition.TransitionManager
 import androidx.transition.TransitionSet
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import coil.load
+import com.google.android.material.color.MaterialColors
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.model.DownloadGroup
 import com.happycola233.bilitools.data.model.DownloadItem
@@ -55,11 +57,14 @@ class DownloadsAdapter(
     private val onGroupResume: (DownloadGroup) -> Unit,
     private val onGroupDelete: (DownloadGroup, () -> Unit) -> Unit,
     private val onLocationClick: (String) -> Unit,
+    private val onGroupSelectionToggle: (DownloadGroup) -> Unit,
 ) : ListAdapter<DownloadsListItem, RecyclerView.ViewHolder>(DownloadsDiffCallback), StickyHeaderInterface {
 
     internal val expandedGroups = mutableSetOf<Long>()
     private val collapsedSections = mutableSetOf<DownloadSectionType>()
     private var originalList: List<DownloadsListItem> = emptyList()
+    private var selectionMode = false
+    private var selectedGroupIds: Set<Long> = emptySet()
 
     // Swipe state
     private var swipedGroupId: Long? = null
@@ -129,11 +134,13 @@ class DownloadsAdapter(
     }
     
     override fun onHeaderClicked(headerPosition: Int) {
+        if (selectionMode) return
         val item = getItem(headerPosition) as? DownloadsListItem.SectionHeader ?: return
         toggleSection(item.type)
     }
     
     private fun toggleSection(type: DownloadSectionType) {
+        if (selectionMode) return
         if (!collapsedSections.add(type)) {
             collapsedSections.remove(type)
         }
@@ -163,6 +170,28 @@ class DownloadsAdapter(
             }
         }
         return result
+    }
+
+    fun updateSelectionState(enabled: Boolean, selectedIds: Set<Long>) {
+        val nextSelected = selectedIds.toSet()
+        if (selectionMode == enabled && selectedGroupIds == nextSelected) {
+            return
+        }
+        val modeChanged = selectionMode != enabled
+        selectionMode = enabled
+        selectedGroupIds = nextSelected
+        if (selectionMode) {
+            closeSwipedItem()
+            if (expandedGroups.isNotEmpty()) {
+                expandedGroups.clear()
+                expandingGroups.clear()
+            }
+        }
+        if (modeChanged) {
+            notifyDataSetChanged()
+            return
+        }
+        notifyDataSetChanged()
     }
 
     override fun getItemViewType(position: Int): Int {
@@ -288,6 +317,7 @@ class DownloadsAdapter(
         private val timeFormatter = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
         private val density = binding.root.context.resources.displayMetrics.density
         private val touchSlop = ViewConfiguration.get(binding.root.context).scaledTouchSlop.toFloat()
+        private val longPressTimeoutMs = ViewConfiguration.getLongPressTimeout().toLong()
         private val swipeTarget = (80f * density) + (8f * density)
         private val snapThreshold = swipeTarget / 2
         private val dismissThreshold = 140f * density
@@ -300,6 +330,8 @@ class DownloadsAdapter(
         private var movedBeyondTouchSlop = false
         private var initialTranslationX = 0f
         private var touchActiveGroupId: Long? = null
+        private var longPressTriggered = false
+        private var longPressRunnable: Runnable? = null
 
         init {
             binding.groupTasks.layoutManager = LinearLayoutManager(binding.root.context)
@@ -326,6 +358,13 @@ class DownloadsAdapter(
 
         private fun setupSwipeTouchListener() {
             binding.cardView.setOnTouchListener { v, event ->
+                if (adapter.selectionMode) {
+                    isSwiping = false
+                    movedBeyondTouchSlop = false
+                    touchActiveGroupId = null
+                    cancelPendingLongPress()
+                    return@setOnTouchListener false
+                }
                 val group = currentGroup ?: return@setOnTouchListener false
                 when (event.actionMasked) {
                     android.view.MotionEvent.ACTION_DOWN -> {
@@ -334,6 +373,7 @@ class DownloadsAdapter(
                         initialTranslationX = v.translationX
                         isSwiping = false
                         movedBeyondTouchSlop = false
+                        longPressTriggered = false
                         touchActiveGroupId = group.id
                         // Close other if different
                         if (adapter.swipedGroupId != null && adapter.swipedGroupId != group.id) {
@@ -342,9 +382,13 @@ class DownloadsAdapter(
                             // Let this gesture fall through after closing the other item.
                             return@setOnTouchListener false
                         }
+                        scheduleLongPress(group)
                         true
                     }
                     android.view.MotionEvent.ACTION_MOVE -> {
+                        if (longPressTriggered) {
+                            return@setOnTouchListener true
+                        }
                         val dx = event.rawX - downX
                         val dy = event.rawY - downY
 
@@ -352,10 +396,12 @@ class DownloadsAdapter(
                             (Math.abs(dx) > touchSlop || Math.abs(dy) > touchSlop)
                         ) {
                             movedBeyondTouchSlop = true
+                            cancelPendingLongPress()
                         }
                         
                         if (!isSwiping && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10 * density) {
                             isSwiping = true
+                            cancelPendingLongPress()
                             v.parent.requestDisallowInterceptTouchEvent(true)
                         }
                         
@@ -371,7 +417,15 @@ class DownloadsAdapter(
                         true
                     }
                     android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
+                        cancelPendingLongPress()
                         v.parent.requestDisallowInterceptTouchEvent(false)
+                        if (longPressTriggered) {
+                            isSwiping = false
+                            movedBeyondTouchSlop = false
+                            touchActiveGroupId = null
+                            longPressTriggered = false
+                            return@setOnTouchListener true
+                        }
                         if (isSwiping) {
                             val currentX = v.translationX
                             if (currentX < -dismissThreshold) {
@@ -420,23 +474,66 @@ class DownloadsAdapter(
             }
         }
 
+        private fun scheduleLongPress(group: DownloadGroup) {
+            cancelPendingLongPress()
+            val runnable = Runnable {
+                if (adapter.selectionMode) return@Runnable
+                if (touchActiveGroupId != group.id) return@Runnable
+                if (isSwiping || movedBeyondTouchSlop) return@Runnable
+                longPressTriggered = true
+                binding.cardView.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                adapter.onGroupSelectionToggle(group)
+            }
+            longPressRunnable = runnable
+            binding.cardView.postDelayed(runnable, longPressTimeoutMs)
+        }
+
+        private fun cancelPendingLongPress() {
+            longPressRunnable?.let { binding.cardView.removeCallbacks(it) }
+            longPressRunnable = null
+        }
+
         fun bind(group: DownloadGroup, expanded: Boolean) {
             boundGroupId = group.id
             currentGroup = group
+            if (touchActiveGroupId != group.id) {
+                longPressTriggered = false
+                cancelPendingLongPress()
+            }
             revealDeleteRunnable?.let { binding.cardView.removeCallbacks(it) }
             revealDeleteRunnable = null
             val context = binding.root.context
+            val selectionMode = adapter.selectionMode
+            val isSelected = adapter.selectedGroupIds.contains(group.id)
+            binding.groupSelect.visibility = if (selectionMode) View.VISIBLE else View.GONE
+            binding.groupSelect.isChecked = isSelected
+            binding.groupSelect.setOnClickListener {
+                if (selectionMode) {
+                    adapter.onGroupSelectionToggle(group)
+                }
+            }
+            binding.cardView.strokeColor = MaterialColors.getColor(
+                binding.cardView,
+                com.google.android.material.R.attr.colorPrimary,
+            )
+            binding.cardView.strokeWidth = if (isSelected) (2 * density).toInt() else 0
             val remainingExpandMs = adapter.getExpandRemainingMs(group.id)
             val isExpanding = remainingExpandMs > 0L
             binding.swipeDeleteContainer.alpha = 1f
-            binding.swipeDeleteContainer.visibility = if (isExpanding) View.INVISIBLE else View.VISIBLE
-            if (isExpanding) {
+            binding.swipeDeleteContainer.visibility = when {
+                selectionMode -> View.GONE
+                isExpanding -> View.INVISIBLE
+                else -> View.VISIBLE
+            }
+            if (isExpanding && !selectionMode) {
                 scheduleDeleteReveal(group.id, remainingExpandMs)
             }
             
             // Reset State
             if (touchActiveGroupId == group.id) {
                 // Keep current swipe offset while this item is actively handling a gesture.
+            } else if (selectionMode) {
+                binding.cardView.translationX = 0f
             } else if (adapter.swipedGroupId == group.id) {
                 binding.cardView.translationX = -swipeTarget
                 adapter.notifySwiped(this, group.id)
@@ -514,7 +611,9 @@ class DownloadsAdapter(
                     item.userPaused
             }
             
-            if (hasRunning) {
+            if (selectionMode) {
+                binding.groupActionsContainer.visibility = View.GONE
+            } else if (hasRunning) {
                 binding.groupPauseResume.setIconResource(R.drawable.ic_pause_24)
                 binding.groupPauseResume.text = context.getString(R.string.download_pause)
                 binding.groupPauseResume.setOnClickListener { onGroupPause(group) }
@@ -527,19 +626,33 @@ class DownloadsAdapter(
             } else {
                 binding.groupActionsContainer.visibility = View.GONE
             }
+            binding.groupPauseResume.setOnLongClickListener {
+                if (adapter.selectionMode) return@setOnLongClickListener false
+                binding.cardView.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                adapter.onGroupSelectionToggle(group)
+                true
+            }
             
-            binding.groupToggle.rotation = if (expanded) 180f else 0f
-            binding.expandedContent.visibility = if (expanded) View.VISIBLE else View.GONE
+            val shouldExpand = expanded && !selectionMode
+            binding.groupToggle.visibility = if (selectionMode) View.INVISIBLE else View.VISIBLE
+            binding.groupToggle.rotation = if (shouldExpand) 180f else 0f
+            binding.expandedContent.visibility = if (shouldExpand) View.VISIBLE else View.GONE
             
-            if (expanded) {
+            if (shouldExpand) {
                 taskAdapter.groupPath = group.relativePath
                 taskAdapter.submitList(group.tasks)
+            } else {
+                taskAdapter.submitList(emptyList())
             }
             
             // Re-apply click listeners logic via standard SetOnClickListener for accessibility/fallback
             // But we primarily handle clicks in OnTouch. 
             // We just need to ensure performClick works.
             binding.cardView.setOnClickListener {
+                if (adapter.selectionMode) {
+                    adapter.onGroupSelectionToggle(group)
+                    return@setOnClickListener
+                }
                 if (adapter.swipedGroupId != null) {
                     adapter.closeSwipedItem()
                     return@setOnClickListener
