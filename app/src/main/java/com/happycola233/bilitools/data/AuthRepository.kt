@@ -11,6 +11,7 @@ import com.happycola233.bilitools.data.model.QrLoginStatus
 import com.happycola233.bilitools.data.model.UserInfo
 import com.squareup.moshi.Json
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.security.KeyFactory
 import java.security.spec.X509EncodedKeySpec
 import javax.crypto.Cipher
@@ -150,7 +151,7 @@ class AuthRepository(
         password: String,
         captcha: CaptchaResult,
         token: String,
-    ) {
+    ): PasswordLoginResult {
         val keyUrl = "https://passport.bilibili.com/x/passport-login/web/key".toHttpUrl()
         val keyBody = httpClient.get(keyUrl)
         val keyAdapter = httpClient.adapter(PwdKeyResponse::class.java)
@@ -173,8 +174,105 @@ class AuthRepository(
         val adapter = httpClient.adapter(PwdLoginResponse::class.java)
         val resp = adapter.fromJson(body) ?: throw BiliHttpException("Empty login response", -1)
         val data = resp.data ?: throw BiliHttpException(resp.message, resp.code)
-        if (data.status != 0) {
-            throw BiliHttpException(data.message, data.status)
+        return when (data.status) {
+            0 -> PasswordLoginResult.Success
+            2 -> {
+                val parsed = data.url?.toHttpUrlOrNull()
+                val tmpCode = parsed?.queryParameter("tmp_code")
+                    ?: parsed?.queryParameter("tmp_token")
+                val requestId = parsed?.queryParameter("request_id")
+                val source = parsed?.queryParameter("source").orEmpty().ifBlank { "risk" }
+                if (tmpCode.isNullOrBlank() || requestId.isNullOrBlank()) {
+                    throw BiliHttpException(data.message, data.status)
+                }
+                PasswordLoginResult.RiskVerify(
+                    tmpCode = tmpCode,
+                    requestId = requestId,
+                    source = source,
+                    message = data.message,
+                    tel = data.tel,
+                    email = data.email,
+                )
+            }
+            else -> throw BiliHttpException(data.message, data.status)
+        }
+    }
+
+    suspend fun getRiskCaptchaParams(source: String = "risk"): CaptchaParams {
+        val url = "https://passport.bilibili.com/x/safecenter/captcha/pre".toHttpUrl()
+        val body = httpClient.postForm(url, mapOf("source" to source))
+        val adapter = httpClient.adapter(RiskCaptchaResponse::class.java)
+        val resp = adapter.fromJson(body) ?: throw BiliHttpException("Empty risk captcha response", -1)
+        val data = resp.data
+        val token = data?.recaptchaToken.orEmpty()
+        val challenge = data?.geeChallenge.orEmpty()
+        val gt = data?.geeGt.orEmpty()
+        if (resp.code != 0 || token.isBlank() || challenge.isBlank() || gt.isBlank()) {
+            throw BiliHttpException(resp.message, resp.code)
+        }
+        return CaptchaParams(token = token, gt = gt, challenge = challenge)
+    }
+
+    suspend fun sendRiskSmsCode(
+        tmpCode: String,
+        captcha: CaptchaResult,
+        recaptchaToken: String,
+    ): String {
+        val url = "https://passport.bilibili.com/x/safecenter/common/sms/send".toHttpUrl()
+        val params = mapOf(
+            "tmp_code" to tmpCode,
+            "sms_type" to "loginTelCheck",
+            "recaptcha_token" to recaptchaToken,
+            "gee_challenge" to captcha.challenge,
+            "gee_validate" to captcha.validate,
+            "gee_seccode" to captcha.seccode,
+        )
+        val body = httpClient.postForm(url, params)
+        val adapter = httpClient.adapter(SendSmsResponse::class.java)
+        val resp = adapter.fromJson(body) ?: throw BiliHttpException("Empty risk SMS response", -1)
+        val key = resp.data?.captchaKey
+        if (resp.code != 0 || key.isNullOrBlank()) {
+            throw BiliHttpException(resp.message, resp.code)
+        }
+        return key
+    }
+
+    suspend fun completeRiskSmsVerification(
+        tmpCode: String,
+        requestId: String,
+        smsCode: String,
+        captchaKey: String,
+        source: String = "risk",
+    ) {
+        val verifyUrl = "https://passport.bilibili.com/x/safecenter/login/tel/verify".toHttpUrl()
+        val verifyParams = mapOf(
+            "tmp_code" to tmpCode,
+            "captcha_key" to captchaKey,
+            "type" to "loginTelCheck",
+            "code" to smsCode,
+            "request_id" to requestId,
+            "source" to source,
+        )
+        val verifyBody = httpClient.postForm(verifyUrl, verifyParams)
+        val verifyAdapter = httpClient.adapter(RiskTelVerifyResponse::class.java)
+        val verifyResp = verifyAdapter.fromJson(verifyBody)
+            ?: throw BiliHttpException("Empty risk verify response", -1)
+        val exchangeCode = verifyResp.data?.code
+        if (verifyResp.code != 0 || exchangeCode.isNullOrBlank()) {
+            throw BiliHttpException(verifyResp.message, verifyResp.code)
+        }
+
+        val exchangeUrl = "https://passport.bilibili.com/x/passport-login/web/exchange_cookie".toHttpUrl()
+        val exchangeParams = mapOf(
+            "source" to source,
+            "code" to exchangeCode,
+        )
+        val exchangeBody = httpClient.postForm(exchangeUrl, exchangeParams)
+        val exchangeAdapter = httpClient.adapter(RiskExchangeCookieResponse::class.java)
+        val exchangeResp = exchangeAdapter.fromJson(exchangeBody)
+            ?: throw BiliHttpException("Empty exchange cookie response", -1)
+        if (exchangeResp.code != 0 || exchangeResp.data == null) {
+            throw BiliHttpException(exchangeResp.message, exchangeResp.code)
         }
     }
 
@@ -289,6 +387,19 @@ data class CountryInfo(
     val name: String,
 )
 
+sealed class PasswordLoginResult {
+    object Success : PasswordLoginResult()
+
+    data class RiskVerify(
+        val tmpCode: String,
+        val requestId: String,
+        val source: String,
+        val message: String,
+        val tel: String?,
+        val email: String?,
+    ) : PasswordLoginResult()
+}
+
 private data class QrGenerateResponse(
     @Json(name = "code") val code: Int,
     @Json(name = "message") val message: String,
@@ -370,6 +481,42 @@ private data class PwdLoginResponse(
 private data class PwdLoginData(
     @Json(name = "status") val status: Int,
     @Json(name = "message") val message: String,
+    @Json(name = "refresh_token") val refreshToken: String?,
+    @Json(name = "url") val url: String?,
+    @Json(name = "tel") val tel: String?,
+    @Json(name = "email") val email: String?,
+)
+
+private data class RiskCaptchaResponse(
+    @Json(name = "code") val code: Int,
+    @Json(name = "message") val message: String,
+    @Json(name = "data") val data: RiskCaptchaData?,
+)
+
+private data class RiskCaptchaData(
+    @Json(name = "recaptcha_token") val recaptchaToken: String?,
+    @Json(name = "gee_challenge") val geeChallenge: String?,
+    @Json(name = "gee_gt") val geeGt: String?,
+)
+
+private data class RiskTelVerifyResponse(
+    @Json(name = "code") val code: Int,
+    @Json(name = "message") val message: String,
+    @Json(name = "data") val data: RiskTelVerifyData?,
+)
+
+private data class RiskTelVerifyData(
+    @Json(name = "code") val code: String?,
+)
+
+private data class RiskExchangeCookieResponse(
+    @Json(name = "code") val code: Int,
+    @Json(name = "message") val message: String,
+    @Json(name = "data") val data: RiskExchangeCookieData?,
+)
+
+private data class RiskExchangeCookieData(
+    @Json(name = "url") val url: String?,
     @Json(name = "refresh_token") val refreshToken: String?,
 )
 

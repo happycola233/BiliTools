@@ -9,6 +9,7 @@ import com.happycola233.bilitools.data.AuthRepository
 import com.happycola233.bilitools.data.CaptchaParams
 import com.happycola233.bilitools.data.CaptchaResult
 import com.happycola233.bilitools.data.CountryInfo
+import com.happycola233.bilitools.data.PasswordLoginResult
 import com.happycola233.bilitools.data.model.QrLoginStatus
 import com.happycola233.bilitools.data.model.UserInfo
 import kotlinx.coroutines.Dispatchers
@@ -49,16 +50,21 @@ data class LoginUiState(
     val smsCaptchaKey: String? = null,
     val isSendingSms: Boolean = false,
     val isLoggingIn: Boolean = false,
+    val isRiskSmsMode: Boolean = false,
+    val riskPrefillPhone: String? = null,
+    val riskLockPhoneInput: Boolean = false,
 )
 
 sealed class LoginEvent {
     data class ShowCaptcha(val params: CaptchaParams) : LoginEvent()
     data class Message(val text: String) : LoginEvent()
+    data class RiskVerificationRequired(val message: String?) : LoginEvent()
 }
 
 private enum class CaptchaPurpose {
     SmsSend,
     PasswordLogin,
+    RiskSmsSend,
 }
 
 private data class PendingCaptcha(
@@ -74,6 +80,14 @@ private data class PendingSms(
 private data class PendingPwd(
     val username: String,
     val password: String,
+)
+
+private data class PendingRisk(
+    val tmpCode: String,
+    val requestId: String,
+    val source: String,
+    val prefillPhone: String?,
+    val lockPhoneInput: Boolean,
 )
 
 class LoginViewModel(
@@ -95,6 +109,7 @@ class LoginViewModel(
     private var pendingCaptcha: PendingCaptcha? = null
     private var pendingSms: PendingSms? = null
     private var pendingPwd: PendingPwd? = null
+    private var pendingRisk: PendingRisk? = null
 
     init {
         if (authRepository.isLoggedIn()) {
@@ -118,11 +133,17 @@ class LoginViewModel(
     }
 
     fun setTab(tab: LoginTab) {
+        if (_state.value.activeTab == tab) return
         _state.update { it.copy(activeTab = tab, errorText = null) }
     }
 
     fun setCountryId(id: Int) {
         _state.update { it.copy(selectedCountryId = id) }
+    }
+
+    fun openRiskSmsTab() {
+        if (!_state.value.isRiskSmsMode) return
+        _state.update { it.copy(activeTab = LoginTab.Sms) }
     }
 
     fun refreshQr() {
@@ -172,12 +193,19 @@ class LoginViewModel(
     }
 
     fun logout() {
+        pendingCaptcha = null
+        pendingSms = null
+        pendingPwd = null
+        pendingRisk = null
         authRepository.logout()
         _state.update {
             it.copy(
                 isLoggedIn = false,
                 userInfo = null,
                 smsCaptchaKey = null,
+                isRiskSmsMode = false,
+                riskPrefillPhone = null,
+                riskLockPhoneInput = false,
                 qrBitmap = null,
                 qrStatusText = strings.get(R.string.login_status_signed_out),
             )
@@ -186,6 +214,11 @@ class LoginViewModel(
     }
 
     fun requestSmsCode(cid: Int, tel: String) {
+        val risk = pendingRisk
+        if (risk != null) {
+            requestCaptcha(CaptchaPurpose.RiskSmsSend)
+            return
+        }
         if (tel.isBlank()) {
             setError(strings.get(R.string.login_error_phone_empty))
             return
@@ -195,10 +228,6 @@ class LoginViewModel(
     }
 
     fun loginWithSms(cid: Int, tel: String, code: String) {
-        if (tel.isBlank()) {
-            setError(strings.get(R.string.login_error_phone_empty))
-            return
-        }
         if (code.isBlank()) {
             setError(strings.get(R.string.login_error_sms_code_empty))
             return
@@ -206,6 +235,30 @@ class LoginViewModel(
         val captchaKey = _state.value.smsCaptchaKey
         if (captchaKey.isNullOrBlank()) {
             setError(strings.get(R.string.login_error_sms_request_first))
+            return
+        }
+        val risk = pendingRisk
+        if (risk != null) {
+            viewModelScope.launch {
+                _state.update { it.copy(isLoggingIn = true, errorText = null) }
+                runCatching {
+                    authRepository.completeRiskSmsVerification(
+                        tmpCode = risk.tmpCode,
+                        requestId = risk.requestId,
+                        smsCode = code,
+                        captchaKey = captchaKey,
+                        source = risk.source,
+                    )
+                }.onSuccess {
+                    handleLoginSuccess()
+                }.onFailure { err ->
+                    setError(err.message ?: strings.get(R.string.login_error_failed))
+                }
+            }
+            return
+        }
+        if (tel.isBlank()) {
+            setError(strings.get(R.string.login_error_phone_empty))
             return
         }
         viewModelScope.launch {
@@ -229,6 +282,15 @@ class LoginViewModel(
             setError(strings.get(R.string.login_error_password_empty))
             return
         }
+        pendingRisk = null
+        _state.update {
+            it.copy(
+                smsCaptchaKey = null,
+                isRiskSmsMode = false,
+                riskPrefillPhone = null,
+                riskLockPhoneInput = false,
+            )
+        }
         pendingPwd = PendingPwd(username, password)
         requestCaptcha(CaptchaPurpose.PasswordLogin)
     }
@@ -239,6 +301,7 @@ class LoginViewModel(
         when (pending.purpose) {
             CaptchaPurpose.SmsSend -> sendSmsWithCaptcha(result, pending.token)
             CaptchaPurpose.PasswordLogin -> loginWithCaptcha(result, pending.token)
+            CaptchaPurpose.RiskSmsSend -> sendRiskSmsWithCaptcha(result, pending.token)
         }
     }
 
@@ -250,7 +313,14 @@ class LoginViewModel(
     private fun requestCaptcha(purpose: CaptchaPurpose) {
         viewModelScope.launch {
             updateCaptchaLoading(purpose, true)
-            runCatching { authRepository.getCaptchaParams() }
+            runCatching {
+                when (purpose) {
+                    CaptchaPurpose.SmsSend, CaptchaPurpose.PasswordLogin ->
+                        authRepository.getCaptchaParams()
+                    CaptchaPurpose.RiskSmsSend ->
+                        authRepository.getRiskCaptchaParams(pendingRisk?.source ?: "risk")
+                }
+            }
                 .onSuccess { params ->
                     pendingCaptcha = PendingCaptcha(purpose, params.token)
                     _events.emit(LoginEvent.ShowCaptcha(params))
@@ -288,6 +358,40 @@ class LoginViewModel(
         }
     }
 
+    private fun sendRiskSmsWithCaptcha(result: CaptchaResult, token: String) {
+        val risk = pendingRisk
+        if (risk == null) {
+            setError(strings.get(R.string.login_error_failed))
+            return
+        }
+        viewModelScope.launch {
+            _state.update { it.copy(isSendingSms = true, errorText = null) }
+            runCatching {
+                authRepository.sendRiskSmsCode(
+                    tmpCode = risk.tmpCode,
+                    captcha = result,
+                    recaptchaToken = token,
+                )
+            }.onSuccess { key ->
+                _state.update {
+                    it.copy(
+                        smsCaptchaKey = key,
+                        isSendingSms = false,
+                        activeTab = LoginTab.Sms,
+                        isRiskSmsMode = true,
+                        riskPrefillPhone = risk.prefillPhone,
+                        riskLockPhoneInput = risk.lockPhoneInput,
+                        errorText = null,
+                    )
+                }
+                _events.emit(LoginEvent.Message(strings.get(R.string.login_sms_sent)))
+            }.onFailure { err ->
+                setError(err.message ?: strings.get(R.string.login_error_failed))
+                _state.update { it.copy(isSendingSms = false) }
+            }
+        }
+    }
+
     private fun loginWithCaptcha(result: CaptchaResult, token: String) {
         val request = pendingPwd
         if (request == null) {
@@ -296,10 +400,37 @@ class LoginViewModel(
         }
         viewModelScope.launch {
             _state.update { it.copy(isLoggingIn = true, errorText = null) }
-            runCatching {
+            runCatching<PasswordLoginResult> {
                 authRepository.pwdLogin(request.username, request.password, result, token)
-            }.onSuccess {
-                handleLoginSuccess()
+            }.onSuccess { loginResult ->
+                when (loginResult) {
+                    PasswordLoginResult.Success -> {
+                        handleLoginSuccess()
+                    }
+                    is PasswordLoginResult.RiskVerify -> {
+                        val maskedPhone = loginResult.tel?.takeIf { it.isNotBlank() }
+                        val userInputPhone = request.username.takeIf { looksLikePhone(it) }
+                        val prefillPhone = maskedPhone ?: userInputPhone
+                        pendingRisk = PendingRisk(
+                            tmpCode = loginResult.tmpCode,
+                            requestId = loginResult.requestId,
+                            source = loginResult.source,
+                            prefillPhone = prefillPhone,
+                            lockPhoneInput = !maskedPhone.isNullOrBlank(),
+                        )
+                        _state.update {
+                            it.copy(
+                                isLoggingIn = false,
+                                smsCaptchaKey = null,
+                                isRiskSmsMode = true,
+                                riskPrefillPhone = prefillPhone,
+                                riskLockPhoneInput = !maskedPhone.isNullOrBlank(),
+                                errorText = loginResult.message.takeIf { msg -> msg.isNotBlank() },
+                            )
+                        }
+                        _events.emit(LoginEvent.RiskVerificationRequired(loginResult.message))
+                    }
+                }
             }.onFailure { err ->
                 setError(err.message ?: strings.get(R.string.login_error_failed))
             }
@@ -307,11 +438,18 @@ class LoginViewModel(
     }
 
     private fun handleLoginSuccess() {
+        pendingCaptcha = null
+        pendingSms = null
+        pendingPwd = null
+        pendingRisk = null
         _state.update {
             it.copy(
                 isLoggingIn = false,
                 isSendingSms = false,
                 smsCaptchaKey = null,
+                isRiskSmsMode = false,
+                riskPrefillPhone = null,
+                riskLockPhoneInput = false,
                 qrStatusText = strings.get(R.string.login_status_signed_in),
                 isLoggedIn = true,
                 errorText = null,
@@ -327,6 +465,8 @@ class LoginViewModel(
                 _state.update { it.copy(isSendingSms = loading, errorText = null) }
             CaptchaPurpose.PasswordLogin ->
                 _state.update { it.copy(isLoggingIn = loading, errorText = null) }
+            CaptchaPurpose.RiskSmsSend ->
+                _state.update { it.copy(isSendingSms = loading, errorText = null) }
         }
     }
 
@@ -420,5 +560,10 @@ class LoginViewModel(
                 CountryOption(entry.id, "+${entry.id}")
             }
         }
+    }
+
+    private fun looksLikePhone(value: String): Boolean {
+        val normalized = value.trim().replace(" ", "")
+        return normalized.matches(Regex("^\\+?\\d{6,20}$"))
     }
 }

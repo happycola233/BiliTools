@@ -157,6 +157,15 @@ class LoginFragment : Fragment() {
 
     private suspend fun collectState() {
         viewModel.state.collect { state ->
+            val targetTabIndex = when (state.activeTab) {
+                LoginTab.Qr -> 0
+                LoginTab.Password -> 1
+                LoginTab.Sms -> 2
+            }
+            if (binding.loginTabs.selectedTabPosition != targetTabIndex) {
+                binding.loginTabs.getTabAt(targetTabIndex)?.select()
+            }
+
             binding.profileCard.visibility = if (state.isLoggedIn) View.VISIBLE else View.GONE
             binding.historyEntryCard.visibility = if (state.isLoggedIn) View.VISIBLE else View.GONE
             binding.favoriteEntryCard.visibility = if (state.isLoggedIn) View.VISIBLE else View.GONE
@@ -175,6 +184,19 @@ class LoginFragment : Fragment() {
             binding.pwdLogin.isEnabled = !state.isLoggingIn
             binding.smsSend.isEnabled = !state.isSendingSms
             binding.smsLogin.isEnabled = !state.isLoggingIn
+            val prefillPhone = state.riskPrefillPhone.orEmpty()
+            val hasPrefillPhone = prefillPhone.isNotBlank()
+            val lockContactInput = state.isRiskSmsMode && state.riskLockPhoneInput
+            binding.smsCountryLayout.isEnabled = !lockContactInput
+            binding.smsCountryDropdown.isEnabled = !lockContactInput
+            binding.smsPhoneLayout.isEnabled = !lockContactInput
+            binding.smsPhoneInput.isEnabled = !lockContactInput
+            if (state.isRiskSmsMode && hasPrefillPhone) {
+                if (binding.smsPhoneInput.text?.toString() != prefillPhone
+                ) {
+                    binding.smsPhoneInput.setText(prefillPhone)
+                }
+            }
 
             countryOptions = state.countries
             val labels = countryOptions.map { it.label }
@@ -276,6 +298,7 @@ class LoginFragment : Fragment() {
                     event.text,
                     Toast.LENGTH_SHORT,
                 ).show()
+                is LoginEvent.RiskVerificationRequired -> showRiskVerificationDialog(event.message)
             }
         }
     }
@@ -299,6 +322,18 @@ class LoginFragment : Fragment() {
             }
         }
         dialog.show(parentFragmentManager, "geetest")
+    }
+
+    private fun showRiskVerificationDialog(message: String?) {
+        val content = message?.takeIf { it.isNotBlank() }
+            ?: getString(R.string.login_error_failed)
+        MaterialAlertDialogBuilder(requireContext())
+            .setMessage(content)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.login_tab_sms) { _, _ ->
+                viewModel.openRiskSmsTab()
+            }
+            .show()
     }
 
     private fun showPanel(tab: LoginTab) {
