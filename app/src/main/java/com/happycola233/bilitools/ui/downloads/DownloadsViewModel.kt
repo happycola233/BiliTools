@@ -46,6 +46,14 @@ class DownloadsViewModel(
         downloadRepository.resumeGroup(id)
     }
 
+    fun pauseAllManaged() {
+        downloadRepository.pauseAllManaged()
+    }
+
+    fun resumeAllManaged() {
+        downloadRepository.resumeAllManaged()
+    }
+
     fun deleteGroup(id: Long, deleteFile: Boolean) {
         downloadRepository.deleteGroup(id, deleteFile)
     }

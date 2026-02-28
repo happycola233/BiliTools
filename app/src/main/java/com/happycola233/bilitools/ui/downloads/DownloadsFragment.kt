@@ -33,12 +33,22 @@ import com.happycola233.bilitools.core.appContainer
 import com.happycola233.bilitools.data.model.DownloadItem
 import com.happycola233.bilitools.data.model.DownloadGroup
 import com.happycola233.bilitools.data.model.DownloadStatus
+import com.happycola233.bilitools.data.model.DownloadTaskType
 import com.happycola233.bilitools.databinding.FragmentDownloadsBinding
 import com.happycola233.bilitools.ui.AppViewModelFactory
 import kotlinx.coroutines.launch
 import java.util.Locale
 
 class DownloadsFragment : Fragment() {
+    private data class GlobalManageState(
+        val resumableCount: Int,
+        val retryableCount: Int,
+        val pausableCount: Int,
+    ) {
+        val startableCount: Int
+            get() = resumableCount + retryableCount
+    }
+
     private var _binding: FragmentDownloadsBinding? = null
     private val binding get() = _binding!!
 
@@ -70,7 +80,6 @@ class DownloadsFragment : Fragment() {
             // Counteract the upward movement of the parent ViewPager by translating floating controls down
             val translateY = -verticalOffset.toFloat()
             binding.downloadsClear.translationY = translateY
-            binding.downloadsBatchBackdrop.translationY = translateY
             binding.downloadsBatchPanel.translationY = translateY
         }
         appBar?.addOnOffsetChangedListener(offsetListener)
@@ -145,7 +154,6 @@ class DownloadsFragment : Fragment() {
         }
 
         binding.downloadsClear.setOnClickListener { showClearMenu(it) }
-        binding.downloadsBatchBackdrop.setOnClickListener { exitSelectionMode() }
         binding.downloadsBatchExit.setOnClickListener { exitSelectionMode() }
         binding.downloadsBatchSelectAll.setOnClickListener { toggleSelectAll() }
         binding.downloadsBatchClearRecords.setOnClickListener { confirmBatchDelete(deleteFile = false) }
@@ -303,26 +311,17 @@ class DownloadsFragment : Fragment() {
         batchUiVisible = visible
         val duration = 220L
         val panel = binding.downloadsBatchPanel
-        val backdrop = binding.downloadsBatchBackdrop
         val fab = binding.downloadsClear
         val interpolator = FastOutSlowInInterpolator()
 
         panel.animate().cancel()
-        backdrop.animate().cancel()
         fab.animate().cancel()
 
         if (visible) {
-            backdrop.visibility = View.VISIBLE
             panel.visibility = View.VISIBLE
-            backdrop.alpha = 0f
             panel.alpha = 0f
             panel.scaleX = 0.98f
             panel.scaleY = 0.98f
-            backdrop.animate()
-                .alpha(1f)
-                .setDuration(duration)
-                .setInterpolator(interpolator)
-                .start()
             panel.animate()
                 .alpha(1f)
                 .scaleX(1f)
@@ -368,12 +367,6 @@ class DownloadsFragment : Fragment() {
                 panel.scaleX = 1f
                 panel.scaleY = 1f
             }
-            .start()
-        backdrop.animate()
-            .alpha(0f)
-            .setDuration(180L)
-            .setInterpolator(interpolator)
-            .withEndAction { backdrop.visibility = View.GONE }
             .start()
     }
 
@@ -548,10 +541,70 @@ class DownloadsFragment : Fragment() {
     private fun showClearMenu(anchor: View) {
         val menu = PopupMenu(requireContext(), anchor)
         menu.menuInflater.inflate(R.menu.downloads_clear_menu, menu.menu)
+        val state = calculateGlobalManageState()
+        val resumeAllItem = menu.menu.findItem(R.id.action_resume_all)
+        val pauseAllItem = menu.menu.findItem(R.id.action_pause_all)
+        resumeAllItem?.title = getString(R.string.downloads_resume_all_with_count, state.startableCount)
+        pauseAllItem?.title = getString(R.string.downloads_pause_all_with_count, state.pausableCount)
+        resumeAllItem?.isEnabled = state.startableCount > 0
+        pauseAllItem?.isEnabled = state.pausableCount > 0
+
         menu.setOnMenuItemClickListener { item ->
             when (item.itemId) {
                 R.id.action_batch_manage -> {
                     enterSelectionMode()
+                    true
+                }
+                R.id.action_resume_all -> {
+                    val currentState = calculateGlobalManageState()
+                    val retryableIds = collectRetryableManagedTaskIds()
+                    val retryCount = retryableIds.size
+                    if (currentState.startableCount <= 0) {
+                        Toast.makeText(
+                            requireContext(),
+                            getString(R.string.downloads_resume_all_empty),
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    } else {
+                        if (currentState.resumableCount > 0) {
+                            viewModel.resumeAllManaged()
+                        }
+                        retryableIds.forEach { taskId ->
+                            viewModel.retry(taskId)
+                        }
+                        val startedCount = currentState.resumableCount + retryCount
+                        Toast.makeText(
+                            requireContext(),
+                            if (retryCount > 0) {
+                                getString(
+                                    R.string.downloads_resume_all_done_with_retry,
+                                    startedCount,
+                                    retryCount,
+                                )
+                            } else {
+                                getString(R.string.downloads_resume_all_done, startedCount)
+                            },
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                    true
+                }
+                R.id.action_pause_all -> {
+                    val currentState = calculateGlobalManageState()
+                    if (currentState.pausableCount <= 0) {
+                        Toast.makeText(
+                            requireContext(),
+                            getString(R.string.downloads_pause_all_empty),
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    } else {
+                        viewModel.pauseAllManaged()
+                        Toast.makeText(
+                            requireContext(),
+                            getString(R.string.downloads_pause_all_done, currentState.pausableCount),
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }
                     true
                 }
                 R.id.action_clear_completed -> {
@@ -566,6 +619,51 @@ class DownloadsFragment : Fragment() {
             }
         }
         menu.show()
+    }
+
+    private fun calculateGlobalManageState(): GlobalManageState {
+        var resumableCount = 0
+        var retryableCount = 0
+        var pausableCount = 0
+        latestGroups.forEach { group ->
+            group.tasks.forEach { task ->
+                if (!isManagedTask(task)) return@forEach
+                when (task.status) {
+                    DownloadStatus.Pending,
+                    DownloadStatus.Running,
+                    DownloadStatus.Merging -> pausableCount++
+                    DownloadStatus.Paused -> if (task.userPaused) resumableCount++
+                    DownloadStatus.Failed -> retryableCount++
+                    else -> Unit
+                }
+            }
+        }
+        return GlobalManageState(
+            resumableCount = resumableCount,
+            retryableCount = retryableCount,
+            pausableCount = pausableCount,
+        )
+    }
+
+    private fun collectRetryableManagedTaskIds(): List<Long> {
+        val ids = mutableListOf<Long>()
+        latestGroups.forEach { group ->
+            group.tasks.forEach { task ->
+                if (isManagedTask(task) && task.status == DownloadStatus.Failed) {
+                    ids += task.id
+                }
+            }
+        }
+        return ids
+    }
+
+    private fun isManagedTask(task: DownloadItem): Boolean {
+        return when (task.taskType) {
+            DownloadTaskType.Video,
+            DownloadTaskType.Audio,
+            DownloadTaskType.AudioVideo -> true
+            else -> false
+        }
     }
 
     private fun openWith(uri: Uri, fileName: String) {

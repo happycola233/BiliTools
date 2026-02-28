@@ -174,6 +174,7 @@
     <string name="downloads_empty">空空如也~</string>
     <string name="downloads_clear_completed">清除已完成记录</string>
     <string name="downloads_clear_all">清除全部记录</string>
+    <string name="downloads_actions_menu">下载管理操作</string>
     <string name="downloads_multi_manage">批量管理</string>
     <string name="downloads_multi_select_all">全选</string>
     <string name="downloads_multi_unselect_all">取消全选</string>
@@ -238,6 +239,15 @@
     <string name="downloads_section_downloaded">已下载</string>
     <string name="downloads_section_count">%1$d 项</string>
     <string name="downloads_section_count_speed">%1$d 项 · %2$s</string>
+    <string name="downloads_resume_all">全部开始</string>
+    <string name="downloads_pause_all">全部暂停</string>
+    <string name="downloads_resume_all_with_count">全部开始（%1$d）</string>
+    <string name="downloads_pause_all_with_count">全部暂停（%1$d）</string>
+    <string name="downloads_resume_all_done">已开始 %1$d 项任务</string>
+    <string name="downloads_resume_all_done_with_retry">已开始 %1$d 项任务（含重试 %2$d 项）</string>
+    <string name="downloads_pause_all_done">已暂停 %1$d 项任务</string>
+    <string name="downloads_resume_all_empty">暂无可开始任务</string>
+    <string name="downloads_pause_all_empty">暂无可暂停任务</string>
     <string name="download_status_pending">排队中</string>
     <string name="download_status_running">下载中 %1$d%%</string>
     <string name="download_status_paused">已暂停 %1$d%%</string>

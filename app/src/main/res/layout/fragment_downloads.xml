@@ -44,17 +44,6 @@
             android:textColor="?attr/colorOnSurfaceVariant" />
     </LinearLayout>
 
-    <View
-        android:id="@+id/downloads_batch_backdrop"
-        android:layout_width="match_parent"
-        android:layout_height="220dp"
-        android:layout_gravity="bottom"
-        android:alpha="0"
-        android:background="#16000000"
-        android:importantForAccessibility="no"
-        android:visibility="gone"
-        tools:visibility="visible" />
-
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/downloads_batch_panel"
         style="?attr/materialCardViewOutlinedStyle"
@@ -163,9 +152,9 @@
         android:layout_gravity="bottom|end"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="96dp"
-        android:contentDescription="@string/downloads_clear_completed"
+        android:contentDescription="@string/downloads_actions_menu"
         app:backgroundTint="?attr/colorSecondaryContainer"
-        app:srcCompat="@drawable/ic_delete_sweep_24"
+        app:srcCompat="@drawable/ic_menu_24"
         app:tint="?attr/colorOnSecondaryContainer" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
