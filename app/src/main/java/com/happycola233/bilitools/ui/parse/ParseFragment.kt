@@ -123,9 +123,12 @@ class ParseFragment : Fragment() {
 
     private var suppressUi = false
     private fun cacheScrollPosition() {
-        if (pendingScrollY == null) {
-            pendingScrollY = binding.parseScroll.scrollY
-        }
+        pendingScrollY = binding.parseScroll.scrollY
+    }
+
+    private fun preserveScrollAndFocus() {
+        cacheScrollPosition()
+        binding.parseScroll.requestFocus()
     }
 
     private fun cacheListAnchor() {
@@ -305,6 +308,8 @@ class ParseFragment : Fragment() {
         binding.parseScroll.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
             v.isNestedScrollingEnabled = v.canScrollVertically(-1) || v.canScrollVertically(1)
         }
+        binding.parseScroll.isFocusableInTouchMode = true
+        binding.parseScroll.descendantFocusability = ViewGroup.FOCUS_BEFORE_DESCENDANTS
         binding.parseAction.setOnClickListener {
             binding.inputLink.clearFocus()
             binding.mediaTypeDropdown.clearFocus()
@@ -433,6 +438,7 @@ class ParseFragment : Fragment() {
 
         binding.formatGroup.setOnCheckedChangeListener { _, checkedId ->
             if (suppressUi) return@setOnCheckedChangeListener
+            preserveScrollAndFocus()
             val format = when (checkedId) {
                 R.id.format_mp4 -> StreamFormat.Mp4
                 R.id.format_flv -> StreamFormat.Flv
@@ -443,6 +449,7 @@ class ParseFragment : Fragment() {
 
         binding.outputGroup.setOnCheckedChangeListener { _, checkedId ->
             if (suppressUi) return@setOnCheckedChangeListener
+            preserveScrollAndFocus()
             val output = when (checkedId) {
                 R.id.output_audio -> OutputType.AudioOnly
                 R.id.output_video -> OutputType.VideoOnly
@@ -454,7 +461,7 @@ class ParseFragment : Fragment() {
 
         binding.collectionToggle.setOnCheckedChangeListener { _, isChecked ->
             if (!suppressUi) {
-                cacheScrollPosition()
+                preserveScrollAndFocus()
                 viewModel.setCollectionMode(isChecked)
             }
         }
@@ -471,17 +478,26 @@ class ParseFragment : Fragment() {
         )
         binding.resolutionModeDropdown.setAdapter(resolutionModeAdapter)
         binding.resolutionModeDropdown.setOnItemClickListener { _, _, position, _ ->
-            resolutionModeOptions.getOrNull(position)?.let { viewModel.setResolutionMode(it.first) }
+            resolutionModeOptions.getOrNull(position)?.let {
+                preserveScrollAndFocus()
+                viewModel.setResolutionMode(it.first)
+            }
         }
         setupDropdown(binding.resolutionModeLayout, binding.resolutionModeDropdown)
 
         binding.resolutionDropdown.setOnItemClickListener { _, _, position, _ ->
-            resolutionOptions.getOrNull(position)?.let { viewModel.setResolution(it.id) }
+            resolutionOptions.getOrNull(position)?.let {
+                preserveScrollAndFocus()
+                viewModel.setResolution(it.id)
+            }
         }
         setupDropdown(binding.resolutionLayout, binding.resolutionDropdown)
 
         binding.codecDropdown.setOnItemClickListener { _, _, position, _ ->
-            codecOptions.getOrNull(position)?.let { viewModel.setCodec(it.codec) }
+            codecOptions.getOrNull(position)?.let {
+                preserveScrollAndFocus()
+                viewModel.setCodec(it.codec)
+            }
         }
         setupDropdown(binding.codecLayout, binding.codecDropdown)
 
@@ -497,53 +513,62 @@ class ParseFragment : Fragment() {
         )
         binding.bitrateModeDropdown.setAdapter(bitrateModeAdapter)
         binding.bitrateModeDropdown.setOnItemClickListener { _, _, position, _ ->
-            bitrateModeOptions.getOrNull(position)?.let { viewModel.setAudioBitrateMode(it.first) }
+            bitrateModeOptions.getOrNull(position)?.let {
+                preserveScrollAndFocus()
+                viewModel.setAudioBitrateMode(it.first)
+            }
         }
         setupDropdown(binding.bitrateModeLayout, binding.bitrateModeDropdown)
 
         binding.bitrateDropdown.setOnItemClickListener { _, _, position, _ ->
-            audioOptions.getOrNull(position)?.let { viewModel.setAudioBitrate(it.id) }
+            audioOptions.getOrNull(position)?.let {
+                preserveScrollAndFocus()
+                viewModel.setAudioBitrate(it.id)
+            }
         }
         setupDropdown(binding.bitrateLayout, binding.bitrateDropdown)
 
         binding.subtitleDropdown.setOnItemClickListener { _, _, position, _ ->
-            subtitleOptions.getOrNull(position)?.let { viewModel.setSubtitleLanguage(it.lan) }
+            subtitleOptions.getOrNull(position)?.let {
+                preserveScrollAndFocus()
+                viewModel.setSubtitleLanguage(it.lan)
+            }
         }
         setupDropdown(binding.subtitleLayout, binding.subtitleDropdown)
 
         binding.subtitleToggle.setOnCheckedChangeListener { _, isChecked ->
             if (!suppressUi) {
-                cacheScrollPosition()
+                preserveScrollAndFocus()
                 viewModel.setSubtitleEnabled(isChecked)
             }
         }
         binding.aiSummaryToggle.setOnCheckedChangeListener { _, isChecked ->
             if (!suppressUi) {
-                cacheScrollPosition()
+                preserveScrollAndFocus()
                 viewModel.setAiSummaryEnabled(isChecked)
             }
         }
         binding.nfoCollectionToggle.setOnCheckedChangeListener { _, isChecked ->
             if (!suppressUi) {
-                cacheScrollPosition()
+                preserveScrollAndFocus()
                 viewModel.setNfoCollectionEnabled(isChecked)
             }
         }
         binding.nfoSingleToggle.setOnCheckedChangeListener { _, isChecked ->
             if (!suppressUi) {
-                cacheScrollPosition()
+                preserveScrollAndFocus()
                 viewModel.setNfoSingleEnabled(isChecked)
             }
         }
         binding.danmakuLiveToggle.setOnCheckedChangeListener { _, isChecked ->
             if (!suppressUi) {
-                cacheScrollPosition()
+                preserveScrollAndFocus()
                 viewModel.setDanmakuLiveEnabled(isChecked)
             }
         }
         binding.danmakuHistoryToggle.setOnCheckedChangeListener { _, isChecked ->
             if (!suppressUi) {
-                cacheScrollPosition()
+                preserveScrollAndFocus()
                 viewModel.setDanmakuHistoryEnabled(isChecked)
             }
         }
@@ -898,8 +923,18 @@ class ParseFragment : Fragment() {
                     binding.danmakuHistoryToggle.isEnabled = (item?.cid != null) || allowAnyExtras
                     binding.danmakuDateLayout.isEnabled = state.danmakuHistoryEnabled
                     binding.danmakuHourLayout.isEnabled = state.danmakuHistoryEnabled
-                    binding.danmakuDateInput.setText(state.danmakuDate)
-                    binding.danmakuHourInput.setText(state.danmakuHour)
+                    if (!binding.danmakuDateInput.hasFocus()) {
+                        val currentDate = binding.danmakuDateInput.text?.toString().orEmpty()
+                        if (currentDate != state.danmakuDate) {
+                            binding.danmakuDateInput.setText(state.danmakuDate)
+                        }
+                    }
+                    if (!binding.danmakuHourInput.hasFocus()) {
+                        val currentHour = binding.danmakuHourInput.text?.toString().orEmpty()
+                        if (currentHour != state.danmakuHour) {
+                            binding.danmakuHourInput.setText(state.danmakuHour)
+                        }
+                    }
 
                     val imageOptions = state.imageOptions
                     val showImageOptions = imageOptions.isNotEmpty()
@@ -930,7 +965,7 @@ class ParseFragment : Fragment() {
                                 chip.isChecked = state.selectedImageIds.contains(option.id)
                                 chip.setOnCheckedChangeListener { _, isChecked ->
                                     if (!suppressUi) {
-                                        cacheScrollPosition()
+                                        preserveScrollAndFocus()
                                         viewModel.setImageSelection(option.id, isChecked)
                                     }
                                 }
