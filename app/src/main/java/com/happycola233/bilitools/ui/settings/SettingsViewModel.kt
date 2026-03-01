@@ -35,6 +35,10 @@ class SettingsViewModel(
         settingsRepository.setParseQuickActionEnabled(enabled)
     }
 
+    fun setDownloadsGlassDebugEnabled(enabled: Boolean) {
+        settingsRepository.setDownloadsGlassDebugEnabled(enabled)
+    }
+
     fun setDownloadRootFromTreeUri(uri: Uri): Boolean {
         return settingsRepository.setDownloadRootFromTreeUri(uri)
     }

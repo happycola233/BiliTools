@@ -12,21 +12,18 @@ import android.view.View
 import android.view.ViewGroup
 import android.webkit.MimeTypeMap
 import android.widget.Toast
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.widget.PopupMenu
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.updateLayoutParams
-import androidx.core.view.updatePadding
 import androidx.core.text.HtmlCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
-import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.SimpleItemAnimator
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.appContainer
@@ -34,6 +31,7 @@ import com.happycola233.bilitools.data.model.DownloadItem
 import com.happycola233.bilitools.data.model.DownloadGroup
 import com.happycola233.bilitools.data.model.DownloadStatus
 import com.happycola233.bilitools.data.model.DownloadTaskType
+import com.happycola233.bilitools.data.SettingsRepository
 import com.happycola233.bilitools.databinding.FragmentDownloadsBinding
 import com.happycola233.bilitools.ui.AppViewModelFactory
 import kotlinx.coroutines.launch
@@ -55,13 +53,28 @@ class DownloadsFragment : Fragment() {
     private val viewModel: DownloadsViewModel by viewModels {
         AppViewModelFactory(requireContext().appContainer)
     }
+    private val settingsRepository by lazy { requireContext().appContainer.settingsRepository }
 
     private lateinit var adapter: DownloadsAdapter
     private var offsetListener: com.google.android.material.appbar.AppBarLayout.OnOffsetChangedListener? = null
     private var latestGroups: List<DownloadGroup> = emptyList()
     private val selectedGroupIds = linkedSetOf<Long>()
     private var selectionMode = false
-    private var batchUiVisible = false
+    private var composeSelectionMode by mutableStateOf(false)
+    private var composeEmptyStateVisible by mutableStateOf(false)
+    private var composeBatchStatusText by mutableStateOf("")
+    private var composeBatchSelectAllText by mutableStateOf("")
+    private var composeBatchHintHtml by mutableStateOf("")
+    private var composeBatchClearEnabled by mutableStateOf(false)
+    private var composeBatchDeleteEnabled by mutableStateOf(false)
+    private var composeControlsOffsetPx by mutableStateOf(0f)
+    private var composeGlassDebugEnabled by mutableStateOf(false)
+    private var composeGlassCornerRadiusDp by mutableStateOf(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_CORNER_RADIUS_DP)
+    private var composeGlassBlurRadiusDp by mutableStateOf(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_BLUR_RADIUS_DP)
+    private var composeGlassRefractionHeightDp by mutableStateOf(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_REFRACTION_HEIGHT_DP)
+    private var composeGlassRefractionAmountFrac by mutableStateOf(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_REFRACTION_AMOUNT_FRAC)
+    private var composeGlassSurfaceAlpha by mutableStateOf(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_SURFACE_ALPHA)
+    private var composeGlassChromaticAberration by mutableStateOf(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_CHROMATIC_ABERRATION)
     private lateinit var backPressedCallback: OnBackPressedCallback
 
     override fun onCreateView(
@@ -74,30 +87,11 @@ class DownloadsFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        // Find AppBarLayout to fix FAB position during scroll
         val appBar = requireActivity().findViewById<com.google.android.material.appbar.AppBarLayout>(R.id.app_bar)
         offsetListener = com.google.android.material.appbar.AppBarLayout.OnOffsetChangedListener { _, verticalOffset ->
-            // Counteract the upward movement of the parent ViewPager by translating floating controls down
-            val translateY = -verticalOffset.toFloat()
-            binding.downloadsClear.translationY = translateY
-            binding.downloadsBatchPanel.translationY = translateY
+            composeControlsOffsetPx = -verticalOffset.toFloat()
         }
         appBar?.addOnOffsetChangedListener(offsetListener)
-
-        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, windowInsets ->
-            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-            binding.downloadsClear.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                val navHeight = (56 * resources.displayMetrics.density).toInt()
-                bottomMargin = navHeight + insets.bottom
-                rightMargin = (16 * resources.displayMetrics.density).toInt()
-            }
-            binding.downloadsBatchPanel.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                val navHeight = (56 * resources.displayMetrics.density).toInt()
-                bottomMargin = navHeight + insets.bottom + (8 * resources.displayMetrics.density).toInt()
-            }
-            updateListBottomPadding()
-            windowInsets
-        }
 
         adapter = DownloadsAdapter(
             onPauseResume = { item ->
@@ -141,23 +135,49 @@ class DownloadsFragment : Fragment() {
             onLocationClick = { path -> copyLocation(path) },
             onGroupSelectionToggle = { group -> toggleGroupSelection(group.id) },
         )
-        binding.downloadsList.layoutManager = LinearLayoutManager(requireContext())
-        binding.downloadsList.adapter = adapter
-        val decoration = StickyHeaderItemDecoration(adapter)
-        binding.downloadsList.addItemDecoration(decoration)
-        binding.downloadsList.addOnItemTouchListener(decoration)
-        // Disable change animations to prevent flashing during custom expansion animations
-        (binding.downloadsList.itemAnimator as? SimpleItemAnimator)?.supportsChangeAnimations = false
-        
-        binding.downloadsList.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
-            v.isNestedScrollingEnabled = v.canScrollVertically(-1) || v.canScrollVertically(1)
-        }
 
-        binding.downloadsClear.setOnClickListener { showClearMenu(it) }
-        binding.downloadsBatchExit.setOnClickListener { exitSelectionMode() }
-        binding.downloadsBatchSelectAll.setOnClickListener { toggleSelectAll() }
-        binding.downloadsBatchClearRecords.setOnClickListener { confirmBatchDelete(deleteFile = false) }
-        binding.downloadsBatchDeleteFiles.setOnClickListener { confirmBatchDelete(deleteFile = true) }
+        binding.downloadsCompose.setViewCompositionStrategy(
+            ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed,
+        )
+        binding.downloadsCompose.setContent {
+            DownloadsGlassContent(
+                adapter = adapter,
+                selectionMode = composeSelectionMode,
+                emptyStateVisible = composeEmptyStateVisible,
+                batchStatusText = composeBatchStatusText,
+                batchSelectAllText = composeBatchSelectAllText,
+                batchHintHtml = composeBatchHintHtml,
+                batchClearEnabled = composeBatchClearEnabled,
+                batchDeleteEnabled = composeBatchDeleteEnabled,
+                controlsOffsetPx = composeControlsOffsetPx,
+                glassDebugEnabled = composeGlassDebugEnabled,
+                glassCornerRadiusDp = composeGlassCornerRadiusDp,
+                glassBlurRadiusDp = composeGlassBlurRadiusDp,
+                glassRefractionHeightDp = composeGlassRefractionHeightDp,
+                glassRefractionAmountFrac = composeGlassRefractionAmountFrac,
+                glassChromaticAberration = composeGlassChromaticAberration,
+                glassSurfaceAlpha = composeGlassSurfaceAlpha,
+                onManageClick = { anchor -> showClearMenu(anchor) },
+                onExitSelection = { exitSelectionMode() },
+                onSelectAll = { toggleSelectAll() },
+                onClearRecords = { confirmBatchDelete(deleteFile = false) },
+                onDeleteFiles = { confirmBatchDelete(deleteFile = true) },
+                onGlassCornerRadiusChange = { settingsRepository.setDownloadsGlassCornerRadiusDp(it) },
+                onGlassBlurRadiusChange = { settingsRepository.setDownloadsGlassBlurRadiusDp(it) },
+                onGlassRefractionHeightChange = { settingsRepository.setDownloadsGlassRefractionHeightDp(it) },
+                onGlassRefractionAmountChange = { settingsRepository.setDownloadsGlassRefractionAmountFrac(it) },
+                onGlassChromaticAberrationChange = { settingsRepository.setDownloadsGlassChromaticAberration(it) },
+                onGlassSurfaceAlphaChange = { settingsRepository.setDownloadsGlassSurfaceAlpha(it) },
+                onGlassReset = {
+                    settingsRepository.setDownloadsGlassCornerRadiusDp(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_CORNER_RADIUS_DP)
+                    settingsRepository.setDownloadsGlassBlurRadiusDp(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_BLUR_RADIUS_DP)
+                    settingsRepository.setDownloadsGlassRefractionHeightDp(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_REFRACTION_HEIGHT_DP)
+                    settingsRepository.setDownloadsGlassRefractionAmountFrac(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_REFRACTION_AMOUNT_FRAC)
+                    settingsRepository.setDownloadsGlassSurfaceAlpha(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_SURFACE_ALPHA)
+                    settingsRepository.setDownloadsGlassChromaticAberration(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_CHROMATIC_ABERRATION)
+                },
+            )
+        }
 
         backPressedCallback = object : OnBackPressedCallback(false) {
             override fun handleOnBackPressed() {
@@ -181,8 +201,20 @@ class DownloadsFragment : Fragment() {
                     }
                     adapter.submitFullList(buildSectionedList(list))
                     updateSelectionUi()
-                    val empty = list.isEmpty()
-                    binding.downloadsEmptyState.visibility = if (empty) View.VISIBLE else View.GONE
+                    composeEmptyStateVisible = list.isEmpty()
+                }
+            }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                settingsRepository.settings.collect { settings ->
+                    composeGlassDebugEnabled = settings.downloadsGlassDebugEnabled
+                    composeGlassCornerRadiusDp = settings.downloadsGlassCornerRadiusDp
+                    composeGlassBlurRadiusDp = settings.downloadsGlassBlurRadiusDp
+                    composeGlassRefractionHeightDp = settings.downloadsGlassRefractionHeightDp
+                    composeGlassRefractionAmountFrac = settings.downloadsGlassRefractionAmountFrac
+                    composeGlassSurfaceAlpha = settings.downloadsGlassSurfaceAlpha
+                    composeGlassChromaticAberration = settings.downloadsGlassChromaticAberration
                 }
             }
         }
@@ -273,16 +305,16 @@ class DownloadsFragment : Fragment() {
     private fun updateSelectionUi() {
         if (!::adapter.isInitialized || _binding == null) return
         adapter.updateSelectionState(selectionMode, selectedGroupIds)
-        renderBatchUi(selectionMode)
+        composeSelectionMode = selectionMode
         if (::backPressedCallback.isInitialized) {
             backPressedCallback.isEnabled = selectionMode
         }
 
         val total = latestGroups.size
         val selected = selectedGroupIds.size
-        binding.downloadsBatchStatus.text = getString(R.string.downloads_multi_status, selected, total)
+        composeBatchStatusText = getString(R.string.downloads_multi_status, selected, total)
         val allSelected = total > 0 && selected == total
-        binding.downloadsBatchSelectAll.text = getString(
+        composeBatchSelectAllText = getString(
             if (allSelected) R.string.downloads_multi_unselect_all else R.string.downloads_multi_select_all,
         )
         val selectedGroups = latestGroups.filter { selectedGroupIds.contains(it.id) }
@@ -290,99 +322,15 @@ class DownloadsFragment : Fragment() {
         val hasRunningTask = selectedGroups.any { hasInProgressTask(it) }
         val clearEnabled = hasSelection
         val deleteEnabled = hasSelection
-        binding.downloadsBatchClearRecords.isEnabled = clearEnabled
-        binding.downloadsBatchDeleteFiles.isEnabled = deleteEnabled
-        binding.downloadsBatchClearRecords.alpha = if (clearEnabled) 1f else 0.45f
-        binding.downloadsBatchDeleteFiles.alpha = if (deleteEnabled) 1f else 0.45f
+        composeBatchClearEnabled = clearEnabled
+        composeBatchDeleteEnabled = deleteEnabled
 
         val hintRes = when {
             !hasSelection -> R.string.downloads_multi_hint_default
             hasRunningTask -> R.string.downloads_multi_hint_running
             else -> R.string.downloads_multi_hint_has_file
         }
-        binding.downloadsBatchHint.text = asRichText(getString(hintRes))
-
-        updateListBottomPadding()
-    }
-
-    private fun renderBatchUi(visible: Boolean) {
-        if (_binding == null) return
-        if (batchUiVisible == visible) return
-        batchUiVisible = visible
-        val duration = 220L
-        val panel = binding.downloadsBatchPanel
-        val fab = binding.downloadsClear
-        val interpolator = FastOutSlowInInterpolator()
-
-        panel.animate().cancel()
-        fab.animate().cancel()
-
-        if (visible) {
-            panel.visibility = View.VISIBLE
-            panel.alpha = 0f
-            panel.scaleX = 0.98f
-            panel.scaleY = 0.98f
-            panel.animate()
-                .alpha(1f)
-                .scaleX(1f)
-                .scaleY(1f)
-                .setDuration(duration)
-                .setInterpolator(interpolator)
-                .withEndAction { updateListBottomPadding() }
-                .start()
-            fab.animate()
-                .alpha(0f)
-                .scaleX(0.92f)
-                .scaleY(0.92f)
-                .setDuration(180L)
-                .setInterpolator(interpolator)
-                .withEndAction {
-                    fab.visibility = View.GONE
-                    fab.scaleX = 1f
-                    fab.scaleY = 1f
-                }
-                .start()
-            return
-        }
-
-        fab.visibility = View.VISIBLE
-        fab.alpha = 0f
-        fab.scaleX = 0.92f
-        fab.scaleY = 0.92f
-        fab.animate()
-            .alpha(1f)
-            .scaleX(1f)
-            .scaleY(1f)
-            .setDuration(duration)
-            .setInterpolator(interpolator)
-            .start()
-        panel.animate()
-            .alpha(0f)
-            .scaleX(0.98f)
-            .scaleY(0.98f)
-            .setDuration(180L)
-            .setInterpolator(interpolator)
-            .withEndAction {
-                panel.visibility = View.GONE
-                panel.scaleX = 1f
-                panel.scaleY = 1f
-            }
-            .start()
-    }
-
-    private fun updateListBottomPadding() {
-        if (_binding == null) return
-        val density = resources.displayMetrics.density
-        val basePadding = (88 * density).toInt()
-        val extraPadding = if (selectionMode) {
-            val panelHeight = binding.downloadsBatchPanel.height.takeIf { it > 0 } ?: (188 * density).toInt()
-            panelHeight + (20 * density).toInt()
-        } else {
-            0
-        }
-        val bottomPadding = basePadding + extraPadding
-        binding.downloadsList.updatePadding(bottom = bottomPadding)
-        binding.downloadsEmptyState.updatePadding(bottom = bottomPadding)
+        composeBatchHintHtml = getString(hintRes)
     }
 
     private fun confirmBatchDelete(deleteFile: Boolean) {
@@ -754,7 +702,7 @@ class DownloadsFragment : Fragment() {
         val appBar = requireActivity().findViewById<com.google.android.material.appbar.AppBarLayout>(R.id.app_bar)
         offsetListener?.let { appBar?.removeOnOffsetChangedListener(it) }
         offsetListener = null
-        batchUiVisible = false
+        composeControlsOffsetPx = 0f
         _binding = null
     }
 }

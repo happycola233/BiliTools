@@ -1,0 +1,813 @@
+package com.happycola233.bilitools.ui.downloads
+
+import android.view.View
+import android.widget.TextView
+import android.text.TextPaint
+import androidx.annotation.AttrRes
+import androidx.annotation.ColorInt
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.lerp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.text.HtmlCompat
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.MetricAffectingSpan
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.SimpleItemAnimator
+import com.google.android.material.color.MaterialColors
+import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.happycola233.bilitools.R
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.colorControls
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.highlight.Highlight
+import java.util.Locale
+import kotlin.math.sign
+
+@Composable
+fun DownloadsGlassContent(
+    adapter: DownloadsAdapter,
+    selectionMode: Boolean,
+    emptyStateVisible: Boolean,
+    batchStatusText: String,
+    batchSelectAllText: String,
+    batchHintHtml: String,
+    batchClearEnabled: Boolean,
+    batchDeleteEnabled: Boolean,
+    controlsOffsetPx: Float,
+    glassDebugEnabled: Boolean,
+    glassCornerRadiusDp: Float,
+    glassBlurRadiusDp: Float,
+    glassRefractionHeightDp: Float,
+    glassRefractionAmountFrac: Float,
+    glassChromaticAberration: Boolean,
+    glassSurfaceAlpha: Float,
+    onManageClick: (View) -> Unit,
+    onExitSelection: () -> Unit,
+    onSelectAll: () -> Unit,
+    onClearRecords: () -> Unit,
+    onDeleteFiles: () -> Unit,
+    onGlassCornerRadiusChange: (Float) -> Unit,
+    onGlassBlurRadiusChange: (Float) -> Unit,
+    onGlassRefractionHeightChange: (Float) -> Unit,
+    onGlassRefractionAmountChange: (Float) -> Unit,
+    onGlassChromaticAberrationChange: (Boolean) -> Unit,
+    onGlassSurfaceAlphaChange: (Float) -> Unit,
+    onGlassReset: () -> Unit,
+) {
+    val backdrop = rememberLayerBackdrop()
+    val density = LocalDensity.current
+    val controlsBottomPadding = 56.dp
+    val panelBottomPadding = controlsBottomPadding + 8.dp
+    val controlsOffsetDp = with(density) { controlsOffsetPx.toDp() }
+    var panelHeightPx by remember { mutableStateOf(0) }
+    val baseBottomPaddingPx = with(density) { 88.dp.roundToPx() }
+    val extraBottomPaddingPx =
+        if (selectionMode) panelHeightPx + with(density) { 20.dp.roundToPx() } else 0
+    val targetListBottomPaddingDp = with(density) { (baseBottomPaddingPx + extraBottomPaddingPx).toDp() }
+    val listBottomPaddingDp by animateDpAsState(
+        targetValue = targetListBottomPaddingDp,
+        animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
+    )
+    val listBottomPaddingPx = with(density) { listBottomPaddingDp.roundToPx() }
+    var debugExpanded by remember { mutableStateOf(false) }
+
+    Box(Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .layerBackdrop(backdrop),
+        ) {
+            AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = { context ->
+                    RecyclerView(context).apply {
+                        layoutManager = LinearLayoutManager(context)
+                        this.adapter = adapter
+                        val decoration = StickyHeaderItemDecoration(adapter)
+                        addItemDecoration(decoration)
+                        addOnItemTouchListener(decoration)
+                        (itemAnimator as? SimpleItemAnimator)?.supportsChangeAnimations = false
+                        clipToPadding = false
+                        setPadding(paddingLeft, paddingTop, paddingRight, listBottomPaddingPx)
+                        addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
+                            v.isNestedScrollingEnabled = v.canScrollVertically(-1) || v.canScrollVertically(1)
+                        }
+                    }
+                },
+                update = { recyclerView ->
+                    recyclerView.setPadding(
+                        recyclerView.paddingLeft,
+                        recyclerView.paddingTop,
+                        recyclerView.paddingRight,
+                        listBottomPaddingPx,
+                    )
+                },
+            )
+        }
+
+        if (emptyStateVisible) {
+            DownloadsEmptyState(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = listBottomPaddingDp),
+            )
+        }
+
+        AnimatedVisibility(
+            visible = selectionMode,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            enter =
+                fadeIn(animationSpec = tween(200)) +
+                    slideInVertically(
+                        initialOffsetY = { it / 2 },
+                        animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
+                    ) +
+                    expandVertically(
+                        expandFrom = Alignment.Bottom,
+                        animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
+                    ),
+            exit =
+                fadeOut(animationSpec = tween(140)) +
+                    slideOutVertically(
+                        targetOffsetY = { it / 2 },
+                        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+                    ) +
+                    shrinkVertically(
+                        shrinkTowards = Alignment.Bottom,
+                        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+                    ),
+        ) {
+            DownloadsBatchGlassPanel(
+                modifier = Modifier,
+                backdrop = backdrop,
+                statusText = batchStatusText,
+                selectAllText = batchSelectAllText,
+                hintHtml = batchHintHtml,
+                clearEnabled = batchClearEnabled,
+                deleteEnabled = batchDeleteEnabled,
+                controlsOffset = controlsOffsetDp,
+                bottomPadding = panelBottomPadding,
+                debugOverrideEnabled = true,
+                cornerRadiusDp = glassCornerRadiusDp,
+                blurRadiusDp = glassBlurRadiusDp,
+                refractionHeightDp = glassRefractionHeightDp,
+                refractionAmountFrac = glassRefractionAmountFrac,
+                chromaticAberration = glassChromaticAberration,
+                surfaceAlpha = glassSurfaceAlpha,
+                onExitSelection = onExitSelection,
+                onSelectAll = onSelectAll,
+                onClearRecords = onClearRecords,
+                onDeleteFiles = onDeleteFiles,
+                onHeightChanged = { panelHeightPx = it },
+            )
+        }
+
+        AnimatedVisibility(
+            visible = !selectionMode,
+            modifier = Modifier.align(Alignment.BottomEnd),
+            enter =
+                fadeIn(animationSpec = tween(200, delayMillis = 40)) +
+                    scaleIn(
+                        initialScale = 0.84f,
+                        animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
+                    ),
+            exit =
+                fadeOut(animationSpec = tween(100)) +
+                    scaleOut(
+                        targetScale = 0.84f,
+                        animationSpec = tween(durationMillis = 140, easing = FastOutSlowInEasing),
+                    ),
+        ) {
+            DownloadsManageFab(
+                modifier = Modifier,
+                bottomPadding = controlsBottomPadding,
+                controlsOffset = controlsOffsetDp,
+                onClick = onManageClick,
+            )
+        }
+
+        if (glassDebugEnabled) {
+            GlassDebugPanel(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 12.dp, end = 12.dp),
+                expanded = debugExpanded,
+                onToggleExpand = { debugExpanded = !debugExpanded },
+                cornerRadiusDp = glassCornerRadiusDp,
+                onCornerRadiusChange = onGlassCornerRadiusChange,
+                blurRadiusDp = glassBlurRadiusDp,
+                onBlurRadiusChange = onGlassBlurRadiusChange,
+                refractionHeightDp = glassRefractionHeightDp,
+                onRefractionHeightChange = onGlassRefractionHeightChange,
+                refractionAmountFrac = glassRefractionAmountFrac,
+                onRefractionAmountChange = onGlassRefractionAmountChange,
+                chromaticAberration = glassChromaticAberration,
+                onChromaticAberrationChange = onGlassChromaticAberrationChange,
+                surfaceAlpha = glassSurfaceAlpha,
+                onSurfaceAlphaChange = onGlassSurfaceAlphaChange,
+                onReset = onGlassReset,
+            )
+        }
+    }
+}
+
+@Composable
+private fun DownloadsEmptyState(modifier: Modifier = Modifier) {
+    val textColor = materialColor(
+        com.google.android.material.R.attr.colorOnSurfaceVariant,
+        0xFF6B6F76.toInt(),
+    )
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Image(
+            painter = painterResource(R.drawable.empty),
+            contentDescription = null,
+            modifier = Modifier.size(280.dp),
+        )
+        BasicText(
+            text = stringResource(R.string.downloads_empty),
+            modifier = Modifier.padding(top = 16.dp),
+            style = TextStyle(color = textColor, fontSize = 17.sp),
+        )
+    }
+}
+
+@Composable
+private fun DownloadsManageFab(
+    modifier: Modifier = Modifier,
+    bottomPadding: Dp,
+    controlsOffset: Dp,
+    onClick: (View) -> Unit,
+) {
+    AndroidView(
+        modifier = modifier
+            .padding(end = 16.dp, bottom = bottomPadding)
+            .offset(y = controlsOffset)
+            .size(56.dp),
+        factory = { context ->
+            FloatingActionButton(context).apply {
+                setImageResource(R.drawable.ic_menu_24)
+                contentDescription = context.getString(R.string.downloads_actions_menu)
+                setOnClickListener { onClick(this) }
+            }
+        },
+        update = { fab ->
+            fab.setOnClickListener { onClick(fab) }
+        },
+    )
+}
+
+@Composable
+private fun DownloadsBatchGlassPanel(
+    modifier: Modifier = Modifier,
+    backdrop: com.kyant.backdrop.backdrops.LayerBackdrop,
+    statusText: String,
+    selectAllText: String,
+    hintHtml: String,
+    clearEnabled: Boolean,
+    deleteEnabled: Boolean,
+    controlsOffset: Dp,
+    bottomPadding: Dp,
+    debugOverrideEnabled: Boolean,
+    cornerRadiusDp: Float,
+    blurRadiusDp: Float,
+    refractionHeightDp: Float,
+    refractionAmountFrac: Float,
+    chromaticAberration: Boolean,
+    surfaceAlpha: Float,
+    onExitSelection: () -> Unit,
+    onSelectAll: () -> Unit,
+    onClearRecords: () -> Unit,
+    onDeleteFiles: () -> Unit,
+    onHeightChanged: (Int) -> Unit,
+) {
+    val isLightTheme = !isSystemInDarkTheme()
+    val luminance = if (isLightTheme) 0.58f else 0.42f
+    val effectiveSurfaceAlpha = if (isLightTheme) surfaceAlpha.coerceIn(0f, 1f) else 0f
+
+    val panelTextColor = materialColor(
+        com.google.android.material.R.attr.colorOnSurface,
+        0xFF101418.toInt(),
+    )
+    val actionTextColor = Color(0xFF6A688F)
+    val panelSubTextColor = materialColor(
+        com.google.android.material.R.attr.colorOnSurfaceVariant,
+        0xFF58616B.toInt(),
+    )
+
+    Column(
+        modifier = modifier
+            .padding(horizontal = 16.dp)
+            .padding(bottom = bottomPadding)
+            .offset(y = controlsOffset)
+            .blockTouchThrough()
+            .onSizeChanged { onHeightChanged(it.height) }
+            .drawBackdrop(
+                backdrop = backdrop,
+                shape = { RoundedCornerShape(cornerRadiusDp.dp) },
+                effects = {
+                    val l = (luminance * 2f - 1f).let { sign(it) * it * it }
+                    colorControls(
+                        brightness =
+                            if (l > 0f) lerp(0.1f, 0.5f, l)
+                            else lerp(0.1f, -0.2f, -l),
+                        contrast =
+                            if (l > 0f) lerp(1f, 0f, l)
+                            else 1f,
+                        saturation = 1.5f,
+                    )
+                    val adaptiveBlurPx =
+                        if (l > 0f) lerp(8.dp.toPx(), 16.dp.toPx(), l)
+                        else lerp(8.dp.toPx(), 2.dp.toPx(), -l)
+                    val activeBlurPx =
+                        if (debugOverrideEnabled) blurRadiusDp.dp.toPx()
+                        else adaptiveBlurPx
+                    blur(activeBlurPx)
+                    lens(
+                        refractionHeightDp.dp.toPx(),
+                        size.minDimension * refractionAmountFrac.coerceIn(0f, 1f),
+                        depthEffect = true,
+                        chromaticAberration = chromaticAberration,
+                    )
+                },
+                highlight = { Highlight.Plain },
+                onDrawSurface = {
+                    drawRect(Color.White.copy(alpha = effectiveSurfaceAlpha))
+                },
+            )
+            .padding(horizontal = 20.dp, vertical = 16.dp)
+            .animateContentSize(
+                animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+            ),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            BasicText(
+                text = statusText,
+                modifier = Modifier.weight(1f),
+                style = TextStyle(
+                    color = panelTextColor,
+                    fontSize = 17.sp,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                ),
+            )
+            BatchTextAction(text = selectAllText, color = actionTextColor, onClick = onSelectAll)
+            BatchTextAction(
+                text = stringResource(R.string.downloads_multi_exit),
+                color = actionTextColor,
+                onClick = onExitSelection,
+            )
+        }
+
+        AndroidView(
+            modifier = Modifier.fillMaxWidth(),
+            factory = { context ->
+                TextView(context).apply {
+                    textSize = 12.5f
+                    setLineSpacing(0f, 1.2f)
+                }
+            },
+            update = { textView ->
+                textView.text = refineHintText(
+                    HtmlCompat.fromHtml(hintHtml, HtmlCompat.FROM_HTML_MODE_LEGACY),
+                )
+                textView.setTextColor(panelSubTextColor.toArgb())
+            },
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            BatchActionButton(
+                iconRes = R.drawable.ic_delete_sweep_24,
+                text = stringResource(R.string.downloads_multi_clear_records),
+                enabled = clearEnabled,
+                containerColor = Color(0xFFE8E8F8),
+                contentColor = Color(0xFF4A4C5C),
+                onClick = onClearRecords,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+            )
+            BatchActionButton(
+                iconRes = R.drawable.ic_delete_24,
+                text = stringResource(R.string.downloads_multi_delete_files),
+                enabled = deleteEnabled,
+                containerColor = Color(0xFFF2D8D8),
+                contentColor = Color(0xFF8C2727),
+                onClick = onDeleteFiles,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun GlassDebugPanel(
+    modifier: Modifier = Modifier,
+    expanded: Boolean,
+    onToggleExpand: () -> Unit,
+    cornerRadiusDp: Float,
+    onCornerRadiusChange: (Float) -> Unit,
+    blurRadiusDp: Float,
+    onBlurRadiusChange: (Float) -> Unit,
+    refractionHeightDp: Float,
+    onRefractionHeightChange: (Float) -> Unit,
+    refractionAmountFrac: Float,
+    onRefractionAmountChange: (Float) -> Unit,
+    chromaticAberration: Boolean,
+    onChromaticAberrationChange: (Boolean) -> Unit,
+    surfaceAlpha: Float,
+    onSurfaceAlphaChange: (Float) -> Unit,
+    onReset: () -> Unit,
+) {
+    val surfaceAlphaLabel = "\u8868\u5c42\u900f\u660e\u5ea6\uff08\u6df1\u8272\u6a21\u5f0f\u4e0d\u751f\u6548\uff09"
+
+    if (!expanded) {
+        Box(
+            modifier = modifier
+                .blockTouchThrough()
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(Color(0xD9FFFFFF))
+                .clickable { onToggleExpand() },
+            contentAlignment = Alignment.Center,
+        ) {
+            BasicText(
+                text = "DBG",
+                style = TextStyle(color = Color(0xFF303548), fontSize = 11.sp),
+            )
+        }
+        return
+    }
+
+    Column(
+        modifier = modifier
+            .blockTouchThrough()
+            .width(260.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color(0xE6FFFFFF))
+            .padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            BasicText(
+                text = "液态玻璃调试窗口",
+                modifier = Modifier.weight(1f),
+                style = TextStyle(color = Color(0xFF1E2433), fontSize = 12.sp),
+            )
+            DebugSmallButton(text = "\u6536\u8d77", onClick = onToggleExpand)
+        }
+
+        DebugStepperRow(
+            label = "\u5706\u89d2\u534a\u5f84",
+            value = "${formatFloat(cornerRadiusDp)} dp",
+            onMinus = { onCornerRadiusChange((cornerRadiusDp - 1f).coerceIn(0f, 64f)) },
+            onPlus = { onCornerRadiusChange((cornerRadiusDp + 1f).coerceIn(0f, 64f)) },
+        )
+        DebugStepperRow(
+            label = "\u6a21\u7cca\u534a\u5f84",
+            value = "${formatFloat(blurRadiusDp)} dp",
+            onMinus = { onBlurRadiusChange((blurRadiusDp - 1f).coerceIn(0f, 48f)) },
+            onPlus = { onBlurRadiusChange((blurRadiusDp + 1f).coerceIn(0f, 48f)) },
+        )
+        DebugStepperRow(
+            label = "\u6298\u5c04\u9ad8\u5ea6",
+            value = "${formatFloat(refractionHeightDp)} dp",
+            onMinus = { onRefractionHeightChange((refractionHeightDp - 1f).coerceIn(0f, 72f)) },
+            onPlus = { onRefractionHeightChange((refractionHeightDp + 1f).coerceIn(0f, 72f)) },
+        )
+        DebugStepperRow(
+            label = "\u6298\u5c04\u5f3a\u5ea6",
+            value = formatFloat(refractionAmountFrac),
+            onMinus = { onRefractionAmountChange((refractionAmountFrac - 0.05f).coerceIn(0f, 1f)) },
+            onPlus = { onRefractionAmountChange((refractionAmountFrac + 0.05f).coerceIn(0f, 1f)) },
+        )
+        DebugStepperRow(
+            label = surfaceAlphaLabel,
+            value = formatFloat(surfaceAlpha),
+            onMinus = { onSurfaceAlphaChange((surfaceAlpha - 0.05f).coerceIn(0f, 1f)) },
+            onPlus = { onSurfaceAlphaChange((surfaceAlpha + 0.05f).coerceIn(0f, 1f)) },
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0x0D000000))
+                .clickable { onChromaticAberrationChange(!chromaticAberration) }
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            BasicText(
+                text = "\u8272\u5dee",
+                modifier = Modifier.weight(1f),
+                style = TextStyle(color = Color(0xFF3A4050), fontSize = 12.sp),
+            )
+            BasicText(
+                text = if (chromaticAberration) "\u5f00" else "\u5173",
+                style = TextStyle(
+                    color = if (chromaticAberration) Color(0xFF7E1D1D) else Color(0xFF4C5366),
+                    fontSize = 12.sp,
+                ),
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            DebugActionButton(
+                text = "\u91cd\u7f6e",
+                modifier = Modifier.weight(1f),
+                onClick = onReset,
+            )
+            DebugActionButton(
+                text = "\u5173\u95ed",
+                modifier = Modifier.weight(1f),
+                onClick = onToggleExpand,
+            )
+        }
+    }
+}
+
+@Composable
+private fun DebugStepperRow(
+    label: String,
+    value: String,
+    onMinus: () -> Unit,
+    onPlus: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0x0D000000))
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        BasicText(
+            text = label,
+            modifier = Modifier.weight(1f),
+            style = TextStyle(color = Color(0xFF3A4050), fontSize = 12.sp),
+        )
+        DebugSmallButton(text = "-", onClick = onMinus)
+        BasicText(
+            text = value,
+            modifier = Modifier.padding(horizontal = 6.dp),
+            style = TextStyle(color = Color(0xFF1F2433), fontSize = 12.sp),
+        )
+        DebugSmallButton(text = "+", onClick = onPlus)
+    }
+}
+
+@Composable
+private fun DebugSmallButton(
+    text: String,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(Color(0x14000000))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        BasicText(
+            text = text,
+            style = TextStyle(color = Color(0xFF2F3545), fontSize = 12.sp),
+        )
+    }
+}
+
+@Composable
+private fun DebugActionButton(
+    text: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0x16000000))
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        BasicText(
+            text = text,
+            style = TextStyle(color = Color(0xFF2F3545), fontSize = 12.sp),
+        )
+    }
+}
+
+@Composable
+private fun BatchTextAction(
+    text: String,
+    color: Color,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .padding(start = 4.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        BasicText(
+            text = text,
+            style = TextStyle(
+                color = color,
+                fontSize = 14.sp,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+            ),
+        )
+    }
+}
+
+@Composable
+private fun BatchActionButton(
+    iconRes: Int,
+    text: String,
+    enabled: Boolean,
+    containerColor: Color,
+    contentColor: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val resolvedContainerColor by animateColorAsState(
+        targetValue = if (enabled) containerColor else containerColor.copy(alpha = 0.88f),
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+    )
+    val resolvedContentColor by animateColorAsState(
+        targetValue = if (enabled) contentColor else contentColor.copy(alpha = 0.62f),
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+    )
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(18.dp))
+            .background(resolvedContainerColor)
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Image(
+                painter = painterResource(iconRes),
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                colorFilter = ColorFilter.tint(resolvedContentColor),
+            )
+            BasicText(
+                text = text,
+                style = TextStyle(
+                    color = resolvedContentColor,
+                    fontSize = 13.5f.sp,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                ),
+            )
+        }
+    }
+}
+
+private fun refineHintText(spanned: CharSequence): CharSequence {
+    val raw = spanned.toString()
+    if (raw.isBlank()) return raw
+
+    val normalized =
+        raw.replace("\r\n", "\n")
+            .replace(Regex("\\n{3,}"), "\n\n")
+            .trim()
+
+    return SpannableStringBuilder(normalized).apply {
+        applyBoldToken("\u6e05\u9664\u8bb0\u5f55")
+        applyBoldToken("\u5220\u9664\u6587\u4ef6")
+    }
+}
+
+private fun SpannableStringBuilder.applyBoldToken(token: String) {
+    var start = indexOf(token)
+    while (start >= 0) {
+        setSpan(
+            MediumBoldSpan(),
+            start,
+            start + token.length,
+            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+        )
+        start = indexOf(token, start + token.length)
+    }
+}
+
+private class MediumBoldSpan : MetricAffectingSpan() {
+    override fun updateDrawState(textPaint: TextPaint) {
+        textPaint.isFakeBoldText = true
+    }
+
+    override fun updateMeasureState(textPaint: TextPaint) {
+        textPaint.isFakeBoldText = true
+    }
+}
+
+private fun formatFloat(value: Float): String {
+    return String.format(Locale.US, "%.2f", value)
+}
+
+private fun Modifier.blockTouchThrough(): Modifier {
+    return pointerInput(Unit) {
+        awaitPointerEventScope {
+            while (true) {
+                val event = awaitPointerEvent(PointerEventPass.Final)
+                event.changes.forEach { it.consume() }
+            }
+        }
+    }
+}
+
+@Composable
+private fun materialColor(
+    @AttrRes attr: Int,
+    @ColorInt fallback: Int,
+): Color {
+    val view = LocalView.current
+    return remember(view, attr, fallback) {
+        Color(MaterialColors.getColor(view, attr, fallback))
+    }
+}

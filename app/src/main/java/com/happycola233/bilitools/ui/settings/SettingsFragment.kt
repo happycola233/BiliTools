@@ -104,6 +104,11 @@ class SettingsFragment : Fragment() {
                 requireActivity().recreate()
             }
         }
+        binding.downloadsGlassDebugSwitch.setOnCheckedChangeListener { _, isChecked ->
+            if (!suppressUi) {
+                viewModel.setDownloadsGlassDebugEnabled(isChecked)
+            }
+        }
 
         binding.themeOptionContainer.setOnClickListener {
             val items = arrayOf(
@@ -243,6 +248,7 @@ class SettingsFragment : Fragment() {
                         AppThemeColor.Pink -> getString(R.string.settings_theme_color_pink)
                     }
                     binding.darkModePureBlackSwitch.isChecked = settings.darkModePureBlack
+                    binding.downloadsGlassDebugSwitch.isChecked = settings.downloadsGlassDebugEnabled
                     suppressUi = false
                 }
             }

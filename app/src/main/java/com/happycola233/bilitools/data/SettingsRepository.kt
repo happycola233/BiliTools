@@ -17,6 +17,13 @@ data class AppSettings(
     val downloadRootRelativePath: String = SettingsRepository.DEFAULT_DOWNLOAD_ROOT,
     val confirmCellularDownload: Boolean = true,
     val parseQuickActionEnabled: Boolean = true,
+    val downloadsGlassDebugEnabled: Boolean = false,
+    val downloadsGlassCornerRadiusDp: Float = SettingsRepository.DEFAULT_DOWNLOADS_GLASS_CORNER_RADIUS_DP,
+    val downloadsGlassBlurRadiusDp: Float = SettingsRepository.DEFAULT_DOWNLOADS_GLASS_BLUR_RADIUS_DP,
+    val downloadsGlassRefractionHeightDp: Float = SettingsRepository.DEFAULT_DOWNLOADS_GLASS_REFRACTION_HEIGHT_DP,
+    val downloadsGlassRefractionAmountFrac: Float = SettingsRepository.DEFAULT_DOWNLOADS_GLASS_REFRACTION_AMOUNT_FRAC,
+    val downloadsGlassSurfaceAlpha: Float = SettingsRepository.DEFAULT_DOWNLOADS_GLASS_SURFACE_ALPHA,
+    val downloadsGlassChromaticAberration: Boolean = SettingsRepository.DEFAULT_DOWNLOADS_GLASS_CHROMATIC_ABERRATION,
 )
 
 enum class AppThemeMode(val value: String) {
@@ -110,6 +117,60 @@ class SettingsRepository(context: Context) {
         _settings.value = current.copy(parseQuickActionEnabled = enabled)
     }
 
+    fun setDownloadsGlassDebugEnabled(enabled: Boolean) {
+        val current = _settings.value
+        if (current.downloadsGlassDebugEnabled == enabled) return
+        prefs.edit().putBoolean(KEY_DOWNLOADS_GLASS_DEBUG_ENABLED, enabled).apply()
+        _settings.value = current.copy(downloadsGlassDebugEnabled = enabled)
+    }
+
+    fun setDownloadsGlassCornerRadiusDp(value: Float) {
+        val normalized = value.coerceIn(0f, 64f)
+        val current = _settings.value
+        if (current.downloadsGlassCornerRadiusDp == normalized) return
+        prefs.edit().putFloat(KEY_DOWNLOADS_GLASS_CORNER_RADIUS_DP, normalized).apply()
+        _settings.value = current.copy(downloadsGlassCornerRadiusDp = normalized)
+    }
+
+    fun setDownloadsGlassBlurRadiusDp(value: Float) {
+        val normalized = value.coerceIn(0f, 48f)
+        val current = _settings.value
+        if (current.downloadsGlassBlurRadiusDp == normalized) return
+        prefs.edit().putFloat(KEY_DOWNLOADS_GLASS_BLUR_RADIUS_DP, normalized).apply()
+        _settings.value = current.copy(downloadsGlassBlurRadiusDp = normalized)
+    }
+
+    fun setDownloadsGlassRefractionHeightDp(value: Float) {
+        val normalized = value.coerceIn(0f, 72f)
+        val current = _settings.value
+        if (current.downloadsGlassRefractionHeightDp == normalized) return
+        prefs.edit().putFloat(KEY_DOWNLOADS_GLASS_REFRACTION_HEIGHT_DP, normalized).apply()
+        _settings.value = current.copy(downloadsGlassRefractionHeightDp = normalized)
+    }
+
+    fun setDownloadsGlassRefractionAmountFrac(value: Float) {
+        val normalized = value.coerceIn(0f, 1f)
+        val current = _settings.value
+        if (current.downloadsGlassRefractionAmountFrac == normalized) return
+        prefs.edit().putFloat(KEY_DOWNLOADS_GLASS_REFRACTION_AMOUNT_FRAC, normalized).apply()
+        _settings.value = current.copy(downloadsGlassRefractionAmountFrac = normalized)
+    }
+
+    fun setDownloadsGlassSurfaceAlpha(value: Float) {
+        val normalized = value.coerceIn(0f, 1f)
+        val current = _settings.value
+        if (current.downloadsGlassSurfaceAlpha == normalized) return
+        prefs.edit().putFloat(KEY_DOWNLOADS_GLASS_SURFACE_ALPHA, normalized).apply()
+        _settings.value = current.copy(downloadsGlassSurfaceAlpha = normalized)
+    }
+
+    fun setDownloadsGlassChromaticAberration(enabled: Boolean) {
+        val current = _settings.value
+        if (current.downloadsGlassChromaticAberration == enabled) return
+        prefs.edit().putBoolean(KEY_DOWNLOADS_GLASS_CHROMATIC_ABERRATION, enabled).apply()
+        _settings.value = current.copy(downloadsGlassChromaticAberration = enabled)
+    }
+
     fun setDownloadRootRelativePath(relativePath: String) {
         val normalized = normalizeDownloadRoot(relativePath)
         val current = _settings.value
@@ -139,6 +200,34 @@ class SettingsRepository(context: Context) {
             ),
             confirmCellularDownload = prefs.getBoolean(KEY_CONFIRM_CELLULAR_DOWNLOAD, true),
             parseQuickActionEnabled = prefs.getBoolean(KEY_PARSE_QUICK_ACTION, true),
+            downloadsGlassDebugEnabled = prefs.getBoolean(
+                KEY_DOWNLOADS_GLASS_DEBUG_ENABLED,
+                false,
+            ),
+            downloadsGlassCornerRadiusDp = prefs.getFloat(
+                KEY_DOWNLOADS_GLASS_CORNER_RADIUS_DP,
+                DEFAULT_DOWNLOADS_GLASS_CORNER_RADIUS_DP,
+            ),
+            downloadsGlassBlurRadiusDp = prefs.getFloat(
+                KEY_DOWNLOADS_GLASS_BLUR_RADIUS_DP,
+                DEFAULT_DOWNLOADS_GLASS_BLUR_RADIUS_DP,
+            ),
+            downloadsGlassRefractionHeightDp = prefs.getFloat(
+                KEY_DOWNLOADS_GLASS_REFRACTION_HEIGHT_DP,
+                DEFAULT_DOWNLOADS_GLASS_REFRACTION_HEIGHT_DP,
+            ),
+            downloadsGlassRefractionAmountFrac = prefs.getFloat(
+                KEY_DOWNLOADS_GLASS_REFRACTION_AMOUNT_FRAC,
+                DEFAULT_DOWNLOADS_GLASS_REFRACTION_AMOUNT_FRAC,
+            ),
+            downloadsGlassSurfaceAlpha = prefs.getFloat(
+                KEY_DOWNLOADS_GLASS_SURFACE_ALPHA,
+                DEFAULT_DOWNLOADS_GLASS_SURFACE_ALPHA,
+            ),
+            downloadsGlassChromaticAberration = prefs.getBoolean(
+                KEY_DOWNLOADS_GLASS_CHROMATIC_ABERRATION,
+                DEFAULT_DOWNLOADS_GLASS_CHROMATIC_ABERRATION,
+            ),
         )
     }
 
@@ -206,6 +295,12 @@ class SettingsRepository(context: Context) {
     companion object {
         // Keep this a true compile-time constant for default values.
         const val DEFAULT_DOWNLOAD_ROOT = "Download/BiliTools"
+        const val DEFAULT_DOWNLOADS_GLASS_CORNER_RADIUS_DP = 22f
+        const val DEFAULT_DOWNLOADS_GLASS_BLUR_RADIUS_DP = 6f
+        const val DEFAULT_DOWNLOADS_GLASS_REFRACTION_HEIGHT_DP = 12f
+        const val DEFAULT_DOWNLOADS_GLASS_REFRACTION_AMOUNT_FRAC = 0.5f
+        const val DEFAULT_DOWNLOADS_GLASS_SURFACE_ALPHA = 0.7f
+        const val DEFAULT_DOWNLOADS_GLASS_CHROMATIC_ABERRATION = true
 
         private const val PREFS_NAME = "app_settings"
         private const val KEY_ADD_METADATA = "add_metadata"
@@ -215,5 +310,12 @@ class SettingsRepository(context: Context) {
         private const val KEY_DOWNLOAD_ROOT_RELATIVE_PATH = "download_root_relative_path"
         private const val KEY_CONFIRM_CELLULAR_DOWNLOAD = "confirm_cellular_download"
         private const val KEY_PARSE_QUICK_ACTION = "parse_quick_action"
+        private const val KEY_DOWNLOADS_GLASS_DEBUG_ENABLED = "downloads_glass_debug_enabled"
+        private const val KEY_DOWNLOADS_GLASS_CORNER_RADIUS_DP = "downloads_glass_corner_radius_dp"
+        private const val KEY_DOWNLOADS_GLASS_BLUR_RADIUS_DP = "downloads_glass_blur_radius_dp"
+        private const val KEY_DOWNLOADS_GLASS_REFRACTION_HEIGHT_DP = "downloads_glass_refraction_height_dp"
+        private const val KEY_DOWNLOADS_GLASS_REFRACTION_AMOUNT_FRAC = "downloads_glass_refraction_amount_frac"
+        private const val KEY_DOWNLOADS_GLASS_SURFACE_ALPHA = "downloads_glass_surface_alpha"
+        private const val KEY_DOWNLOADS_GLASS_CHROMATIC_ABERRATION = "downloads_glass_chromatic_aberration"
     }
 }

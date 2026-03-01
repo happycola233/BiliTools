@@ -406,6 +406,8 @@
     <string name="settings_theme_dark">深色</string>
     <string name="settings_dark_mode_pure_black">深色模式使用纯黑背景</string>
     <string name="settings_dark_mode_pure_black_desc">仅在深色模式生效，将背景颜色设为 #000000</string>
+    <string name="settings_downloads_glass_debug">启用液态玻璃调试窗口</string>
+    <string name="settings_downloads_glass_debug_desc">在下载页显示液态玻璃调试悬浮窗，可实时调节并预览效果（需要调参时可临时启用，参数将持久化保存）。目前液态玻璃效果仅用在批量管理浮窗中。</string>
     <string name="settings_theme_color">主题色</string>
     <string name="settings_theme_color_dynamic">系统取色（莫奈）</string>
     <string name="settings_theme_color_blue">经典蓝</string>

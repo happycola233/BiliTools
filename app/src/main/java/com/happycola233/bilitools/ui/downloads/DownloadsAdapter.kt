@@ -2,21 +2,20 @@ package com.happycola233.bilitools.ui.downloads
 
 import android.content.Context
 import android.os.SystemClock
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.ValueAnimator
 import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewConfiguration
+import android.widget.LinearLayout
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.SimpleItemAnimator
-import androidx.transition.AutoTransition
-import androidx.transition.ChangeBounds
-import androidx.transition.Fade
-import androidx.transition.TransitionManager
-import androidx.transition.TransitionSet
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import coil.load
 import com.google.android.material.color.MaterialColors
@@ -177,6 +176,7 @@ class DownloadsAdapter(
         if (selectionMode == enabled && selectedGroupIds == nextSelected) {
             return
         }
+        val previousSelected = selectedGroupIds
         val modeChanged = selectionMode != enabled
         selectionMode = enabled
         selectedGroupIds = nextSelected
@@ -188,10 +188,20 @@ class DownloadsAdapter(
             }
         }
         if (modeChanged) {
-            notifyDataSetChanged()
+            currentList.forEachIndexed { index, item ->
+                if (item is DownloadsListItem.GroupItem) {
+                    notifyItemChanged(index, PAYLOAD_SELECTION_MODE_CHANGED)
+                }
+            }
             return
         }
-        notifyDataSetChanged()
+        val changedGroupIds = (previousSelected - nextSelected) + (nextSelected - previousSelected)
+        if (changedGroupIds.isEmpty()) return
+        currentList.forEachIndexed { index, item ->
+            if (item is DownloadsListItem.GroupItem && changedGroupIds.contains(item.group.id)) {
+                notifyItemChanged(index, PAYLOAD_SELECTION_CHANGED)
+            }
+        }
     }
 
     override fun getItemViewType(position: Int): Int {
@@ -234,23 +244,32 @@ class DownloadsAdapter(
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int, payloads: MutableList<Any>) {
         if (payloads.isNotEmpty()) {
-            val item = getItem(position) as? DownloadsListItem.SectionHeader
-            if (item != null && holder is SectionHeaderViewHolder) {
-                val updates = payloads.flatMap {
-                    if (it is List<*>) it else listOf(it)
-                }.filterIsInstance<String>().toSet()
-
-                if (updates.contains("COLLAPSED_CHANGED")) {
+            val updates = payloads.flatMap {
+                if (it is List<*>) it else listOf(it)
+            }.filterIsInstance<String>().toSet()
+            val item = getItem(position)
+            if (item is DownloadsListItem.SectionHeader && holder is SectionHeaderViewHolder) {
+                if (updates.contains(PAYLOAD_COLLAPSED_CHANGED)) {
                     val collapsed = item.isCollapsed
                     val targetRotation = if (collapsed) -90f else 0f
                     holder.binding.sectionArrow.animate().rotation(targetRotation).setDuration(200).start()
                 }
 
-                if (updates.contains("META_CHANGED")) {
+                if (updates.contains(PAYLOAD_META_CHANGED)) {
                     holder.bindMeta(item)
                 }
 
                 if (updates.isNotEmpty()) return
+            }
+            if (item is DownloadsListItem.GroupItem && holder is GroupViewHolder) {
+                if (updates.contains(PAYLOAD_SELECTION_MODE_CHANGED)) {
+                    holder.bindSelectionModeState(item.group)
+                    return
+                }
+                if (updates.contains(PAYLOAD_SELECTION_CHANGED)) {
+                    holder.bindSelectionState(item.group)
+                    return
+                }
             }
         }
         super.onBindViewHolder(holder, position, payloads)
@@ -321,6 +340,8 @@ class DownloadsAdapter(
         private val swipeTarget = (80f * density) + (8f * density)
         private val snapThreshold = swipeTarget / 2
         private val dismissThreshold = 140f * density
+        private val checkboxMarginEndPx = (8f * density).toInt()
+        private val checkboxMinWidthPx = (32f * density).toInt()
         private var boundGroupId: Long = -1L
         private var revealDeleteRunnable: Runnable? = null
         private var currentGroup: DownloadGroup? = null
@@ -332,6 +353,10 @@ class DownloadsAdapter(
         private var touchActiveGroupId: Long? = null
         private var longPressTriggered = false
         private var longPressRunnable: Runnable? = null
+        private var expandCollapseAnimator: ValueAnimator? = null
+        private var checkboxWidthAnimator: ValueAnimator? = null
+        private var checkboxAnimationTargetVisible: Boolean? = null
+        private var cachedCheckboxExpandedWidthPx: Int = 0
 
         init {
             binding.groupTasks.layoutManager = LinearLayoutManager(binding.root.context)
@@ -505,7 +530,7 @@ class DownloadsAdapter(
             val context = binding.root.context
             val selectionMode = adapter.selectionMode
             val isSelected = adapter.selectedGroupIds.contains(group.id)
-            binding.groupSelect.visibility = if (selectionMode) View.VISIBLE else View.GONE
+            updateSelectionCheckboxVisibility(selectionMode, animate = false)
             binding.groupSelect.isChecked = isSelected
             binding.groupSelect.setOnClickListener {
                 if (selectionMode) {
@@ -589,6 +614,7 @@ class DownloadsAdapter(
                 binding.groupCover.setBackgroundResource(R.drawable.ic_launcher_background)
             } else {
                 binding.groupCover.load(coverUrl) {
+                    allowHardware(false)
                     crossfade(true)
                 }
             }
@@ -634,16 +660,8 @@ class DownloadsAdapter(
             }
             
             val shouldExpand = expanded && !selectionMode
+            applyExpandedStateImmediate(group, shouldExpand)
             binding.groupToggle.visibility = if (selectionMode) View.INVISIBLE else View.VISIBLE
-            binding.groupToggle.rotation = if (shouldExpand) 180f else 0f
-            binding.expandedContent.visibility = if (shouldExpand) View.VISIBLE else View.GONE
-            
-            if (shouldExpand) {
-                taskAdapter.groupPath = group.relativePath
-                taskAdapter.submitList(group.tasks)
-            } else {
-                taskAdapter.submitList(emptyList())
-            }
             
             // Re-apply click listeners logic via standard SetOnClickListener for accessibility/fallback
             // But we primarily handle clicks in OnTouch. 
@@ -679,34 +697,328 @@ class DownloadsAdapter(
                     }, EXPAND_ANIM_DURATION_MS)
                 }
 
-                val recyclerView = binding.root.parent as? ViewGroup
-                if (recyclerView != null) {
-                    val transition = TransitionSet()
-                        .addTransition(ChangeBounds())
-                        .addTransition(Fade(Fade.IN))
-                        .addTransition(Fade(Fade.OUT))
-                    
-                    transition.ordering = TransitionSet.ORDERING_TOGETHER
-                    transition.duration = EXPAND_ANIM_DURATION_MS
-                    transition.interpolator = FastOutSlowInInterpolator()
-                    // Exclude the delete container from transition to avoid weird artifacts
-                    transition.excludeTarget(binding.swipeDeleteContainer, true)
-                    TransitionManager.beginDelayedTransition(recyclerView, transition)
-                }
-                
-                // Manually update view state to trigger the transition logic
-                // WITHOUT calling notifyItemChanged to avoid ViewHolder recreation/flicker
                 val newExpanded = !isExpanded
-                binding.expandedContent.visibility = if (newExpanded) View.VISIBLE else View.GONE
-                binding.groupToggle.animate().rotation(if (newExpanded) 180f else 0f).setDuration(EXPAND_ANIM_DURATION_MS).start()
-                
-                // If expanding, we need to bind the sub-tasks immediately because
-                // onBindViewHolder won't be called.
-                if (newExpanded) {
-                    taskAdapter.groupPath = group.relativePath
-                    taskAdapter.submitList(group.tasks)
+                animateExpandedState(group, newExpanded)
+            }
+        }
+
+        fun bindSelectionModeState(group: DownloadGroup) {
+            val selectionMode = adapter.selectionMode
+            val isSelected = adapter.selectedGroupIds.contains(group.id)
+            updateSelectionCheckboxVisibility(selectionMode, animate = true)
+            binding.groupSelect.isChecked = isSelected
+            binding.groupSelect.setOnClickListener {
+                if (selectionMode) {
+                    adapter.onGroupSelectionToggle(group)
                 }
             }
+            binding.cardView.strokeColor = MaterialColors.getColor(
+                binding.cardView,
+                com.google.android.material.R.attr.colorPrimary,
+            )
+            binding.cardView.strokeWidth = if (isSelected) (2 * density).toInt() else 0
+
+            val remainingExpandMs = adapter.getExpandRemainingMs(group.id)
+            val isExpanding = remainingExpandMs > 0L
+            binding.swipeDeleteContainer.alpha = 1f
+            binding.swipeDeleteContainer.visibility = when {
+                selectionMode -> View.GONE
+                isExpanding -> View.INVISIBLE
+                else -> View.VISIBLE
+            }
+            if (isExpanding && !selectionMode) {
+                scheduleDeleteReveal(group.id, remainingExpandMs)
+            }
+
+            if (selectionMode) {
+                binding.cardView.translationX = 0f
+            } else if (adapter.swipedGroupId == group.id) {
+                binding.cardView.translationX = -swipeTarget
+                adapter.notifySwiped(this, group.id)
+            } else {
+                binding.cardView.translationX = 0f
+            }
+
+            val shouldExpand = adapter.expandedGroups.contains(group.id) && !selectionMode
+            applyExpandedStateImmediate(group, shouldExpand)
+            binding.groupToggle.visibility = if (selectionMode) View.INVISIBLE else View.VISIBLE
+        }
+
+        fun bindSelectionState(group: DownloadGroup) {
+            val selectionMode = adapter.selectionMode
+            val isSelected = adapter.selectedGroupIds.contains(group.id)
+            updateSelectionCheckboxVisibility(selectionMode, animate = false)
+            binding.groupSelect.isChecked = isSelected
+            binding.groupSelect.setOnClickListener {
+                if (selectionMode) {
+                    adapter.onGroupSelectionToggle(group)
+                }
+            }
+            binding.cardView.strokeColor = MaterialColors.getColor(
+                binding.cardView,
+                com.google.android.material.R.attr.colorPrimary,
+            )
+            binding.cardView.strokeWidth = if (isSelected) (2 * density).toInt() else 0
+        }
+
+        private fun applyExpandedStateImmediate(group: DownloadGroup, expanded: Boolean) {
+            expandCollapseAnimator?.cancel()
+            expandCollapseAnimator = null
+
+            binding.groupToggle.rotation = if (expanded) 180f else 0f
+            binding.expandedContent.layoutParams =
+                binding.expandedContent.layoutParams.apply {
+                    height = if (expanded) ViewGroup.LayoutParams.WRAP_CONTENT else 0
+                }
+            binding.expandedContent.visibility = if (expanded) View.VISIBLE else View.GONE
+
+            if (expanded) {
+                taskAdapter.groupPath = group.relativePath
+                taskAdapter.submitList(group.tasks)
+            } else {
+                taskAdapter.submitList(emptyList())
+            }
+        }
+
+        private fun updateSelectionCheckboxVisibility(
+            visible: Boolean,
+            animate: Boolean,
+        ) {
+            val checkbox = binding.groupSelect
+            val runningAnimator = checkboxWidthAnimator
+            val sameTargetAnimationRunning =
+                runningAnimator?.isRunning == true && checkboxAnimationTargetVisible == visible
+            if (sameTargetAnimationRunning) {
+                return
+            }
+            checkbox.animate().cancel()
+            runningAnimator?.cancel()
+            checkboxWidthAnimator = null
+            checkboxAnimationTargetVisible = null
+
+            val layoutParams = checkbox.layoutParams as? LinearLayout.LayoutParams ?: return
+            val targetWidth = if (visible) resolveCheckboxExpandedWidthPx(layoutParams) else 0
+            val targetMarginEnd = if (visible) checkboxMarginEndPx else 0
+            val targetAlpha = if (visible) 1f else 0f
+
+            if (!animate) {
+                checkbox.visibility = if (visible) View.VISIBLE else View.INVISIBLE
+                layoutParams.width = targetWidth
+                layoutParams.marginEnd = targetMarginEnd
+                checkbox.layoutParams = layoutParams
+                checkbox.alpha = targetAlpha
+                checkbox.isEnabled = visible
+                checkbox.isClickable = visible
+                return
+            }
+
+            val startWidth = when {
+                layoutParams.width >= 0 -> layoutParams.width
+                checkbox.width > 0 -> checkbox.width
+                visible -> 0
+                else -> targetWidth
+            }
+            val startMarginEnd = layoutParams.marginEnd
+            val startAlpha = checkbox.alpha
+
+            checkbox.visibility = View.VISIBLE
+            checkbox.isEnabled = visible
+            checkbox.isClickable = visible
+
+            checkboxAnimationTargetVisible = visible
+            checkboxWidthAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = if (visible) CHECKBOX_ANIM_IN_DURATION_MS else CHECKBOX_ANIM_OUT_DURATION_MS
+                interpolator = FastOutSlowInInterpolator()
+                addUpdateListener { animator ->
+                    val fraction = animator.animatedFraction
+                    layoutParams.width = lerpInt(startWidth, targetWidth, fraction)
+                    layoutParams.marginEnd = lerpInt(startMarginEnd, targetMarginEnd, fraction)
+                    checkbox.layoutParams = layoutParams
+                    checkbox.alpha = startAlpha + (targetAlpha - startAlpha) * fraction
+                }
+                addListener(object : AnimatorListenerAdapter() {
+                    private var canceled = false
+
+                    override fun onAnimationCancel(animation: Animator) {
+                        canceled = true
+                        checkboxAnimationTargetVisible = null
+                    }
+
+                    override fun onAnimationEnd(animation: Animator) {
+                        checkboxAnimationTargetVisible = null
+                        if (canceled) return
+                        layoutParams.width = targetWidth
+                        layoutParams.marginEnd = targetMarginEnd
+                        checkbox.layoutParams = layoutParams
+                        checkbox.alpha = targetAlpha
+                        if (!visible) {
+                            checkbox.visibility = View.INVISIBLE
+                        }
+                    }
+                })
+                start()
+            }
+        }
+
+        private fun resolveCheckboxExpandedWidthPx(
+            layoutParams: LinearLayout.LayoutParams,
+        ): Int {
+            if (cachedCheckboxExpandedWidthPx > 0) {
+                return cachedCheckboxExpandedWidthPx
+            }
+
+            val checkbox = binding.groupSelect
+            val oldWidth = layoutParams.width
+            val oldMarginEnd = layoutParams.marginEnd
+            val oldVisibility = checkbox.visibility
+            val oldAlpha = checkbox.alpha
+
+            layoutParams.width = ViewGroup.LayoutParams.WRAP_CONTENT
+            layoutParams.marginEnd = checkboxMarginEndPx
+            checkbox.layoutParams = layoutParams
+            checkbox.visibility = View.VISIBLE
+            checkbox.alpha = 1f
+
+            val widthSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+            val heightSpec = if (binding.groupHeader.height > 0) {
+                View.MeasureSpec.makeMeasureSpec(binding.groupHeader.height, View.MeasureSpec.AT_MOST)
+            } else {
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+            }
+            checkbox.measure(widthSpec, heightSpec)
+            cachedCheckboxExpandedWidthPx = checkbox.measuredWidth.coerceAtLeast(checkboxMinWidthPx)
+
+            layoutParams.width = oldWidth
+            layoutParams.marginEnd = oldMarginEnd
+            checkbox.layoutParams = layoutParams
+            checkbox.visibility = oldVisibility
+            checkbox.alpha = oldAlpha
+
+            return cachedCheckboxExpandedWidthPx
+        }
+
+        private fun lerpInt(start: Int, end: Int, fraction: Float): Int {
+            return (start + (end - start) * fraction).toInt()
+        }
+
+        private fun animateExpandedState(group: DownloadGroup, expanded: Boolean) {
+            binding.groupToggle.animate()
+                .rotation(if (expanded) 180f else 0f)
+                .setDuration(EXPAND_ANIM_DURATION_MS)
+                .start()
+
+            if (expanded) {
+                taskAdapter.groupPath = group.relativePath
+                taskAdapter.submitList(group.tasks) {
+                    binding.expandedContent.post {
+                        if (boundGroupId != group.id) return@post
+                        animateExpandContainer(expand = true)
+                    }
+                }
+            } else {
+                animateExpandContainer(expand = false) {
+                    if (boundGroupId == group.id) {
+                        taskAdapter.submitList(emptyList())
+                    }
+                }
+            }
+        }
+
+        private fun animateExpandContainer(
+            expand: Boolean,
+            onEnd: (() -> Unit)? = null,
+        ) {
+            expandCollapseAnimator?.cancel()
+
+            val content = binding.expandedContent
+            val layoutParams = content.layoutParams
+            val startHeight = if (content.visibility == View.VISIBLE) content.height else 0
+
+            if (expand) {
+                content.visibility = View.VISIBLE
+                layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT
+                content.layoutParams = layoutParams
+                val targetHeight = measureExpandedContentHeight()
+                if (targetHeight <= 0) {
+                    layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT
+                    content.layoutParams = layoutParams
+                    onEnd?.invoke()
+                    return
+                }
+                layoutParams.height = if (startHeight > 0) startHeight else 0
+                content.layoutParams = layoutParams
+                content.requestLayout()
+                expandCollapseAnimator = ValueAnimator.ofInt(layoutParams.height, targetHeight).apply {
+                    duration = EXPAND_ANIM_DURATION_MS
+                    interpolator = FastOutSlowInInterpolator()
+                    addUpdateListener { animator ->
+                        layoutParams.height = animator.animatedValue as Int
+                        content.layoutParams = layoutParams
+                    }
+                    addListener(object : AnimatorListenerAdapter() {
+                        private var canceled = false
+
+                        override fun onAnimationCancel(animation: Animator) {
+                            canceled = true
+                        }
+
+                        override fun onAnimationEnd(animation: Animator) {
+                            if (canceled) return
+                            layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT
+                            content.layoutParams = layoutParams
+                            onEnd?.invoke()
+                        }
+                    })
+                    start()
+                }
+                return
+            }
+
+            val measuredStart = if (startHeight > 0) startHeight else measureExpandedContentHeight()
+            if (measuredStart <= 0) {
+                content.visibility = View.GONE
+                layoutParams.height = 0
+                content.layoutParams = layoutParams
+                onEnd?.invoke()
+                return
+            }
+
+            layoutParams.height = measuredStart
+            content.layoutParams = layoutParams
+            expandCollapseAnimator = ValueAnimator.ofInt(measuredStart, 0).apply {
+                duration = EXPAND_ANIM_DURATION_MS
+                interpolator = FastOutSlowInInterpolator()
+                addUpdateListener { animator ->
+                    layoutParams.height = animator.animatedValue as Int
+                    content.layoutParams = layoutParams
+                }
+                addListener(object : AnimatorListenerAdapter() {
+                    private var canceled = false
+
+                    override fun onAnimationCancel(animation: Animator) {
+                        canceled = true
+                    }
+
+                    override fun onAnimationEnd(animation: Animator) {
+                        if (canceled) return
+                        content.visibility = View.GONE
+                        layoutParams.height = 0
+                        content.layoutParams = layoutParams
+                        onEnd?.invoke()
+                    }
+                })
+                start()
+            }
+        }
+
+        private fun measureExpandedContentHeight(): Int {
+            val content = binding.expandedContent
+            val parentWidth = binding.cardView.width
+            if (parentWidth <= 0) return content.measuredHeight
+            val widthSpec = View.MeasureSpec.makeMeasureSpec(parentWidth, View.MeasureSpec.EXACTLY)
+            val heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+            content.measure(widthSpec, heightSpec)
+            return content.measuredHeight
         }
 
         private fun scheduleDeleteReveal(groupId: Long, delayMs: Long) {
@@ -798,6 +1110,12 @@ class DownloadsAdapter(
         private const val VIEW_TYPE_HEADER = 0
         private const val VIEW_TYPE_GROUP = 1
         private const val EXPAND_ANIM_DURATION_MS = 200L
+        private const val CHECKBOX_ANIM_IN_DURATION_MS = 240L
+        private const val CHECKBOX_ANIM_OUT_DURATION_MS = 200L
+        private const val PAYLOAD_SELECTION_MODE_CHANGED = "SELECTION_MODE_CHANGED"
+        private const val PAYLOAD_COLLAPSED_CHANGED = "COLLAPSED_CHANGED"
+        private const val PAYLOAD_META_CHANGED = "META_CHANGED"
+        private const val PAYLOAD_SELECTION_CHANGED = "SELECTION_CHANGED"
 
         private val DownloadsDiffCallback = object : DiffUtil.ItemCallback<DownloadsListItem>() {
             override fun areItemsTheSame(
@@ -826,10 +1144,10 @@ class DownloadsAdapter(
                 if (oldItem is DownloadsListItem.SectionHeader && newItem is DownloadsListItem.SectionHeader) {
                     val payloads = mutableListOf<String>()
                     if (oldItem.isCollapsed != newItem.isCollapsed) {
-                        payloads.add("COLLAPSED_CHANGED")
+                        payloads.add(PAYLOAD_COLLAPSED_CHANGED)
                     }
                     if (oldItem.count != newItem.count || oldItem.speedBytesPerSec != newItem.speedBytesPerSec) {
-                        payloads.add("META_CHANGED")
+                        payloads.add(PAYLOAD_META_CHANGED)
                     }
                     if (payloads.isNotEmpty()) return payloads
                 }
