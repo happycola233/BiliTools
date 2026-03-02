@@ -299,120 +299,120 @@ class ExtrasRepository(
 }
 
 private data class PlayerInfoResponse(
-    @Json(name = "code") val code: Int,
-    @Json(name = "message") val message: String?,
-    @Json(name = "data") val data: PlayerInfoData?,
+    @param:Json(name = "code") val code: Int,
+    @param:Json(name = "message") val message: String?,
+    @param:Json(name = "data") val data: PlayerInfoData?,
 )
 
 private data class PlayerInfoData(
-    @Json(name = "subtitle") val subtitle: PlayerInfoSubtitle?,
+    @param:Json(name = "subtitle") val subtitle: PlayerInfoSubtitle?,
 )
 
 private data class PlayerInfoSubtitle(
-    @Json(name = "subtitles") val subtitles: List<PlayerSubtitle>?,
+    @param:Json(name = "subtitles") val subtitles: List<PlayerSubtitle>?,
 )
 
 private data class PlayerSubtitle(
-    @Json(name = "lan") val lan: String,
-    @Json(name = "lan_doc") val lanDoc: String,
-    @Json(name = "subtitle_url") val subtitleUrl: String,
+    @param:Json(name = "lan") val lan: String,
+    @param:Json(name = "lan_doc") val lanDoc: String,
+    @param:Json(name = "subtitle_url") val subtitleUrl: String,
 )
 
 private data class AiSummaryResponse(
-    @Json(name = "code") val code: Int,
-    @Json(name = "message") val message: String?,
-    @Json(name = "data") val data: AiSummaryData?,
+    @param:Json(name = "code") val code: Int,
+    @param:Json(name = "message") val message: String?,
+    @param:Json(name = "data") val data: AiSummaryData?,
 )
 
 private data class AiSummaryData(
-    @Json(name = "model_result") val modelResult: AiSummaryResult?,
+    @param:Json(name = "model_result") val modelResult: AiSummaryResult?,
 )
 
 private data class AiSummaryResult(
-    @Json(name = "result_type") val resultType: Int,
-    @Json(name = "summary") val summary: String,
-    @Json(name = "outline") val outline: List<AiSummarySection>,
+    @param:Json(name = "result_type") val resultType: Int,
+    @param:Json(name = "summary") val summary: String,
+    @param:Json(name = "outline") val outline: List<AiSummarySection>,
 )
 
 private data class AiSummarySection(
-    @Json(name = "title") val title: String,
-    @Json(name = "timestamp") val timestamp: Int,
-    @Json(name = "part_outline") val partOutline: List<AiSummaryPart>,
+    @param:Json(name = "title") val title: String,
+    @param:Json(name = "timestamp") val timestamp: Int,
+    @param:Json(name = "part_outline") val partOutline: List<AiSummaryPart>,
 )
 
 private data class AiSummaryPart(
-    @Json(name = "timestamp") val timestamp: Int,
-    @Json(name = "content") val content: String,
+    @param:Json(name = "timestamp") val timestamp: Int,
+    @param:Json(name = "content") val content: String,
 )
 
 private data class SubtitleDetail(
-    @Json(name = "body") val body: List<SubtitleLine>,
+    @param:Json(name = "body") val body: List<SubtitleLine>,
 )
 
 private data class SubtitleLine(
-    @Json(name = "from") val from: Double,
-    @Json(name = "to") val to: Double,
-    @Json(name = "content") val content: String,
+    @param:Json(name = "from") val from: Double,
+    @param:Json(name = "to") val to: Double,
+    @param:Json(name = "content") val content: String,
 )
 
 private data class HistoryCursorResponse(
-    @Json(name = "code") val code: Int,
-    @Json(name = "message") val message: String?,
-    @Json(name = "data") val data: HistoryCursorData?,
+    @param:Json(name = "code") val code: Int,
+    @param:Json(name = "message") val message: String?,
+    @param:Json(name = "data") val data: HistoryCursorData?,
 )
 
 private data class HistoryCursorData(
-    @Json(name = "cursor") val cursor: HistoryCursorMeta?,
-    @Json(name = "list") val list: List<HistoryItemData>?,
-    @Json(name = "tab") val tab: List<HistoryTabData>?,
+    @param:Json(name = "cursor") val cursor: HistoryCursorMeta?,
+    @param:Json(name = "list") val list: List<HistoryItemData>?,
+    @param:Json(name = "tab") val tab: List<HistoryTabData>?,
 )
 
 private data class HistoryCursorMeta(
-    @Json(name = "business") val business: String?,
+    @param:Json(name = "business") val business: String?,
 )
 
 private data class HistorySearchResponse(
-    @Json(name = "code") val code: Int,
-    @Json(name = "message") val message: String?,
-    @Json(name = "data") val data: HistorySearchData?,
+    @param:Json(name = "code") val code: Int,
+    @param:Json(name = "message") val message: String?,
+    @param:Json(name = "data") val data: HistorySearchData?,
 )
 
 private data class HistorySearchData(
-    @Json(name = "has_more") val hasMore: Boolean?,
-    @Json(name = "page") val page: HistorySearchPage?,
-    @Json(name = "list") val list: List<HistoryItemData>?,
+    @param:Json(name = "has_more") val hasMore: Boolean?,
+    @param:Json(name = "page") val page: HistorySearchPage?,
+    @param:Json(name = "list") val list: List<HistoryItemData>?,
 )
 
 private data class HistorySearchPage(
-    @Json(name = "pn") val pn: Int?,
-    @Json(name = "total") val total: Int?,
+    @param:Json(name = "pn") val pn: Int?,
+    @param:Json(name = "total") val total: Int?,
 )
 
 private data class HistoryTabData(
-    @Json(name = "type") val type: String?,
-    @Json(name = "name") val name: String?,
+    @param:Json(name = "type") val type: String?,
+    @param:Json(name = "name") val name: String?,
 )
 
 private data class HistoryItemData(
-    @Json(name = "title") val title: String?,
-    @Json(name = "long_title") val longTitle: String?,
-    @Json(name = "cover") val cover: String?,
-    @Json(name = "covers") val covers: List<String>?,
-    @Json(name = "uri") val uri: String?,
-    @Json(name = "history") val history: HistoryMetaData?,
-    @Json(name = "videos") val videos: Int?,
-    @Json(name = "author_name") val authorName: String?,
-    @Json(name = "author_mid") val authorMid: Long?,
-    @Json(name = "author_face") val authorFace: String?,
-    @Json(name = "view_at") val viewAt: Long?,
-    @Json(name = "progress") val progress: Int?,
-    @Json(name = "duration") val duration: Int?,
+    @param:Json(name = "title") val title: String?,
+    @param:Json(name = "long_title") val longTitle: String?,
+    @param:Json(name = "cover") val cover: String?,
+    @param:Json(name = "covers") val covers: List<String>?,
+    @param:Json(name = "uri") val uri: String?,
+    @param:Json(name = "history") val history: HistoryMetaData?,
+    @param:Json(name = "videos") val videos: Int?,
+    @param:Json(name = "author_name") val authorName: String?,
+    @param:Json(name = "author_mid") val authorMid: Long?,
+    @param:Json(name = "author_face") val authorFace: String?,
+    @param:Json(name = "view_at") val viewAt: Long?,
+    @param:Json(name = "progress") val progress: Int?,
+    @param:Json(name = "duration") val duration: Int?,
 )
 
 private data class HistoryMetaData(
-    @Json(name = "bvid") val bvid: String?,
-    @Json(name = "cid") val cid: Long?,
-    @Json(name = "business") val business: String?,
-    @Json(name = "page") val page: Int?,
-    @Json(name = "part") val part: String?,
+    @param:Json(name = "bvid") val bvid: String?,
+    @param:Json(name = "cid") val cid: Long?,
+    @param:Json(name = "business") val business: String?,
+    @param:Json(name = "page") val page: Int?,
+    @param:Json(name = "part") val part: String?,
 )
