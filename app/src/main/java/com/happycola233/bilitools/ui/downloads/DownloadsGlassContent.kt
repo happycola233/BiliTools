@@ -345,7 +345,8 @@ private fun DownloadsBatchGlassPanel(
 ) {
     val isLightTheme = !isSystemInDarkTheme()
     val luminance = if (isLightTheme) 0.58f else 0.42f
-    val effectiveSurfaceAlpha = if (isLightTheme) surfaceAlpha.coerceIn(0f, 1f) else 0f
+    val effectiveSurfaceAlpha = surfaceAlpha.coerceIn(0f, 1f)
+    val surfaceOverlayColor = if (isLightTheme) Color.White else Color.Black
 
     val panelTextColor = materialColor(
         com.google.android.material.R.attr.colorOnSurface,
@@ -394,7 +395,7 @@ private fun DownloadsBatchGlassPanel(
                 },
                 highlight = { Highlight.Plain },
                 onDrawSurface = {
-                    drawRect(Color.White.copy(alpha = effectiveSurfaceAlpha))
+                    drawRect(surfaceOverlayColor.copy(alpha = effectiveSurfaceAlpha))
                 },
             )
             .padding(horizontal = 20.dp, vertical = 16.dp)
@@ -491,7 +492,7 @@ private fun GlassDebugPanel(
     onSurfaceAlphaChange: (Float) -> Unit,
     onReset: () -> Unit,
 ) {
-    val surfaceAlphaLabel = "\u8868\u5c42\u900f\u660e\u5ea6\uff08\u6df1\u8272\u6a21\u5f0f\u4e0d\u751f\u6548\uff09"
+    val surfaceAlphaLabel = "\u8868\u5c42\u900f\u660e\u5ea6"
 
     if (!expanded) {
         Box(
