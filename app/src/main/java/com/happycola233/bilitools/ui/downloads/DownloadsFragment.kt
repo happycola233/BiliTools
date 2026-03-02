@@ -7,6 +7,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.provider.MediaStore
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -410,9 +412,26 @@ class DownloadsFragment : Fragment() {
 
     private fun showTaskActions(item: DownloadItem) {
         if (item.status == DownloadStatus.Success && item.outputMissing) {
+            Log.w(
+                TAG,
+                "[ui-locate] block actions: success item marked missing, taskId=${item.id}, file=${item.fileName}, localUri=${item.localUri}",
+            )
             return
         }
         val uri = if (item.outputMissing) null else item.localUri?.let { Uri.parse(it) }
+        Log.d(
+            TAG,
+            "[ui-locate] show actions, taskId=${item.id}, file=${item.fileName}, status=${item.status}, outputMissing=${item.outputMissing}, localUri=${item.localUri}, parsedUri=$uri",
+        )
+        if (uri != null && !isUriReadyForUserAction(uri)) {
+            Log.w(
+                TAG,
+                "[ui-locate] block actions: uri not ready, taskId=${item.id}, file=${item.fileName}, uri=$uri",
+            )
+            viewModel.refreshOutputAvailability()
+            showUnavailable()
+            return
+        }
         val title = item.fileName.ifBlank { item.title }
         val options = arrayOf(
             getString(R.string.download_action_open),
@@ -423,13 +442,29 @@ class DownloadsFragment : Fragment() {
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> if (uri == null) {
+                        Log.w(
+                            TAG,
+                            "[ui-locate] open blocked: uri unavailable, taskId=${item.id}, file=${item.fileName}, outputMissing=${item.outputMissing}",
+                        )
                         showUnavailable()
                     } else {
+                        Log.d(
+                            TAG,
+                            "[ui-locate] open requested, taskId=${item.id}, file=${item.fileName}, uri=$uri",
+                        )
                         openWith(uri, item.fileName)
                     }
                     1 -> if (uri == null) {
+                        Log.w(
+                            TAG,
+                            "[ui-locate] share blocked: uri unavailable, taskId=${item.id}, file=${item.fileName}, outputMissing=${item.outputMissing}",
+                        )
                         showUnavailable()
                     } else {
+                        Log.d(
+                            TAG,
+                            "[ui-locate] share requested, taskId=${item.id}, file=${item.fileName}, uri=$uri",
+                        )
                         shareWith(uri, item.fileName)
                     }
                 }
@@ -616,6 +651,10 @@ class DownloadsFragment : Fragment() {
 
     private fun openWith(uri: Uri, fileName: String) {
         val mimeType = resolveMimeType(uri, fileName)
+        Log.d(
+            TAG,
+            "[ui-locate] openWith start, file=$fileName, uri=$uri, mimeType=$mimeType",
+        )
         val intent = Intent(Intent.ACTION_VIEW).apply {
             if (mimeType.isNullOrBlank()) {
                 data = uri
@@ -631,7 +670,16 @@ class DownloadsFragment : Fragment() {
                     getString(R.string.download_action_open_with),
                 ),
             )
+            Log.d(
+                TAG,
+                "[ui-locate] openWith chooser launched, file=$fileName, uri=$uri",
+            )
         }.onFailure { err ->
+            Log.w(
+                TAG,
+                "[ui-locate] openWith failed, file=$fileName, uri=$uri, mimeType=$mimeType, error=${err.message}",
+                err,
+            )
             if (err is ActivityNotFoundException) {
                 Toast.makeText(
                     requireContext(),
@@ -644,6 +692,10 @@ class DownloadsFragment : Fragment() {
 
     private fun shareWith(uri: Uri, fileName: String) {
         val mimeType = resolveMimeType(uri, fileName) ?: "*/*"
+        Log.d(
+            TAG,
+            "[ui-locate] shareWith start, file=$fileName, uri=$uri, mimeType=$mimeType",
+        )
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = mimeType
             putExtra(Intent.EXTRA_STREAM, uri)
@@ -656,7 +708,16 @@ class DownloadsFragment : Fragment() {
                     getString(R.string.download_action_share),
                 ),
             )
+            Log.d(
+                TAG,
+                "[ui-locate] shareWith chooser launched, file=$fileName, uri=$uri",
+            )
         }.onFailure { err ->
+            Log.w(
+                TAG,
+                "[ui-locate] shareWith failed, file=$fileName, uri=$uri, mimeType=$mimeType, error=${err.message}",
+                err,
+            )
             if (err is ActivityNotFoundException) {
                 Toast.makeText(
                     requireContext(),
@@ -669,10 +730,68 @@ class DownloadsFragment : Fragment() {
 
     private fun resolveMimeType(uri: Uri, fileName: String): String? {
         val resolverType = requireContext().contentResolver.getType(uri)
-        if (!resolverType.isNullOrBlank()) return resolverType
+        if (!resolverType.isNullOrBlank()) {
+            Log.d(
+                TAG,
+                "[ui-locate] resolveMimeType by contentResolver, file=$fileName, uri=$uri, mimeType=$resolverType",
+            )
+            return resolverType
+        }
         val ext = fileName.substringAfterLast('.', "").lowercase(Locale.getDefault())
-        if (ext.isBlank()) return null
-        return MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
+        if (ext.isBlank()) {
+            Log.d(
+                TAG,
+                "[ui-locate] resolveMimeType failed: no extension, file=$fileName, uri=$uri",
+            )
+            return null
+        }
+        val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
+        Log.d(
+            TAG,
+            "[ui-locate] resolveMimeType by extension, file=$fileName, ext=$ext, mimeType=$mime",
+        )
+        return mime
+    }
+
+    private fun isUriReadyForUserAction(uri: Uri): Boolean {
+        val resolver = requireContext().contentResolver
+        val pending = runCatching {
+            resolver.query(
+                uri,
+                arrayOf(MediaStore.Downloads.IS_PENDING),
+                null,
+                null,
+                null,
+            )?.use { cursor ->
+                val pendingIndex = cursor.getColumnIndex(MediaStore.Downloads.IS_PENDING)
+                if (pendingIndex >= 0 && cursor.moveToFirst()) {
+                    cursor.getInt(pendingIndex)
+                } else {
+                    null
+                }
+            }
+        }.getOrNull()
+        if (pending == 1) {
+            Log.w(
+                TAG,
+                "[ui-locate] uri pending=1, block action, uri=$uri",
+            )
+            return false
+        }
+        val accessible = runCatching {
+            resolver.openFileDescriptor(uri, "r")?.use { true } ?: false
+        }.onFailure { err ->
+            Log.w(
+                TAG,
+                "[ui-locate] uri access check failed, uri=$uri, error=${err.message}",
+                err,
+            )
+        }.getOrDefault(false)
+        Log.d(
+            TAG,
+            "[ui-locate] uri ready check, uri=$uri, pending=$pending, accessible=$accessible",
+        )
+        return accessible
     }
 
     private fun copyLocation(path: String) {
@@ -690,11 +809,19 @@ class DownloadsFragment : Fragment() {
     }
 
     private fun showUnavailable() {
+        Log.w(
+            TAG,
+            "[ui-locate] show unavailable toast",
+        )
         Toast.makeText(
             requireContext(),
             getString(R.string.download_action_unavailable),
             Toast.LENGTH_SHORT,
         ).show()
+    }
+
+    companion object {
+        private const val TAG = "DownloadsFragment"
     }
 
     override fun onDestroyView() {
