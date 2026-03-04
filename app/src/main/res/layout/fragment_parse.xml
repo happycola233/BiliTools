@@ -987,7 +987,67 @@
                         android:layout_height="wrap_content"
                         android:inputType="none" />
                 </com.google.android.material.textfield.TextInputLayout>
-                
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="horizontal">
+
+                    <FrameLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/subtitle_copy_now"
+                            style="@style/Widget.Material3.Button.TonalButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="52dp"
+                            android:maxLines="1"
+                            android:text="@string/parse_copy_subtitle_now"
+                            app:icon="@drawable/ic_content_copy_24"
+                            app:iconTint="?attr/colorOnSecondaryContainer" />
+
+                        <com.google.android.material.progressindicator.CircularProgressIndicator
+                            android:id="@+id/subtitle_copy_loading"
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_gravity="center"
+                            android:indeterminate="true"
+                            android:visibility="gone"
+                            app:indicatorColor="?attr/colorOnSecondaryContainer"
+                            app:trackThickness="3dp" />
+                    </FrameLayout>
+
+                    <FrameLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/ai_summary_copy_now"
+                            style="@style/Widget.Material3.Button.TonalButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="52dp"
+                            android:maxLines="1"
+                            android:text="@string/parse_copy_ai_summary_now"
+                            app:icon="@drawable/ic_content_copy_24"
+                            app:iconTint="?attr/colorOnSecondaryContainer" />
+
+                        <com.google.android.material.progressindicator.CircularProgressIndicator
+                            android:id="@+id/ai_summary_copy_loading"
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_gravity="center"
+                            android:indeterminate="true"
+                            android:visibility="gone"
+                            app:indicatorColor="?attr/colorOnSecondaryContainer"
+                            app:trackThickness="3dp" />
+                    </FrameLayout>
+                </LinearLayout>
+
                 <com.google.android.material.divider.MaterialDivider
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"

@@ -28,7 +28,10 @@ import com.happycola233.bilitools.data.model.StreamFormat
 import com.happycola233.bilitools.data.model.SubtitleInfo
 import com.happycola233.bilitools.data.model.VideoCodec
 import com.happycola233.bilitools.data.model.VideoStream
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -63,16 +66,54 @@ private data class ItemPresentationDetail(
     val description: String?,
 )
 
+private data class DownloadTargets(
+    val isCollectionMode: Boolean,
+    val items: List<MediaItem>,
+    val pageCountByBvid: Map<String, Int>,
+    val videoTitleByBvid: Map<String, String>,
+)
+
+private data class GroupNaming(
+    val groupTitle: String,
+    val groupSubtitle: String?,
+    val baseName: String,
+    val useVideoNaming: Boolean,
+    val pageCount: Int,
+    val videoTitle: String,
+)
+
 enum class QualityMode {
     Highest,
     Lowest,
     Fixed,
 }
 
+data class SubtitleCopyEntry(
+    val title: String,
+    val subtitleName: String?,
+    val content: String?,
+    val error: String? = null,
+)
+
+data class AiSummaryCopyEntry(
+    val title: String,
+    val content: String?,
+    val error: String? = null,
+)
+
+sealed class ParseEvent {
+    data class CopySingleSubtitle(val entry: SubtitleCopyEntry) : ParseEvent()
+    data class ShowSubtitleCopyDialog(val entries: List<SubtitleCopyEntry>) : ParseEvent()
+    data class CopySingleAiSummary(val entry: AiSummaryCopyEntry) : ParseEvent()
+    data class ShowAiSummaryCopyDialog(val entries: List<AiSummaryCopyEntry>) : ParseEvent()
+}
+
 data class ParseUiState(
     val loading: Boolean = false,
     val streamLoading: Boolean = false,
     val downloadStarting: Boolean = false,
+    val subtitleCopying: Boolean = false,
+    val aiSummaryCopying: Boolean = false,
     val error: String? = null,
     val notice: String? = null,
     val mediaInfo: MediaInfo? = null,
@@ -133,6 +174,8 @@ class ParseViewModel(
 ) : ViewModel() {
     private val _state = MutableStateFlow(ParseUiState())
     val state: StateFlow<ParseUiState> = _state.asStateFlow()
+    private val _events = MutableSharedFlow<ParseEvent>(extraBufferCapacity = 1)
+    val events: SharedFlow<ParseEvent> = _events.asSharedFlow()
     private val fullResolutionIds = listOf(127, 126, 125, 120, 116, 112, 80, 64, 32, 16, 6)
     private val fullAudioIds = listOf(30280, 30232, 30216)
     private val offsetMap = mutableMapOf<Int, String>()
@@ -826,90 +869,9 @@ class ParseViewModel(
             }
             val snapshot = state
             viewModelScope.launch(Dispatchers.IO) {
-                val isCollectionMode = snapshot.collectionMode && info.type == MediaType.Video
-                val pageCountByBvid = mutableMapOf<String, Int>()
-                val videoTitleByBvid = mutableMapOf<String, String>()
-                val collectionTitlesByBvid = if (!isCollectionMode &&
-                    info.type == MediaType.Video &&
-                    info.collection
-                ) {
-                    runCatching {
-                        mediaRepository.getMediaInfo(
-                            info.id,
-                            info.type,
-                            com.happycola233.bilitools.data.model.MediaQueryOptions(collection = true),
-                        ).list.mapNotNull { item ->
-                            val bvid = item.bvid?.trim().orEmpty()
-                            val title = item.title.trim()
-                            if (bvid.isNotBlank() && title.isNotBlank()) bvid to title else null
-                        }.toMap()
-                    }.getOrDefault(emptyMap())
-                } else {
-                    emptyMap()
-                }
-                val defaultVideoTitle = if (info.type == MediaType.Video) {
-                    val sectionTitle = info.sections?.let { sections ->
-                        sections.tabs.firstOrNull { it.id == sections.target }?.name
-                    }?.trim().orEmpty()
-                    when {
-                        sectionTitle.isNotBlank() -> sectionTitle
-                        !info.collection -> info.nfo.showTitle?.trim().orEmpty()
-                        else -> ""
-                    }
-                } else {
-                    ""
-                }
-                val selectedItems = selectedIndices.mapNotNull { snapshot.items.getOrNull(it) }
-                val items = if (isCollectionMode) {
-                    selectedItems.flatMap { episode ->
-                        val pages = runCatching { mediaRepository.getVideoPages(episode) }
-                            .getOrDefault(listOf(episode))
-                        val episodeTitle = episode.title.trim().ifBlank { defaultVideoTitle }
-                        val episodeBvid = episode.bvid?.trim().orEmpty()
-                        if (episodeBvid.isNotBlank()) {
-                            pageCountByBvid[episodeBvid] = pages.size
-                            if (episodeTitle.isNotBlank()) {
-                                videoTitleByBvid[episodeBvid] = episodeTitle
-                            }
-                        }
-                        if (pages.size <= 1) {
-                            val page = pages.firstOrNull() ?: episode
-                            listOf(page.copy(title = episode.title))
-                        } else {
-                            pages.map { page ->
-                                val title = page.title.ifBlank { episode.title }
-                                page.copy(title = title)
-                            }
-                        }
-                    }
-                } else {
-                    if (info.type == MediaType.Video) {
-                        val fallbackTitle = if (defaultVideoTitle.isNotBlank()) {
-                            defaultVideoTitle
-                        } else {
-                            snapshot.items.firstOrNull()?.title?.trim().orEmpty()
-                        }
-                        snapshot.items
-                            .asSequence()
-                            .mapNotNull { item -> item.bvid?.trim()?.takeIf { it.isNotBlank() } }
-                            .distinct()
-                            .forEach { bvid ->
-                                pageCountByBvid[bvid] = snapshot.items.count { it.bvid == bvid }
-                                val mappedTitle = collectionTitlesByBvid[bvid].orEmpty()
-                                val finalTitle = when {
-                                    mappedTitle.isNotBlank() -> mappedTitle
-                                    fallbackTitle.isNotBlank() -> fallbackTitle
-                                    else -> ""
-                                }
-                                if (finalTitle.isNotBlank()) {
-                                    videoTitleByBvid[bvid] = finalTitle
-                                }
-                            }
-                    }
-                    selectedItems
-                }
+                val targets = buildDownloadTargets(snapshot, info, selectedIndices)
                 var lastDownload: DownloadItem? = null
-                items.forEach { rawItem ->
+                targets.items.forEach { rawItem ->
                     val item = runCatching { mediaRepository.resolveItemForPlay(rawItem, rawItem.type) }
                         .getOrDefault(rawItem)
                     val playUrlInfo = if (snapshot.outputType != null) {
@@ -920,76 +882,35 @@ class ParseViewModel(
                         null
                     }
                     val collectionAvailable = info.collection && !info.nfo.showTitle.isNullOrBlank()
-                    val parentTitle = info.nfo.showTitle?.trim().orEmpty()
-                    val itemTitle = item.title.trim()
-                    val groupTitle: String
-                    val groupSubtitle: String?
-                    if (isCollectionMode) {
-                        groupTitle = when {
-                            itemTitle.isNotBlank() -> itemTitle
-                            parentTitle.isNotBlank() -> parentTitle
-                            else -> "BiliTools"
-                        }
-                        groupSubtitle = null
-                    } else {
-                        val useParentTitle =
-                            (info.type == MediaType.Video && !info.collection) ||
-                            info.type == MediaType.Bangumi ||
-                            info.type == MediaType.Lesson
-                        groupTitle = when {
-                            useParentTitle && parentTitle.isNotBlank() -> parentTitle
-                            itemTitle.isNotBlank() -> itemTitle
-                            parentTitle.isNotBlank() -> parentTitle
-                            else -> "BiliTools"
-                        }
-                        groupSubtitle = when {
-                            useParentTitle && parentTitle.isNotBlank() && itemTitle.isNotBlank() &&
-                                itemTitle != parentTitle -> itemTitle
-                            !useParentTitle && parentTitle.isNotBlank() && parentTitle != itemTitle -> parentTitle
-                            else -> null
-                        }
-                    }
-                    val bvid = item.bvid?.trim().orEmpty()
-                    val pageCount = if (bvid.isNotBlank()) pageCountByBvid[bvid] ?: 0 else 0
-                    val videoTitle = if (bvid.isNotBlank()) videoTitleByBvid[bvid].orEmpty() else ""
-                    val useVideoNaming = info.type == MediaType.Video && videoTitle.isNotBlank()
-                    val pageName = if (useVideoNaming && pageCount > 1) {
-                        "${videoTitle} - P${item.index + 1}"
-                    } else if (useVideoNaming) {
-                        videoTitle
-                    } else {
-                        ""
-                    }
-                    val effectiveGroupTitle = if (useVideoNaming) pageName else groupTitle
-                    val effectiveGroupSubtitle = if (useVideoNaming) null else groupSubtitle
-                    val baseNameSource = if (effectiveGroupSubtitle.isNullOrBlank()) {
-                        effectiveGroupTitle
-                    } else {
-                        "$effectiveGroupTitle-$effectiveGroupSubtitle"
-                    }
-                    val baseName = sanitizeFileName(baseNameSource.ifBlank { "BiliTools" })
+                    val naming = resolveGroupNaming(
+                        info = info,
+                        item = item,
+                        isCollectionMode = targets.isCollectionMode,
+                        pageCountByBvid = targets.pageCountByBvid,
+                        videoTitleByBvid = targets.videoTitleByBvid,
+                    )
                     val saved = mutableListOf<String>()
 
                     val groupId = downloadRepository.createGroup(
-                        effectiveGroupTitle,
-                        effectiveGroupSubtitle,
+                        naming.groupTitle,
+                        naming.groupSubtitle,
                         item.bvid,
                         item.coverUrl,
                     )
                     val groupRelativePath = downloadRepository.groupRelativePath(groupId)
 
                     val trackTotal = when {
-                        useVideoNaming && pageCount > 0 -> pageCount
+                        naming.useVideoNaming && naming.pageCount > 0 -> naming.pageCount
                         !info.paged && info.list.size > 1 -> info.list.size
                         else -> null
                     }
                     val embeddedMetadata = buildEmbeddedMetadata(
                         info = info,
                         item = item,
-                        fallbackAlbum = if (useVideoNaming && videoTitle.isNotBlank()) {
-                            videoTitle
+                        fallbackAlbum = if (naming.useVideoNaming && naming.videoTitle.isNotBlank()) {
+                            naming.videoTitle
                         } else {
-                            effectiveGroupTitle
+                            naming.groupTitle
                         },
                         trackTotal = trackTotal,
                     )
@@ -1048,7 +969,7 @@ class ParseViewModel(
                             }
                             when (outputType) {
                                 OutputType.AudioOnly -> {
-                                    val audioName = buildAudioFileName(baseName, selectedAudio!!)
+                                    val audioName = buildAudioFileName(naming.baseName, selectedAudio!!)
                                     val mediaParams = buildMediaParams(null, null, selectedAudio)
                                     lastDownload = downloadRepository.enqueue(
                                         groupId,
@@ -1061,7 +982,12 @@ class ParseViewModel(
                                     )
                                 }
                                 OutputType.VideoOnly -> {
-                                    val videoName = buildVideoFileName(baseName, selectedVideo!!, snapshot.selectedCodec)
+                                    val videoName =
+                                        buildVideoFileName(
+                                            naming.baseName,
+                                            selectedVideo!!,
+                                            snapshot.selectedCodec,
+                                        )
                                     val mediaParams = buildMediaParams(selectedVideo, snapshot.selectedCodec, null)
                                     lastDownload = downloadRepository.enqueue(
                                         groupId,
@@ -1076,7 +1002,11 @@ class ParseViewModel(
                                 OutputType.AudioVideo -> {
                                     if (playUrlInfo.format == StreamFormat.Dash && selectedAudio != null) {
                                         val outputName =
-                                            buildMergedFileName(baseName, mergeVideo!!, snapshot.selectedCodec)
+                                            buildMergedFileName(
+                                                naming.baseName,
+                                                mergeVideo!!,
+                                                snapshot.selectedCodec,
+                                            )
                                         val mediaParams = buildMediaParams(mergeVideo, snapshot.selectedCodec, selectedAudio)
                                         lastDownload = downloadRepository.enqueueDashMerge(
                                             groupId,
@@ -1089,7 +1019,11 @@ class ParseViewModel(
                                         )
                                     } else {
                                         val videoName =
-                                            buildVideoFileName(baseName, mergeVideo!!, snapshot.selectedCodec)
+                                            buildVideoFileName(
+                                                naming.baseName,
+                                                mergeVideo!!,
+                                                snapshot.selectedCodec,
+                                            )
                                         val mediaParams = buildMediaParams(mergeVideo, snapshot.selectedCodec, selectedAudio)
                                         lastDownload = downloadRepository.enqueue(
                                             groupId,
@@ -1115,10 +1049,9 @@ class ParseViewModel(
                         } else {
                             emptyList()
                         }
-                        val subtitle = subtitles.firstOrNull { it.lan == snapshot.selectedSubtitleLan }
-                            ?: if (snapshot.selectedSubtitleLan == null) subtitles.firstOrNull() else null
+                        val subtitle = selectSubtitle(subtitles, snapshot.selectedSubtitleLan)
                         if (subtitle != null) {
-                            val prefix = prefixedName(subtitleTitle, baseName)
+                            val prefix = prefixedName(subtitleTitle, naming.baseName)
                             val name = sanitizeFileName("$prefix.${subtitle.lan}.srt")
                             saveBytesTask(
                                 groupId,
@@ -1151,7 +1084,7 @@ class ParseViewModel(
                         val taskTitle = strings.get(R.string.parse_ai_summary_label)
                         if (aid != null && cid != null && bvid != null) {
                             val summaryTitle = info.nfo.showTitle?.ifBlank { item.title } ?: item.title
-                            val prefix = prefixedName(taskTitle, baseName)
+                            val prefix = prefixedName(taskTitle, naming.baseName)
                             val name = sanitizeFileName("$prefix.md")
                             saveTextTask(
                                 groupId,
@@ -1207,7 +1140,7 @@ class ParseViewModel(
                     }
                     if (snapshot.nfoSingleEnabled) {
                         val taskTitle = strings.get(R.string.parse_nfo_single)
-                        val prefix = prefixedName(taskTitle, baseName)
+                        val prefix = prefixedName(taskTitle, naming.baseName)
                         val name = sanitizeFileName("$prefix.nfo")
                         saveTextTask(
                             groupId,
@@ -1226,7 +1159,7 @@ class ParseViewModel(
                         val cid = item.cid
                         val duration = item.duration
                         val taskTitle = strings.get(R.string.parse_danmaku_live)
-                        val prefix = prefixedName(taskTitle, baseName)
+                        val prefix = prefixedName(taskTitle, naming.baseName)
                         val name = sanitizeFileName("$prefix.ass")
                         if (aid != null && cid != null) {
                             saveBytesTask(
@@ -1293,7 +1226,7 @@ class ParseViewModel(
                             )
                             _state.update { it.copy(error = message) }
                         } else {
-                            val prefix = prefixedName(taskTitle, baseName)
+                            val prefix = prefixedName(taskTitle, naming.baseName)
                             val name = sanitizeFileName("$prefix.ass")
                             saveBytesTask(
                                 groupId,
@@ -1329,7 +1262,7 @@ class ParseViewModel(
                                     "cover", "pic" -> DownloadTaskType.Cover
                                     else -> DownloadTaskType.CollectionCover
                                 }
-                                val prefix = prefixedName(fileLabel, baseName)
+                                val prefix = prefixedName(fileLabel, naming.baseName)
                                 val name = sanitizeFileName(
                                     "$prefix.${extensionFromUrl(thumb.url)}",
                                 )
@@ -1362,6 +1295,413 @@ class ParseViewModel(
                 _state.update { it.copy(lastDownload = lastDownload) }
             }
         }
+    }
+
+    fun copySubtitlesNow() {
+        val snapshot = _state.value
+        val info = snapshot.mediaInfo ?: return
+        if (snapshot.subtitleCopying || snapshot.aiSummaryCopying) return
+        val selectedIndices = snapshot.selectedItemIndices.filter { it in snapshot.items.indices }
+        if (selectedIndices.isEmpty()) {
+            _state.update { it.copy(error = strings.get(R.string.parse_error_no_selection)) }
+            return
+        }
+        viewModelScope.launch {
+            _state.update {
+                it.copy(
+                    subtitleCopying = true,
+                    error = null,
+                    notice = null,
+                )
+            }
+            val entries = runCatching {
+                withContext(Dispatchers.IO) {
+                    buildSubtitleCopyEntries(snapshot, info, selectedIndices)
+                }
+            }.getOrElse { err ->
+                val message = mapError(err)
+                _state.update {
+                    it.copy(
+                        subtitleCopying = false,
+                        error = message,
+                        notice = message,
+                    )
+                }
+                return@launch
+            }
+            val availableCount = entries.count { !it.content.isNullOrBlank() }
+            if (availableCount <= 0) {
+                val message = strings.get(R.string.parse_error_no_subtitle)
+                _state.update {
+                    it.copy(
+                        subtitleCopying = false,
+                        error = message,
+                        notice = message,
+                    )
+                }
+                return@launch
+            }
+            _state.update { it.copy(subtitleCopying = false) }
+            if (entries.size <= 1) {
+                val entry = entries.firstOrNull()
+                if (entry?.content.isNullOrBlank()) {
+                    val message = strings.get(R.string.parse_error_no_subtitle)
+                    _state.update {
+                        it.copy(
+                            error = message,
+                            notice = message,
+                        )
+                    }
+                    return@launch
+                }
+                if (entry != null) {
+                    _events.emit(ParseEvent.CopySingleSubtitle(entry))
+                }
+                return@launch
+            }
+            _events.emit(ParseEvent.ShowSubtitleCopyDialog(entries))
+        }
+    }
+
+    fun copyAiSummariesNow() {
+        val snapshot = _state.value
+        val info = snapshot.mediaInfo ?: return
+        if (snapshot.subtitleCopying || snapshot.aiSummaryCopying) return
+        val selectedIndices = snapshot.selectedItemIndices.filter { it in snapshot.items.indices }
+        if (selectedIndices.isEmpty()) {
+            _state.update { it.copy(error = strings.get(R.string.parse_error_no_selection)) }
+            return
+        }
+        viewModelScope.launch {
+            _state.update {
+                it.copy(
+                    aiSummaryCopying = true,
+                    error = null,
+                    notice = null,
+                )
+            }
+            val entries = runCatching {
+                withContext(Dispatchers.IO) {
+                    buildAiSummaryCopyEntries(snapshot, info, selectedIndices)
+                }
+            }.getOrElse { err ->
+                val message = mapError(err)
+                _state.update {
+                    it.copy(
+                        aiSummaryCopying = false,
+                        error = message,
+                        notice = message,
+                    )
+                }
+                return@launch
+            }
+            val availableCount = entries.count { !it.content.isNullOrBlank() }
+            if (availableCount <= 0) {
+                val message = strings.get(R.string.parse_error_no_ai)
+                _state.update {
+                    it.copy(
+                        aiSummaryCopying = false,
+                        error = message,
+                        notice = message,
+                    )
+                }
+                return@launch
+            }
+            _state.update { it.copy(aiSummaryCopying = false) }
+            if (entries.size <= 1) {
+                val entry = entries.firstOrNull()
+                if (entry?.content.isNullOrBlank()) {
+                    val message = strings.get(R.string.parse_error_no_ai)
+                    _state.update {
+                        it.copy(
+                            error = message,
+                            notice = message,
+                        )
+                    }
+                    return@launch
+                }
+                if (entry != null) {
+                    _events.emit(ParseEvent.CopySingleAiSummary(entry))
+                }
+                return@launch
+            }
+            _events.emit(ParseEvent.ShowAiSummaryCopyDialog(entries))
+        }
+    }
+
+    private suspend fun buildSubtitleCopyEntries(
+        snapshot: ParseUiState,
+        info: MediaInfo,
+        selectedIndices: List<Int>,
+    ): List<SubtitleCopyEntry> {
+        val targets = buildDownloadTargets(snapshot, info, selectedIndices)
+        return targets.items.map { rawItem ->
+            val item = runCatching { mediaRepository.resolveItemForPlay(rawItem, rawItem.type) }
+                .getOrDefault(rawItem)
+            val naming = resolveGroupNaming(
+                info = info,
+                item = item,
+                isCollectionMode = targets.isCollectionMode,
+                pageCountByBvid = targets.pageCountByBvid,
+                videoTitleByBvid = targets.videoTitleByBvid,
+            )
+            val aid = item.aid
+            val cid = item.cid
+            val subtitles = if (aid != null && cid != null) {
+                runCatching { extrasRepository.getSubtitles(aid, cid) }.getOrDefault(emptyList())
+            } else {
+                emptyList()
+            }
+            val subtitle = selectSubtitle(subtitles, snapshot.selectedSubtitleLan)
+            val title = buildSubtitleEntryTitle(naming.groupTitle, naming.groupSubtitle)
+            if (subtitle == null) {
+                SubtitleCopyEntry(
+                    title = title,
+                    subtitleName = null,
+                    content = null,
+                    error = strings.get(R.string.parse_error_no_subtitle),
+                )
+            } else {
+                val content = runCatching {
+                    decodeSubtitleContent(extrasRepository.getSubtitleSrt(subtitle))
+                }.getOrNull()
+                if (content.isNullOrBlank()) {
+                    SubtitleCopyEntry(
+                        title = title,
+                        subtitleName = subtitle.name,
+                        content = null,
+                        error = strings.get(R.string.parse_error_no_subtitle),
+                    )
+                } else {
+                    SubtitleCopyEntry(
+                        title = title,
+                        subtitleName = subtitle.name,
+                        content = content,
+                    )
+                }
+            }
+        }
+    }
+
+    private suspend fun buildAiSummaryCopyEntries(
+        snapshot: ParseUiState,
+        info: MediaInfo,
+        selectedIndices: List<Int>,
+    ): List<AiSummaryCopyEntry> {
+        val targets = buildDownloadTargets(snapshot, info, selectedIndices)
+        return targets.items.map { rawItem ->
+            val item = runCatching { mediaRepository.resolveItemForPlay(rawItem, rawItem.type) }
+                .getOrDefault(rawItem)
+            val naming = resolveGroupNaming(
+                info = info,
+                item = item,
+                isCollectionMode = targets.isCollectionMode,
+                pageCountByBvid = targets.pageCountByBvid,
+                videoTitleByBvid = targets.videoTitleByBvid,
+            )
+            val title = buildSubtitleEntryTitle(naming.groupTitle, naming.groupSubtitle)
+            val aid = item.aid
+            val cid = item.cid
+            val bvid = item.bvid
+            if (aid == null || cid == null || bvid.isNullOrBlank()) {
+                AiSummaryCopyEntry(
+                    title = title,
+                    content = null,
+                    error = strings.get(R.string.parse_error_no_ai),
+                )
+            } else {
+                val summaryTitle = info.nfo.showTitle?.ifBlank { item.title } ?: item.title
+                val content = runCatching {
+                    extrasRepository.getAiSummaryMarkdown(summaryTitle, bvid, aid, cid)
+                }.getOrNull()
+                if (content.isNullOrBlank()) {
+                    AiSummaryCopyEntry(
+                        title = title,
+                        content = null,
+                        error = strings.get(R.string.parse_error_no_ai),
+                    )
+                } else {
+                    AiSummaryCopyEntry(
+                        title = title,
+                        content = content,
+                    )
+                }
+            }
+        }
+    }
+
+    private suspend fun buildDownloadTargets(
+        snapshot: ParseUiState,
+        info: MediaInfo,
+        selectedIndices: List<Int>,
+    ): DownloadTargets {
+        val isCollectionMode = snapshot.collectionMode && info.type == MediaType.Video
+        val pageCountByBvid = mutableMapOf<String, Int>()
+        val videoTitleByBvid = mutableMapOf<String, String>()
+        val collectionTitlesByBvid = if (!isCollectionMode &&
+            info.type == MediaType.Video &&
+            info.collection
+        ) {
+            runCatching {
+                mediaRepository.getMediaInfo(
+                    info.id,
+                    info.type,
+                    com.happycola233.bilitools.data.model.MediaQueryOptions(collection = true),
+                ).list.mapNotNull { item ->
+                    val bvid = item.bvid?.trim().orEmpty()
+                    val title = item.title.trim()
+                    if (bvid.isNotBlank() && title.isNotBlank()) bvid to title else null
+                }.toMap()
+            }.getOrDefault(emptyMap())
+        } else {
+            emptyMap()
+        }
+        val defaultVideoTitle = if (info.type == MediaType.Video) {
+            val sectionTitle = info.sections?.let { sections ->
+                sections.tabs.firstOrNull { it.id == sections.target }?.name
+            }?.trim().orEmpty()
+            when {
+                sectionTitle.isNotBlank() -> sectionTitle
+                !info.collection -> info.nfo.showTitle?.trim().orEmpty()
+                else -> ""
+            }
+        } else {
+            ""
+        }
+        val selectedItems = selectedIndices.mapNotNull { snapshot.items.getOrNull(it) }
+        val items = if (isCollectionMode) {
+            selectedItems.flatMap { episode ->
+                val pages = runCatching { mediaRepository.getVideoPages(episode) }
+                    .getOrDefault(listOf(episode))
+                val episodeTitle = episode.title.trim().ifBlank { defaultVideoTitle }
+                val episodeBvid = episode.bvid?.trim().orEmpty()
+                if (episodeBvid.isNotBlank()) {
+                    pageCountByBvid[episodeBvid] = pages.size
+                    if (episodeTitle.isNotBlank()) {
+                        videoTitleByBvid[episodeBvid] = episodeTitle
+                    }
+                }
+                if (pages.size <= 1) {
+                    val page = pages.firstOrNull() ?: episode
+                    listOf(page.copy(title = episode.title))
+                } else {
+                    pages.map { page ->
+                        val title = page.title.ifBlank { episode.title }
+                        page.copy(title = title)
+                    }
+                }
+            }
+        } else {
+            if (info.type == MediaType.Video) {
+                val fallbackTitle = if (defaultVideoTitle.isNotBlank()) {
+                    defaultVideoTitle
+                } else {
+                    snapshot.items.firstOrNull()?.title?.trim().orEmpty()
+                }
+                snapshot.items
+                    .asSequence()
+                    .mapNotNull { item -> item.bvid?.trim()?.takeIf { it.isNotBlank() } }
+                    .distinct()
+                    .forEach { bvid ->
+                        pageCountByBvid[bvid] = snapshot.items.count { it.bvid == bvid }
+                        val mappedTitle = collectionTitlesByBvid[bvid].orEmpty()
+                        val finalTitle = when {
+                            mappedTitle.isNotBlank() -> mappedTitle
+                            fallbackTitle.isNotBlank() -> fallbackTitle
+                            else -> ""
+                        }
+                        if (finalTitle.isNotBlank()) {
+                            videoTitleByBvid[bvid] = finalTitle
+                        }
+                    }
+            }
+            selectedItems
+        }
+        return DownloadTargets(
+            isCollectionMode = isCollectionMode,
+            items = items,
+            pageCountByBvid = pageCountByBvid,
+            videoTitleByBvid = videoTitleByBvid,
+        )
+    }
+
+    private fun resolveGroupNaming(
+        info: MediaInfo,
+        item: MediaItem,
+        isCollectionMode: Boolean,
+        pageCountByBvid: Map<String, Int>,
+        videoTitleByBvid: Map<String, String>,
+    ): GroupNaming {
+        val parentTitle = info.nfo.showTitle?.trim().orEmpty()
+        val itemTitle = item.title.trim()
+        val groupTitle: String
+        val groupSubtitle: String?
+        if (isCollectionMode) {
+            groupTitle = when {
+                itemTitle.isNotBlank() -> itemTitle
+                parentTitle.isNotBlank() -> parentTitle
+                else -> "BiliTools"
+            }
+            groupSubtitle = null
+        } else {
+            val useParentTitle =
+                (info.type == MediaType.Video && !info.collection) ||
+                    info.type == MediaType.Bangumi ||
+                    info.type == MediaType.Lesson
+            groupTitle = when {
+                useParentTitle && parentTitle.isNotBlank() -> parentTitle
+                itemTitle.isNotBlank() -> itemTitle
+                parentTitle.isNotBlank() -> parentTitle
+                else -> "BiliTools"
+            }
+            groupSubtitle = when {
+                useParentTitle && parentTitle.isNotBlank() && itemTitle.isNotBlank() &&
+                    itemTitle != parentTitle -> itemTitle
+                !useParentTitle && parentTitle.isNotBlank() && parentTitle != itemTitle -> parentTitle
+                else -> null
+            }
+        }
+        val bvid = item.bvid?.trim().orEmpty()
+        val pageCount = if (bvid.isNotBlank()) pageCountByBvid[bvid] ?: 0 else 0
+        val videoTitle = if (bvid.isNotBlank()) videoTitleByBvid[bvid].orEmpty() else ""
+        val useVideoNaming = info.type == MediaType.Video && videoTitle.isNotBlank()
+        val pageName = if (useVideoNaming && pageCount > 1) {
+            "${videoTitle} - P${item.index + 1}"
+        } else if (useVideoNaming) {
+            videoTitle
+        } else {
+            ""
+        }
+        val effectiveGroupTitle = if (useVideoNaming) pageName else groupTitle
+        val effectiveGroupSubtitle = if (useVideoNaming) null else groupSubtitle
+        val baseNameSource = if (effectiveGroupSubtitle.isNullOrBlank()) {
+            effectiveGroupTitle
+        } else {
+            "$effectiveGroupTitle-$effectiveGroupSubtitle"
+        }
+        return GroupNaming(
+            groupTitle = effectiveGroupTitle,
+            groupSubtitle = effectiveGroupSubtitle,
+            baseName = sanitizeFileName(baseNameSource.ifBlank { "BiliTools" }),
+            useVideoNaming = useVideoNaming,
+            pageCount = pageCount,
+            videoTitle = videoTitle,
+        )
+    }
+
+    private fun selectSubtitle(subtitles: List<SubtitleInfo>, selectedLan: String?): SubtitleInfo? {
+        return subtitles.firstOrNull { it.lan == selectedLan }
+            ?: if (selectedLan == null) subtitles.firstOrNull() else null
+    }
+
+    private fun buildSubtitleEntryTitle(title: String, subtitle: String?): String {
+        return if (subtitle.isNullOrBlank()) title else "$title - $subtitle"
+    }
+
+    private fun decodeSubtitleContent(bytes: ByteArray): String {
+        return bytes
+            .toString(Charsets.UTF_8)
+            .removePrefix("\uFEFF")
     }
 
     private suspend fun refreshExtras(info: MediaInfo, item: MediaItem) {

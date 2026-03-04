@@ -1,11 +1,14 @@
 package com.happycola233.bilitools.ui.parse
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.pm.PackageManager
 import android.graphics.Rect
 import android.os.Bundle
 import android.os.Build
 import android.view.ContextThemeWrapper
+import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -16,6 +19,7 @@ import android.view.inputmethod.EditorInfo
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.widget.ArrayAdapter
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -44,6 +48,8 @@ import com.happycola233.bilitools.data.model.MediaTab
 import com.happycola233.bilitools.data.model.MediaType
 import com.happycola233.bilitools.data.model.StreamFormat
 import com.happycola233.bilitools.data.model.SubtitleInfo
+import com.happycola233.bilitools.databinding.DialogParseAiSummaryCopyBinding
+import com.happycola233.bilitools.databinding.DialogParseSubtitleCopyBinding
 import com.happycola233.bilitools.databinding.FragmentParseBinding
 import com.happycola233.bilitools.ui.AppViewModelFactory
 import com.happycola233.bilitools.ui.ExternalDownloadContract
@@ -54,6 +60,8 @@ import com.google.android.material.textfield.MaterialAutoCompleteTextView
 import com.google.android.material.textfield.TextInputLayout
 import com.google.android.material.R as MaterialR
 import kotlinx.coroutines.launch
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /**
  * Parse and download UI used by both:
@@ -542,6 +550,14 @@ class ParseFragment : Fragment() {
                 viewModel.setSubtitleEnabled(isChecked)
             }
         }
+        binding.subtitleCopyNow.setOnClickListener {
+            preserveScrollAndFocus()
+            viewModel.copySubtitlesNow()
+        }
+        binding.aiSummaryCopyNow.setOnClickListener {
+            preserveScrollAndFocus()
+            viewModel.copyAiSummariesNow()
+        }
         binding.aiSummaryToggle.setOnCheckedChangeListener { _, isChecked ->
             if (!suppressUi) {
                 preserveScrollAndFocus()
@@ -898,9 +914,43 @@ class ParseFragment : Fragment() {
                     binding.subtitleToggle.isEnabled = state.subtitleList.isNotEmpty() || allowAnyExtras
                     binding.subtitleLayout.isEnabled =
                         state.subtitleEnabled && (state.subtitleList.isNotEmpty() || allowAnyExtras)
+                    binding.subtitleCopyLoading.visibility =
+                        if (state.subtitleCopying) View.VISIBLE else View.GONE
+                    binding.subtitleCopyNow.text =
+                        if (state.subtitleCopying) "" else getString(R.string.parse_copy_subtitle_now)
+                    binding.subtitleCopyNow.icon = if (state.subtitleCopying) {
+                        null
+                    } else {
+                        ContextCompat.getDrawable(requireContext(), R.drawable.ic_content_copy_24)
+                    }
+                    binding.subtitleCopyNow.isEnabled =
+                        hasSelection &&
+                            !state.loading &&
+                            !state.streamLoading &&
+                            !state.downloadStarting &&
+                            !state.subtitleCopying &&
+                            !state.aiSummaryCopying &&
+                            (state.subtitleList.isNotEmpty() || allowAnyExtras)
 
                     binding.aiSummaryToggle.isChecked = state.aiSummaryEnabled
                     binding.aiSummaryToggle.isEnabled = state.aiSummaryAvailable || allowAnyExtras
+                    binding.aiSummaryCopyLoading.visibility =
+                        if (state.aiSummaryCopying) View.VISIBLE else View.GONE
+                    binding.aiSummaryCopyNow.text =
+                        if (state.aiSummaryCopying) "" else getString(R.string.parse_copy_ai_summary_now)
+                    binding.aiSummaryCopyNow.icon = if (state.aiSummaryCopying) {
+                        null
+                    } else {
+                        ContextCompat.getDrawable(requireContext(), R.drawable.ic_content_copy_24)
+                    }
+                    binding.aiSummaryCopyNow.isEnabled =
+                        hasSelection &&
+                            !state.loading &&
+                            !state.streamLoading &&
+                            !state.downloadStarting &&
+                            !state.subtitleCopying &&
+                            !state.aiSummaryCopying &&
+                            (state.aiSummaryAvailable || allowAnyExtras)
 
                     val collectionAvailable =
                         info?.collection == true && !info.nfo.showTitle.isNullOrBlank()
@@ -1034,6 +1084,64 @@ class ParseFragment : Fragment() {
                     updateQuickActionFab(state, quickActionEnabled)
                     suppressUi = false
                 }
+                }
+                launch {
+                    viewModel.events.collect { event ->
+                        when (event) {
+                            is ParseEvent.CopySingleSubtitle -> {
+                                val content = event.entry.content
+                                if (!content.isNullOrBlank()) {
+                                    copyTextToClipboard(
+                                        getString(
+                                            R.string.parse_subtitle_copy_clip_label_single,
+                                            event.entry.title,
+                                        ),
+                                        content,
+                                    )
+                                    Toast.makeText(
+                                        requireContext(),
+                                        getString(R.string.parse_subtitle_copy_single_done),
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                                } else {
+                                    Toast.makeText(
+                                        requireContext(),
+                                        event.entry.error ?: getString(R.string.parse_error_no_subtitle),
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                                }
+                            }
+                            is ParseEvent.ShowSubtitleCopyDialog -> {
+                                showSubtitleCopyDialog(event.entries)
+                            }
+                            is ParseEvent.CopySingleAiSummary -> {
+                                val content = event.entry.content
+                                if (!content.isNullOrBlank()) {
+                                    copyTextToClipboard(
+                                        getString(
+                                            R.string.parse_ai_summary_copy_clip_label_single,
+                                            event.entry.title,
+                                        ),
+                                        content,
+                                    )
+                                    Toast.makeText(
+                                        requireContext(),
+                                        getString(R.string.parse_ai_summary_copy_single_done),
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                                } else {
+                                    Toast.makeText(
+                                        requireContext(),
+                                        event.entry.error ?: getString(R.string.parse_error_no_ai),
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                                }
+                            }
+                            is ParseEvent.ShowAiSummaryCopyDialog -> {
+                                showAiSummaryCopyDialog(event.entries)
+                            }
+                        }
+                    }
                 }
                 launch {
                     settingsRepository.settings.collect { settings ->
@@ -1232,6 +1340,330 @@ class ParseFragment : Fragment() {
             caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
                 caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
         return !hasWifiLikeTransport && cm.isActiveNetworkMetered
+    }
+
+    private fun copyTextToClipboard(label: String, content: String) {
+        val clipboard = requireContext().getSystemService(ClipboardManager::class.java) ?: return
+        clipboard.setPrimaryClip(ClipData.newPlainText(label, content))
+    }
+
+    private fun showSubtitleCopyDialog(entries: List<SubtitleCopyEntry>) {
+        if (entries.isEmpty()) return
+        val dialogBinding = DialogParseSubtitleCopyBinding.inflate(layoutInflater)
+        val labels = entries.map { entry ->
+            val subtitlePart = entry.subtitleName?.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()
+            val base = "${entry.title}$subtitlePart"
+            if (entry.content.isNullOrBlank()) {
+                getString(R.string.parse_subtitle_copy_item_unavailable, base)
+            } else {
+                base
+            }
+        }
+        var selectedIndex = entries.indexOfFirst { !it.content.isNullOrBlank() }.takeIf { it >= 0 } ?: 0
+
+        bindLongPressScrollbar(
+            scrollView = dialogBinding.subtitleCopyPreviewScroll,
+            trackView = dialogBinding.subtitleCopyDragTrack,
+            handleView = dialogBinding.subtitleCopyDragHandle,
+        )
+
+        fun bindEntry(index: Int) {
+            val entry = entries.getOrNull(index) ?: return
+            val hasContent = !entry.content.isNullOrBlank()
+            val subtitleName = entry.subtitleName?.takeIf { it.isNotBlank() }
+                ?: getString(R.string.parse_subtitle_label)
+            dialogBinding.subtitleCopyStatus.text = if (hasContent) {
+                getString(R.string.parse_subtitle_copy_status_ready, subtitleName)
+            } else {
+                entry.error ?: getString(R.string.parse_subtitle_copy_unavailable)
+            }
+            dialogBinding.subtitleCopyPreview.text = if (hasContent) {
+                entry.content
+            } else {
+                getString(R.string.parse_subtitle_copy_preview_empty)
+            }
+            dialogBinding.subtitleCopyCurrent.isEnabled = hasContent
+            dialogBinding.subtitleCopyPreviewScroll.scrollTo(0, 0)
+        }
+
+        dialogBinding.subtitleCopyCurrent.setOnClickListener {
+            val entry = entries.getOrNull(selectedIndex) ?: return@setOnClickListener
+            val content = entry.content
+            if (content.isNullOrBlank()) {
+                Toast.makeText(
+                    requireContext(),
+                    entry.error ?: getString(R.string.parse_subtitle_copy_unavailable),
+                    Toast.LENGTH_SHORT,
+                ).show()
+                return@setOnClickListener
+            }
+            copyTextToClipboard(
+                getString(R.string.parse_subtitle_copy_clip_label_single, entry.title),
+                content,
+            )
+            Toast.makeText(
+                requireContext(),
+                getString(R.string.parse_subtitle_copy_current_done),
+                Toast.LENGTH_SHORT,
+            ).show()
+        }
+
+        val dropdownAdapter = ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_dropdown_item_1line,
+            labels,
+        )
+        dialogBinding.subtitleCopyItemDropdown.setAdapter(dropdownAdapter)
+        dialogBinding.subtitleCopyItemDropdown.setOnItemClickListener { _, _, position, _ ->
+            selectedIndex = position
+            bindEntry(position)
+        }
+        dialogBinding.subtitleCopyItemDropdown.setText(labels[selectedIndex], false)
+        bindEntry(selectedIndex)
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.parse_subtitle_copy_dialog_title)
+            .setView(dialogBinding.root)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.parse_subtitle_copy_all) { _, _ ->
+                val merged = buildMergedSubtitleText(entries)
+                if (merged.isBlank()) {
+                    Toast.makeText(
+                        requireContext(),
+                        getString(R.string.parse_subtitle_copy_unavailable),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                    return@setPositiveButton
+                }
+                copyTextToClipboard(getString(R.string.parse_subtitle_copy_clip_label_all), merged)
+                Toast.makeText(
+                    requireContext(),
+                    getString(R.string.parse_subtitle_copy_all_done),
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+            .show()
+    }
+
+    private fun showAiSummaryCopyDialog(entries: List<AiSummaryCopyEntry>) {
+        if (entries.isEmpty()) return
+        val dialogBinding = DialogParseAiSummaryCopyBinding.inflate(layoutInflater)
+        val labels = entries.map { entry ->
+            val base = entry.title
+            if (entry.content.isNullOrBlank()) {
+                getString(R.string.parse_ai_summary_copy_item_unavailable, base)
+            } else {
+                base
+            }
+        }
+        var selectedIndex = entries.indexOfFirst { !it.content.isNullOrBlank() }.takeIf { it >= 0 } ?: 0
+
+        bindLongPressScrollbar(
+            scrollView = dialogBinding.aiSummaryCopyPreviewScroll,
+            trackView = dialogBinding.aiSummaryCopyDragTrack,
+            handleView = dialogBinding.aiSummaryCopyDragHandle,
+        )
+
+        fun bindEntry(index: Int) {
+            val entry = entries.getOrNull(index) ?: return
+            val hasContent = !entry.content.isNullOrBlank()
+            dialogBinding.aiSummaryCopyStatus.text = if (hasContent) {
+                getString(R.string.parse_ai_summary_copy_status_ready)
+            } else {
+                entry.error ?: getString(R.string.parse_ai_summary_copy_unavailable)
+            }
+            dialogBinding.aiSummaryCopyPreview.text = if (hasContent) {
+                entry.content
+            } else {
+                getString(R.string.parse_ai_summary_copy_preview_empty)
+            }
+            dialogBinding.aiSummaryCopyCurrent.isEnabled = hasContent
+            dialogBinding.aiSummaryCopyPreviewScroll.scrollTo(0, 0)
+        }
+
+        dialogBinding.aiSummaryCopyCurrent.setOnClickListener {
+            val entry = entries.getOrNull(selectedIndex) ?: return@setOnClickListener
+            val content = entry.content
+            if (content.isNullOrBlank()) {
+                Toast.makeText(
+                    requireContext(),
+                    entry.error ?: getString(R.string.parse_ai_summary_copy_unavailable),
+                    Toast.LENGTH_SHORT,
+                ).show()
+                return@setOnClickListener
+            }
+            copyTextToClipboard(
+                getString(R.string.parse_ai_summary_copy_clip_label_single, entry.title),
+                content,
+            )
+            Toast.makeText(
+                requireContext(),
+                getString(R.string.parse_ai_summary_copy_current_done),
+                Toast.LENGTH_SHORT,
+            ).show()
+        }
+
+        val dropdownAdapter = ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_dropdown_item_1line,
+            labels,
+        )
+        dialogBinding.aiSummaryCopyItemDropdown.setAdapter(dropdownAdapter)
+        dialogBinding.aiSummaryCopyItemDropdown.setOnItemClickListener { _, _, position, _ ->
+            selectedIndex = position
+            bindEntry(position)
+        }
+        dialogBinding.aiSummaryCopyItemDropdown.setText(labels[selectedIndex], false)
+        bindEntry(selectedIndex)
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.parse_ai_summary_copy_dialog_title)
+            .setView(dialogBinding.root)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.parse_ai_summary_copy_all) { _, _ ->
+                val merged = buildMergedAiSummaryText(entries)
+                if (merged.isBlank()) {
+                    Toast.makeText(
+                        requireContext(),
+                        getString(R.string.parse_ai_summary_copy_unavailable),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                    return@setPositiveButton
+                }
+                copyTextToClipboard(getString(R.string.parse_ai_summary_copy_clip_label_all), merged)
+                Toast.makeText(
+                    requireContext(),
+                    getString(R.string.parse_ai_summary_copy_all_done),
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+            .show()
+    }
+
+    private fun bindLongPressScrollbar(
+        scrollView: ScrollView,
+        trackView: View,
+        handleView: View,
+    ) {
+        val touchSlop = ViewConfiguration.get(scrollView.context).scaledTouchSlop
+        val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
+        val minHandleHeightPx = (52f * resources.displayMetrics.density).roundToInt()
+        var dragEnabled = false
+        var downRawY = 0f
+        var downHandleOffset = 0f
+
+        fun updateHandle() {
+            val contentHeight = scrollView.getChildAt(0)?.height ?: 0
+            val viewportHeight = scrollView.height
+            val trackHeight = trackView.height
+            if (contentHeight <= viewportHeight || viewportHeight <= 0 || trackHeight <= 0) {
+                trackView.visibility = View.INVISIBLE
+                handleView.visibility = View.INVISIBLE
+                handleView.translationY = 0f
+                return
+            }
+
+            trackView.visibility = View.VISIBLE
+            handleView.visibility = View.VISIBLE
+            val targetHeight = ((viewportHeight.toFloat() / contentHeight.toFloat()) * trackHeight)
+                .roundToInt()
+                .coerceIn(minHandleHeightPx, trackHeight)
+            handleView.updateLayoutParams<ViewGroup.LayoutParams> {
+                if (height != targetHeight) {
+                    height = targetHeight
+                }
+            }
+
+            val maxScroll = (contentHeight - viewportHeight).coerceAtLeast(1)
+            val maxHandleOffset = (trackHeight - targetHeight).toFloat().coerceAtLeast(0f)
+            handleView.translationY = if (maxHandleOffset == 0f) {
+                0f
+            } else {
+                (scrollView.scrollY / maxScroll.toFloat()) * maxHandleOffset
+            }
+        }
+
+        scrollView.setOnScrollChangeListener { _, _, _, _, _ ->
+            if (!dragEnabled) {
+                updateHandle()
+            }
+        }
+
+        trackView.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            updateHandle()
+        }
+        scrollView.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            updateHandle()
+        }
+        scrollView.getChildAt(0)?.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            updateHandle()
+        }
+        scrollView.post { updateHandle() }
+
+        val enableDrag = Runnable {
+            dragEnabled = true
+            handleView.isPressed = true
+            handleView.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+            handleView.parent?.requestDisallowInterceptTouchEvent(true)
+        }
+
+        handleView.setOnTouchListener { v, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    if (handleView.visibility != View.VISIBLE) return@setOnTouchListener false
+                    downRawY = event.rawY
+                    downHandleOffset = handleView.translationY
+                    dragEnabled = false
+                    v.removeCallbacks(enableDrag)
+                    v.postDelayed(enableDrag, longPressTimeout)
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val deltaY = event.rawY - downRawY
+                    if (!dragEnabled && abs(deltaY) > touchSlop) {
+                        v.removeCallbacks(enableDrag)
+                    }
+                    if (!dragEnabled) {
+                        return@setOnTouchListener true
+                    }
+
+                    val maxHandleOffset =
+                        (trackView.height - handleView.height).toFloat().coerceAtLeast(0f)
+                    val nextOffset = (downHandleOffset + deltaY).coerceIn(0f, maxHandleOffset)
+                    handleView.translationY = nextOffset
+                    val contentHeight = scrollView.getChildAt(0)?.height ?: 0
+                    val maxScroll = (contentHeight - scrollView.height).coerceAtLeast(0)
+                    if (maxScroll > 0 && maxHandleOffset > 0f) {
+                        val targetScroll = ((nextOffset / maxHandleOffset) * maxScroll).roundToInt()
+                        scrollView.scrollTo(0, targetScroll)
+                    }
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    v.removeCallbacks(enableDrag)
+                    dragEnabled = false
+                    handleView.isPressed = false
+                    handleView.parent?.requestDisallowInterceptTouchEvent(false)
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
+    private fun buildMergedSubtitleText(entries: List<SubtitleCopyEntry>): String {
+        return entries.mapNotNull { entry ->
+            val content = entry.content?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            val subtitlePart = entry.subtitleName?.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()
+            "【${entry.title}$subtitlePart】\n$content"
+        }.joinToString("\n\n")
+    }
+
+    private fun buildMergedAiSummaryText(entries: List<AiSummaryCopyEntry>): String {
+        return entries.mapNotNull { entry ->
+            val content = entry.content?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            "【${entry.title}】\n$content"
+        }.joinToString("\n\n")
     }
 
     private data class VideoCardDisplay(
