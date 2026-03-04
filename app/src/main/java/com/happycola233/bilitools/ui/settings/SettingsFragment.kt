@@ -91,6 +91,11 @@ class SettingsFragment : Fragment() {
                 viewModel.setConfirmCellularDownload(isChecked)
             }
         }
+        binding.hideDownloadVideoInSystemAlbumSwitch.setOnCheckedChangeListener { _, isChecked ->
+            if (!suppressUi) {
+                viewModel.setHideDownloadedVideosInSystemAlbum(isChecked)
+            }
+        }
         binding.parseQuickActionSwitch.setOnCheckedChangeListener { _, isChecked ->
             if (!suppressUi) {
                 viewModel.setParseQuickActionEnabled(isChecked)
@@ -233,6 +238,8 @@ class SettingsFragment : Fragment() {
                     suppressUi = true
                     binding.addMetadataSwitch.isChecked = settings.addMetadata
                     binding.confirmCellularSwitch.isChecked = settings.confirmCellularDownload
+                    binding.hideDownloadVideoInSystemAlbumSwitch.isChecked =
+                        settings.hideDownloadedVideosInSystemAlbum
                     binding.parseQuickActionSwitch.isChecked = settings.parseQuickActionEnabled
                     binding.downloadLocationValue.text = settings.downloadRootRelativePath
                     binding.themeValueText.text = when (settings.themeMode) {

@@ -217,6 +217,58 @@
                     app:dividerInsetStart="56dp"
                     app:dividerInsetEnd="16dp"/>
 
+                <!-- Hide in System Album Switch -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:minHeight="72dp"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="12dp">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_hide_image_24"
+                        app:tint="?attr/colorOnSurfaceVariant"
+                        android:contentDescription="@null" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="16dp"
+                        android:layout_marginEnd="16dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_hide_download_video_in_system_album"
+                            android:textAppearance="@style/TextAppearance.BiliTools.Settings.ItemTitle"
+                            android:textColor="?attr/colorOnSurface" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/settings_hide_download_video_in_system_album_desc"
+                            android:textAppearance="@style/TextAppearance.BiliTools.Settings.ItemDescription"
+                            android:textColor="?attr/colorOnSurfaceVariant" />
+                    </LinearLayout>
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/hide_download_video_in_system_album_switch"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+
+                <com.google.android.material.divider.MaterialDivider
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:dividerInsetStart="56dp"
+                    app:dividerInsetEnd="16dp"/>
+
                 <!-- Download Location -->
                 <LinearLayout
                     android:id="@+id/download_location_container"

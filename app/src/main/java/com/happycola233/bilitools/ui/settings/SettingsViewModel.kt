@@ -31,6 +31,10 @@ class SettingsViewModel(
         settingsRepository.setConfirmCellularDownload(enabled)
     }
 
+    fun setHideDownloadedVideosInSystemAlbum(enabled: Boolean) {
+        settingsRepository.setHideDownloadedVideosInSystemAlbum(enabled)
+    }
+
     fun setParseQuickActionEnabled(enabled: Boolean) {
         settingsRepository.setParseQuickActionEnabled(enabled)
     }

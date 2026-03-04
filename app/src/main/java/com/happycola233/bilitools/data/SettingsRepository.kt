@@ -5,9 +5,14 @@ import android.net.Uri
 import android.os.Environment
 import android.provider.DocumentsContract
 import androidx.appcompat.app.AppCompatDelegate
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 data class AppSettings(
     val addMetadata: Boolean = true,
@@ -16,6 +21,7 @@ data class AppSettings(
     val darkModePureBlack: Boolean = false,
     val downloadRootRelativePath: String = SettingsRepository.DEFAULT_DOWNLOAD_ROOT,
     val confirmCellularDownload: Boolean = true,
+    val hideDownloadedVideosInSystemAlbum: Boolean = false,
     val parseQuickActionEnabled: Boolean = true,
     val downloadsGlassDebugEnabled: Boolean = false,
     val downloadsGlassCornerRadiusDp: Float = SettingsRepository.DEFAULT_DOWNLOADS_GLASS_CORNER_RADIUS_DP,
@@ -55,13 +61,18 @@ enum class AppThemeColor(val value: String) {
 }
 
 class SettingsRepository(context: Context) {
-    private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val appContext = context.applicationContext
+    private val prefs = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val settingsScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val galleryVisibilityManager = DownloadGalleryVisibilityManager(appContext)
+    private var galleryVisibilityJob: Job? = null
 
     private val _settings = MutableStateFlow(loadSettings())
     val settings: StateFlow<AppSettings> = _settings.asStateFlow()
 
     init {
         applyTheme(_settings.value.themeMode)
+        scheduleDownloadGalleryVisibilitySync(_settings.value)
     }
 
     fun currentSettings(): AppSettings = _settings.value
@@ -71,6 +82,9 @@ class SettingsRepository(context: Context) {
     fun downloadRootRelativePath(): String = _settings.value.downloadRootRelativePath
 
     fun shouldConfirmCellularDownload(): Boolean = _settings.value.confirmCellularDownload
+
+    fun shouldHideDownloadedVideosInSystemAlbum(): Boolean =
+        _settings.value.hideDownloadedVideosInSystemAlbum
 
     fun shouldShowParseQuickAction(): Boolean = _settings.value.parseQuickActionEnabled
 
@@ -108,6 +122,15 @@ class SettingsRepository(context: Context) {
         if (current.confirmCellularDownload == enabled) return
         prefs.edit().putBoolean(KEY_CONFIRM_CELLULAR_DOWNLOAD, enabled).apply()
         _settings.value = current.copy(confirmCellularDownload = enabled)
+    }
+
+    fun setHideDownloadedVideosInSystemAlbum(enabled: Boolean) {
+        val current = _settings.value
+        if (current.hideDownloadedVideosInSystemAlbum == enabled) return
+        prefs.edit().putBoolean(KEY_HIDE_DOWNLOADED_VIDEOS_IN_SYSTEM_ALBUM, enabled).apply()
+        val updated = current.copy(hideDownloadedVideosInSystemAlbum = enabled)
+        _settings.value = updated
+        scheduleDownloadGalleryVisibilitySync(updated)
     }
 
     fun setParseQuickActionEnabled(enabled: Boolean) {
@@ -175,8 +198,14 @@ class SettingsRepository(context: Context) {
         val normalized = normalizeDownloadRoot(relativePath)
         val current = _settings.value
         if (current.downloadRootRelativePath == normalized) return
+        val previousRoot = current.downloadRootRelativePath
         prefs.edit().putString(KEY_DOWNLOAD_ROOT_RELATIVE_PATH, normalized).apply()
-        _settings.value = current.copy(downloadRootRelativePath = normalized)
+        val updated = current.copy(downloadRootRelativePath = normalized)
+        _settings.value = updated
+        scheduleDownloadGalleryVisibilitySync(
+            settings = updated,
+            previousRootRelativePath = previousRoot,
+        )
     }
 
     fun setDownloadRootFromTreeUri(uri: Uri): Boolean {
@@ -199,6 +228,10 @@ class SettingsRepository(context: Context) {
                 prefs.getString(KEY_DOWNLOAD_ROOT_RELATIVE_PATH, DEFAULT_DOWNLOAD_ROOT),
             ),
             confirmCellularDownload = prefs.getBoolean(KEY_CONFIRM_CELLULAR_DOWNLOAD, true),
+            hideDownloadedVideosInSystemAlbum = prefs.getBoolean(
+                KEY_HIDE_DOWNLOADED_VIDEOS_IN_SYSTEM_ALBUM,
+                false,
+            ),
             parseQuickActionEnabled = prefs.getBoolean(KEY_PARSE_QUICK_ACTION, true),
             downloadsGlassDebugEnabled = prefs.getBoolean(
                 KEY_DOWNLOADS_GLASS_DEBUG_ENABLED,
@@ -239,6 +272,30 @@ class SettingsRepository(context: Context) {
         }
         if (AppCompatDelegate.getDefaultNightMode() != nightMode) {
             AppCompatDelegate.setDefaultNightMode(nightMode)
+        }
+    }
+
+    private fun scheduleDownloadGalleryVisibilitySync(
+        settings: AppSettings,
+        previousRootRelativePath: String? = null,
+    ) {
+        val currentRoot = normalizeDownloadRoot(settings.downloadRootRelativePath)
+        val previousRoot = previousRootRelativePath
+            ?.let(::normalizeDownloadRoot)
+            ?.takeIf { !it.equals(currentRoot, ignoreCase = true) }
+
+        galleryVisibilityJob?.cancel()
+        galleryVisibilityJob = settingsScope.launch {
+            if (!previousRoot.isNullOrBlank()) {
+                galleryVisibilityManager.applyPolicy(
+                    downloadRootRelativePath = previousRoot,
+                    hideFromSystemAlbum = false,
+                )
+            }
+            galleryVisibilityManager.applyPolicy(
+                downloadRootRelativePath = currentRoot,
+                hideFromSystemAlbum = settings.hideDownloadedVideosInSystemAlbum,
+            )
         }
     }
 
@@ -309,6 +366,8 @@ class SettingsRepository(context: Context) {
         private const val KEY_DARK_MODE_PURE_BLACK = "dark_mode_pure_black"
         private const val KEY_DOWNLOAD_ROOT_RELATIVE_PATH = "download_root_relative_path"
         private const val KEY_CONFIRM_CELLULAR_DOWNLOAD = "confirm_cellular_download"
+        private const val KEY_HIDE_DOWNLOADED_VIDEOS_IN_SYSTEM_ALBUM =
+            "hide_downloaded_videos_in_system_album"
         private const val KEY_PARSE_QUICK_ACTION = "parse_quick_action"
         private const val KEY_DOWNLOADS_GLASS_DEBUG_ENABLED = "downloads_glass_debug_enabled"
         private const val KEY_DOWNLOADS_GLASS_CORNER_RADIUS_DP = "downloads_glass_corner_radius_dp"
