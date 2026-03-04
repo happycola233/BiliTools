@@ -27,6 +27,7 @@
     <string name="login_tab_sms">短信</string>
     <string name="login_account_hint">账号</string>
     <string name="login_password_hint">密码</string>
+    <string name="login_password_note">建议使用扫码或短信登录，密码登录大概率仍需验证短信</string>
     <string name="login_country_hint">国家/地区</string>
     <string name="login_phone_hint">手机号</string>
     <string name="login_sms_code_hint">验证码</string>

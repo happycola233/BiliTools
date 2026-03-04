@@ -610,12 +610,35 @@
                                     android:inputType="textPassword" />
                             </com.google.android.material.textfield.TextInputLayout>
 
+                            <com.google.android.material.card.MaterialCardView
+                                android:id="@+id/pwd_login_note_card"
+                                style="@style/Widget.Material3.CardView.Filled"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="14dp"
+                                app:cardBackgroundColor="?attr/colorSurfaceContainerHighest"
+                                app:contentPadding="12dp">
+
+                                <TextView
+                                    android:id="@+id/pwd_login_note"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:drawableStart="@drawable/ic_info_24"
+                                    android:drawablePadding="10dp"
+                                    android:gravity="center_vertical"
+                                    android:includeFontPadding="false"
+                                    android:text="@string/login_password_note"
+                                    android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                                    android:textColor="?attr/colorOnSurfaceVariant"
+                                    app:drawableTint="?attr/colorOnSurfaceVariant" />
+                            </com.google.android.material.card.MaterialCardView>
+
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/pwd_login"
                                 style="@style/Widget.Material3.Button"
                                 android:layout_width="match_parent"
                                 android:layout_height="56dp"
-                                android:layout_marginTop="32dp"
+                                android:layout_marginTop="20dp"
                                 android:text="@string/login_action" />
                         </LinearLayout>
 
