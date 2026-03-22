@@ -30,7 +30,7 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="24dp"
             app:cardBackgroundColor="?attr/colorSurfaceContainer"
-            app:cardCornerRadius="24dp"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Large"
             app:contentPadding="24dp">
 
             <LinearLayout
@@ -52,7 +52,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="56dp"
                     app:cardBackgroundColor="?attr/colorSurface"
-                    app:cardCornerRadius="100dp"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
                     app:cardElevation="0dp"
                     app:strokeColor="?attr/colorOutlineVariant"
                     app:strokeWidth="1dp">
@@ -95,7 +95,7 @@
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/paste_action"
-                            style="@style/Widget.Material3.Button.TextButton"
+                            style="@style/Widget.Material3Expressive.Button.TextButton"
                             android:layout_width="wrap_content"
                             android:layout_height="match_parent"
                             android:minWidth="0dp"
@@ -138,12 +138,12 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/parse_action"
-                        style="@style/Widget.Material3.Button"
+                        style="@style/Widget.Material3Expressive.Button"
                         android:layout_width="match_parent"
                         android:layout_height="56dp"
                         android:text="@string/parse_action"
                         android:textSize="16sp"
-                        app:cornerRadius="100dp"
+                        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
                         app:icon="@drawable/ic_movie_filter_24"
                         app:iconGravity="textStart" />
 
@@ -169,7 +169,7 @@
             android:layout_marginBottom="16dp"
             android:visibility="gone"
             app:cardBackgroundColor="?attr/colorErrorContainer"
-            app:cardCornerRadius="12dp"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Small"
             tools:visibility="visible">
 
             <LinearLayout
@@ -206,7 +206,7 @@
             android:layout_marginBottom="16dp"
             android:visibility="gone"
             tools:visibility="visible"
-            app:cardCornerRadius="24dp">
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Large">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -548,7 +548,7 @@
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/page_select_all"
-                            style="@style/Widget.Material3.Button.TextButton"
+                            style="@style/Widget.Material3Expressive.Button.TextButton"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:minWidth="0dp"
@@ -557,7 +557,7 @@
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/page_clear_all"
-                            style="@style/Widget.Material3.Button.TextButton"
+                            style="@style/Widget.Material3Expressive.Button.TextButton"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:minWidth="0dp"
@@ -577,7 +577,7 @@
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/page_prev"
-                            style="@style/Widget.Material3.Button.TextButton"
+                            style="@style/Widget.Material3Expressive.Button.TextButton"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:minWidth="0dp"
@@ -603,7 +603,7 @@
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/page_next"
-                            style="@style/Widget.Material3.Button.TextButton"
+                            style="@style/Widget.Material3Expressive.Button.TextButton"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:minWidth="0dp"
@@ -635,7 +635,7 @@
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/load_stream"
-                                style="@style/Widget.Material3.Button"
+                                style="@style/Widget.Material3Expressive.Button"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:text="@string/parse_load_stream"
@@ -660,7 +660,7 @@
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/download"
-                                style="@style/Widget.Material3.Button.TonalButton"
+                                style="@style/Widget.Material3Expressive.Button.TonalButton"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:text="@string/parse_download"
@@ -724,7 +724,7 @@
             android:layout_height="wrap_content"
             android:visibility="gone"
             tools:visibility="visible"
-            app:cardCornerRadius="24dp"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Large"
             app:contentPadding="20dp">
 
             <LinearLayout
@@ -1001,7 +1001,7 @@
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/subtitle_copy_now"
-                            style="@style/Widget.Material3.Button.TonalButton"
+                            style="@style/Widget.Material3Expressive.Button.TonalButton"
                             android:layout_width="match_parent"
                             android:layout_height="52dp"
                             android:maxLines="1"
@@ -1028,7 +1028,7 @@
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/ai_summary_copy_now"
-                            style="@style/Widget.Material3.Button.TonalButton"
+                            style="@style/Widget.Material3Expressive.Button.TonalButton"
                             android:layout_width="match_parent"
                             android:layout_height="52dp"
                             android:maxLines="1"

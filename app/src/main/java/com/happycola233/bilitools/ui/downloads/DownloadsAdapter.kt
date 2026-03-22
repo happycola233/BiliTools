@@ -343,7 +343,6 @@ class DownloadsAdapter(
         private val checkboxMarginEndPx = (8f * density).toInt()
         private val checkboxMinWidthPx = (32f * density).toInt()
         private var boundGroupId: Long = -1L
-        private var revealDeleteRunnable: Runnable? = null
         private var currentGroup: DownloadGroup? = null
         private var downX = 0f
         private var downY = 0f
@@ -373,10 +372,9 @@ class DownloadsAdapter(
                 binding.swipeDeleteContainer.alpha = 0f
             }
             val animator = binding.cardView.animate().translationX(0f).setDuration(200)
-            if (hideDeleteDuringClose) {
-                animator.withEndAction {
-                    binding.swipeDeleteContainer.alpha = 1f
-                }
+            animator.withEndAction {
+                binding.swipeDeleteContainer.alpha = 1f
+                binding.swipeDeleteContainer.visibility = View.INVISIBLE
             }
             animator.start()
         }
@@ -428,6 +426,7 @@ class DownloadsAdapter(
                             isSwiping = true
                             cancelPendingLongPress()
                             v.parent.requestDisallowInterceptTouchEvent(true)
+                            binding.swipeDeleteContainer.visibility = View.VISIBLE
                         }
                         
                         if (isSwiping) {
@@ -470,7 +469,11 @@ class DownloadsAdapter(
                                 adapter.notifySwiped(this@GroupViewHolder, group.id)
                             } else {
                                 // Snap Close
-                                v.animate().translationX(0f).setDuration(200).start()
+                                v.animate().translationX(0f).setDuration(200)
+                                    .withEndAction {
+                                        binding.swipeDeleteContainer.visibility = View.INVISIBLE
+                                    }
+                                    .start()
                                 if (adapter.swipedGroupId == group.id) {
                                     adapter.closeSwipedItem()
                                 }
@@ -525,8 +528,6 @@ class DownloadsAdapter(
                 longPressTriggered = false
                 cancelPendingLongPress()
             }
-            revealDeleteRunnable?.let { binding.cardView.removeCallbacks(it) }
-            revealDeleteRunnable = null
             val context = binding.root.context
             val selectionMode = adapter.selectionMode
             val isSelected = adapter.selectedGroupIds.contains(group.id)
@@ -539,7 +540,7 @@ class DownloadsAdapter(
             }
             binding.cardView.strokeColor = MaterialColors.getColor(
                 binding.cardView,
-                com.google.android.material.R.attr.colorPrimary,
+                android.R.attr.colorPrimary,
             )
             binding.cardView.strokeWidth = if (isSelected) (2 * density).toInt() else 0
             val remainingExpandMs = adapter.getExpandRemainingMs(group.id)
@@ -547,13 +548,10 @@ class DownloadsAdapter(
             binding.swipeDeleteContainer.alpha = 1f
             binding.swipeDeleteContainer.visibility = when {
                 selectionMode -> View.GONE
-                isExpanding -> View.INVISIBLE
-                else -> View.VISIBLE
+                adapter.swipedGroupId == group.id -> View.VISIBLE
+                else -> View.INVISIBLE
             }
-            if (isExpanding && !selectionMode) {
-                scheduleDeleteReveal(group.id, remainingExpandMs)
-            }
-            
+
             // Reset State
             if (touchActiveGroupId == group.id) {
                 // Keep current swipe offset while this item is actively handling a gesture.
@@ -684,17 +682,10 @@ class DownloadsAdapter(
                 if (isExpanded) {
                     adapter.expandedGroups.remove(group.id)
                     adapter.expandingGroups.remove(group.id)
-                    binding.swipeDeleteContainer.visibility = View.VISIBLE
                 } else {
                     adapter.expandedGroups.add(group.id)
                     adapter.expandingGroups[group.id] =
                         SystemClock.uptimeMillis() + EXPAND_ANIM_DURATION_MS
-                    // Hide delete button during expansion to prevent flash
-                    binding.swipeDeleteContainer.visibility = View.INVISIBLE
-                    // Restore delete button visibility after animation
-                    binding.cardView.postDelayed({
-                        binding.swipeDeleteContainer.visibility = View.VISIBLE
-                    }, EXPAND_ANIM_DURATION_MS)
                 }
 
                 val newExpanded = !isExpanded
@@ -714,20 +705,15 @@ class DownloadsAdapter(
             }
             binding.cardView.strokeColor = MaterialColors.getColor(
                 binding.cardView,
-                com.google.android.material.R.attr.colorPrimary,
+                android.R.attr.colorPrimary,
             )
             binding.cardView.strokeWidth = if (isSelected) (2 * density).toInt() else 0
 
-            val remainingExpandMs = adapter.getExpandRemainingMs(group.id)
-            val isExpanding = remainingExpandMs > 0L
             binding.swipeDeleteContainer.alpha = 1f
             binding.swipeDeleteContainer.visibility = when {
                 selectionMode -> View.GONE
-                isExpanding -> View.INVISIBLE
-                else -> View.VISIBLE
-            }
-            if (isExpanding && !selectionMode) {
-                scheduleDeleteReveal(group.id, remainingExpandMs)
+                adapter.swipedGroupId == group.id -> View.VISIBLE
+                else -> View.INVISIBLE
             }
 
             if (selectionMode) {
@@ -756,7 +742,7 @@ class DownloadsAdapter(
             }
             binding.cardView.strokeColor = MaterialColors.getColor(
                 binding.cardView,
-                com.google.android.material.R.attr.colorPrimary,
+                android.R.attr.colorPrimary,
             )
             binding.cardView.strokeWidth = if (isSelected) (2 * density).toInt() else 0
         }
@@ -1021,20 +1007,7 @@ class DownloadsAdapter(
             return content.measuredHeight
         }
 
-        private fun scheduleDeleteReveal(groupId: Long, delayMs: Long) {
-            if (delayMs <= 0L) {
-                binding.swipeDeleteContainer.visibility = View.VISIBLE
-                return
-            }
-            val runnable = Runnable {
-                if (boundGroupId == groupId) {
-                    adapter.expandingGroups.remove(groupId)
-                    binding.swipeDeleteContainer.visibility = View.VISIBLE
-                }
-            }
-            revealDeleteRunnable = runnable
-            binding.cardView.postDelayed(runnable, delayMs)
-        }
+
 
         private fun calculateGroupProgress(tasks: List<DownloadItem>): Int {
             if (tasks.isEmpty()) return 0

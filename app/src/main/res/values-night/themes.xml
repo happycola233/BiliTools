@@ -1,5 +1,5 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <style name="Theme.BiliTools" parent="Theme.Material3.DayNight.NoActionBar">
+    <style name="Theme.BiliTools" parent="Theme.Material3Expressive.DayNight.NoActionBar">
         <item name="colorPrimary">@color/md_theme_dark_primary</item>
         <item name="colorOnPrimary">@color/md_theme_dark_onPrimary</item>
         <item name="colorPrimaryContainer">@color/md_theme_dark_primaryContainer</item>
@@ -44,7 +44,7 @@
         <item name="android:backgroundDimEnabled">false</item>
     </style>
 
-    <style name="ThemeOverlay.BiliTools.ColorBlue" parent="ThemeOverlay.Material3">
+    <style name="ThemeOverlay.BiliTools.ColorBlue" parent="ThemeOverlay.Material3Expressive">
         <item name="android:colorBackground">#FF111111</item>
         <item name="colorSurface">#FF111111</item>
         <item name="colorPrimary">#ACCDF6</item>
@@ -61,7 +61,7 @@
         <item name="colorOnTertiaryContainer">#FFD6F9</item>
     </style>
 
-    <style name="ThemeOverlay.BiliTools.ColorGreen" parent="ThemeOverlay.Material3">
+    <style name="ThemeOverlay.BiliTools.ColorGreen" parent="ThemeOverlay.Material3Expressive">
         <item name="android:colorBackground">#FF111111</item>
         <item name="colorSurface">#FF111111</item>
         <item name="colorPrimary">#8CD9A5</item>
@@ -78,7 +78,7 @@
         <item name="colorOnTertiaryContainer">#BDEAF6</item>
     </style>
 
-    <style name="ThemeOverlay.BiliTools.ColorOrange" parent="ThemeOverlay.Material3">
+    <style name="ThemeOverlay.BiliTools.ColorOrange" parent="ThemeOverlay.Material3Expressive">
         <item name="android:colorBackground">#FF111111</item>
         <item name="colorSurface">#FF111111</item>
         <item name="colorPrimary">#FFB875</item>
@@ -95,7 +95,7 @@
         <item name="colorOnTertiaryContainer">#E4E7B1</item>
     </style>
 
-    <style name="ThemeOverlay.BiliTools.ColorPink" parent="ThemeOverlay.Material3">
+    <style name="ThemeOverlay.BiliTools.ColorPink" parent="ThemeOverlay.Material3Expressive">
         <item name="android:colorBackground">#FF111111</item>
         <item name="colorSurface">#FF111111</item>
         <item name="colorPrimary">#FFB1C8</item>
@@ -112,7 +112,7 @@
         <item name="colorOnTertiaryContainer">#FFDCC1</item>
     </style>
 
-    <style name="ThemeOverlay.BiliTools.DarkPureBlack" parent="ThemeOverlay.Material3">
+    <style name="ThemeOverlay.BiliTools.DarkPureBlack" parent="ThemeOverlay.Material3Expressive">
         <item name="android:colorBackground">#FF000000</item>
         <item name="colorSurface">#FF000000</item>
     </style>

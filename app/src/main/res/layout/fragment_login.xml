@@ -19,7 +19,6 @@
             android:layout_height="wrap_content"
             android:visibility="gone"
             app:cardBackgroundColor="?attr/colorSurfaceContainer"
-            app:cardCornerRadius="16dp"
             app:cardElevation="0dp"
             app:cardUseCompatPadding="true">
 
@@ -64,7 +63,7 @@
                             <com.google.android.material.card.MaterialCardView
                                 android:layout_width="match_parent"
                                 android:layout_height="match_parent"
-                                app:cardCornerRadius="36dp"
+                                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
                                 app:cardElevation="0dp"
                                 app:strokeWidth="0dp">
 
@@ -239,7 +238,7 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/logout"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        style="@style/Widget.Material3Expressive.Button.OutlinedButton"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="18dp"
@@ -255,7 +254,6 @@
             android:layout_marginTop="12dp"
             android:visibility="gone"
             app:cardBackgroundColor="?attr/colorSurfaceContainer"
-            app:cardCornerRadius="16dp"
             app:cardElevation="0dp"
             app:cardUseCompatPadding="true">
 
@@ -319,7 +317,6 @@
             android:layout_marginTop="8dp"
             android:visibility="gone"
             app:cardBackgroundColor="?attr/colorSurfaceContainer"
-            app:cardCornerRadius="16dp"
             app:cardElevation="0dp"
             app:cardUseCompatPadding="true">
 
@@ -383,7 +380,6 @@
             android:layout_marginTop="8dp"
             android:visibility="gone"
             app:cardBackgroundColor="?attr/colorSurfaceContainer"
-            app:cardCornerRadius="16dp"
             app:cardElevation="0dp"
             app:cardUseCompatPadding="true">
 
@@ -480,7 +476,7 @@
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardCornerRadius="28dp"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.ExtraLarge"
                 app:cardElevation="0dp"
                 app:strokeWidth="0dp"
                 app:cardBackgroundColor="?attr/colorSurfaceContainer">
@@ -519,7 +515,7 @@
                                                     android:layout_width="220dp"
                                                     android:layout_height="220dp"
                                                     app:cardBackgroundColor="@android:color/white"
-                                                    app:cardCornerRadius="24dp"
+                                                    app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Large"
                                                     app:cardElevation="0dp"
                                                     app:strokeWidth="1dp"
                                                     app:strokeColor="?attr/colorOutlineVariant">
@@ -558,7 +554,7 @@
                         
                                                 <com.google.android.material.button.MaterialButton
                                                     android:id="@+id/qr_refresh"
-                                                    style="@style/Widget.Material3.Button.OutlinedButton"
+                                                    style="@style/Widget.Material3Expressive.Button.OutlinedButton"
                                                     android:layout_width="wrap_content"
                                                     android:layout_height="wrap_content"
                                                     android:layout_marginTop="16dp"
@@ -577,10 +573,7 @@
                                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                app:boxCornerRadiusTopStart="16dp"
-                                app:boxCornerRadiusTopEnd="16dp"
-                                app:boxCornerRadiusBottomStart="16dp"
-                                app:boxCornerRadiusBottomEnd="16dp"
+                                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Medium"
                                 android:hint="@string/login_account_hint">
 
                                 <com.google.android.material.textfield.TextInputEditText
@@ -596,10 +589,7 @@
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="16dp"
-                                app:boxCornerRadiusTopStart="16dp"
-                                app:boxCornerRadiusTopEnd="16dp"
-                                app:boxCornerRadiusBottomStart="16dp"
-                                app:boxCornerRadiusBottomEnd="16dp"
+                                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Medium"
                                 android:hint="@string/login_password_hint"
                                 app:endIconMode="password_toggle">
 
@@ -635,7 +625,7 @@
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/pwd_login"
-                                style="@style/Widget.Material3.Button"
+                                style="@style/Widget.Material3Expressive.Button"
                                 android:layout_width="match_parent"
                                 android:layout_height="56dp"
                                 android:layout_marginTop="20dp"
@@ -659,10 +649,7 @@
                                                             style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                                                             android:layout_width="130dp"
                                                             android:layout_height="wrap_content"
-                                                            app:boxCornerRadiusTopStart="16dp"
-                                                            app:boxCornerRadiusTopEnd="16dp"
-                                                            app:boxCornerRadiusBottomStart="16dp"
-                                                            app:boxCornerRadiusBottomEnd="16dp"
+                                                            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Medium"
                                                             android:hint="@string/login_country_hint">
                             
                                                             <com.google.android.material.textfield.MaterialAutoCompleteTextView
@@ -679,10 +666,7 @@
                                                             android:layout_height="wrap_content"
                                                             android:layout_weight="1"
                                                             android:layout_marginStart="12dp"
-                                                            app:boxCornerRadiusTopStart="16dp"
-                                                            app:boxCornerRadiusTopEnd="16dp"
-                                                            app:boxCornerRadiusBottomStart="16dp"
-                                                            app:boxCornerRadiusBottomEnd="16dp"
+                                                            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Medium"
                                                             android:hint="@string/login_phone_hint">
                             
                                                             <com.google.android.material.textfield.TextInputEditText
@@ -704,10 +688,7 @@
                                     android:layout_width="0dp"
                                     android:layout_height="wrap_content"
                                     android:layout_weight="1"
-                                    app:boxCornerRadiusTopStart="16dp"
-                                    app:boxCornerRadiusTopEnd="16dp"
-                                    app:boxCornerRadiusBottomStart="16dp"
-                                    app:boxCornerRadiusBottomEnd="16dp"
+                                    app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Medium"
                                     android:hint="@string/login_sms_code_hint">
 
                                     <com.google.android.material.textfield.TextInputEditText
@@ -719,7 +700,7 @@
 
                                 <com.google.android.material.button.MaterialButton
                                     android:id="@+id/sms_send"
-                                    style="@style/Widget.Material3.Button.OutlinedButton"
+                                    style="@style/Widget.Material3Expressive.Button.OutlinedButton"
                                     android:layout_width="wrap_content"
                                     android:layout_height="56dp"
                                     android:layout_marginStart="12dp"
@@ -728,7 +709,7 @@
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/sms_login"
-                                style="@style/Widget.Material3.Button"
+                                style="@style/Widget.Material3Expressive.Button"
                                 android:layout_width="match_parent"
                                 android:layout_height="56dp"
                                 android:layout_marginTop="32dp"

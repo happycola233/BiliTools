@@ -32,7 +32,7 @@
             android:layout_marginHorizontal="16dp"
             style="@style/Widget.Material3.CardView.Filled"
             app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
-            app:cardCornerRadius="20dp"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Large"
             app:contentPadding="0dp">
 
             <LinearLayout
@@ -105,7 +105,7 @@
             android:layout_marginHorizontal="16dp"
             style="@style/Widget.Material3.CardView.Filled"
             app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
-            app:cardCornerRadius="20dp"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Large"
             app:contentPadding="0dp">
 
             <LinearLayout
@@ -335,7 +335,7 @@
             android:layout_marginHorizontal="16dp"
             style="@style/Widget.Material3.CardView.Filled"
             app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
-            app:cardCornerRadius="20dp"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Large"
             app:contentPadding="0dp">
 
             <LinearLayout
@@ -566,7 +566,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="16dp"
                 app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
-                app:cardCornerRadius="20dp"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Large"
                 app:contentPadding="0dp">
 
                 <LinearLayout

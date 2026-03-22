@@ -58,7 +58,7 @@
         <!-- Action / Status -->
          <com.google.android.material.button.MaterialButton
             android:id="@+id/download_pause_resume"
-            style="@style/Widget.Material3.Button.IconButton"
+            style="@style/Widget.Material3Expressive.Button.IconButton.Standard"
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:insetLeft="0dp"
@@ -79,7 +79,7 @@
 
          <com.google.android.material.button.MaterialButton
             android:id="@+id/download_delete"
-            style="@style/Widget.Material3.Button.IconButton"
+            style="@style/Widget.Material3Expressive.Button.IconButton.Standard"
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:insetLeft="0dp"

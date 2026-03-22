@@ -17,13 +17,13 @@
 
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/swipe_delete_btn"
+            style="?attr/materialCardViewFilledStyle"
             android:layout_width="80dp"
             android:layout_height="match_parent"
             android:layout_gravity="end"
             android:stateListAnimator="@null"
             android:elevation="0dp"
             app:cardBackgroundColor="?attr/colorError"
-            app:cardCornerRadius="16dp"
             app:cardElevation="0dp"
             app:strokeWidth="0dp">
 
@@ -48,7 +48,6 @@
         android:stateListAnimator="@null"
         android:elevation="1dp"
         app:cardBackgroundColor="?attr/colorSurfaceContainer"
-        app:cardCornerRadius="16dp"
         app:cardElevation="0dp"
         app:strokeWidth="0dp">
 
@@ -190,7 +189,7 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/group_pause_resume"
-                        style="@style/Widget.Material3.Button.TonalButton"
+                        style="@style/Widget.Material3Expressive.Button.TonalButton"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"

@@ -1,11 +1,14 @@
 <resources>
-    <style name="Widget.BiliTools.BottomNavigation" parent="Widget.Material3.BottomNavigationView">
+    <style name="Widget.BiliTools.BottomNavigation" parent="Widget.Material3Expressive.BottomNavigationView">
         <item name="itemActiveIndicatorStyle">@style/Widget.BiliTools.BottomNavigation.ActiveIndicator</item>
         <item name="itemIconSize">24dp</item>
+        <item name="android:minHeight">80dp</item>
+        <item name="itemPaddingTop">12dp</item>
+        <item name="itemPaddingBottom">12dp</item>
     </style>
 
     <style name="Widget.BiliTools.BottomNavigation.ActiveIndicator"
-        parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
+        parent="Widget.Material3Expressive.BottomNavigationView.ActiveIndicator">
         <item name="android:width">64dp</item>
         <item name="android:height">32dp</item>
         <item name="android:color">?attr/colorSecondaryContainer</item>
@@ -21,7 +24,7 @@
     </style>
 
     <style name="Widget.BiliTools.DownloadProgress"
-        parent="Widget.Material3.LinearProgressIndicator">
+        parent="Widget.Material3Expressive.LinearProgressIndicator">
         <item name="trackThickness">6dp</item>
         <item name="trackCornerRadius">3dp</item>
         <item name="indicatorColor">?attr/colorPrimary</item>

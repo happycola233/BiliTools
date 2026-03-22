@@ -50,7 +50,7 @@
             android:layout_marginTop="10dp"
             android:layout_marginBottom="8dp"
             app:cardBackgroundColor="?attr/colorSurfaceContainer"
-            app:cardCornerRadius="20dp"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Large"
             app:cardElevation="0dp">
 
             <LinearLayout
@@ -64,7 +64,7 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/history_page_prev"
-                    style="@style/Widget.Material3.Button.TextButton"
+                    style="@style/Widget.Material3Expressive.Button.TextButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
@@ -79,10 +79,7 @@
                     android:layout_gravity="center_vertical"
                     android:layout_marginHorizontal="8dp"
                     android:minHeight="40dp"
-                    app:boxCornerRadiusBottomEnd="12dp"
-                    app:boxCornerRadiusBottomStart="12dp"
-                    app:boxCornerRadiusTopEnd="12dp"
-                    app:boxCornerRadiusTopStart="12dp"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Small"
                     app:endIconMode="none"
                     app:hintEnabled="false">
 
@@ -112,7 +109,7 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/history_page_next"
-                    style="@style/Widget.Material3.Button.TextButton"
+                    style="@style/Widget.Material3Expressive.Button.TextButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"

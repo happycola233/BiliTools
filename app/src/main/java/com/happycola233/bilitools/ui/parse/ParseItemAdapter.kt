@@ -104,7 +104,7 @@ class ParseItemAdapter(
             }
 
             val cardColor = if (rowClickEnabled && current) {
-                MaterialColors.getColor(binding.itemCard, MaterialR.attr.colorPrimary)
+                MaterialColors.getColor(binding.itemCard, android.R.attr.colorPrimary)
             } else {
                 MaterialColors.getColor(binding.itemCard, MaterialR.attr.colorOutlineVariant)
             }
