@@ -14,6 +14,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.webkit.MimeTypeMap
 import android.widget.Toast
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -141,7 +143,9 @@ class DownloadsFragment : Fragment() {
         binding.downloadsCompose.setViewCompositionStrategy(
             ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed,
         )
+        @OptIn(ExperimentalMaterial3ExpressiveApi::class)
         binding.downloadsCompose.setContent {
+            MaterialExpressiveTheme {
             DownloadsGlassContent(
                 adapter = adapter,
                 selectionMode = composeSelectionMode,
@@ -179,6 +183,7 @@ class DownloadsFragment : Fragment() {
                     settingsRepository.setDownloadsGlassChromaticAberration(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_CHROMATIC_ABERRATION)
                 },
             )
+            }
         }
 
         backPressedCallback = object : OnBackPressedCallback(false) {

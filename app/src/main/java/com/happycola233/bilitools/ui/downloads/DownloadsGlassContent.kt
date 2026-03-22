@@ -8,9 +8,7 @@ import androidx.annotation.ColorInt
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -19,6 +17,8 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -82,6 +82,7 @@ import com.kyant.backdrop.highlight.Highlight
 import java.util.Locale
 import kotlin.math.sign
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun DownloadsGlassContent(
     adapter: DownloadsAdapter,
@@ -123,9 +124,10 @@ fun DownloadsGlassContent(
     val extraBottomPaddingPx =
         if (selectionMode) panelHeightPx + with(density) { 20.dp.roundToPx() } else 0
     val targetListBottomPaddingDp = with(density) { (baseBottomPaddingPx + extraBottomPaddingPx).toDp() }
+    val motionScheme = MaterialTheme.motionScheme
     val listBottomPaddingDp by animateDpAsState(
         targetValue = targetListBottomPaddingDp,
-        animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
+        animationSpec = motionScheme.defaultSpatialSpec(),
     )
     val listBottomPaddingPx = with(density) { listBottomPaddingDp.roundToPx() }
     var debugExpanded by remember { mutableStateOf(false) }
@@ -176,24 +178,24 @@ fun DownloadsGlassContent(
             visible = selectionMode,
             modifier = Modifier.align(Alignment.BottomCenter),
             enter =
-                fadeIn(animationSpec = tween(200)) +
+                fadeIn(animationSpec = motionScheme.fastEffectsSpec()) +
                     slideInVertically(
                         initialOffsetY = { it / 2 },
-                        animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
+                        animationSpec = motionScheme.defaultSpatialSpec(),
                     ) +
                     expandVertically(
                         expandFrom = Alignment.Bottom,
-                        animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
+                        animationSpec = motionScheme.defaultSpatialSpec(),
                     ),
             exit =
-                fadeOut(animationSpec = tween(140)) +
+                fadeOut(animationSpec = motionScheme.fastEffectsSpec()) +
                     slideOutVertically(
                         targetOffsetY = { it / 2 },
-                        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+                        animationSpec = motionScheme.fastSpatialSpec(),
                     ) +
                     shrinkVertically(
                         shrinkTowards = Alignment.Bottom,
-                        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+                        animationSpec = motionScheme.fastSpatialSpec(),
                     ),
         ) {
             DownloadsBatchGlassPanel(
@@ -225,16 +227,16 @@ fun DownloadsGlassContent(
             visible = !selectionMode,
             modifier = Modifier.align(Alignment.BottomEnd),
             enter =
-                fadeIn(animationSpec = tween(200, delayMillis = 40)) +
+                fadeIn(animationSpec = motionScheme.fastEffectsSpec()) +
                     scaleIn(
                         initialScale = 0.84f,
-                        animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
+                        animationSpec = motionScheme.defaultSpatialSpec(),
                     ),
             exit =
-                fadeOut(animationSpec = tween(100)) +
+                fadeOut(animationSpec = motionScheme.fastEffectsSpec()) +
                     scaleOut(
                         targetScale = 0.84f,
-                        animationSpec = tween(durationMillis = 140, easing = FastOutSlowInEasing),
+                        animationSpec = motionScheme.fastSpatialSpec(),
                     ),
         ) {
             DownloadsManageFab(
@@ -319,6 +321,7 @@ private fun DownloadsManageFab(
     )
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun DownloadsBatchGlassPanel(
     modifier: Modifier = Modifier,
@@ -400,7 +403,7 @@ private fun DownloadsBatchGlassPanel(
             )
             .padding(horizontal = 20.dp, vertical = 16.dp)
             .animateContentSize(
-                animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+                animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
             ),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -700,6 +703,7 @@ private fun BatchTextAction(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun BatchActionButton(
     iconRes: Int,
@@ -712,11 +716,11 @@ private fun BatchActionButton(
 ) {
     val resolvedContainerColor by animateColorAsState(
         targetValue = if (enabled) containerColor else containerColor.copy(alpha = 0.88f),
-        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
     )
     val resolvedContentColor by animateColorAsState(
         targetValue = if (enabled) contentColor else contentColor.copy(alpha = 0.62f),
-        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
     )
 
     Box(

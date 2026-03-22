@@ -643,7 +643,10 @@ class ParseFragment : Fragment() {
                         }
                         binding.title.text = display.title
                         binding.desc.text = display.description
-                        binding.cover.load(display.coverUrl)
+                        if (binding.cover.tag != display.coverUrl) {
+                            binding.cover.tag = display.coverUrl
+                            binding.cover.load(display.coverUrl)
+                        }
                         bindStats(display.stat)
                     }
 
