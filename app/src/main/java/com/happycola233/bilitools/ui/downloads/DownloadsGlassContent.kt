@@ -1,6 +1,5 @@
 package com.happycola233.bilitools.ui.downloads
 
-import android.view.View
 import android.widget.TextView
 import android.text.TextPaint
 import androidx.annotation.AttrRes
@@ -69,8 +68,12 @@ import android.text.style.MetricAffectingSpan
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.SimpleItemAnimator
+import androidx.compose.material3.FloatingActionButtonMenu
+import androidx.compose.material3.FloatingActionButtonMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleFloatingActionButton
 import com.google.android.material.color.MaterialColors
-import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.happycola233.bilitools.R
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
@@ -94,6 +97,8 @@ fun DownloadsGlassContent(
     batchClearEnabled: Boolean,
     batchDeleteEnabled: Boolean,
     controlsOffsetPx: Float,
+    resumeAllCount: Int,
+    pauseAllCount: Int,
     glassDebugEnabled: Boolean,
     glassCornerRadiusDp: Float,
     glassBlurRadiusDp: Float,
@@ -101,7 +106,11 @@ fun DownloadsGlassContent(
     glassRefractionAmountFrac: Float,
     glassChromaticAberration: Boolean,
     glassSurfaceAlpha: Float,
-    onManageClick: (View) -> Unit,
+    onBatchManage: () -> Unit,
+    onResumeAll: () -> Unit,
+    onPauseAll: () -> Unit,
+    onClearCompleted: () -> Unit,
+    onClearAll: () -> Unit,
     onExitSelection: () -> Unit,
     onSelectAll: () -> Unit,
     onClearRecords: () -> Unit,
@@ -243,7 +252,13 @@ fun DownloadsGlassContent(
                 modifier = Modifier,
                 bottomPadding = controlsBottomPadding,
                 controlsOffset = controlsOffsetDp,
-                onClick = onManageClick,
+                resumeAllCount = resumeAllCount,
+                pauseAllCount = pauseAllCount,
+                onBatchManage = onBatchManage,
+                onResumeAll = onResumeAll,
+                onPauseAll = onPauseAll,
+                onClearCompleted = onClearCompleted,
+                onClearAll = onClearAll,
             )
         }
 
@@ -296,29 +311,66 @@ private fun DownloadsEmptyState(modifier: Modifier = Modifier) {
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun DownloadsManageFab(
     modifier: Modifier = Modifier,
     bottomPadding: Dp,
     controlsOffset: Dp,
-    onClick: (View) -> Unit,
+    resumeAllCount: Int,
+    pauseAllCount: Int,
+    onBatchManage: () -> Unit,
+    onResumeAll: () -> Unit,
+    onPauseAll: () -> Unit,
+    onClearCompleted: () -> Unit,
+    onClearAll: () -> Unit,
 ) {
-    AndroidView(
-        modifier = modifier
-            .padding(end = 16.dp, bottom = bottomPadding)
-            .offset(y = controlsOffset)
-            .size(56.dp),
-        factory = { context ->
-            FloatingActionButton(context).apply {
-                setImageResource(R.drawable.ic_menu_24)
-                contentDescription = context.getString(R.string.downloads_actions_menu)
-                setOnClickListener { onClick(this) }
+    var expanded by remember { mutableStateOf(false) }
+
+    FloatingActionButtonMenu(
+        expanded = expanded,
+        button = {
+            ToggleFloatingActionButton(
+                checked = expanded,
+                onCheckedChange = { expanded = it },
+            ) {
+                val imageVector = if (checkedProgress > 0.5f) R.drawable.ic_close_24 else R.drawable.ic_menu_24
+                Icon(
+                    painter = painterResource(imageVector),
+                    contentDescription = stringResource(R.string.downloads_actions_menu),
+                )
             }
         },
-        update = { fab ->
-            fab.setOnClickListener { onClick(fab) }
-        },
-    )
+        modifier = modifier
+            .padding(bottom = (bottomPadding - 16.dp).coerceAtLeast(0.dp))
+            .offset(y = controlsOffset),
+    ) {
+        FloatingActionButtonMenuItem(
+            onClick = { expanded = false; onClearAll() },
+            icon = { Icon(painter = painterResource(R.drawable.ic_delete_24), contentDescription = null) },
+            text = { Text(text = stringResource(R.string.downloads_clear_all)) },
+        )
+        FloatingActionButtonMenuItem(
+            onClick = { expanded = false; onClearCompleted() },
+            icon = { Icon(painter = painterResource(R.drawable.ic_delete_sweep_24), contentDescription = null) },
+            text = { Text(text = stringResource(R.string.downloads_clear_completed)) },
+        )
+        FloatingActionButtonMenuItem(
+            onClick = { expanded = false; onPauseAll() },
+            icon = { Icon(painter = painterResource(R.drawable.ic_pause_24), contentDescription = null) },
+            text = { Text(text = stringResource(R.string.downloads_pause_all_with_count, pauseAllCount)) },
+        )
+        FloatingActionButtonMenuItem(
+            onClick = { expanded = false; onResumeAll() },
+            icon = { Icon(painter = painterResource(R.drawable.ic_play_arrow_24), contentDescription = null) },
+            text = { Text(text = stringResource(R.string.downloads_resume_all_with_count, resumeAllCount)) },
+        )
+        FloatingActionButtonMenuItem(
+            onClick = { expanded = false; onBatchManage() },
+            icon = { Icon(painter = painterResource(R.drawable.ic_checklist_24), contentDescription = null) },
+            text = { Text(text = stringResource(R.string.downloads_multi_manage)) },
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)

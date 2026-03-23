@@ -79,6 +79,8 @@ class DownloadsFragment : Fragment() {
     private var composeGlassRefractionAmountFrac by mutableStateOf(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_REFRACTION_AMOUNT_FRAC)
     private var composeGlassSurfaceAlpha by mutableStateOf(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_SURFACE_ALPHA)
     private var composeGlassChromaticAberration by mutableStateOf(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_CHROMATIC_ABERRATION)
+    private var composeResumeAllCount by mutableStateOf(0)
+    private var composePauseAllCount by mutableStateOf(0)
     private lateinit var backPressedCallback: OnBackPressedCallback
 
     override fun onCreateView(
@@ -156,6 +158,8 @@ class DownloadsFragment : Fragment() {
                 batchClearEnabled = composeBatchClearEnabled,
                 batchDeleteEnabled = composeBatchDeleteEnabled,
                 controlsOffsetPx = composeControlsOffsetPx,
+                resumeAllCount = composeResumeAllCount,
+                pauseAllCount = composePauseAllCount,
                 glassDebugEnabled = composeGlassDebugEnabled,
                 glassCornerRadiusDp = composeGlassCornerRadiusDp,
                 glassBlurRadiusDp = composeGlassBlurRadiusDp,
@@ -163,7 +167,11 @@ class DownloadsFragment : Fragment() {
                 glassRefractionAmountFrac = composeGlassRefractionAmountFrac,
                 glassChromaticAberration = composeGlassChromaticAberration,
                 glassSurfaceAlpha = composeGlassSurfaceAlpha,
-                onManageClick = { anchor -> showClearMenu(anchor) },
+                onBatchManage = { enterSelectionMode() },
+                onResumeAll = { performResumeAll() },
+                onPauseAll = { performPauseAll() },
+                onClearCompleted = { viewModel.clearCompleted() },
+                onClearAll = { viewModel.clearAll() },
                 onExitSelection = { exitSelectionMode() },
                 onSelectAll = { toggleSelectAll() },
                 onClearRecords = { confirmBatchDelete(deleteFile = false) },
@@ -209,6 +217,9 @@ class DownloadsFragment : Fragment() {
                     adapter.submitFullList(buildSectionedList(list))
                     updateSelectionUi()
                     composeEmptyStateVisible = list.isEmpty()
+                    val manageState = calculateGlobalManageState()
+                    composeResumeAllCount = manageState.startableCount
+                    composePauseAllCount = manageState.pausableCount
                 }
             }
         }
@@ -607,6 +618,58 @@ class DownloadsFragment : Fragment() {
             }
         }
         menu.show()
+    }
+
+    private fun performResumeAll() {
+        val currentState = calculateGlobalManageState()
+        val retryableIds = collectRetryableManagedTaskIds()
+        val retryCount = retryableIds.size
+        if (currentState.startableCount <= 0) {
+            Toast.makeText(
+                requireContext(),
+                getString(R.string.downloads_resume_all_empty),
+                Toast.LENGTH_SHORT,
+            ).show()
+        } else {
+            if (currentState.resumableCount > 0) {
+                viewModel.resumeAllManaged()
+            }
+            retryableIds.forEach { taskId ->
+                viewModel.retry(taskId)
+            }
+            val startedCount = currentState.resumableCount + retryCount
+            Toast.makeText(
+                requireContext(),
+                if (retryCount > 0) {
+                    getString(
+                        R.string.downloads_resume_all_done_with_retry,
+                        startedCount,
+                        retryCount,
+                    )
+                } else {
+                    getString(R.string.downloads_resume_all_done, startedCount)
+                },
+                Toast.LENGTH_SHORT,
+            ).show()
+        }
+    }
+
+    private fun performPauseAll() {
+        val currentState = calculateGlobalManageState()
+        if (currentState.pausableCount <= 0) {
+            Toast.makeText(
+                requireContext(),
+                getString(R.string.downloads_pause_all_empty),
+                Toast.LENGTH_SHORT,
+            ).show()
+        } else {
+            viewModel.pauseAllManaged()
+            Toast.makeText(
+                requireContext(),
+                getString(R.string.downloads_pause_all_done, currentState.pausableCount),
+                Toast.LENGTH_SHORT,
+            ).show()
+        }
     }
 
     private fun calculateGlobalManageState(): GlobalManageState {

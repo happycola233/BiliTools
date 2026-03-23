@@ -532,12 +532,12 @@
                                                             android:contentDescription="@string/login_qr_desc"
                                                             android:scaleType="fitCenter" />
                         
-                                                        <com.google.android.material.progressindicator.CircularProgressIndicator
+                                                        <com.google.android.material.loadingindicator.LoadingIndicator
                                                             android:id="@+id/qr_loading"
+                                                            style="@style/Widget.Material3.LoadingIndicator"
                                                             android:layout_width="wrap_content"
                                                             android:layout_height="wrap_content"
                                                             android:layout_gravity="center"
-                                                            android:indeterminate="true"
                                                             android:visibility="gone" />
                                                     </FrameLayout>
                                                 </com.google.android.material.card.MaterialCardView>

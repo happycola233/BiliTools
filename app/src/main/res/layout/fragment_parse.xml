@@ -149,6 +149,7 @@
 
                     <com.google.android.material.progressindicator.CircularProgressIndicator
                         android:id="@+id/parse_action_loading"
+                        style="@style/Widget.Material3Expressive.CircularProgressIndicator"
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:layout_gravity="center"
@@ -643,6 +644,7 @@
 
                             <com.google.android.material.progressindicator.CircularProgressIndicator
                                 android:id="@+id/load_stream_loading"
+                                style="@style/Widget.Material3Expressive.CircularProgressIndicator"
                                 android:layout_width="24dp"
                                 android:layout_height="24dp"
                                 android:layout_gravity="center"
@@ -668,6 +670,7 @@
 
                             <com.google.android.material.progressindicator.CircularProgressIndicator
                                 android:id="@+id/download_loading"
+                                style="@style/Widget.Material3Expressive.CircularProgressIndicator"
                                 android:layout_width="24dp"
                                 android:layout_height="24dp"
                                 android:layout_gravity="center"
@@ -1011,6 +1014,7 @@
 
                         <com.google.android.material.progressindicator.CircularProgressIndicator
                             android:id="@+id/subtitle_copy_loading"
+                            style="@style/Widget.Material3Expressive.CircularProgressIndicator"
                             android:layout_width="22dp"
                             android:layout_height="22dp"
                             android:layout_gravity="center"
@@ -1038,6 +1042,7 @@
 
                         <com.google.android.material.progressindicator.CircularProgressIndicator
                             android:id="@+id/ai_summary_copy_loading"
+                            style="@style/Widget.Material3Expressive.CircularProgressIndicator"
                             android:layout_width="22dp"
                             android:layout_height="22dp"
                             android:layout_gravity="center"

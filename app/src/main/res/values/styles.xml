@@ -24,7 +24,7 @@
     </style>
 
     <style name="Widget.BiliTools.DownloadProgress"
-        parent="Widget.Material3Expressive.LinearProgressIndicator">
+        parent="Widget.Material3Expressive.LinearProgressIndicator.Wavy">
         <item name="trackThickness">6dp</item>
         <item name="trackCornerRadius">3dp</item>
         <item name="indicatorColor">?attr/colorPrimary</item>
