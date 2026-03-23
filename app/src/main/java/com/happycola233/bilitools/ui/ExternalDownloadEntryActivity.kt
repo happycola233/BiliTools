@@ -20,7 +20,7 @@ import com.google.android.material.appbar.MaterialToolbar
 class ExternalDownloadEntryActivity : AppCompatActivity(), ParseFragment.ExternalDownloadHost {
     override fun onCreate(savedInstanceState: Bundle?) {
         // Keep visual style aligned with app settings (theme color/pure black) before inflate.
-        applyThemeOverlays()
+        applySettingsThemeOverlays()
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_external_download_entry)
         // Tap outside or toolbar back closes this transient UI and returns to source app.
@@ -70,16 +70,6 @@ class ExternalDownloadEntryActivity : AppCompatActivity(), ParseFragment.Externa
             ExternalDownloadContract.RESULT_KEY,
             bundleOf(ExternalDownloadContract.RESULT_URL to url),
         )
-    }
-
-    private fun applyThemeOverlays() {
-        val settings = applicationContext
-            .appContainer
-            .settingsRepository
-            .currentSettings()
-        settings.themeColor.overlayStyleResOrNull()?.let { theme.applyStyle(it, true) }
-        settings.darkPureBlackOverlayStyleResOrNull(resources.configuration.uiMode)
-            ?.let { theme.applyStyle(it, true) }
     }
 
     companion object {

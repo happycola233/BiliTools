@@ -4,11 +4,11 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope
 import androidx.core.os.bundleOf
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
+import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
 import com.happycola233.bilitools.R
@@ -16,18 +16,18 @@ import com.happycola233.bilitools.core.appContainer
 import com.happycola233.bilitools.data.UpdateCheckResult
 import com.happycola233.bilitools.databinding.ActivityMainBinding
 import com.happycola233.bilitools.ui.downloads.DownloadsFragment
-import com.happycola233.bilitools.ui.login.LoginFragment
+import com.happycola233.bilitools.ui.me.MeFragment
 import com.happycola233.bilitools.ui.parse.ParseFragment
-import com.happycola233.bilitools.ui.settings.SettingsFragment
 import com.happycola233.bilitools.ui.update.UpdateDialog
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
+    private lateinit var appliedThemeSnapshot: ThemeSettingsSnapshot
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
-        applyThemeColorOverlay()
+        appliedThemeSnapshot = applySettingsThemeOverlays()
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -62,8 +62,7 @@ class MainActivity : AppCompatActivity() {
                 val menuId = when (position) {
                     0 -> R.id.parseFragment
                     1 -> R.id.downloadsFragment
-                    2 -> R.id.loginFragment
-                    3 -> R.id.settingsFragment
+                    2 -> R.id.meFragment
                     else -> R.id.parseFragment
                 }
                 binding.bottomNav.menu.findItem(menuId).isChecked = true
@@ -72,8 +71,7 @@ class MainActivity : AppCompatActivity() {
                 binding.collapsingToolbar.title = when (position) {
                     0 -> getString(R.string.app_name)
                     1 -> getString(R.string.nav_downloads)
-                    2 -> getString(R.string.nav_login)
-                    3 -> getString(R.string.nav_settings)
+                    2 -> getString(R.string.nav_me)
                     else -> getString(R.string.app_name)
                 }
             }
@@ -83,8 +81,7 @@ class MainActivity : AppCompatActivity() {
             when (item.itemId) {
                 R.id.parseFragment -> binding.viewPager.setCurrentItem(0, false)
                 R.id.downloadsFragment -> binding.viewPager.setCurrentItem(1, false)
-                R.id.loginFragment -> binding.viewPager.setCurrentItem(2, false)
-                R.id.settingsFragment -> binding.viewPager.setCurrentItem(3, false)
+                R.id.meFragment -> binding.viewPager.setCurrentItem(2, false)
             }
             true
         }
@@ -102,6 +99,11 @@ class MainActivity : AppCompatActivity() {
         if (savedInstanceState == null) {
             checkForUpdatesInBackground()
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        recreateIfThemeSettingsChanged()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -130,14 +132,15 @@ class MainActivity : AppCompatActivity() {
         sourceIntent?.removeExtra(ExternalDownloadContract.EXTRA_URL)
     }
 
-    private fun applyThemeColorOverlay() {
-        val settings = applicationContext
-            .appContainer
-            .settingsRepository
-            .currentSettings()
-        settings.themeColor.overlayStyleResOrNull()?.let { theme.applyStyle(it, true) }
-        settings.darkPureBlackOverlayStyleResOrNull(resources.configuration.uiMode)
-            ?.let { theme.applyStyle(it, true) }
+    private fun recreateIfThemeSettingsChanged() {
+        val currentSnapshot = applicationContext.currentThemeSettingsSnapshot(
+            resources.configuration.uiMode,
+        )
+        if (currentSnapshot != appliedThemeSnapshot) {
+            recreate()
+            return
+        }
+        appliedThemeSnapshot = currentSnapshot
     }
 
     private fun checkForUpdatesInBackground() {
@@ -159,15 +162,14 @@ class MainActivity : AppCompatActivity() {
 }
 
 class MainPagerAdapter(activity: AppCompatActivity) : FragmentStateAdapter(activity) {
-    override fun getItemCount(): Int = 4
+    override fun getItemCount(): Int = 3
 
     override fun createFragment(position: Int): androidx.fragment.app.Fragment {
         return when (position) {
             // Use factory so main mode and external mode share the same fragment class.
             0 -> ParseFragment.newInstance()
             1 -> DownloadsFragment()
-            2 -> LoginFragment()
-            3 -> SettingsFragment()
+            2 -> MeFragment()
             else -> throw IllegalArgumentException("Invalid position $position")
         }
     }

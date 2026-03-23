@@ -32,10 +32,9 @@ import com.happycola233.bilitools.data.model.HistoryItem
 import com.happycola233.bilitools.databinding.ActivityHistoryBinding
 import com.happycola233.bilitools.databinding.DialogHistoryFilterBinding
 import com.happycola233.bilitools.ui.AppViewModelFactory
-import com.happycola233.bilitools.ui.darkPureBlackOverlayStyleResOrNull
 import com.happycola233.bilitools.ui.ExternalDownloadContract
 import com.happycola233.bilitools.ui.MainActivity
-import com.happycola233.bilitools.ui.overlayStyleResOrNull
+import com.happycola233.bilitools.ui.applySettingsThemeOverlays
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneOffset
@@ -57,7 +56,7 @@ class HistoryActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
-        applyThemeOverlays()
+        applySettingsThemeOverlays()
         super.onCreate(savedInstanceState)
         binding = ActivityHistoryBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -73,16 +72,6 @@ class HistoryActivity : AppCompatActivity() {
     override fun onStart() {
         super.onStart()
         viewModel.refreshLoginState()
-    }
-
-    private fun applyThemeOverlays() {
-        val settings = applicationContext
-            .appContainer
-            .settingsRepository
-            .currentSettings()
-        settings.themeColor.overlayStyleResOrNull()?.let { theme.applyStyle(it, true) }
-        settings.darkPureBlackOverlayStyleResOrNull(resources.configuration.uiMode)
-            ?.let { theme.applyStyle(it, true) }
     }
 
     private fun setupInsets() {

@@ -15,12 +15,7 @@
         android:label="@string/nav_downloads" />
 
     <fragment
-        android:id="@+id/loginFragment"
-        android:name="com.happycola233.bilitools.ui.login.LoginFragment"
-        android:label="@string/nav_login" />
-
-    <fragment
-        android:id="@+id/settingsFragment"
-        android:name="com.happycola233.bilitools.ui.settings.SettingsFragment"
-        android:label="@string/nav_settings" />
+        android:id="@+id/meFragment"
+        android:name="com.happycola233.bilitools.ui.me.MeFragment"
+        android:label="@string/nav_me" />
 </navigation>

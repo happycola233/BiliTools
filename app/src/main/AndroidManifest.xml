@@ -58,6 +58,11 @@
             android:exported="false"
             android:theme="@style/Theme.BiliTools" />
 
+        <activity
+            android:name=".ui.settings.SettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BiliTools" />
+
         <service
             android:name=".download.DownloadForegroundService"
             android:enabled="true"

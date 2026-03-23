@@ -1,4 +1,4 @@
-package com.happycola233.bilitools.ui.login
+package com.happycola233.bilitools.ui.me
 
 import android.content.Intent
 import android.os.Bundle
@@ -20,11 +20,17 @@ import coil.load
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.appContainer
 import com.happycola233.bilitools.data.model.UserInfo
-import com.happycola233.bilitools.databinding.FragmentLoginBinding
+import com.happycola233.bilitools.databinding.FragmentMeBinding
 import com.happycola233.bilitools.ui.AppViewModelFactory
 import com.happycola233.bilitools.ui.ExternalDownloadContract
 import com.happycola233.bilitools.ui.MainActivity
 import com.happycola233.bilitools.ui.history.HistoryActivity
+import com.happycola233.bilitools.ui.login.CountryOption
+import com.happycola233.bilitools.ui.login.GeetestDialogFragment
+import com.happycola233.bilitools.ui.login.LoginEvent
+import com.happycola233.bilitools.ui.login.LoginTab
+import com.happycola233.bilitools.ui.login.LoginViewModel
+import com.happycola233.bilitools.ui.settings.SettingsActivity
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.textfield.MaterialAutoCompleteTextView
@@ -34,8 +40,8 @@ import kotlin.math.abs
 import java.util.Locale
 import kotlinx.coroutines.launch
 
-class LoginFragment : Fragment() {
-    private var _binding: FragmentLoginBinding? = null
+class MeFragment : Fragment() {
+    private var _binding: FragmentMeBinding? = null
     private val binding get() = _binding!!
 
     private val viewModel: LoginViewModel by viewModels {
@@ -50,7 +56,7 @@ class LoginFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?,
     ): View {
-        _binding = FragmentLoginBinding.inflate(inflater, container, false)
+        _binding = FragmentMeBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -124,6 +130,9 @@ class LoginFragment : Fragment() {
         binding.watchLaterEntryContainer.setOnClickListener {
             if (!viewModel.state.value.isLoggedIn) return@setOnClickListener
             jumpToParse("https://www.bilibili.com/watchlater")
+        }
+        binding.settingsEntryContainer.setOnClickListener {
+            startActivity(Intent(requireContext(), SettingsActivity::class.java))
         }
 
         binding.pwdLogin.setOnClickListener {
