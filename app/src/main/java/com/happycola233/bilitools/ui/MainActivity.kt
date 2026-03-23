@@ -32,11 +32,16 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Handle edge-to-edge manually
+        // Handle edge-to-edge manually.
+        // AppBar gets its own listener that returns CONSUMED so the Material library's
+        // internal AppBarLayout.onApplyWindowInsets() cannot double-apply the top inset.
+        ViewCompat.setOnApplyWindowInsetsListener(binding.appBar) { v, windowInsets ->
+            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.updatePadding(top = insets.top)
+            WindowInsetsCompat.CONSUMED
+        }
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, windowInsets ->
             val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-            
-            binding.appBar.updatePadding(top = insets.top)
             binding.bottomNav.updatePadding(bottom = insets.bottom)
 
             // Adjust ViewPager padding to avoid content being covered by the bottom nav

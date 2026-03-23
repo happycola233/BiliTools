@@ -88,9 +88,15 @@ class HistoryActivity : AppCompatActivity() {
     private fun setupInsets() {
         val listBaseBottom = binding.historyList.paddingBottom
         val emptyBaseBottom = binding.historyEmptyState.paddingBottom
+        // AppBar gets its own listener that returns CONSUMED so the Material library's
+        // internal AppBarLayout.onApplyWindowInsets() cannot double-apply the top inset.
+        ViewCompat.setOnApplyWindowInsetsListener(binding.historyAppBar) { v, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.updatePadding(top = bars.top)
+            WindowInsetsCompat.CONSUMED
+        }
         ViewCompat.setOnApplyWindowInsetsListener(binding.historyRoot) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            binding.historyAppBar.updatePadding(top = bars.top)
             binding.historyList.updatePadding(bottom = listBaseBottom + bars.bottom)
             binding.historyEmptyState.updatePadding(bottom = emptyBaseBottom + bars.bottom)
             insets
