@@ -56,8 +56,11 @@ class HistoryAdapter(
             if (duration > 0) {
                 val watched = if (item.progress < 0) duration else item.progress.coerceIn(0, duration)
                 val progressPercent = (watched * 100f / duration).coerceIn(0f, 100f).roundToInt()
-                binding.historyCoverProgress.visibility = View.VISIBLE
-                binding.historyCoverProgress.progress = progressPercent
+                val showProgressBar = watched < duration
+                binding.historyCoverProgress.visibility = if (showProgressBar) View.VISIBLE else View.GONE
+                if (showProgressBar) {
+                    binding.historyCoverProgress.progress = progressPercent
+                }
                 binding.historyProgressText.visibility = View.VISIBLE
                 binding.historyProgressText.text = if (item.progress < 0) {
                     context.getString(
