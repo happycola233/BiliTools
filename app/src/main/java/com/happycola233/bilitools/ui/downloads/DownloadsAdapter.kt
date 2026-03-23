@@ -270,6 +270,10 @@ class DownloadsAdapter(
                     holder.bindSelectionState(item.group)
                     return
                 }
+                if (updates.contains(PAYLOAD_GROUP_PROGRESS)) {
+                    holder.bindProgress(item.group)
+                    return
+                }
             }
         }
         super.onBindViewHolder(holder, position, payloads)
@@ -617,7 +621,7 @@ class DownloadsAdapter(
                 }
             }
 
-            binding.groupProgress.progress = progress
+            binding.groupProgress.setProgressCompat(progress, true)
             val allSuccess = group.tasks.all { it.status == DownloadStatus.Success }
             binding.groupProgress.visibility = if (allSuccess) View.GONE else View.VISIBLE
 
@@ -745,6 +749,58 @@ class DownloadsAdapter(
                 android.R.attr.colorPrimary,
             )
             binding.cardView.strokeWidth = if (isSelected) (2 * density).toInt() else 0
+        }
+
+        fun bindProgress(group: DownloadGroup) {
+            currentGroup = group
+            val context = binding.root.context
+            val completed = group.tasks.count { it.status == DownloadStatus.Success }
+            val progress = calculateGroupProgress(group.tasks)
+            binding.groupSummary.text = context.getString(
+                R.string.downloads_group_summary,
+                completed,
+                group.tasks.size,
+                progress,
+            )
+            binding.groupProgress.setProgressCompat(progress, true)
+            val allSuccess = group.tasks.all { it.status == DownloadStatus.Success }
+            binding.groupProgress.visibility = if (allSuccess) View.GONE else View.VISIBLE
+
+            val hasRunning = group.tasks.any { item ->
+                isManaged(item) && when (item.status) {
+                    DownloadStatus.Pending,
+                    DownloadStatus.Running,
+                    DownloadStatus.Merging -> true
+                    else -> false
+                }
+            }
+            val hasPaused = group.tasks.any { item ->
+                isManaged(item) &&
+                    item.status == DownloadStatus.Paused &&
+                    item.userPaused
+            }
+
+            if (adapter.selectionMode) {
+                binding.groupActionsContainer.visibility = View.GONE
+            } else if (hasRunning) {
+                binding.groupPauseResume.setIconResource(R.drawable.ic_pause_24)
+                binding.groupPauseResume.text = context.getString(R.string.download_pause)
+                binding.groupPauseResume.setOnClickListener { onGroupPause(group) }
+                binding.groupActionsContainer.visibility = View.VISIBLE
+            } else if (hasPaused) {
+                binding.groupPauseResume.setIconResource(R.drawable.ic_play_arrow_24)
+                binding.groupPauseResume.text = context.getString(R.string.download_resume)
+                binding.groupPauseResume.setOnClickListener { onGroupResume(group) }
+                binding.groupActionsContainer.visibility = View.VISIBLE
+            } else {
+                binding.groupActionsContainer.visibility = View.GONE
+            }
+
+            // Update inner task list if expanded
+            if (adapter.expandedGroups.contains(group.id) && !adapter.selectionMode) {
+                taskAdapter.groupPath = group.relativePath
+                taskAdapter.submitList(group.tasks)
+            }
         }
 
         private fun applyExpandedStateImmediate(group: DownloadGroup, expanded: Boolean) {
@@ -1089,6 +1145,7 @@ class DownloadsAdapter(
         private const val PAYLOAD_COLLAPSED_CHANGED = "COLLAPSED_CHANGED"
         private const val PAYLOAD_META_CHANGED = "META_CHANGED"
         private const val PAYLOAD_SELECTION_CHANGED = "SELECTION_CHANGED"
+        private const val PAYLOAD_GROUP_PROGRESS = "GROUP_PROGRESS"
 
         private val DownloadsDiffCallback = object : DiffUtil.ItemCallback<DownloadsListItem>() {
             override fun areItemsTheSame(
@@ -1124,6 +1181,18 @@ class DownloadsAdapter(
                     }
                     if (payloads.isNotEmpty()) return payloads
                 }
+                if (oldItem is DownloadsListItem.GroupItem && newItem is DownloadsListItem.GroupItem) {
+                    val og = oldItem.group
+                    val ng = newItem.group
+                    val onlyProgressChanged = og.title == ng.title &&
+                        og.bvid == ng.bvid &&
+                        og.coverUrl == ng.coverUrl &&
+                        og.createdAt == ng.createdAt &&
+                        og.tasks.size == ng.tasks.size
+                    if (onlyProgressChanged) {
+                        return listOf(PAYLOAD_GROUP_PROGRESS)
+                    }
+                }
                 return super.getChangePayload(oldItem, newItem)
             }
         }
@@ -1144,6 +1213,14 @@ private class DownloadTaskAdapter(
         val binding =
             ItemDownloadBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         return TaskViewHolder(binding, onPauseResume, onRetry, onDelete, onTaskClick, onLocationClick)
+    }
+
+    override fun onBindViewHolder(holder: TaskViewHolder, position: Int, payloads: MutableList<Any>) {
+        if (payloads.isNotEmpty()) {
+            holder.bindProgress(getItem(position))
+            return
+        }
+        super.onBindViewHolder(holder, position, payloads)
     }
 
     override fun onBindViewHolder(holder: TaskViewHolder, position: Int) {
@@ -1188,7 +1265,7 @@ private class DownloadTaskAdapter(
                 else -> false
             }
             binding.downloadProgress.visibility = if (showProgress) View.VISIBLE else View.GONE
-            binding.downloadProgress.progress = item.progress
+            binding.downloadProgress.setProgressCompat(item.progress, true)
 
             val managed = isManaged(item)
             val actionType = if (managed) {
@@ -1233,6 +1310,62 @@ private class DownloadTaskAdapter(
                 binding.root.setOnClickListener(null)
             } else {
                 binding.root.setOnClickListener { onTaskClick(item) }
+            }
+        }
+
+        fun bindProgress(item: DownloadItem) {
+            val context = binding.root.context
+            binding.downloadDetail.text = buildDetailText(context, item)
+
+            val isProcessing = item.status == DownloadStatus.Pending || item.status == DownloadStatus.Merging
+            binding.downloadProgress.isIndeterminate = isProcessing
+
+            val showProgress = when(item.status) {
+                DownloadStatus.Pending,
+                DownloadStatus.Running,
+                DownloadStatus.Paused,
+                DownloadStatus.Merging -> true
+                else -> false
+            }
+            binding.downloadProgress.visibility = if (showProgress) View.VISIBLE else View.GONE
+            binding.downloadProgress.setProgressCompat(item.progress, true)
+
+            val managed = isManaged(item)
+            val actionType = if (managed) {
+                when (item.status) {
+                    DownloadStatus.Running -> TaskAction.Pause
+                    DownloadStatus.Paused -> if (item.userPaused) TaskAction.Resume else null
+                    DownloadStatus.Failed -> TaskAction.Retry
+                    else -> null
+                }
+            } else {
+                null
+            }
+
+            if (actionType != null) {
+                binding.downloadPauseResume.visibility = View.VISIBLE
+                when (actionType) {
+                    TaskAction.Pause -> {
+                        binding.downloadPauseResume.setIconResource(R.drawable.ic_pause_24)
+                        binding.downloadPauseResume.contentDescription =
+                            context.getString(R.string.download_pause)
+                        binding.downloadPauseResume.setOnClickListener { onPauseResume(item) }
+                    }
+                    TaskAction.Resume -> {
+                        binding.downloadPauseResume.setIconResource(R.drawable.ic_play_arrow_24)
+                        binding.downloadPauseResume.contentDescription =
+                            context.getString(R.string.download_resume)
+                        binding.downloadPauseResume.setOnClickListener { onPauseResume(item) }
+                    }
+                    TaskAction.Retry -> {
+                        binding.downloadPauseResume.setIconResource(R.drawable.ic_retry_24)
+                        binding.downloadPauseResume.contentDescription =
+                            context.getString(R.string.download_retry)
+                        binding.downloadPauseResume.setOnClickListener { onRetry(item) }
+                    }
+                }
+            } else {
+                binding.downloadPauseResume.visibility = View.GONE
             }
         }
 
@@ -1353,6 +1486,8 @@ private class DownloadTaskAdapter(
     }
 
     companion object {
+        private const val PAYLOAD_TASK_PROGRESS = "TASK_PROGRESS"
+
         private val TaskDiffCallback = object : DiffUtil.ItemCallback<DownloadItem>() {
             override fun areItemsTheSame(oldItem: DownloadItem, newItem: DownloadItem): Boolean {
                 return oldItem.id == newItem.id
@@ -1360,6 +1495,16 @@ private class DownloadTaskAdapter(
 
             override fun areContentsTheSame(oldItem: DownloadItem, newItem: DownloadItem): Boolean {
                 return oldItem == newItem
+            }
+
+            override fun getChangePayload(oldItem: DownloadItem, newItem: DownloadItem): Any? {
+                val onlyProgressChanged = oldItem.title == newItem.title &&
+                    oldItem.fileName == newItem.fileName &&
+                    oldItem.outputMissing == newItem.outputMissing
+                if (onlyProgressChanged) {
+                    return PAYLOAD_TASK_PROGRESS
+                }
+                return super.getChangePayload(oldItem, newItem)
             }
         }
     }
