@@ -151,16 +151,12 @@
             <!-- Progress Bar (Matched to sub-item style) -->
             <com.google.android.material.progressindicator.LinearProgressIndicator
                 android:id="@+id/group_progress"
-                style="@style/Widget.Material3Expressive.LinearProgressIndicator.Wavy"
+                style="@style/Widget.BiliTools.DownloadProgress"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="16dp"
                 android:layout_marginBottom="12dp"
-                android:indeterminate="false"
-                app:trackThickness="4dp"
-                app:trackCornerRadius="2dp"
-                app:trackColor="?attr/colorSurfaceVariant"
-                app:indicatorColor="?attr/colorPrimary" />
+                android:indeterminate="false" />
 
             <!-- Expanded Content Area -->
             <LinearLayout

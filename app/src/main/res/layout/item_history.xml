@@ -40,7 +40,7 @@
 
             <com.google.android.material.progressindicator.LinearProgressIndicator
                 android:id="@+id/history_cover_progress"
-                style="@style/Widget.Material3Expressive.LinearProgressIndicator.Wavy"
+                style="@style/Widget.BiliTools.DownloadProgress"
                 android:layout_width="match_parent"
                 android:layout_height="4dp"
                 android:layout_gravity="bottom"
