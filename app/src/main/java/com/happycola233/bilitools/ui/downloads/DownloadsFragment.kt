@@ -14,11 +14,20 @@ import android.view.View
 import android.view.ViewGroup
 import android.webkit.MimeTypeMap
 import android.widget.Toast
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.widget.PopupMenu
@@ -28,6 +37,7 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.google.android.material.color.MaterialColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.appContainer
@@ -147,50 +157,51 @@ class DownloadsFragment : Fragment() {
         )
         @OptIn(ExperimentalMaterial3ExpressiveApi::class)
         binding.downloadsCompose.setContent {
-            MaterialExpressiveTheme {
-            DownloadsGlassContent(
-                adapter = adapter,
-                selectionMode = composeSelectionMode,
-                emptyStateVisible = composeEmptyStateVisible,
-                batchStatusText = composeBatchStatusText,
-                batchSelectAllText = composeBatchSelectAllText,
-                batchHintHtml = composeBatchHintHtml,
-                batchClearEnabled = composeBatchClearEnabled,
-                batchDeleteEnabled = composeBatchDeleteEnabled,
-                controlsOffsetPx = composeControlsOffsetPx,
-                resumeAllCount = composeResumeAllCount,
-                pauseAllCount = composePauseAllCount,
-                glassDebugEnabled = composeGlassDebugEnabled,
-                glassCornerRadiusDp = composeGlassCornerRadiusDp,
-                glassBlurRadiusDp = composeGlassBlurRadiusDp,
-                glassRefractionHeightDp = composeGlassRefractionHeightDp,
-                glassRefractionAmountFrac = composeGlassRefractionAmountFrac,
-                glassChromaticAberration = composeGlassChromaticAberration,
-                glassSurfaceAlpha = composeGlassSurfaceAlpha,
-                onBatchManage = { enterSelectionMode() },
-                onResumeAll = { performResumeAll() },
-                onPauseAll = { performPauseAll() },
-                onClearCompleted = { viewModel.clearCompleted() },
-                onClearAll = { viewModel.clearAll() },
-                onExitSelection = { exitSelectionMode() },
-                onSelectAll = { toggleSelectAll() },
-                onClearRecords = { confirmBatchDelete(deleteFile = false) },
-                onDeleteFiles = { confirmBatchDelete(deleteFile = true) },
-                onGlassCornerRadiusChange = { settingsRepository.setDownloadsGlassCornerRadiusDp(it) },
-                onGlassBlurRadiusChange = { settingsRepository.setDownloadsGlassBlurRadiusDp(it) },
-                onGlassRefractionHeightChange = { settingsRepository.setDownloadsGlassRefractionHeightDp(it) },
-                onGlassRefractionAmountChange = { settingsRepository.setDownloadsGlassRefractionAmountFrac(it) },
-                onGlassChromaticAberrationChange = { settingsRepository.setDownloadsGlassChromaticAberration(it) },
-                onGlassSurfaceAlphaChange = { settingsRepository.setDownloadsGlassSurfaceAlpha(it) },
-                onGlassReset = {
-                    settingsRepository.setDownloadsGlassCornerRadiusDp(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_CORNER_RADIUS_DP)
-                    settingsRepository.setDownloadsGlassBlurRadiusDp(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_BLUR_RADIUS_DP)
-                    settingsRepository.setDownloadsGlassRefractionHeightDp(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_REFRACTION_HEIGHT_DP)
-                    settingsRepository.setDownloadsGlassRefractionAmountFrac(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_REFRACTION_AMOUNT_FRAC)
-                    settingsRepository.setDownloadsGlassSurfaceAlpha(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_SURFACE_ALPHA)
-                    settingsRepository.setDownloadsGlassChromaticAberration(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_CHROMATIC_ABERRATION)
-                },
-            )
+            val colorScheme = rememberAndroidThemeColorScheme()
+            MaterialExpressiveTheme(colorScheme = colorScheme) {
+                DownloadsGlassContent(
+                    adapter = adapter,
+                    selectionMode = composeSelectionMode,
+                    emptyStateVisible = composeEmptyStateVisible,
+                    batchStatusText = composeBatchStatusText,
+                    batchSelectAllText = composeBatchSelectAllText,
+                    batchHintHtml = composeBatchHintHtml,
+                    batchClearEnabled = composeBatchClearEnabled,
+                    batchDeleteEnabled = composeBatchDeleteEnabled,
+                    controlsOffsetPx = composeControlsOffsetPx,
+                    resumeAllCount = composeResumeAllCount,
+                    pauseAllCount = composePauseAllCount,
+                    glassDebugEnabled = composeGlassDebugEnabled,
+                    glassCornerRadiusDp = composeGlassCornerRadiusDp,
+                    glassBlurRadiusDp = composeGlassBlurRadiusDp,
+                    glassRefractionHeightDp = composeGlassRefractionHeightDp,
+                    glassRefractionAmountFrac = composeGlassRefractionAmountFrac,
+                    glassChromaticAberration = composeGlassChromaticAberration,
+                    glassSurfaceAlpha = composeGlassSurfaceAlpha,
+                    onBatchManage = { enterSelectionMode() },
+                    onResumeAll = { performResumeAll() },
+                    onPauseAll = { performPauseAll() },
+                    onClearCompleted = { viewModel.clearCompleted() },
+                    onClearAll = { viewModel.clearAll() },
+                    onExitSelection = { exitSelectionMode() },
+                    onSelectAll = { toggleSelectAll() },
+                    onClearRecords = { confirmBatchDelete(deleteFile = false) },
+                    onDeleteFiles = { confirmBatchDelete(deleteFile = true) },
+                    onGlassCornerRadiusChange = { settingsRepository.setDownloadsGlassCornerRadiusDp(it) },
+                    onGlassBlurRadiusChange = { settingsRepository.setDownloadsGlassBlurRadiusDp(it) },
+                    onGlassRefractionHeightChange = { settingsRepository.setDownloadsGlassRefractionHeightDp(it) },
+                    onGlassRefractionAmountChange = { settingsRepository.setDownloadsGlassRefractionAmountFrac(it) },
+                    onGlassChromaticAberrationChange = { settingsRepository.setDownloadsGlassChromaticAberration(it) },
+                    onGlassSurfaceAlphaChange = { settingsRepository.setDownloadsGlassSurfaceAlpha(it) },
+                    onGlassReset = {
+                        settingsRepository.setDownloadsGlassCornerRadiusDp(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_CORNER_RADIUS_DP)
+                        settingsRepository.setDownloadsGlassBlurRadiusDp(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_BLUR_RADIUS_DP)
+                        settingsRepository.setDownloadsGlassRefractionHeightDp(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_REFRACTION_HEIGHT_DP)
+                        settingsRepository.setDownloadsGlassRefractionAmountFrac(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_REFRACTION_AMOUNT_FRAC)
+                        settingsRepository.setDownloadsGlassSurfaceAlpha(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_SURFACE_ALPHA)
+                        settingsRepository.setDownloadsGlassChromaticAberration(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_CHROMATIC_ABERRATION)
+                    },
+                )
             }
         }
 
@@ -900,4 +911,104 @@ class DownloadsFragment : Fragment() {
         composeControlsOffsetPx = 0f
         _binding = null
     }
+}
+
+@Composable
+private fun rememberAndroidThemeColorScheme(): ColorScheme {
+    val view = LocalView.current
+    val isDarkTheme = isSystemInDarkTheme()
+
+    return remember(view, isDarkTheme) {
+        val baseScheme = if (isDarkTheme) darkColorScheme() else lightColorScheme()
+        baseScheme.copy(
+            primary = view.resolveThemeColor(android.R.attr.colorPrimary, baseScheme.primary),
+            onPrimary = view.resolveThemeColor(com.google.android.material.R.attr.colorOnPrimary, baseScheme.onPrimary),
+            primaryContainer = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorPrimaryContainer,
+                baseScheme.primaryContainer,
+            ),
+            onPrimaryContainer = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorOnPrimaryContainer,
+                baseScheme.onPrimaryContainer,
+            ),
+            secondary = view.resolveThemeColor(com.google.android.material.R.attr.colorSecondary, baseScheme.secondary),
+            onSecondary = view.resolveThemeColor(com.google.android.material.R.attr.colorOnSecondary, baseScheme.onSecondary),
+            secondaryContainer = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorSecondaryContainer,
+                baseScheme.secondaryContainer,
+            ),
+            onSecondaryContainer = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorOnSecondaryContainer,
+                baseScheme.onSecondaryContainer,
+            ),
+            tertiary = view.resolveThemeColor(com.google.android.material.R.attr.colorTertiary, baseScheme.tertiary),
+            onTertiary = view.resolveThemeColor(com.google.android.material.R.attr.colorOnTertiary, baseScheme.onTertiary),
+            tertiaryContainer = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorTertiaryContainer,
+                baseScheme.tertiaryContainer,
+            ),
+            onTertiaryContainer = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorOnTertiaryContainer,
+                baseScheme.onTertiaryContainer,
+            ),
+            background = view.resolveThemeColor(android.R.attr.colorBackground, baseScheme.background),
+            onBackground = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorOnBackground,
+                baseScheme.onBackground,
+            ),
+            surface = view.resolveThemeColor(com.google.android.material.R.attr.colorSurface, baseScheme.surface),
+            onSurface = view.resolveThemeColor(com.google.android.material.R.attr.colorOnSurface, baseScheme.onSurface),
+            surfaceVariant = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorSurfaceVariant,
+                baseScheme.surfaceVariant,
+            ),
+            onSurfaceVariant = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorOnSurfaceVariant,
+                baseScheme.onSurfaceVariant,
+            ),
+            surfaceTint = view.resolveThemeColor(android.R.attr.colorPrimary, baseScheme.surfaceTint),
+            error = view.resolveThemeColor(android.R.attr.colorError, baseScheme.error),
+            onError = view.resolveThemeColor(com.google.android.material.R.attr.colorOnError, baseScheme.onError),
+            errorContainer = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorErrorContainer,
+                baseScheme.errorContainer,
+            ),
+            onErrorContainer = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorOnErrorContainer,
+                baseScheme.onErrorContainer,
+            ),
+            outline = view.resolveThemeColor(com.google.android.material.R.attr.colorOutline, baseScheme.outline),
+            outlineVariant = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorOutlineVariant,
+                baseScheme.outlineVariant,
+            ),
+            surfaceContainer = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorSurfaceContainer,
+                baseScheme.surfaceContainer,
+            ),
+            surfaceContainerHigh = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorSurfaceContainerHigh,
+                baseScheme.surfaceContainerHigh,
+            ),
+            surfaceContainerHighest = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorSurfaceContainerHighest,
+                baseScheme.surfaceContainerHighest,
+            ),
+            surfaceContainerLow = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorSurfaceContainerLow,
+                baseScheme.surfaceContainerLow,
+            ),
+            surfaceContainerLowest = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorSurfaceContainerLowest,
+                baseScheme.surfaceContainerLowest,
+            ),
+        )
+    }
+}
+
+private fun View.resolveThemeColor(
+    attr: Int,
+    fallback: Color,
+): Color {
+    return Color(MaterialColors.getColor(this, attr, fallback.toArgb()))
 }
