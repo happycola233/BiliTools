@@ -472,9 +472,7 @@
 ]]></string>
     <string name="settings_about_disclaimer">该应用用于持久化的所有数据均仅明文存储于用户本地！\n因使用本项目而产生的任何后果均由用户个人承担，与开发者无关，概不负责。\n“哔哩哔哩” 及 “Bilibili” 名称、LOGO及相关图形是上海幻电信息科技有限公司的注册商标或商标。\n本项目与哔哩哔哩及其关联公司无任何关联、合作、授权或背书等关系。</string>
     <string name="update_dialog_title">发现新版本</string>
-    <string name="update_dialog_emoji">✨</string>
-    <string name="update_dialog_version">版本：%1$s</string>
-    <string name="update_dialog_version_diff">v%1$s   →   v%2$s</string>
+    <string name="update_dialog_current_version">当前版本 v%1$s</string>
     <string name="update_dialog_notes_empty">该版本未提供更新说明。</string>
     <string name="update_dialog_open_release">前往发布页</string>
     <string name="update_dialog_open_release_failed">无法打开发布页</string>
