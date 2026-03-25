@@ -147,6 +147,12 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             when (val result = applicationContext.appContainer.updateRepository.checkForUpdate()) {
                 is UpdateCheckResult.UpdateAvailable -> {
+                    if (applicationContext.appContainer.settingsRepository.shouldIgnoreUpdate(
+                            result.release.versionName,
+                        )
+                    ) {
+                        return@launch
+                    }
                     UpdateDialog.show(this@MainActivity, result.release, result.currentVersion)
                 }
 

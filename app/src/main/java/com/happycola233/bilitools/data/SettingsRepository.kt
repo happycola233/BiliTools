@@ -30,6 +30,7 @@ data class AppSettings(
     val downloadsGlassRefractionAmountFrac: Float = SettingsRepository.DEFAULT_DOWNLOADS_GLASS_REFRACTION_AMOUNT_FRAC,
     val downloadsGlassSurfaceAlpha: Float = SettingsRepository.DEFAULT_DOWNLOADS_GLASS_SURFACE_ALPHA,
     val downloadsGlassChromaticAberration: Boolean = SettingsRepository.DEFAULT_DOWNLOADS_GLASS_CHROMATIC_ABERRATION,
+    val ignoredUpdateVersion: String? = null,
 )
 
 enum class AppThemeMode(val value: String) {
@@ -194,6 +195,19 @@ class SettingsRepository(context: Context) {
         _settings.value = current.copy(downloadsGlassChromaticAberration = enabled)
     }
 
+    fun setIgnoredUpdateVersion(version: String?) {
+        val normalized = normalizeUpdateVersion(version)
+        val current = _settings.value
+        if (current.ignoredUpdateVersion == normalized) return
+        prefs.edit().putString(KEY_IGNORED_UPDATE_VERSION, normalized).apply()
+        _settings.value = current.copy(ignoredUpdateVersion = normalized)
+    }
+
+    fun shouldIgnoreUpdate(version: String): Boolean {
+        val normalized = normalizeUpdateVersion(version)
+        return !normalized.isNullOrBlank() && _settings.value.ignoredUpdateVersion == normalized
+    }
+
     fun setDownloadRootRelativePath(relativePath: String) {
         val normalized = normalizeDownloadRoot(relativePath)
         val current = _settings.value
@@ -260,6 +274,9 @@ class SettingsRepository(context: Context) {
             downloadsGlassChromaticAberration = prefs.getBoolean(
                 KEY_DOWNLOADS_GLASS_CHROMATIC_ABERRATION,
                 DEFAULT_DOWNLOADS_GLASS_CHROMATIC_ABERRATION,
+            ),
+            ignoredUpdateVersion = normalizeUpdateVersion(
+                prefs.getString(KEY_IGNORED_UPDATE_VERSION, null),
             ),
         )
     }
@@ -349,6 +366,15 @@ class SettingsRepository(context: Context) {
         }
     }
 
+    private fun normalizeUpdateVersion(rawVersion: String?): String? {
+        return rawVersion
+            ?.trim()
+            ?.removePrefix("v")
+            ?.removePrefix("V")
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+    }
+
     companion object {
         // Keep this a true compile-time constant for default values.
         const val DEFAULT_DOWNLOAD_ROOT = "Download/BiliTools"
@@ -376,5 +402,6 @@ class SettingsRepository(context: Context) {
         private const val KEY_DOWNLOADS_GLASS_REFRACTION_AMOUNT_FRAC = "downloads_glass_refraction_amount_frac"
         private const val KEY_DOWNLOADS_GLASS_SURFACE_ALPHA = "downloads_glass_surface_alpha"
         private const val KEY_DOWNLOADS_GLASS_CHROMATIC_ABERRATION = "downloads_glass_chromatic_aberration"
+        private const val KEY_IGNORED_UPDATE_VERSION = "ignored_update_version"
     }
 }

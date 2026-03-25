@@ -17,6 +17,13 @@ data class ReleaseInfo(
     val title: String?,
     val bodyMarkdown: String,
     val htmlUrl: String,
+    val apkAsset: ReleaseAssetInfo?,
+)
+
+data class ReleaseAssetInfo(
+    val name: String,
+    val downloadUrl: String,
+    val sizeBytes: Long,
 )
 
 sealed interface UpdateCheckResult {
@@ -103,6 +110,19 @@ class UpdateRepository(context: Context) {
                 title = parsed.name?.trim()?.takeIf { it.isNotBlank() },
                 bodyMarkdown = parsed.body.orEmpty(),
                 htmlUrl = htmlUrl,
+                apkAsset = parsed.assets
+                    .orEmpty()
+                    .firstOrNull { asset ->
+                        asset.name?.trim().equals(APK_ASSET_NAME, ignoreCase = false) &&
+                            !asset.browserDownloadUrl.isNullOrBlank()
+                    }
+                    ?.let { asset ->
+                        ReleaseAssetInfo(
+                            name = asset.name!!.trim(),
+                            downloadUrl = asset.browserDownloadUrl!!.trim(),
+                            sizeBytes = asset.size ?: -1L,
+                        )
+                    },
             )
         }
     }
@@ -148,6 +168,7 @@ class UpdateRepository(context: Context) {
     companion object {
         private const val LATEST_RELEASE_API =
             "https://api.github.com/repos/happycola233/BiliTools/releases/latest"
+        private const val APK_ASSET_NAME = "app-release.apk"
     }
 }
 
@@ -156,4 +177,11 @@ private data class GitHubReleaseResponse(
     @Json(name = "name") val name: String?,
     @Json(name = "body") val body: String?,
     @Json(name = "html_url") val htmlUrl: String?,
+    @Json(name = "assets") val assets: List<GitHubReleaseAssetResponse>?,
+)
+
+private data class GitHubReleaseAssetResponse(
+    @Json(name = "name") val name: String?,
+    @Json(name = "browser_download_url") val browserDownloadUrl: String?,
+    @Json(name = "size") val size: Long?,
 )

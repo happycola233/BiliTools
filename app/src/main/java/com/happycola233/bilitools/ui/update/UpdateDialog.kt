@@ -1,41 +1,44 @@
 package com.happycola233.bilitools.ui.update
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.net.Uri
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.core.content.ContextCompat
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
+import androidx.compose.material3.SplitButtonDefaults
+import androidx.compose.material3.SplitButtonLayout
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -45,6 +48,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,8 +76,11 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.happycola233.bilitools.R
+import com.happycola233.bilitools.core.appContainer
 import com.happycola233.bilitools.data.ReleaseInfo
 import com.happycola233.bilitools.ui.theme.rememberAndroidThemeColorScheme
+import com.happycola233.bilitools.update.UpdateStartResult
+import kotlinx.coroutines.launch
 
 object UpdateDialog {
     private const val HOST_VIEW_TAG = "biltools_update_dialog_host"
@@ -85,6 +92,7 @@ object UpdateDialog {
     ) {
         if (activity.isFinishing || activity.isDestroyed) return
 
+        val appUpdateManager = activity.applicationContext.appContainer.appUpdateManager
         val container = activity.findViewById<ViewGroup>(android.R.id.content)
         container.findViewWithTag<ComposeView>(HOST_VIEW_TAG)?.let(container::removeView)
 
@@ -118,6 +126,71 @@ object UpdateDialog {
                             ).show()
                         }
                     },
+                    onDownloadUpdate = {
+                        when (val result = appUpdateManager.startDownload(release)) {
+                            UpdateStartResult.Started -> {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                    ContextCompat.checkSelfPermission(
+                                        activity,
+                                        Manifest.permission.POST_NOTIFICATIONS,
+                                    ) != PackageManager.PERMISSION_GRANTED
+                                ) {
+                                    Toast.makeText(
+                                        activity,
+                                        activity.getString(R.string.notification_permission_denied_tip),
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                                }
+                                Toast.makeText(
+                                    activity,
+                                    activity.getString(R.string.update_dialog_download_started),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                                true
+                            }
+
+                            UpdateStartResult.AlreadyRunning -> {
+                                Toast.makeText(
+                                    activity,
+                                    activity.getString(R.string.update_dialog_download_running),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                                true
+                            }
+
+                            UpdateStartResult.MissingAsset -> {
+                                Toast.makeText(
+                                    activity,
+                                    activity.getString(R.string.update_dialog_apk_missing),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                                false
+                            }
+
+                            is UpdateStartResult.Failed -> {
+                                Toast.makeText(
+                                    activity,
+                                    activity.getString(
+                                        R.string.update_dialog_download_failed,
+                                        result.errorMessage,
+                                    ),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                                false
+                            }
+                        }
+                    },
+                    onIgnoreUpdate = {
+                        appUpdateManager.ignoreRelease(release.versionName)
+                        Toast.makeText(
+                            activity,
+                            activity.getString(
+                                R.string.update_dialog_ignore_saved,
+                                buildVersionTag(release.versionName),
+                            ),
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    },
                 )
             }
         }
@@ -131,6 +204,8 @@ private fun UpdateDialogHost(
     currentVersion: String,
     onRemoveHost: () -> Unit,
     onOpenRelease: () -> Unit,
+    onDownloadUpdate: () -> Boolean,
+    onIgnoreUpdate: () -> Unit,
 ) {
     var isVisible by remember { mutableStateOf(true) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
@@ -149,6 +224,8 @@ private fun UpdateDialogHost(
             currentVersion = currentVersion,
             onDismiss = { isVisible = false },
             onOpenRelease = onOpenRelease,
+            onDownloadUpdate = onDownloadUpdate,
+            onIgnoreUpdate = onIgnoreUpdate,
         )
     }
 }
@@ -161,18 +238,14 @@ private fun UpdateBottomSheet(
     currentVersion: String,
     onDismiss: () -> Unit,
     onOpenRelease: () -> Unit,
+    onDownloadUpdate: () -> Boolean,
+    onIgnoreUpdate: () -> Unit,
 ) {
     val scrollState = rememberScrollState()
-    val showFab by remember {
-        derivedStateOf {
-            sheetState.currentValue != SheetValue.Hidden || sheetState.targetValue != SheetValue.Hidden
-        }
-    }
+    val coroutineScope = rememberCoroutineScope()
     val contentScrollEnabled by remember {
         derivedStateOf {
-            sheetState.currentValue == SheetValue.Expanded &&
-                sheetState.targetValue == SheetValue.Expanded &&
-                !sheetState.isAnimationRunning
+            !sheetState.isAnimationRunning
         }
     }
     val markdown = remember(release.bodyMarkdown) { release.bodyMarkdown.takeIf { it.isNotBlank() } }
@@ -192,74 +265,146 @@ private fun UpdateBottomSheet(
         dragHandle = { BottomSheetDefaults.DragHandle() },
         contentWindowInsets = { BottomSheetDefaults.windowInsets },
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                UpdateSheetHeader(
-                    release = release,
-                    currentVersion = currentVersion,
-                )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            UpdateSheetHeader(
+                release = release,
+                currentVersion = currentVersion,
+            )
 
-                if (markdown != null) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f, fill = false),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                        ),
-                        shape = RoundedCornerShape(20.dp),
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .verticalScroll(scrollState, enabled = contentScrollEnabled)
-                                .padding(horizontal = 18.dp, vertical = 20.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp),
-                        ) {
-                            MarkdownText(text = markdown)
-                            Spacer(modifier = Modifier.height(96.dp))
+            UpdateActionButtons(
+                release = release,
+                onDownloadUpdate = {
+                    if (onDownloadUpdate()) {
+                        coroutineScope.launch {
+                            sheetState.hide()
+                            onDismiss()
                         }
                     }
-                } else {
-                    Text(
-                        text = stringResource(R.string.update_dialog_notes_empty),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                },
+                onIgnoreUpdate = {
+                    onIgnoreUpdate()
+                    coroutineScope.launch {
+                        sheetState.hide()
+                        onDismiss()
+                    }
+                },
+                onOpenRelease = onOpenRelease,
+            )
+
+            if (markdown != null) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    ),
+                    shape = RoundedCornerShape(20.dp),
+                ) {
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 24.dp),
-                        textAlign = TextAlign.Center,
+                            .verticalScroll(scrollState, enabled = contentScrollEnabled)
+                            .padding(horizontal = 18.dp, vertical = 20.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        MarkdownText(text = markdown)
+                    }
+                }
+            } else {
+                Text(
+                    text = stringResource(R.string.update_dialog_notes_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp),
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun UpdateActionButtons(
+    release: ReleaseInfo,
+    onDownloadUpdate: () -> Unit,
+    onIgnoreUpdate: () -> Unit,
+    onOpenRelease: () -> Unit,
+) {
+    var ignoreMenuExpanded by remember { mutableStateOf(false) }
+    val canDownload = release.apkAsset != null
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box {
+                SplitButtonLayout(
+                    leadingButton = {
+                        SplitButtonDefaults.LeadingButton(
+                            onClick = onDownloadUpdate,
+                            enabled = canDownload,
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_download_for_offline_24),
+                                contentDescription = null,
+                                modifier = Modifier.size(SplitButtonDefaults.LeadingIconSize),
+                            )
+                            Text(
+                                text = stringResource(R.string.update_dialog_download),
+                                modifier = Modifier.padding(start = 8.dp),
+                            )
+                        }
+                    },
+                    trailingButton = {
+                        SplitButtonDefaults.TrailingButton(
+                            onClick = { ignoreMenuExpanded = true },
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_expand_more_24),
+                                contentDescription = null,
+                                modifier = Modifier.size(SplitButtonDefaults.TrailingIconSize),
+                            )
+                        }
+                    },
+                )
+
+                DropdownMenu(
+                    expanded = ignoreMenuExpanded,
+                    onDismissRequest = { ignoreMenuExpanded = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.update_dialog_ignore_once)) },
+                        onClick = {
+                            ignoreMenuExpanded = false
+                            onIgnoreUpdate()
+                        },
                     )
-                    Spacer(modifier = Modifier.height(96.dp))
                 }
             }
 
-            androidx.compose.animation.AnimatedVisibility(
-                visible = showFab,
-                enter = fadeIn() + slideInVertically { it },
-                exit = fadeOut() + slideOutVertically { it },
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .navigationBarsPadding()
-                    .padding(16.dp),
+            FilledTonalIconButton(
+                onClick = onOpenRelease,
+                modifier = Modifier.size(IconButtonDefaults.mediumContainerSize()),
+                shape = IconButtonDefaults.mediumRoundShape,
             ) {
-                ExtendedFloatingActionButton(
-                    onClick = onOpenRelease,
-                    icon = {
-                        Icon(
-                            painterResource(R.drawable.ic_github_invertocat_black),
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                        )
-                    },
-                    text = { Text(stringResource(R.string.update_dialog_open_release)) },
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                Icon(
+                    painter = painterResource(R.drawable.ic_github_invertocat_black),
+                    contentDescription = stringResource(R.string.update_dialog_open_release),
+                    modifier = Modifier.size(24.dp),
                 )
             }
         }

@@ -1,0 +1,27 @@
+<resources>
+    <string name="update_dialog_download">下载更新</string>
+    <string name="update_dialog_ignore_once">忽略本次更新</string>
+    <string name="update_dialog_download_started">已在后台开始下载更新</string>
+    <string name="update_dialog_download_running">更新安装包已在后台下载中</string>
+    <string name="update_dialog_download_failed">启动更新下载失败：%1$s</string>
+    <string name="update_dialog_apk_missing">未找到 app-release.apk 安装包</string>
+    <string name="update_dialog_ignore_saved">已忽略 %1$s 的更新提醒</string>
+
+    <string name="update_install_file_missing">更新安装包不存在或已被清理</string>
+    <string name="update_install_launch_failed">无法打开安装程序</string>
+
+    <string name="update_notification_channel_progress_name">应用更新下载</string>
+    <string name="update_notification_channel_progress_desc">显示应用更新下载进度</string>
+    <string name="update_notification_channel_result_name">应用更新安装</string>
+    <string name="update_notification_channel_result_desc">显示应用更新下载完成或失败状态</string>
+
+    <string name="update_notification_progress_title">正在下载更新 %1$s</string>
+    <string name="update_notification_progress_content_known">%1$d%% %2$s/%3$s</string>
+    <string name="update_notification_progress_content_unknown">已下载 %1$s</string>
+    <string name="update_notification_ready_title">更新已下载完成</string>
+    <string name="update_notification_ready_content">点击开始安装 %1$s</string>
+    <string name="update_notification_action_install">安装</string>
+    <string name="update_notification_failed_title">更新下载失败：%1$s</string>
+    <string name="update_notification_failed_content">%1$s</string>
+    <string name="update_notification_action_open_release">打开发布页</string>
+</resources>

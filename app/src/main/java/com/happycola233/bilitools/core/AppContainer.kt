@@ -9,6 +9,7 @@ import com.happycola233.bilitools.data.SettingsRepository
 import com.happycola233.bilitools.data.MediaRepository
 import com.happycola233.bilitools.data.UpdateRepository
 import com.happycola233.bilitools.data.VideoRepository
+import com.happycola233.bilitools.update.AppUpdateManager
 
 class AppContainer(context: Context) {
     private val appContext = context.applicationContext
@@ -23,6 +24,7 @@ class AppContainer(context: Context) {
     val extrasRepository by lazy { ExtrasRepository(httpClient, wbiSigner) }
     val settingsRepository by lazy { SettingsRepository(appContext) }
     val updateRepository by lazy { UpdateRepository(appContext) }
+    val appUpdateManager by lazy { AppUpdateManager(appContext) }
     val downloadRepository by lazy { DownloadRepository(appContext, cookieStore, settingsRepository) }
     val exportRepository by lazy { ExportRepository(appContext) }
 }
