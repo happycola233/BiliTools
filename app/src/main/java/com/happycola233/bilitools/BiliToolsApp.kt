@@ -18,6 +18,7 @@ class BiliToolsApp : Application(), Application.ActivityLifecycleCallbacks {
 
     override fun onCreate() {
         super.onCreate()
+        container.updatePackageCleanupManager.cleanupAfterAppUpdateIfNeeded()
         registerActivityLifecycleCallbacks(this)
         // Load persisted settings at startup (including theme mode).
         val settingsRepository = container.settingsRepository

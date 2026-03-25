@@ -26,6 +26,7 @@ class UpdateDownloadService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val httpClient by lazy { OkHttpClient() }
     private lateinit var notificationManager: UpdateNotificationManager
+    private lateinit var packageCleanupManager: UpdatePackageCleanupManager
 
     private var downloadJob: Job? = null
     private var activeCall: Call? = null
@@ -33,6 +34,7 @@ class UpdateDownloadService : Service() {
     override fun onCreate() {
         super.onCreate()
         notificationManager = UpdateNotificationManager(this)
+        packageCleanupManager = UpdatePackageCleanupManager(this)
         notificationManager.ensureChannels()
     }
 
@@ -74,10 +76,7 @@ class UpdateDownloadService : Service() {
                 }
             } catch (error: Throwable) {
                 runCatching {
-                    File(filesDir, UPDATE_DIRECTORY_NAME)
-                        .listFiles()
-                        ?.filter { it.isFile && it.name.endsWith(".apk", ignoreCase = true) }
-                        ?.forEach { it.delete() }
+                    packageCleanupManager.deleteDownloadedPackages()
                 }
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 notificationManager.showFailure(
@@ -105,16 +104,14 @@ class UpdateDownloadService : Service() {
     }
 
     private fun prepareTargetFile(versionName: String): File {
-        val directory = File(filesDir, UPDATE_DIRECTORY_NAME).apply { mkdirs() }
-        val safeVersion = versionName
-            .replace(Regex("[^A-Za-z0-9._-]"), "_")
-            .ifBlank { "latest" }
+        val directory = updatePackageDirectory(this).apply { mkdirs() }
+        val targetFileName = updatePackageFileName(versionName)
         directory.listFiles()
-            ?.filter { it.isFile && it.name != "app-release-$safeVersion.apk" }
+            ?.filter { it.isFile && it.name != targetFileName }
             ?.forEach { staleFile ->
                 runCatching { staleFile.delete() }
             }
-        return File(directory, "app-release-$safeVersion.apk").apply {
+        return File(directory, targetFileName).apply {
             parentFile?.mkdirs()
             if (exists()) {
                 delete()
@@ -310,7 +307,6 @@ class UpdateDownloadService : Service() {
             private set
 
         private const val APK_SIGNATURE_PROBE_BYTES = 4
-        private const val UPDATE_DIRECTORY_NAME = "updates"
         private const val PROGRESS_UPDATE_INTERVAL_MS = 400L
         private const val ZIP_MAGIC_P = 0x50
         private const val ZIP_MAGIC_K = 0x4B

@@ -11,6 +11,7 @@ import com.happycola233.bilitools.data.UpdateRepository
 import com.happycola233.bilitools.data.VideoRepository
 import com.happycola233.bilitools.update.AppUpdateManager
 import com.happycola233.bilitools.update.GitHubRouteManager
+import com.happycola233.bilitools.update.UpdatePackageCleanupManager
 
 class AppContainer(context: Context) {
     private val appContext = context.applicationContext
@@ -27,6 +28,7 @@ class AppContainer(context: Context) {
     val settingsRepository by lazy { SettingsRepository(appContext) }
     val updateRepository by lazy { UpdateRepository(appContext, gitHubRouteManager) }
     val appUpdateManager by lazy { AppUpdateManager(appContext) }
+    internal val updatePackageCleanupManager by lazy { UpdatePackageCleanupManager(appContext) }
     val downloadRepository by lazy { DownloadRepository(appContext, cookieStore, settingsRepository) }
     val exportRepository by lazy { ExportRepository(appContext) }
 }
