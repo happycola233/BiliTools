@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.ViewCompositionStrategy
@@ -344,7 +345,9 @@ private fun UpdateActionButtons(
     onOpenRelease: () -> Unit,
 ) {
     var ignoreMenuExpanded by remember { mutableStateOf(false) }
+    var primaryActionHeight by remember { mutableStateOf(0.dp) }
     val canDownload = release.apkAsset != null
+    val density = LocalDensity.current
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -355,7 +358,11 @@ private fun UpdateActionButtons(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box {
+            Box(
+                modifier = Modifier.onSizeChanged { size ->
+                    primaryActionHeight = with(density) { size.height.toDp() }
+                },
+            ) {
                 SplitButtonLayout(
                     leadingButton = {
                         SplitButtonDefaults.LeadingButton(
@@ -402,7 +409,13 @@ private fun UpdateActionButtons(
 
             FilledTonalIconButton(
                 onClick = onOpenRelease,
-                modifier = Modifier.size(IconButtonDefaults.mediumContainerSize()),
+                modifier = Modifier.size(
+                    if (primaryActionHeight > 0.dp) {
+                        primaryActionHeight
+                    } else {
+                        IconButtonDefaults.smallContainerSize().height
+                    },
+                ),
                 shape = IconButtonDefaults.mediumRoundShape,
             ) {
                 Icon(
