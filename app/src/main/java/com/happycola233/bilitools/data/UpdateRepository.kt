@@ -1,10 +1,14 @@
 package com.happycola233.bilitools.data
 
 import android.content.Context
+import android.util.Log
 import com.squareup.moshi.Json
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import com.happycola233.bilitools.update.GitHubRouteManager
+import com.happycola233.bilitools.update.GitHubRoutePurpose
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -43,7 +47,10 @@ sealed interface UpdateCheckResult {
     ) : UpdateCheckResult
 }
 
-class UpdateRepository(context: Context) {
+class UpdateRepository(
+    context: Context,
+    private val gitHubRouteManager: GitHubRouteManager,
+) {
     private val appContext = context.applicationContext
 
     private val client by lazy { OkHttpClient() }
@@ -82,49 +89,73 @@ class UpdateRepository(context: Context) {
     }
 
     private fun fetchLatestRelease(): ReleaseInfo {
-        val request = Request.Builder()
-            .url(LATEST_RELEASE_API)
-            .header("Accept", "application/vnd.github+json")
-            .header("X-GitHub-Api-Version", "2022-11-28")
-            .header("User-Agent", "BiliTools-Android")
-            .get()
-            .build()
+        val routes = gitHubRouteManager.releaseApiCandidates(LATEST_RELEASE_API)
+        var lastError: Throwable? = null
 
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                throw IOException("HTTP ${response.code}")
-            }
-            val payload = response.body?.string().orEmpty()
-            val parsed = latestAdapter.fromJson(payload)
-                ?: throw IOException("Empty release response")
+        for (route in routes) {
+            val request = Request.Builder()
+                .url(route.url)
+                .header("Accept", "application/vnd.github+json")
+                .header("X-GitHub-Api-Version", "2022-11-28")
+                .header("User-Agent", "BiliTools-Android")
+                .get()
+                .build()
 
-            val tagName = parsed.tagName?.trim().orEmpty()
-            val htmlUrl = parsed.htmlUrl?.trim().orEmpty()
-            if (tagName.isBlank() || htmlUrl.isBlank()) {
-                throw IOException("Invalid release response")
-            }
-
-            return ReleaseInfo(
-                tagName = tagName,
-                versionName = normalizeVersion(tagName),
-                title = parsed.name?.trim()?.takeIf { it.isNotBlank() },
-                bodyMarkdown = parsed.body.orEmpty(),
-                htmlUrl = htmlUrl,
-                apkAsset = parsed.assets
-                    .orEmpty()
-                    .firstOrNull { asset ->
-                        asset.name?.trim().equals(APK_ASSET_NAME, ignoreCase = false) &&
-                            !asset.browserDownloadUrl.isNullOrBlank()
+            try {
+                client.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        throw IOException("HTTP ${response.code}")
                     }
-                    ?.let { asset ->
-                        ReleaseAssetInfo(
-                            name = asset.name!!.trim(),
-                            downloadUrl = asset.browserDownloadUrl!!.trim(),
-                            sizeBytes = asset.size ?: -1L,
-                        )
-                    },
-            )
+                    val payload = response.body?.string().orEmpty()
+                    val parsed = latestAdapter.fromJson(payload)
+                        ?: throw IOException("Empty release response")
+
+                    val tagName = parsed.tagName?.trim().orEmpty()
+                    val htmlUrl = gitHubRouteManager.normalizeGitHubUrl(
+                        parsed.htmlUrl?.trim().orEmpty(),
+                    )
+                    if (tagName.isBlank() || htmlUrl.isBlank()) {
+                        throw IOException("Invalid release response")
+                    }
+
+                    val release = ReleaseInfo(
+                        tagName = tagName,
+                        versionName = normalizeVersion(tagName),
+                        title = parsed.name?.trim()?.takeIf { it.isNotBlank() },
+                        bodyMarkdown = parsed.body.orEmpty(),
+                        htmlUrl = htmlUrl,
+                        apkAsset = parsed.assets
+                            .orEmpty()
+                            .firstOrNull { asset ->
+                                asset.name?.trim().equals(APK_ASSET_NAME, ignoreCase = false) &&
+                                    !asset.browserDownloadUrl.isNullOrBlank()
+                            }
+                            ?.let { asset ->
+                                ReleaseAssetInfo(
+                                    name = asset.name!!.trim(),
+                                    downloadUrl = gitHubRouteManager.normalizeGitHubUrl(
+                                        asset.browserDownloadUrl!!.trim(),
+                                    ),
+                                    sizeBytes = asset.size ?: -1L,
+                                )
+                            },
+                    )
+                    gitHubRouteManager.markSuccess(GitHubRoutePurpose.ReleaseApi, route.routeId)
+                    Log.i(TAG, "[update] selected release API route=${route.routeId}")
+                    return release
+                }
+            } catch (error: Throwable) {
+                if (error is CancellationException) throw error
+                lastError = error
+                gitHubRouteManager.markFailure(GitHubRoutePurpose.ReleaseApi, route.routeId)
+                Log.w(
+                    TAG,
+                    "[update] release API route failed, route=${route.routeId}, error=${error.message}",
+                )
+            }
         }
+
+        throw IOException("No available GitHub update route", lastError)
     }
 
     private fun compareVersions(current: String, latest: String): Int {
@@ -166,6 +197,7 @@ class UpdateRepository(context: Context) {
     }
 
     companion object {
+        private const val TAG = "UpdateRepository"
         private const val LATEST_RELEASE_API =
             "https://api.github.com/repos/happycola233/BiliTools/releases/latest"
         private const val APK_ASSET_NAME = "app-release.apk"

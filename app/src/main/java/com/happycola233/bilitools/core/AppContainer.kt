@@ -10,6 +10,7 @@ import com.happycola233.bilitools.data.MediaRepository
 import com.happycola233.bilitools.data.UpdateRepository
 import com.happycola233.bilitools.data.VideoRepository
 import com.happycola233.bilitools.update.AppUpdateManager
+import com.happycola233.bilitools.update.GitHubRouteManager
 
 class AppContainer(context: Context) {
     private val appContext = context.applicationContext
@@ -17,13 +18,14 @@ class AppContainer(context: Context) {
     val cookieStore by lazy { CookieStore(appContext) }
     val httpClient by lazy { BiliHttpClient(cookieStore) }
     val wbiSigner by lazy { WbiSigner(httpClient) }
+    val gitHubRouteManager by lazy { GitHubRouteManager(appContext) }
 
     val authRepository by lazy { AuthRepository(httpClient, cookieStore, wbiSigner) }
     val videoRepository by lazy { VideoRepository(httpClient, wbiSigner, cookieStore) }
     val mediaRepository by lazy { MediaRepository(httpClient, wbiSigner, cookieStore) }
     val extrasRepository by lazy { ExtrasRepository(httpClient, wbiSigner) }
     val settingsRepository by lazy { SettingsRepository(appContext) }
-    val updateRepository by lazy { UpdateRepository(appContext) }
+    val updateRepository by lazy { UpdateRepository(appContext, gitHubRouteManager) }
     val appUpdateManager by lazy { AppUpdateManager(appContext) }
     val downloadRepository by lazy { DownloadRepository(appContext, cookieStore, settingsRepository) }
     val exportRepository by lazy { ExportRepository(appContext) }

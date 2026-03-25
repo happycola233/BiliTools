@@ -18,6 +18,8 @@ sealed interface UpdateStartResult {
 
 class AppUpdateManager(context: Context) {
     private val appContext = context.applicationContext
+    private val gitHubRouteManager
+        get() = appContext.appContainer.gitHubRouteManager
 
     fun startDownload(release: ReleaseInfo): UpdateStartResult {
         val asset = release.apkAsset ?: return UpdateStartResult.MissingAsset
@@ -30,8 +32,14 @@ class AppUpdateManager(context: Context) {
             putExtra(UpdateDownloadService.EXTRA_VERSION_NAME, release.versionName)
             putExtra(UpdateDownloadService.EXTRA_TAG_NAME, release.tagName)
             putExtra(UpdateDownloadService.EXTRA_RELEASE_TITLE, release.title ?: release.tagName)
-            putExtra(UpdateDownloadService.EXTRA_RELEASE_URL, release.htmlUrl)
-            putExtra(UpdateDownloadService.EXTRA_APK_DOWNLOAD_URL, asset.downloadUrl)
+            putExtra(
+                UpdateDownloadService.EXTRA_RELEASE_URL,
+                gitHubRouteManager.resolveReleasePageUrl(release.htmlUrl),
+            )
+            putExtra(
+                UpdateDownloadService.EXTRA_APK_DOWNLOAD_URL,
+                gitHubRouteManager.normalizeGitHubUrl(asset.downloadUrl),
+            )
             putExtra(UpdateDownloadService.EXTRA_APK_SIZE_BYTES, asset.sizeBytes)
         }
 

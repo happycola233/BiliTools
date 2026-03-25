@@ -5,7 +5,9 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.IBinder
 import android.os.SystemClock
+import android.util.Log
 import com.happycola233.bilitools.BiliToolsApp
+import com.happycola233.bilitools.core.appContainer
 import okhttp3.Call
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -13,6 +15,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
@@ -123,53 +126,123 @@ class UpdateDownloadService : Service() {
         request: UpdateDownloadRequest,
         targetFile: File,
     ) {
+        val gitHubRouteManager = applicationContext.appContainer.gitHubRouteManager
+        val routes = gitHubRouteManager.releaseAssetCandidates(
+            url = request.downloadUrl,
+            assetSizeBytes = request.assetSizeBytes,
+        )
+        var lastError: Throwable? = null
+
+        for (route in routes) {
+            try {
+                serviceScope.coroutineContext.ensureActive()
+                if (targetFile.exists()) {
+                    targetFile.delete()
+                }
+                publishProgress(
+                    versionLabel = request.displayVersion,
+                    downloadedBytes = 0L,
+                    totalBytes = request.assetSizeBytes,
+                )
+                downloadApkViaRoute(request, targetFile, route)
+                gitHubRouteManager.markSuccess(GitHubRoutePurpose.ReleaseAsset, route.routeId)
+                Log.i(TAG, "[update] selected asset route=${route.routeId}")
+                return
+            } catch (error: Throwable) {
+                if (error is CancellationException) throw error
+                lastError = error
+                gitHubRouteManager.markFailure(GitHubRoutePurpose.ReleaseAsset, route.routeId)
+                runCatching {
+                    if (targetFile.exists()) {
+                        targetFile.delete()
+                    }
+                }
+                Log.w(
+                    TAG,
+                    "[update] asset route failed, route=${route.routeId}, error=${error.message}",
+                )
+            }
+        }
+
+        throw IOException("No available GitHub download route", lastError)
+    }
+
+    private fun downloadApkViaRoute(
+        request: UpdateDownloadRequest,
+        targetFile: File,
+        route: GitHubResolvedRoute,
+    ) {
         val httpRequest = Request.Builder()
-            .url(request.downloadUrl)
+            .url(route.url)
             .header("Accept", "application/octet-stream")
             .header("User-Agent", "BiliTools-Android")
             .get()
             .build()
 
-        activeCall = httpClient.newCall(httpRequest)
-        activeCall!!.execute().use { response ->
-            if (!response.isSuccessful) {
-                throw IOException("HTTP ${response.code}")
-            }
-            val body = response.body ?: throw IOException("Empty download body")
-            val totalBytes = body.contentLength().takeIf { it > 0L } ?: request.assetSizeBytes
+        try {
+            activeCall = httpClient.newCall(httpRequest)
+            activeCall!!.execute().use { response ->
+                if (!response.isSuccessful) {
+                    throw IOException("HTTP ${response.code}")
+                }
+                val body = response.body ?: throw IOException("Empty download body")
+                val totalBytes = body.contentLength().takeIf { it > 0L } ?: request.assetSizeBytes
 
-            body.byteStream().use { input ->
-                targetFile.outputStream().buffered().use { output ->
-                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                    var downloadedBytes = 0L
-                    var lastPublishMs = 0L
-
-                    while (true) {
-                        serviceScope.coroutineContext.ensureActive()
-                        val readCount = input.read(buffer)
-                        if (readCount < 0) break
-                        output.write(buffer, 0, readCount)
-                        downloadedBytes += readCount
-
-                        val now = SystemClock.elapsedRealtime()
-                        if (now - lastPublishMs >= PROGRESS_UPDATE_INTERVAL_MS) {
-                            publishProgress(
-                                versionLabel = request.displayVersion,
-                                downloadedBytes = downloadedBytes,
-                                totalBytes = totalBytes,
-                            )
-                            lastPublishMs = now
+                body.byteStream().buffered().use { input ->
+                    targetFile.outputStream().buffered().use { output ->
+                        val headerBuffer = ByteArray(APK_SIGNATURE_PROBE_BYTES)
+                        val headerRead = input.read(headerBuffer)
+                        if (!looksLikeApkContent(headerBuffer, headerRead, response.header("Content-Type"))) {
+                            throw IOException("Invalid APK response")
                         }
+                        if (headerRead > 0) {
+                            output.write(headerBuffer, 0, headerRead)
+                        }
+
+                        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                        var downloadedBytes = headerRead.coerceAtLeast(0).toLong()
+                        var lastPublishMs = 0L
+
+                        while (true) {
+                            serviceScope.coroutineContext.ensureActive()
+                            val readCount = input.read(buffer)
+                            if (readCount < 0) break
+                            output.write(buffer, 0, readCount)
+                            downloadedBytes += readCount
+
+                            val now = SystemClock.elapsedRealtime()
+                            if (now - lastPublishMs >= PROGRESS_UPDATE_INTERVAL_MS) {
+                                publishProgress(
+                                    versionLabel = request.displayVersion,
+                                    downloadedBytes = downloadedBytes,
+                                    totalBytes = totalBytes,
+                                )
+                                lastPublishMs = now
+                            }
+                        }
+                        output.flush()
+                        publishProgress(
+                            versionLabel = request.displayVersion,
+                            downloadedBytes = downloadedBytes,
+                            totalBytes = totalBytes,
+                        )
                     }
-                    output.flush()
-                    publishProgress(
-                        versionLabel = request.displayVersion,
-                        downloadedBytes = downloadedBytes,
-                        totalBytes = totalBytes,
-                    )
                 }
             }
+        } finally {
+            activeCall = null
         }
+    }
+
+    private fun looksLikeApkContent(
+        header: ByteArray,
+        headerRead: Int,
+        contentType: String?,
+    ): Boolean {
+        if (headerRead < 2) return false
+        if (contentType?.contains("text/html", ignoreCase = true) == true) return false
+        if (contentType?.contains("text/plain", ignoreCase = true) == true) return false
+        return header[0] == ZIP_MAGIC_P.toByte() && header[1] == ZIP_MAGIC_K.toByte()
     }
 
     private fun publishProgress(
@@ -222,6 +295,7 @@ class UpdateDownloadService : Service() {
     }
 
     companion object {
+        private const val TAG = "UpdateDownloadSvc"
         const val ACTION_START = "com.happycola233.bilitools.update.action.START"
 
         const val EXTRA_VERSION_NAME = "extra_version_name"
@@ -235,7 +309,10 @@ class UpdateDownloadService : Service() {
         var isDownloading: Boolean = false
             private set
 
+        private const val APK_SIGNATURE_PROBE_BYTES = 4
         private const val UPDATE_DIRECTORY_NAME = "updates"
         private const val PROGRESS_UPDATE_INTERVAL_MS = 400L
+        private const val ZIP_MAGIC_P = 0x50
+        private const val ZIP_MAGIC_K = 0x4B
     }
 }

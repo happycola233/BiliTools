@@ -93,6 +93,7 @@ object UpdateDialog {
         if (activity.isFinishing || activity.isDestroyed) return
 
         val appUpdateManager = activity.applicationContext.appContainer.appUpdateManager
+        val gitHubRouteManager = activity.applicationContext.appContainer.gitHubRouteManager
         val container = activity.findViewById<ViewGroup>(android.R.id.content)
         container.findViewWithTag<ComposeView>(HOST_VIEW_TAG)?.let(container::removeView)
 
@@ -115,7 +116,10 @@ object UpdateDialog {
                         }
                     },
                     onOpenRelease = {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(release.htmlUrl))
+                        val intent = Intent(
+                            Intent.ACTION_VIEW,
+                            Uri.parse(gitHubRouteManager.resolveReleasePageUrl(release.htmlUrl)),
+                        )
                         runCatching {
                             activity.startActivity(intent)
                         }.onFailure {
