@@ -111,6 +111,11 @@ private val LoginPanelDefaultHeight = 438.dp
 private val QrStatusSlotMinHeight = 44.dp
 private val LoginFormControlHeight = 56.dp
 private val LoginFormControlShape = RoundedCornerShape(18.dp)
+private val ProfileCardContentPadding = 16.dp
+private val ProfileCardSectionSpacing = 14.dp
+private val ProfileCardHeaderSpacing = 12.dp
+private val ProfileAvatarSize = 64.dp
+private val ProfileVipBadgeSize = 20.dp
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -942,15 +947,15 @@ private fun ProfileCard(
             }
 
             Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(ProfileCardSectionSpacing),
+                modifier = Modifier.padding(ProfileCardContentPadding),
             ) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(ProfileCardHeaderSpacing),
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Box(modifier = Modifier.size(76.dp)) {
+                    Box(modifier = Modifier.size(ProfileAvatarSize)) {
                         Surface(
                             shape = CircleShape,
                             color = Color.Transparent,
@@ -970,23 +975,23 @@ private fun ProfileCard(
                                 contentDescription = stringResource(R.string.login_vip_badge_desc),
                                 modifier = Modifier
                                     .align(Alignment.BottomEnd)
-                                    .size(22.dp),
+                                    .size(ProfileVipBadgeSize),
                             )
                         }
                     }
 
                     Column(
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(3.dp),
                         modifier = Modifier.weight(1f),
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Text(
                                 text = userInfo.name,
-                                style = MaterialTheme.typography.headlineSmall,
+                                style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -1004,8 +1009,10 @@ private fun ProfileCard(
 
                         Text(
                             text = stringResource(R.string.login_user_mid, userInfo.mid),
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
