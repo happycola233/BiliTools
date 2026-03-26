@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="me_section_content">我的内容</string>
+    <string name="me_section_manage">管理</string>
+    <string name="me_login_entry_title">登录后解锁更多功能</string>
+    <string name="me_login_entry_summary">解锁更多下载参数、我的内容等功能！</string>
+    <string name="me_history_entry_disabled_desc">登录后才可查看哦~</string>
+    <string name="me_favorite_entry_disabled_desc">登录后才可查看哦~</string>
+    <string name="me_watch_later_entry_disabled_desc">登录后才可查看哦~</string>
+    <string name="me_logout_summary">清除当前本地登录态</string>
+    <string name="me_login_screen_subtitle">切换登录方式并完成账号验证</string>
+</resources>

@@ -4,7 +4,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.DocumentsContract
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.activity.enableEdgeToEdge
@@ -23,6 +22,7 @@ import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.appContainer
 import com.happycola233.bilitools.data.UpdateCheckResult
 import com.happycola233.bilitools.ui.AppViewModelFactory
+import com.happycola233.bilitools.ui.attachNavigationEventDispatcherOwner
 import com.happycola233.bilitools.ui.applySettingsThemeOverlays
 import com.happycola233.bilitools.ui.update.UpdateDialog
 import kotlinx.coroutines.launch
@@ -59,7 +59,7 @@ class SettingsActivity : AppCompatActivity() {
         val composeView = ComposeView(this).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
         }
-        attachNavigationEventDispatcherOwner(composeView)
+        attachNavigationEventDispatcherOwner(composeView, this, TAG)
         setContentView(composeView)
 
         composeView.setContent {
@@ -198,19 +198,6 @@ class SettingsActivity : AppCompatActivity() {
             append("（")
             append(statusText)
             append('）')
-        }
-    }
-
-    private fun attachNavigationEventDispatcherOwner(composeView: ComposeView) {
-        runCatching {
-            val ownerClass = Class.forName("androidx.navigationevent.NavigationEventDispatcherOwner")
-            if (!ownerClass.isInstance(this)) return
-
-            val helperClass = Class.forName("androidx.navigationevent.ViewTreeNavigationEventDispatcherOwner")
-            val setMethod = helperClass.getMethod("set", android.view.View::class.java, ownerClass)
-            setMethod.invoke(null, composeView, this)
-        }.onFailure { throwable ->
-            Log.w(TAG, "Unable to attach NavigationEventDispatcherOwner to settings ComposeView", throwable)
         }
     }
 

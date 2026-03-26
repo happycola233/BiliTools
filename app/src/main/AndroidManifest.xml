@@ -66,6 +66,12 @@
             android:theme="@style/Theme.BiliTools" />
 
         <activity
+            android:name=".ui.login.LoginActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BiliTools"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
             android:name=".update.UpdateInstallActivity"
             android:exported="false"
             android:theme="@style/Theme.BiliTools.ExternalDialog" />

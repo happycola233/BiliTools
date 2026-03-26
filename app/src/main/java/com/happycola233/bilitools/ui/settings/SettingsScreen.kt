@@ -48,11 +48,9 @@ import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.ListItemShapes
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchColors
 import androidx.compose.material3.SwitchDefaults
@@ -267,8 +265,13 @@ private fun MainSettingsScreen(
 
             items(primaryEntries.size) { index ->
                 val entry = primaryEntries[index]
-                SegmentedListItem(
+                ClickableListItem(
+                    items = primaryEntries.size,
+                    index = index,
                     leadingContent = { SettingsItemIcon(entry.iconRes) },
+                    headlineContent = {
+                        SettingsItemTitle(stringResource(entry.titleRes))
+                    },
                     supportingContent = {
                         Text(
                             stringResource(entry.summaryRes),
@@ -279,35 +282,26 @@ private fun MainSettingsScreen(
                     trailingContent = {
                         SettingsItemIcon(R.drawable.ic_chevron_right_24)
                     },
-                    shapes = ListItemDefaults.segmentedShapes(index, primaryEntries.size),
-                    colors = SettingsExpressiveDefaults.listItemColors,
-                    selected = false,
                     onClick = { onNavigate(entry.destination) },
-                ) {
-                    SettingsItemTitle(stringResource(entry.titleRes))
-                }
+                )
             }
 
             item { Spacer(Modifier.height(12.dp)) }
 
             item {
-                SegmentedListItem(
+                ClickableListItem(
+                    items = 1,
+                    index = 0,
                     leadingContent = { SettingsItemIcon(aboutEntry.iconRes) },
+                    headlineContent = {
+                        SettingsItemTitle(stringResource(aboutEntry.titleRes))
+                    },
                     supportingContent = { Text(stringResource(aboutEntry.summaryRes)) },
                     trailingContent = {
                         SettingsItemIcon(R.drawable.ic_chevron_right_24)
                     },
-                    shapes = ListItemDefaults.segmentedShapes(
-                        0,
-                        1,
-                        SettingsExpressiveShapes.singleItemListItemShapes,
-                    ),
-                    colors = SettingsExpressiveDefaults.listItemColors,
-                    selected = false,
                     onClick = { onNavigate(aboutEntry.destination) },
-                ) {
-                    SettingsItemTitle(stringResource(aboutEntry.titleRes))
-                }
+                )
             }
 
             item { Spacer(Modifier.height(12.dp)) }
@@ -1185,19 +1179,6 @@ private object SettingsExpressiveShapes {
     val cardShape: CornerBasedShape
         @OptIn(ExperimentalMaterial3ExpressiveApi::class)
         @Composable get() = MaterialTheme.shapes.largeIncreased
-
-    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
-    val singleItemListItemShapes: ListItemShapes
-        @OptIn(ExperimentalMaterial3ExpressiveApi::class)
-        @Composable
-        get() = ListItemShapes(
-            shape = MaterialTheme.shapes.large,
-            selectedShape = MaterialTheme.shapes.large,
-            pressedShape = MaterialTheme.shapes.large,
-            focusedShape = MaterialTheme.shapes.large,
-            hoveredShape = MaterialTheme.shapes.large,
-            draggedShape = MaterialTheme.shapes.large,
-        )
 
     val paneMaxWidth = 600.dp
 

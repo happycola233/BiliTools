@@ -126,6 +126,20 @@ class LoginViewModel(
         }
     }
 
+    fun refreshLoginState() {
+        val isLoggedIn = authRepository.isLoggedIn()
+        _state.update {
+            it.copy(
+                isLoggedIn = isLoggedIn,
+                userInfo = if (isLoggedIn) it.userInfo else null,
+                errorText = null,
+            )
+        }
+        if (isLoggedIn) {
+            refreshUserInfo()
+        }
+    }
+
     fun ensureCountries() {
         if (_state.value.countries.isEmpty()) {
             loadCountries()

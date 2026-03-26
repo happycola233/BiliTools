@@ -1,6 +1,7 @@
 package com.happycola233.bilitools.ui
 
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -19,6 +20,7 @@ import com.happycola233.bilitools.ui.downloads.DownloadsFragment
 import com.happycola233.bilitools.ui.me.MeFragment
 import com.happycola233.bilitools.ui.parse.ParseFragment
 import com.happycola233.bilitools.ui.update.UpdateDialog
+import com.google.android.material.color.MaterialColors
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
@@ -74,6 +76,8 @@ class MainActivity : AppCompatActivity() {
                     2 -> getString(R.string.nav_me)
                     else -> getString(R.string.app_name)
                 }
+
+                updateTopBarColor(position)
             }
         })
 
@@ -94,6 +98,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        updateTopBarColor(binding.viewPager.currentItem)
         handleOpenDownloadsIntent(intent)
         handleExternalDownloadIntent(intent)
         if (savedInstanceState == null) {
@@ -160,6 +165,32 @@ class MainActivity : AppCompatActivity() {
                 is UpdateCheckResult.Failed -> Unit
             }
         }
+    }
+
+    private fun updateTopBarColor(position: Int) {
+        val color = when (position) {
+            2 -> resolveMeTopBarColor()
+            else -> resolveThemeColor(com.google.android.material.R.attr.colorSurface)
+        }
+        binding.appBar.setBackgroundColor(color)
+        binding.collapsingToolbar.setBackgroundColor(color)
+        binding.collapsingToolbar.setContentScrimColor(color)
+        binding.collapsingToolbar.setStatusBarScrimColor(color)
+        binding.toolbar.setBackgroundColor(color)
+    }
+
+    private fun resolveMeTopBarColor(): Int {
+        val surface = resolveThemeColor(com.google.android.material.R.attr.colorSurface)
+        val background = resolveThemeColor(android.R.attr.colorBackground, surface)
+        return if (surface == Color.BLACK && background == Color.BLACK) {
+            surface
+        } else {
+            resolveThemeColor(com.google.android.material.R.attr.colorSurfaceContainer, surface)
+        }
+    }
+
+    private fun resolveThemeColor(attr: Int, fallback: Int = Color.BLACK): Int {
+        return MaterialColors.getColor(binding.root, attr, fallback)
     }
 
     companion object {

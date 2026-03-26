@@ -350,13 +350,13 @@
     <string name="download_detail_merging">正在合并音视频</string>
     <string name="login_section_account">我的账号</string>
     <string name="history_title">历史记录</string>
-    <string name="history_entry_desc">查看观看历史并快速跳转下载</string>
+    <string name="history_entry_desc">浏览观看足迹</string>
     <string name="login_entry_favorite_title">我的收藏</string>
-    <string name="login_entry_favorite_desc">查看收藏夹并快速跳转下载</string>
+    <string name="login_entry_favorite_desc">下载宝藏视频！</string>
     <string name="login_entry_watch_later_title">稍后再看</string>
-    <string name="login_entry_watch_later_desc">查看稍后再看并快速跳转下载</string>
+    <string name="login_entry_watch_later_desc">下次一定？</string>
     <string name="login_entry_settings_title">设置</string>
-    <string name="login_entry_settings_desc">配置应用的各项行为</string>
+    <string name="login_entry_settings_desc">配置 BiliTools 的各项行为</string>
     <string name="history_cover_desc">历史记录封面</string>
     <string name="history_empty">暂无历史记录</string>
     <string name="history_login_required">请先登录后查看历史记录</string>
