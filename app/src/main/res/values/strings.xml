@@ -425,6 +425,14 @@
     <string name="settings_header_title">下载偏好</string>
     <string name="settings_header_subtitle">管理下载行为、外观主题与存储路径。</string>
     <string name="settings_screen_title">设置</string>
+    <string name="settings_back">返回</string>
+    <string name="settings_general_title">通用</string>
+    <string name="settings_download_title">下载</string>
+    <string name="settings_appearance_title">外观</string>
+    <string name="settings_general_summary">解析页快捷悬浮按钮</string>
+    <string name="settings_download_summary">下载位置、元数据、移动网络、系统相册</string>
+    <string name="settings_appearance_summary">主题、配色、纯黑主题、液态玻璃</string>
+    <string name="settings_about_summary">版本、更新、开源协议、免责声明</string>
     <string name="settings_download_behavior">下载行为</string>
     <string name="settings_add_metadata">为下载文件添加元数据</string>
     <string name="settings_add_metadata_desc">下载音频或视频完成后自动写入标题、封面等元信息。</string>
@@ -443,6 +451,13 @@
     <string name="settings_dark_mode_pure_black_desc">仅在深色模式生效，将背景颜色设为 #000000</string>
     <string name="settings_downloads_glass_debug">启用液态玻璃调试窗口</string>
     <string name="settings_downloads_glass_debug_desc">在下载页显示液态玻璃调试悬浮窗，可实时调节并预览效果（需要调参时可临时启用，参数将持久化保存）。目前液态玻璃效果仅用在批量管理浮窗中。</string>
+    <string name="settings_black_theme_title">纯黑主题</string>
+    <string name="settings_black_theme_desc">在深色模式下使用 AMOLED 纯黑背景。</string>
+    <string name="settings_dynamic_color_title">动态取色</string>
+    <string name="settings_dynamic_color_desc">在支持的设备上使用系统动态配色。</string>
+    <string name="settings_color_scheme_title">配色方案</string>
+    <string name="settings_color_scheme_dynamic">动态</string>
+    <string name="settings_color_scheme_custom">自定颜色</string>
     <string name="settings_theme_color">主题色</string>
     <string name="settings_theme_color_dynamic">系统取色（莫奈）</string>
     <string name="settings_theme_color_blue">经典蓝</string>
@@ -452,10 +467,12 @@
     <string name="settings_download_location">下载位置</string>
     <string name="settings_change_download_location">更改下载位置</string>
     <string name="settings_download_location_hint">仅支持选择 Download 目录及其子目录。</string>
+    <string name="settings_download_location_value">当前目录：%1$s</string>
     <string name="settings_download_location_updated">下载位置已更新</string>
     <string name="settings_download_location_invalid">所选目录无效，请选择 Download 目录或其子目录</string>
 
     <string name="settings_about_title">关于</string>
+    <string name="settings_about_open_github">打开 GitHub 仓库</string>
     <string name="settings_about_version">当前版本：v%1$s</string>
     <string name="settings_check_update_title">检查更新</string>
     <string name="settings_check_update_desc">点击检查是否有新版本</string>
@@ -470,6 +487,9 @@
 <b>上游项目</b>：<a href="https://github.com/btjawa/BiliTools"><img src="ic_github_invertocat_black"/>btjawa/BiliTools</a>（本项目基于其复刻与改进）<br/>
 <b>开源协议</b>：<a href="https://github.com/happycola233/BiliTools/blob/main/LICENSE">GPL-3.0-or-later</a>
 ]]></string>
+    <string name="settings_license_title">开源协议</string>
+    <string name="settings_license_summary">GPL-3.0-or-later</string>
+    <string name="settings_disclaimer_title">免责声明</string>
     <string name="settings_about_disclaimer">该应用用于持久化的所有数据均仅明文存储于用户本地！\n因使用本项目而产生的任何后果均由用户个人承担，与开发者无关，概不负责。\n“哔哩哔哩” 及 “Bilibili” 名称、LOGO及相关图形是上海幻电信息科技有限公司的注册商标或商标。\n本项目与哔哩哔哩及其关联公司无任何关联、合作、授权或背书等关系。</string>
     <string name="update_dialog_title">发现新版本</string>
     <string name="update_dialog_current_version">当前版本 v%1$s</string>

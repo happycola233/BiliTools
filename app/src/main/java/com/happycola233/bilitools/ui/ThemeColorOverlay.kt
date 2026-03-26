@@ -21,10 +21,18 @@ internal data class ThemeSettingsSnapshot(
 internal fun AppThemeColor.overlayStyleResOrNull(): Int? {
     return when (this) {
         AppThemeColor.Dynamic -> null
-        AppThemeColor.Blue -> R.style.ThemeOverlay_BiliTools_ColorBlue
-        AppThemeColor.Green -> R.style.ThemeOverlay_BiliTools_ColorGreen
-        AppThemeColor.Orange -> R.style.ThemeOverlay_BiliTools_ColorOrange
-        AppThemeColor.Pink -> R.style.ThemeOverlay_BiliTools_ColorPink
+        AppThemeColor.Coral -> R.style.ThemeOverlay_BiliTools_ColorCoral
+        AppThemeColor.Rose -> R.style.ThemeOverlay_BiliTools_ColorRose
+        AppThemeColor.Orchid -> R.style.ThemeOverlay_BiliTools_ColorOrchid
+        AppThemeColor.Periwinkle -> R.style.ThemeOverlay_BiliTools_ColorPeriwinkle
+        AppThemeColor.Sky -> R.style.ThemeOverlay_BiliTools_ColorSky
+        AppThemeColor.Cyan -> R.style.ThemeOverlay_BiliTools_ColorCyan
+        AppThemeColor.Turquoise -> R.style.ThemeOverlay_BiliTools_ColorTurquoise
+        AppThemeColor.Leaf -> R.style.ThemeOverlay_BiliTools_ColorLeaf
+        AppThemeColor.Lime -> R.style.ThemeOverlay_BiliTools_ColorLime
+        AppThemeColor.Olive -> R.style.ThemeOverlay_BiliTools_ColorOlive
+        AppThemeColor.Gold -> R.style.ThemeOverlay_BiliTools_ColorGold
+        AppThemeColor.Apricot -> R.style.ThemeOverlay_BiliTools_ColorApricot
     }
 }
 

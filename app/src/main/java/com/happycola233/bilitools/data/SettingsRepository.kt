@@ -48,10 +48,18 @@ enum class AppThemeMode(val value: String) {
 
 enum class AppThemeColor(val value: String) {
     Dynamic("dynamic"),
-    Blue("blue"),
-    Green("green"),
-    Orange("orange"),
-    Pink("pink"),
+    Coral("coral"),
+    Rose("rose"),
+    Orchid("orchid"),
+    Periwinkle("periwinkle"),
+    Sky("sky"),
+    Cyan("cyan"),
+    Turquoise("turquoise"),
+    Leaf("leaf"),
+    Lime("lime"),
+    Olive("olive"),
+    Gold("gold"),
+    Apricot("apricot"),
     ;
 
     companion object {
@@ -96,12 +104,18 @@ class SettingsRepository(context: Context) {
         _settings.value = current.copy(addMetadata = enabled)
     }
 
-    fun setThemeMode(mode: AppThemeMode) {
+    fun setThemeMode(mode: AppThemeMode, applyImmediately: Boolean = true) {
         val current = _settings.value
         if (current.themeMode == mode) return
         prefs.edit().putString(KEY_THEME_MODE, mode.value).apply()
         _settings.value = current.copy(themeMode = mode)
-        applyTheme(mode)
+        if (applyImmediately) {
+            applyTheme(mode)
+        }
+    }
+
+    fun syncThemeMode() {
+        applyTheme(_settings.value.themeMode)
     }
 
     fun setThemeColor(color: AppThemeColor) {
