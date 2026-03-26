@@ -2,12 +2,13 @@ package com.happycola233.bilitools.ui.me
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.scaleIn
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
@@ -36,6 +38,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonGroupDefaults
@@ -53,6 +56,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -78,8 +82,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import coil.decode.SvgDecoder
 import coil.load
@@ -100,6 +106,11 @@ private data class MeActionItem(
     val enabled: Boolean,
     val onClick: () -> Unit,
 )
+
+private val LoginPanelDefaultHeight = 438.dp
+private val QrStatusSlotMinHeight = 44.dp
+private val LoginFormControlHeight = 56.dp
+private val LoginFormControlShape = RoundedCornerShape(18.dp)
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -342,7 +353,7 @@ private fun LoginSubscreen(
                     onTabChange = onTabChange,
                 )
             }
-            item { Spacer(Modifier.height(12.dp)) }
+            item { Spacer(Modifier.height(40.dp)) }
             item {
                 LoginPanelCard(
                     state = state,
@@ -433,6 +444,10 @@ private fun LoginTabSelector(
         LoginTab.Password to R.string.login_tab_password,
         LoginTab.Sms to R.string.login_tab_sms,
     )
+    val tabColors = ToggleButtonDefaults.toggleButtonColors(
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+    )
     Row(
         horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
         modifier = modifier.fillMaxWidth(),
@@ -446,6 +461,7 @@ private fun LoginTabSelector(
                     tabs.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
                     else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                 },
+                colors = tabColors,
                 modifier = Modifier
                     .weight(1f)
                     .semantics { role = Role.RadioButton },
@@ -460,6 +476,7 @@ private fun LoginTabSelector(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun LoginPanelCard(
     state: LoginUiState,
@@ -480,19 +497,41 @@ private fun LoginPanelCard(
     onSetCountryId: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val motionScheme = MaterialTheme.motionScheme
     Surface(
         color = MeExpressiveDefaults.listItemContainerColor,
         shape = MeExpressiveShapes.cardShape,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = LoginPanelDefaultHeight),
     ) {
+        // Alternate login methods are sibling destinations, so a fade-through swap reads
+        // cleaner than a full cross-slide and avoids visible ghosting during overlap.
         AnimatedContent(
             targetState = state.activeTab,
+            modifier = Modifier.fillMaxSize(),
             transitionSpec = {
-                slideInHorizontally(initialOffsetX = { it / 4 }).togetherWith(
-                    slideOutHorizontally(targetOffsetX = { -it / 4 }) + fadeOut(),
-                )
+                (
+                    fadeIn(
+                        animationSpec = tween(durationMillis = 180, delayMillis = 70),
+                        initialAlpha = 0.05f,
+                    ) + scaleIn(
+                        initialScale = 0.98f,
+                        animationSpec = motionScheme.defaultSpatialSpec(),
+                    )
+                ).togetherWith(
+                    fadeOut(animationSpec = tween(durationMillis = 70)),
+                ).using(
+                    SizeTransform(
+                        clip = true,
+                        sizeAnimationSpec = { _, _ -> motionScheme.defaultSpatialSpec() },
+                    ),
+                ).apply {
+                    targetContentZIndex = 1f
+                }
             },
             label = "loginPanel",
+            contentKey = { it },
         ) { tab ->
             when (tab) {
                 LoginTab.Qr -> QrLoginPanel(
@@ -530,13 +569,23 @@ private fun QrLoginPanel(
     onRefreshQr: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val qrPrompt = stringResource(R.string.login_status_scan)
+    val qrScannedStatus = stringResource(R.string.login_status_scanned)
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(18.dp),
+        verticalArrangement = Arrangement.Center,
         modifier = modifier
-            .fillMaxWidth()
+            .fillMaxSize()
             .padding(horizontal = 20.dp, vertical = 24.dp),
     ) {
+        Text(
+            text = qrPrompt,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(Modifier.height(10.dp))
+
         Surface(
             color = Color.White,
             shape = RoundedCornerShape(28.dp),
@@ -567,13 +616,29 @@ private fun QrLoginPanel(
                 }
             }
         }
+        Spacer(Modifier.height(14.dp))
 
-        Text(
-            text = state.qrStatusText,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = QrStatusSlotMinHeight),
+        ) {
+            if (state.qrStatusText != qrPrompt) {
+                Text(
+                    text = state.qrStatusText,
+                    style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 18.sp),
+                    color = if (state.qrStatusText == qrScannedStatus) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+        Spacer(Modifier.height(12.dp))
 
         OutlinedButton(
             onClick = onRefreshQr,
@@ -595,36 +660,45 @@ private fun PasswordLoginPanel(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
         modifier = modifier
-            .fillMaxWidth()
+            .fillMaxSize()
             .padding(horizontal = 20.dp, vertical = 20.dp),
     ) {
         OutlinedTextField(
             value = account,
             onValueChange = onAccountChange,
-            label = { Text(stringResource(R.string.login_account_hint)) },
+            placeholder = { Text(stringResource(R.string.login_account_hint)) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             singleLine = true,
             enabled = enabled,
-            modifier = Modifier.fillMaxWidth(),
+            textStyle = MaterialTheme.typography.bodyLarge,
+            shape = LoginFormControlShape,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(LoginFormControlHeight),
         )
         OutlinedTextField(
             value = password,
             onValueChange = onPasswordChange,
-            label = { Text(stringResource(R.string.login_password_hint)) },
+            placeholder = { Text(stringResource(R.string.login_password_hint)) },
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             singleLine = true,
             enabled = enabled,
-            modifier = Modifier.fillMaxWidth(),
+            textStyle = MaterialTheme.typography.bodyLarge,
+            shape = LoginFormControlShape,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(LoginFormControlHeight),
         )
         Surface(
             color = MaterialTheme.colorScheme.surfaceContainerHighest,
             shape = MaterialTheme.shapes.large,
+            modifier = Modifier.fillMaxWidth(),
         ) {
             Row(
-                verticalAlignment = Alignment.Top,
+                verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.padding(14.dp),
             ) {
@@ -632,7 +706,6 @@ private fun PasswordLoginPanel(
                     painter = painterResource(R.drawable.ic_info_24),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 2.dp),
                 )
                 Text(
                     text = stringResource(R.string.login_password_note),
@@ -668,32 +741,73 @@ private fun SmsLoginPanel(
     val lockContactInput = state.isRiskSmsMode && state.riskLockPhoneInput
     val selectedCountryLabel = state.countries.firstOrNull { it.id == state.selectedCountryId }?.label
         ?: "+${state.selectedCountryId}"
+    val countrySelectorEnabled = !lockContactInput && state.countries.isNotEmpty()
+    val requestSmsEnabled = !state.isSendingSms
+    val countrySelectorWidth = 104.dp
+    val requestSmsButtonWidth = 124.dp
+    val countrySelectorContentColor = if (countrySelectorEnabled) {
+        MaterialTheme.colorScheme.onSurface
+    } else {
+        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+    }
+    val countrySelectorBorderColor = if (countrySelectorEnabled) {
+        MaterialTheme.colorScheme.outline
+    } else {
+        MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)
+    }
+    val requestSmsContentColor = if (requestSmsEnabled) {
+        MaterialTheme.colorScheme.onSurface
+    } else {
+        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+    }
+    val requestSmsBorderColor = if (requestSmsEnabled) {
+        MaterialTheme.colorScheme.outline
+    } else {
+        MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)
+    }
 
     Column(
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
         modifier = modifier
-            .fillMaxWidth()
+            .fillMaxSize()
             .padding(horizontal = 20.dp, vertical = 20.dp),
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Box(modifier = Modifier.width(120.dp)) {
-                OutlinedButton(
-                    onClick = {
-                        if (!lockContactInput && state.countries.isNotEmpty()) {
-                            onCountryMenuExpandedChange(true)
-                        }
-                    },
-                    enabled = !lockContactInput && state.countries.isNotEmpty(),
-                    modifier = Modifier.fillMaxWidth(),
+            Box(modifier = Modifier.width(countrySelectorWidth)) {
+                Surface(
+                    onClick = { onCountryMenuExpandedChange(true) },
+                    enabled = countrySelectorEnabled,
+                    shape = LoginFormControlShape,
+                    color = Color.Transparent,
+                    border = BorderStroke(1.dp, countrySelectorBorderColor),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(LoginFormControlHeight),
                 ) {
-                    Text(
-                        text = selectedCountryLabel,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
+                    ) {
+                        Text(
+                            text = selectedCountryLabel,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = countrySelectorContentColor,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Icon(
+                            painter = painterResource(R.drawable.ic_expand_more_24),
+                            contentDescription = null,
+                            tint = countrySelectorContentColor,
+                        )
+                    }
                 }
                 DropdownMenu(
                     expanded = countryMenuExpanded,
@@ -714,11 +828,15 @@ private fun SmsLoginPanel(
             OutlinedTextField(
                 value = phone,
                 onValueChange = onPhoneChange,
-                label = { Text(stringResource(R.string.login_phone_hint)) },
+                placeholder = { Text(stringResource(R.string.login_phone_hint)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                 singleLine = true,
                 enabled = !lockContactInput,
-                modifier = Modifier.weight(1f),
+                textStyle = MaterialTheme.typography.bodyLarge,
+                shape = LoginFormControlShape,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(LoginFormControlHeight),
             )
         }
 
@@ -730,17 +848,38 @@ private fun SmsLoginPanel(
             OutlinedTextField(
                 value = smsCode,
                 onValueChange = onSmsCodeChange,
-                label = { Text(stringResource(R.string.login_sms_code_hint)) },
+                placeholder = { Text(stringResource(R.string.login_sms_code_hint)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
-                modifier = Modifier.weight(1f),
+                textStyle = MaterialTheme.typography.bodyLarge,
+                shape = LoginFormControlShape,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(LoginFormControlHeight),
             )
-            OutlinedButton(
+            Surface(
                 onClick = onRequestSmsCode,
-                enabled = !state.isSendingSms,
-                modifier = Modifier.height(56.dp),
+                enabled = requestSmsEnabled,
+                shape = LoginFormControlShape,
+                color = Color.Transparent,
+                border = BorderStroke(1.dp, requestSmsBorderColor),
+                modifier = Modifier
+                    .height(LoginFormControlHeight)
+                    .width(requestSmsButtonWidth),
             ) {
-                Text(stringResource(R.string.login_send_sms))
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 18.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.login_send_sms),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = requestSmsContentColor,
+                        maxLines = 1,
+                    )
+                }
             }
         }
 
@@ -764,12 +903,23 @@ private fun ErrorCard(
         shape = MaterialTheme.shapes.large,
         modifier = modifier.fillMaxWidth(),
     ) {
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onErrorContainer,
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.padding(14.dp),
-        )
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_info_24),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onErrorContainer,
+            )
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.weight(1f),
+            )
+        }
     }
 }
 
