@@ -317,7 +317,9 @@ class ParseFragment : Fragment() {
             v.isNestedScrollingEnabled = v.canScrollVertically(-1) || v.canScrollVertically(1)
         }
         binding.parseScroll.isFocusableInTouchMode = true
-        binding.parseScroll.descendantFocusability = ViewGroup.FOCUS_BEFORE_DESCENDANTS
+        // Keep descendant focus behavior aligned with NestedScrollView defaults so
+        // the URL input can place the cursor and enter text-selection mode normally.
+        binding.parseScroll.descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
         binding.parseAction.setOnClickListener {
             binding.inputLink.clearFocus()
             binding.mediaTypeDropdown.clearFocus()
