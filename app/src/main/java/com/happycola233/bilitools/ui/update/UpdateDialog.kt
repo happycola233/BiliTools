@@ -76,6 +76,7 @@ import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.ActivityCompat
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.appContainer
 import com.happycola233.bilitools.data.ReleaseInfo
@@ -85,6 +86,7 @@ import kotlinx.coroutines.launch
 
 object UpdateDialog {
     private const val HOST_VIEW_TAG = "biltools_update_dialog_host"
+    private const val REQUEST_CODE_POST_NOTIFICATIONS = 3101
 
     fun show(
         activity: AppCompatActivity,
@@ -132,20 +134,9 @@ object UpdateDialog {
                         }
                     },
                     onDownloadUpdate = {
+                        requestNotificationPermissionIfNeeded(activity)
                         when (val result = appUpdateManager.startDownload(release)) {
                             UpdateStartResult.Started -> {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                                    ContextCompat.checkSelfPermission(
-                                        activity,
-                                        Manifest.permission.POST_NOTIFICATIONS,
-                                    ) != PackageManager.PERMISSION_GRANTED
-                                ) {
-                                    Toast.makeText(
-                                        activity,
-                                        activity.getString(R.string.notification_permission_denied_tip),
-                                        Toast.LENGTH_SHORT,
-                                    ).show()
-                                }
                                 Toast.makeText(
                                     activity,
                                     activity.getString(R.string.update_dialog_download_started),
@@ -199,6 +190,21 @@ object UpdateDialog {
                 )
             }
         }
+    }
+
+    private fun requestNotificationPermissionIfNeeded(activity: AppCompatActivity) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val granted = ContextCompat.checkSelfPermission(
+            activity,
+            Manifest.permission.POST_NOTIFICATIONS,
+        ) == PackageManager.PERMISSION_GRANTED
+        if (granted) return
+
+        ActivityCompat.requestPermissions(
+            activity,
+            arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+            REQUEST_CODE_POST_NOTIFICATIONS,
+        )
     }
 }
 
