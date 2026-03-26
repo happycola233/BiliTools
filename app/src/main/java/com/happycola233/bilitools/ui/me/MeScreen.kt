@@ -38,9 +38,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -563,6 +563,7 @@ private fun LoginPanelCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun QrLoginPanel(
     state: LoginUiState,
@@ -642,6 +643,7 @@ private fun QrLoginPanel(
 
         OutlinedButton(
             onClick = onRefreshQr,
+            shapes = ButtonDefaults.shapes(),
             modifier = Modifier.widthIn(min = 160.dp),
         ) {
             Text(stringResource(R.string.login_refresh))
@@ -649,6 +651,7 @@ private fun QrLoginPanel(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun PasswordLoginPanel(
     account: String,
@@ -716,6 +719,7 @@ private fun PasswordLoginPanel(
         }
         Button(
             onClick = onLogin,
+            shapes = ButtonDefaults.shapes(),
             enabled = enabled,
             modifier = Modifier.fillMaxWidth(),
         ) {
@@ -724,6 +728,7 @@ private fun PasswordLoginPanel(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SmsLoginPanel(
     state: LoginUiState,
@@ -743,28 +748,11 @@ private fun SmsLoginPanel(
         ?: "+${state.selectedCountryId}"
     val countrySelectorEnabled = !lockContactInput && state.countries.isNotEmpty()
     val requestSmsEnabled = !state.isSendingSms
+    val formButtonShapes = ButtonDefaults.shapesFor(LoginFormControlHeight).copy(
+        shape = LoginFormControlShape,
+    )
     val countrySelectorWidth = 104.dp
     val requestSmsButtonWidth = 124.dp
-    val countrySelectorContentColor = if (countrySelectorEnabled) {
-        MaterialTheme.colorScheme.onSurface
-    } else {
-        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-    }
-    val countrySelectorBorderColor = if (countrySelectorEnabled) {
-        MaterialTheme.colorScheme.outline
-    } else {
-        MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)
-    }
-    val requestSmsContentColor = if (requestSmsEnabled) {
-        MaterialTheme.colorScheme.onSurface
-    } else {
-        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-    }
-    val requestSmsBorderColor = if (requestSmsEnabled) {
-        MaterialTheme.colorScheme.outline
-    } else {
-        MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)
-    }
 
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
@@ -778,12 +766,15 @@ private fun SmsLoginPanel(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Box(modifier = Modifier.width(countrySelectorWidth)) {
-                Surface(
+                OutlinedButton(
                     onClick = { onCountryMenuExpandedChange(true) },
+                    shapes = formButtonShapes,
                     enabled = countrySelectorEnabled,
-                    shape = LoginFormControlShape,
-                    color = Color.Transparent,
-                    border = BorderStroke(1.dp, countrySelectorBorderColor),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                        disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                    ),
+                    contentPadding = PaddingValues(0.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(LoginFormControlHeight),
@@ -798,14 +789,12 @@ private fun SmsLoginPanel(
                         Text(
                             text = selectedCountryLabel,
                             style = MaterialTheme.typography.bodyLarge,
-                            color = countrySelectorContentColor,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                         Icon(
                             painter = painterResource(R.drawable.ic_expand_more_24),
                             contentDescription = null,
-                            tint = countrySelectorContentColor,
                         )
                     }
                 }
@@ -857,12 +846,15 @@ private fun SmsLoginPanel(
                     .weight(1f)
                     .height(LoginFormControlHeight),
             )
-            Surface(
+            OutlinedButton(
                 onClick = onRequestSmsCode,
+                shapes = formButtonShapes,
                 enabled = requestSmsEnabled,
-                shape = LoginFormControlShape,
-                color = Color.Transparent,
-                border = BorderStroke(1.dp, requestSmsBorderColor),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                ),
+                contentPadding = PaddingValues(0.dp),
                 modifier = Modifier
                     .height(LoginFormControlHeight)
                     .width(requestSmsButtonWidth),
@@ -876,7 +868,6 @@ private fun SmsLoginPanel(
                     Text(
                         text = stringResource(R.string.login_send_sms),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = requestSmsContentColor,
                         maxLines = 1,
                     )
                 }
@@ -885,6 +876,7 @@ private fun SmsLoginPanel(
 
         Button(
             onClick = onLogin,
+            shapes = ButtonDefaults.shapes(),
             enabled = !state.isLoggingIn,
             modifier = Modifier.fillMaxWidth(),
         ) {
