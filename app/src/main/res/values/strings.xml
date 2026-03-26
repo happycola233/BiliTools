@@ -350,7 +350,7 @@
     <string name="download_detail_merging">正在合并音视频</string>
     <string name="login_section_account">我的账号</string>
     <string name="history_title">历史记录</string>
-    <string name="history_entry_desc">浏览观看足迹</string>
+    <string name="history_entry_desc">浏览观看足迹。</string>
     <string name="login_entry_favorite_title">我的收藏</string>
     <string name="login_entry_favorite_desc">下载宝藏视频！</string>
     <string name="login_entry_watch_later_title">稍后再看</string>

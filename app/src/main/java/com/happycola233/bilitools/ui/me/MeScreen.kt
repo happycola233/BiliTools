@@ -63,8 +63,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -793,23 +793,11 @@ private fun ProfileCard(
                     contentDescription = stringResource(R.string.login_cover_desc),
                     modifier = Modifier
                         .matchParentSize()
-                        .alpha(0.14f),
+                        .blur(18.dp)
+                        .alpha(0.22f),
                     contentScale = ContentScale.Crop,
                 )
             }
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f),
-                                MeExpressiveDefaults.listItemContainerColor.copy(alpha = 0.96f),
-                                MeExpressiveDefaults.listItemContainerColor,
-                            ),
-                        ),
-                    ),
-            )
 
             Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
