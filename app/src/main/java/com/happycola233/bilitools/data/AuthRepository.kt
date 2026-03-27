@@ -278,6 +278,8 @@ class AuthRepository(
 
     fun isLoggedIn(): Boolean = cookieStore.isLoggedIn()
 
+    fun getCachedMid(): Long? = cookieStore.getCookie("DedeUserID")?.toLongOrNull()
+
     suspend fun getUserInfo(): UserInfo? {
         val url = "https://api.bilibili.com/x/web-interface/nav".toHttpUrl()
         val body = httpClient.get(url)

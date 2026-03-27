@@ -187,7 +187,7 @@ private fun MeOverviewScreen(
     modifier: Modifier = Modifier,
 ) {
     val isLoggedIn = loginState.isLoggedIn
-    val hasUserInfo = loginState.userInfo != null
+    val canOpenFavorite = isLoggedIn && loginState.currentMid != null
     val contentItems = listOf(
         MeActionItem(
             iconRes = R.drawable.ic_history_24,
@@ -208,7 +208,7 @@ private fun MeOverviewScreen(
             } else {
                 R.string.me_favorite_entry_disabled_desc
             },
-            enabled = hasUserInfo,
+            enabled = canOpenFavorite,
             onClick = onOpenFavorite,
         ),
         MeActionItem(

@@ -51,7 +51,9 @@ class MeFragment : Fragment(R.layout.fragment_me) {
                 },
                 onOpenFavorite = {
                     if (!viewModel.state.value.isLoggedIn) return@BiliToolsMeContent
-                    val mid = viewModel.state.value.userInfo?.mid ?: return@BiliToolsMeContent
+                    val mid = viewModel.state.value.currentMid
+                        ?: viewModel.state.value.userInfo?.mid
+                        ?: return@BiliToolsMeContent
                     jumpToParse("https://space.bilibili.com/$mid/favlist")
                 },
                 onOpenWatchLater = {

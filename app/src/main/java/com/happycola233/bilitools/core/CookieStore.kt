@@ -52,6 +52,11 @@ class CookieStore(context: Context) {
         return cookies["SESSDATA"]?.isNotBlank() == true
     }
 
+    fun getCookie(name: String): String? {
+        ensureLoaded()
+        return cookies[name]
+    }
+
     fun clear() {
         ensureLoaded()
         cookies.clear()

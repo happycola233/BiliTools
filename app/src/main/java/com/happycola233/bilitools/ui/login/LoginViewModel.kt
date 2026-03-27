@@ -43,6 +43,7 @@ data class LoginUiState(
     val qrStatusText: String = "",
     val isPolling: Boolean = false,
     val isLoggedIn: Boolean = false,
+    val currentMid: Long? = null,
     val userInfo: UserInfo? = null,
     val errorText: String? = null,
     val activeTab: LoginTab = LoginTab.Qr,
@@ -99,6 +100,7 @@ class LoginViewModel(
         LoginUiState(
             qrStatusText = strings.get(R.string.login_status_idle),
             isLoggedIn = authRepository.isLoggedIn(),
+            currentMid = authRepository.getCachedMid(),
         ),
     )
     val state: StateFlow<LoginUiState> = _state.asStateFlow()
@@ -130,6 +132,7 @@ class LoginViewModel(
 
     fun refreshLoginState() {
         val isLoggedIn = authRepository.isLoggedIn()
+        val cachedMid = if (isLoggedIn) authRepository.getCachedMid() else null
         if (!isLoggedIn) {
             userInfoJob?.cancel()
         }
@@ -138,6 +141,7 @@ class LoginViewModel(
             shouldRefreshUserInfo = isLoggedIn && it.userInfo == null
             it.copy(
                 isLoggedIn = isLoggedIn,
+                currentMid = if (isLoggedIn) cachedMid ?: it.currentMid else null,
                 userInfo = if (isLoggedIn) it.userInfo else null,
                 errorText = null,
             )
@@ -223,6 +227,7 @@ class LoginViewModel(
         _state.update {
             it.copy(
                 isLoggedIn = false,
+                currentMid = null,
                 userInfo = null,
                 smsCaptchaKey = null,
                 isRiskSmsMode = false,
@@ -474,6 +479,7 @@ class LoginViewModel(
                 riskLockPhoneInput = false,
                 qrStatusText = strings.get(R.string.login_status_signed_in),
                 isLoggedIn = true,
+                currentMid = authRepository.getCachedMid(),
                 errorText = null,
             )
         }
@@ -525,6 +531,7 @@ class LoginViewModel(
                     it.copy(
                         qrStatusText = statusText,
                         isLoggedIn = authRepository.isLoggedIn(),
+                        currentMid = authRepository.getCachedMid(),
                         errorText = null,
                     )
                 }
@@ -535,6 +542,7 @@ class LoginViewModel(
                                 isPolling = false,
                                 qrStatusText = strings.get(R.string.login_status_signed_in),
                                 isLoggedIn = true,
+                                currentMid = authRepository.getCachedMid(),
                             )
                         }
                         refreshUserInfo()
@@ -573,9 +581,11 @@ class LoginViewModel(
             try {
                 val info = authRepository.getUserInfo()
                 val isLoggedIn = authRepository.isLoggedIn()
+                val cachedMid = if (isLoggedIn) authRepository.getCachedMid() else null
                 _state.update {
                     it.copy(
                         isLoggedIn = isLoggedIn,
+                        currentMid = if (isLoggedIn) info?.mid ?: cachedMid ?: it.currentMid else null,
                         userInfo = if (isLoggedIn) info ?: it.userInfo else null,
                     )
                 }
@@ -583,9 +593,11 @@ class LoginViewModel(
                 throw cancelled
             } catch (_: Throwable) {
                 val isLoggedIn = authRepository.isLoggedIn()
+                val cachedMid = if (isLoggedIn) authRepository.getCachedMid() else null
                 _state.update {
                     it.copy(
                         isLoggedIn = isLoggedIn,
+                        currentMid = if (isLoggedIn) cachedMid ?: it.currentMid else null,
                         userInfo = if (isLoggedIn) it.userInfo else null,
                     )
                 }
