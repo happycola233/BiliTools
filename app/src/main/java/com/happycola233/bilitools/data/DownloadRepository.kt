@@ -11,10 +11,11 @@ import android.os.Environment
 import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import android.provider.MediaStore
-import android.util.Log
 import com.happycola233.bilitools.R
+import com.happycola233.bilitools.core.AppLog as Log
 import com.happycola233.bilitools.core.BiliHttpClient
 import com.happycola233.bilitools.core.CookieStore
+import com.happycola233.bilitools.core.createHttpDiagnosticLoggingInterceptor
 import com.happycola233.bilitools.data.model.DownloadEmbeddedMetadata
 import com.happycola233.bilitools.data.model.DownloadGroup
 import com.happycola233.bilitools.data.model.DownloadItem
@@ -83,6 +84,12 @@ class DownloadRepository(
                 cookieStore.updateFromHeaders(response.headers)
                 response
             }
+            .addInterceptor(
+                createHttpDiagnosticLoggingInterceptor(
+                    tag = TAG,
+                    settingsRepository = settingsRepository,
+                ),
+            )
             .build()
     }
 

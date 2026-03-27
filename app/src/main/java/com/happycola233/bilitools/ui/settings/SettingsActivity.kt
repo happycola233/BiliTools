@@ -1,5 +1,6 @@
 package com.happycola233.bilitools.ui.settings
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -55,6 +56,7 @@ class SettingsActivity : AppCompatActivity() {
         enableEdgeToEdge()
         applySettingsThemeOverlays()
         super.onCreate(savedInstanceState)
+        viewModel.refreshIssueReportState()
 
         val composeView = ComposeView(this).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
@@ -64,6 +66,7 @@ class SettingsActivity : AppCompatActivity() {
 
         composeView.setContent {
             val settings by viewModel.settings.collectAsState()
+            val issueReportState by viewModel.issueReportState.collectAsState()
             val updateRepository = remember { applicationContext.appContainer.updateRepository }
             val scope = rememberCoroutineScope()
             val versionName = remember { normalizeVersionLabel(updateRepository.currentVersionName()) }
@@ -77,13 +80,18 @@ class SettingsActivity : AppCompatActivity() {
                 )
             }
             var checkingUpdate by rememberSaveable { mutableStateOf(false) }
+            var exportingIssueReport by rememberSaveable { mutableStateOf(false) }
+            var clearingIssueReport by rememberSaveable { mutableStateOf(false) }
 
             BiliToolsSettingsContent(
                 settings = settings,
+                issueReportState = issueReportState,
                 backStack = viewModel.backStack,
                 checkUpdateSummary = checkUpdateSummary,
                 versionName = versionName,
                 versionCode = versionCode,
+                issueReportExporting = exportingIssueReport,
+                issueReportClearing = clearingIssueReport,
                 onExit = ::finish,
                 onNavigate = viewModel::navigateTo,
                 onNavigateBack = viewModel::popDestination,
@@ -163,8 +171,51 @@ class SettingsActivity : AppCompatActivity() {
                     }
                 },
                 onGlassDebugChange = viewModel::setDownloadsGlassDebugEnabled,
+                onIssueReportLoggingChange = viewModel::setIssueReportDetailedLoggingEnabled,
+                onExportIssueReport = {
+                    if (!exportingIssueReport) {
+                        exportingIssueReport = true
+                        scope.launch {
+                            val exportUri = viewModel.exportDetailedIssueLogs()
+                            if (exportUri != null) {
+                                Toast.makeText(
+                                    this@SettingsActivity,
+                                    getString(R.string.settings_issue_report_export_success),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                                shareIssueReport(exportUri)
+                            } else {
+                                Toast.makeText(
+                                    this@SettingsActivity,
+                                    getString(R.string.settings_issue_report_export_failed),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                            }
+                            exportingIssueReport = false
+                        }
+                    }
+                },
+                onClearIssueReport = {
+                    if (!clearingIssueReport) {
+                        clearingIssueReport = true
+                        scope.launch {
+                            viewModel.clearDetailedIssueLogs()
+                            Toast.makeText(
+                                this@SettingsActivity,
+                                getString(R.string.settings_issue_report_clear_success),
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                            clearingIssueReport = false
+                        }
+                    }
+                },
             )
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.refreshIssueReportState()
     }
 
     override fun finish() {
@@ -198,6 +249,30 @@ class SettingsActivity : AppCompatActivity() {
             append("（")
             append(statusText)
             append('）')
+        }
+    }
+
+    private fun shareIssueReport(uri: Uri) {
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        runCatching {
+            startActivity(
+                Intent.createChooser(
+                    intent,
+                    getString(R.string.settings_issue_report_export_title),
+                ),
+            )
+        }.onFailure {
+            if (it is ActivityNotFoundException) {
+                Toast.makeText(
+                    this,
+                    getString(R.string.settings_issue_report_share_failed),
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
         }
     }
 

@@ -2,6 +2,7 @@ package com.happycola233.bilitools.core
 
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import com.happycola233.bilitools.data.SettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.FormBody
@@ -9,9 +10,11 @@ import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
-import okhttp3.logging.HttpLoggingInterceptor
 
-class BiliHttpClient(private val cookieStore: CookieStore) {
+class BiliHttpClient(
+    private val cookieStore: CookieStore,
+    private val settingsRepository: SettingsRepository,
+) {
     private val moshi by lazy {
         Moshi.Builder()
             .add(KotlinJsonAdapterFactory())
@@ -40,9 +43,10 @@ class BiliHttpClient(private val cookieStore: CookieStore) {
                 response
             }
             .addInterceptor(
-                HttpLoggingInterceptor().apply {
-                    level = HttpLoggingInterceptor.Level.BASIC
-                },
+                createHttpDiagnosticLoggingInterceptor(
+                    tag = TAG,
+                    settingsRepository = settingsRepository,
+                ),
             )
             .build()
     }
@@ -100,6 +104,7 @@ class BiliHttpClient(private val cookieStore: CookieStore) {
     }
 
     companion object {
+        private const val TAG = "BiliHttpClient"
         const val USER_AGENT =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36"
     }

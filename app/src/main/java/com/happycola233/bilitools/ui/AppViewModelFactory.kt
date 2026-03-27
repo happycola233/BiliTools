@@ -32,7 +32,10 @@ class AppViewModelFactory(
                 DownloadsViewModel(container.downloadRepository)
             }
             modelClass.isAssignableFrom(SettingsViewModel::class.java) -> {
-                SettingsViewModel(container.settingsRepository)
+                SettingsViewModel(
+                    settingsRepository = container.settingsRepository,
+                    issueReportRepository = container.issueReportRepository,
+                )
             }
             modelClass.isAssignableFrom(HistoryViewModel::class.java) -> {
                 HistoryViewModel(

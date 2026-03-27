@@ -1,7 +1,8 @@
 package com.happycola233.bilitools.data
 
 import android.content.Context
-import android.util.Log
+import com.happycola233.bilitools.core.AppLog as Log
+import com.happycola233.bilitools.core.createHttpDiagnosticLoggingInterceptor
 import com.squareup.moshi.Json
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
@@ -50,10 +51,20 @@ sealed interface UpdateCheckResult {
 class UpdateRepository(
     context: Context,
     private val gitHubRouteManager: GitHubRouteManager,
+    private val settingsRepository: SettingsRepository,
 ) {
     private val appContext = context.applicationContext
 
-    private val client by lazy { OkHttpClient() }
+    private val client by lazy {
+        OkHttpClient.Builder()
+            .addInterceptor(
+                createHttpDiagnosticLoggingInterceptor(
+                    tag = TAG,
+                    settingsRepository = settingsRepository,
+                ),
+            )
+            .build()
+    }
     private val moshi by lazy {
         Moshi.Builder()
             .add(KotlinJsonAdapterFactory())

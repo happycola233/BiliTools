@@ -7,7 +7,7 @@ import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
-import android.util.Log
+import com.happycola233.bilitools.core.AppLog as Log
 import java.io.File
 
 internal class DownloadGalleryVisibilityManager(

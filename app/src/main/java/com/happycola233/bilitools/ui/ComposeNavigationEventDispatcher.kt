@@ -1,6 +1,6 @@
 package com.happycola233.bilitools.ui
 
-import android.util.Log
+import com.happycola233.bilitools.core.AppLog as Log
 import androidx.compose.ui.platform.ComposeView
 
 internal fun attachNavigationEventDispatcherOwner(

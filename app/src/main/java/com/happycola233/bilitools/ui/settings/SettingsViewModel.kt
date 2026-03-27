@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.navigation3.runtime.NavKey
 import com.happycola233.bilitools.data.AppThemeColor
 import com.happycola233.bilitools.data.AppThemeMode
+import com.happycola233.bilitools.data.IssueReportRepository
 import com.happycola233.bilitools.data.SettingsRepository
 
 sealed class SettingsDestination : NavKey {
@@ -18,8 +19,10 @@ sealed class SettingsDestination : NavKey {
 
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
+    private val issueReportRepository: IssueReportRepository,
 ) : ViewModel() {
     val settings = settingsRepository.settings
+    val issueReportState = issueReportRepository.state
     val backStack = mutableStateListOf<SettingsDestination>(SettingsDestination.Main)
 
     fun navigateTo(destination: SettingsDestination) {
@@ -73,7 +76,21 @@ class SettingsViewModel(
         settingsRepository.setDownloadsGlassDebugEnabled(enabled)
     }
 
+    fun setIssueReportDetailedLoggingEnabled(enabled: Boolean) {
+        issueReportRepository.setDetailedLoggingEnabled(enabled)
+    }
+
+    fun refreshIssueReportState() {
+        issueReportRepository.refreshState()
+    }
+
     fun setDownloadRootFromTreeUri(uri: Uri): Boolean {
         return settingsRepository.setDownloadRootFromTreeUri(uri)
+    }
+
+    suspend fun exportDetailedIssueLogs() = issueReportRepository.exportDetailedLogs()
+
+    suspend fun clearDetailedIssueLogs() {
+        issueReportRepository.clearLogs()
     }
 }

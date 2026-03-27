@@ -1,6 +1,7 @@
 package com.happycola233.bilitools.ui.settings
 
 import android.os.Build
+import android.text.format.Formatter
 import androidx.annotation.DrawableRes
 import androidx.annotation.RawRes
 import androidx.annotation.StringRes
@@ -78,6 +79,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -89,16 +92,24 @@ import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.AppSettings
 import com.happycola233.bilitools.data.AppThemeColor
 import com.happycola233.bilitools.data.AppThemeMode
+import com.happycola233.bilitools.data.IssueReportLogState
 import com.happycola233.bilitools.ui.theme.BiliToolsSettingsTheme
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun BiliToolsSettingsContent(
     settings: AppSettings,
+    issueReportState: IssueReportLogState,
     backStack: SnapshotStateList<SettingsDestination>,
     checkUpdateSummary: String,
     versionName: String,
     versionCode: Long,
+    issueReportExporting: Boolean,
+    issueReportClearing: Boolean,
     onExit: () -> Unit,
     onNavigate: (SettingsDestination) -> Unit,
     onNavigateBack: () -> Unit,
@@ -112,6 +123,9 @@ fun BiliToolsSettingsContent(
     onHideInAlbumChange: (Boolean) -> Unit,
     onBlackThemeChange: (Boolean) -> Unit,
     onGlassDebugChange: (Boolean) -> Unit,
+    onIssueReportLoggingChange: (Boolean) -> Unit,
+    onExportIssueReport: () -> Unit,
+    onClearIssueReport: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BiliToolsSettingsTheme(settings = settings) {
@@ -180,7 +194,13 @@ fun BiliToolsSettingsContent(
                         versionName = versionName,
                         versionCode = versionCode,
                         checkUpdateSummary = checkUpdateSummary,
+                        issueReportState = issueReportState,
+                        issueReportExporting = issueReportExporting,
+                        issueReportClearing = issueReportClearing,
                         onCheckUpdate = onCheckUpdate,
+                        onIssueReportLoggingChange = onIssueReportLoggingChange,
+                        onExportIssueReport = onExportIssueReport,
+                        onClearIssueReport = onClearIssueReport,
                         onBack = onNavigateBack,
                         modifier = modifier,
                     )
@@ -525,14 +545,37 @@ private fun AboutSettingsScreen(
     versionName: String,
     versionCode: Long,
     checkUpdateSummary: String,
+    issueReportState: IssueReportLogState,
+    issueReportExporting: Boolean,
+    issueReportClearing: Boolean,
     onCheckUpdate: () -> Unit,
+    onIssueReportLoggingChange: (Boolean) -> Unit,
+    onExportIssueReport: () -> Unit,
+    onClearIssueReport: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     var showLicense by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
     val appIconPainter = painterResource(R.drawable.about_bilitools_icon)
+    val issueReportActiveColor = MaterialTheme.colorScheme.error
+    val issueReportSummary = remember(
+        context,
+        issueReportState,
+        issueReportExporting,
+        issueReportClearing,
+        issueReportActiveColor,
+    ) {
+        buildIssueReportSummary(
+            context = context,
+            state = issueReportState,
+            exporting = issueReportExporting,
+            clearing = issueReportClearing,
+            activeColor = issueReportActiveColor,
+        )
+    }
 
     SettingsScaffold(
         title = stringResource(R.string.settings_about_title),
@@ -638,6 +681,54 @@ private fun AboutSettingsScreen(
                     },
                     supportingContent = { Text(stringResource(R.string.settings_license_summary)) },
                     onClick = { showLicense = true },
+                )
+            }
+
+            item { Spacer(Modifier.height(12.dp)) }
+
+            item {
+                ExpressiveSwitchListItem(
+                    checked = issueReportState.enabled,
+                    iconRes = R.drawable.ic_troubleshoot_24,
+                    title = stringResource(R.string.settings_issue_report_enabled_title),
+                    description = stringResource(R.string.settings_issue_report_enabled_desc),
+                    items = 3,
+                    index = 0,
+                    onCheckedChange = onIssueReportLoggingChange,
+                )
+            }
+
+            item {
+                ClickableListItem(
+                    items = 3,
+                    index = 1,
+                    leadingContent = { SettingsItemIcon(R.drawable.ic_save_alt_24) },
+                    headlineContent = {
+                        SettingsItemTitle(stringResource(R.string.settings_issue_report_export_title))
+                    },
+                    supportingContent = {
+                        Text(
+                            text = issueReportSummary,
+                            maxLines = 4,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
+                    onClick = onExportIssueReport,
+                )
+            }
+
+            item {
+                ClickableListItem(
+                    items = 3,
+                    index = 2,
+                    leadingContent = { SettingsItemIcon(R.drawable.ic_delete_sweep_24) },
+                    headlineContent = {
+                        SettingsItemTitle(stringResource(R.string.settings_issue_report_clear_title))
+                    },
+                    supportingContent = {
+                        Text(stringResource(R.string.settings_issue_report_clear_desc))
+                    },
+                    onClick = onClearIssueReport,
                 )
             }
 
@@ -1058,6 +1149,75 @@ private fun rememberRawTextResource(@RawRes rawRes: Int): String {
     }
 }
 
+private fun buildIssueReportSummary(
+    context: android.content.Context,
+    state: IssueReportLogState,
+    exporting: Boolean,
+    clearing: Boolean,
+    activeColor: Color,
+) = buildAnnotatedString {
+    if (exporting) {
+        append(context.getString(R.string.settings_issue_report_export_running))
+        return@buildAnnotatedString
+    }
+    if (clearing) {
+        append(context.getString(R.string.settings_issue_report_clear_running))
+        return@buildAnnotatedString
+    }
+
+    val sizeLabel = Formatter.formatShortFileSize(context, state.totalBytes)
+    if (state.enabled) {
+        val enabledSince = formatIssueReportTimestamp(state.loggingStartedAtMillis)
+        pushStyle(
+            SpanStyle(
+                color = activeColor,
+                fontWeight = FontWeight.Bold,
+            ),
+        )
+        append(context.getString(R.string.settings_issue_report_status_enabled))
+        pop()
+        if (enabledSince != null) {
+            append(
+                context.getString(
+                    R.string.settings_issue_report_status_enabled_since_suffix,
+                    enabledSince,
+                ),
+            )
+        } else {
+            append('。')
+        }
+    } else {
+        append(context.getString(R.string.settings_issue_report_status_disabled))
+    }
+    append('\n')
+    append(
+        context.getString(
+            R.string.settings_issue_report_status_files,
+            state.fileCount,
+            sizeLabel,
+        ),
+    )
+    state.latestLogAtMillis?.let { latest ->
+        formatIssueReportTimestamp(latest)?.let { label ->
+            append('\n')
+            append(context.getString(R.string.settings_issue_report_status_last_capture, label))
+        }
+    }
+    state.lastExportedAtMillis?.let { exported ->
+        formatIssueReportTimestamp(exported)?.let { label ->
+            append('\n')
+            append(context.getString(R.string.settings_issue_report_status_last_export, label))
+        }
+    }
+}
+
+private fun formatIssueReportTimestamp(epochMillis: Long?): String? {
+    if (epochMillis == null || epochMillis <= 0L) return null
+    return ISSUE_REPORT_TIME_FORMATTER.format(
+        Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()),
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SettingsScaffold(
@@ -1195,3 +1355,8 @@ private object SettingsExpressiveShapes {
         }
     }
 }
+
+private val ISSUE_REPORT_TIME_FORMATTER = DateTimeFormatter.ofPattern(
+    "yyyy-MM-dd HH:mm",
+    Locale.ROOT,
+)

@@ -30,6 +30,9 @@ data class AppSettings(
     val downloadsGlassRefractionAmountFrac: Float = SettingsRepository.DEFAULT_DOWNLOADS_GLASS_REFRACTION_AMOUNT_FRAC,
     val downloadsGlassSurfaceAlpha: Float = SettingsRepository.DEFAULT_DOWNLOADS_GLASS_SURFACE_ALPHA,
     val downloadsGlassChromaticAberration: Boolean = SettingsRepository.DEFAULT_DOWNLOADS_GLASS_CHROMATIC_ABERRATION,
+    val issueReportDetailedLoggingEnabled: Boolean = false,
+    val issueReportDetailedLoggingStartedAtMillis: Long? = null,
+    val issueReportLastExportedAtMillis: Long? = null,
     val ignoredUpdateVersion: String? = null,
 )
 
@@ -209,6 +212,36 @@ class SettingsRepository(context: Context) {
         _settings.value = current.copy(downloadsGlassChromaticAberration = enabled)
     }
 
+    fun setIssueReportDetailedLoggingEnabled(enabled: Boolean) {
+        val current = _settings.value
+        if (current.issueReportDetailedLoggingEnabled == enabled) return
+
+        val updatedStartedAt = if (enabled) {
+            System.currentTimeMillis()
+        } else {
+            null
+        }
+        prefs.edit()
+            .putBoolean(KEY_ISSUE_REPORT_DETAILED_LOGGING_ENABLED, enabled)
+            .putLong(KEY_ISSUE_REPORT_DETAILED_LOGGING_STARTED_AT, updatedStartedAt ?: 0L)
+            .apply()
+        _settings.value = current.copy(
+            issueReportDetailedLoggingEnabled = enabled,
+            issueReportDetailedLoggingStartedAtMillis = updatedStartedAt,
+        )
+    }
+
+    fun setIssueReportLastExportedAt(epochMillis: Long?) {
+        val normalized = epochMillis?.takeIf { it > 0L }
+        val current = _settings.value
+        if (current.issueReportLastExportedAtMillis == normalized) return
+
+        prefs.edit()
+            .putLong(KEY_ISSUE_REPORT_LAST_EXPORTED_AT, normalized ?: 0L)
+            .apply()
+        _settings.value = current.copy(issueReportLastExportedAtMillis = normalized)
+    }
+
     fun setIgnoredUpdateVersion(version: String?) {
         val normalized = normalizeUpdateVersion(version)
         val current = _settings.value
@@ -289,6 +322,18 @@ class SettingsRepository(context: Context) {
                 KEY_DOWNLOADS_GLASS_CHROMATIC_ABERRATION,
                 DEFAULT_DOWNLOADS_GLASS_CHROMATIC_ABERRATION,
             ),
+            issueReportDetailedLoggingEnabled = prefs.getBoolean(
+                KEY_ISSUE_REPORT_DETAILED_LOGGING_ENABLED,
+                false,
+            ),
+            issueReportDetailedLoggingStartedAtMillis = prefs.getLong(
+                KEY_ISSUE_REPORT_DETAILED_LOGGING_STARTED_AT,
+                0L,
+            ).takeIf { it > 0L },
+            issueReportLastExportedAtMillis = prefs.getLong(
+                KEY_ISSUE_REPORT_LAST_EXPORTED_AT,
+                0L,
+            ).takeIf { it > 0L },
             ignoredUpdateVersion = normalizeUpdateVersion(
                 prefs.getString(KEY_IGNORED_UPDATE_VERSION, null),
             ),
@@ -416,6 +461,11 @@ class SettingsRepository(context: Context) {
         private const val KEY_DOWNLOADS_GLASS_REFRACTION_AMOUNT_FRAC = "downloads_glass_refraction_amount_frac"
         private const val KEY_DOWNLOADS_GLASS_SURFACE_ALPHA = "downloads_glass_surface_alpha"
         private const val KEY_DOWNLOADS_GLASS_CHROMATIC_ABERRATION = "downloads_glass_chromatic_aberration"
+        private const val KEY_ISSUE_REPORT_DETAILED_LOGGING_ENABLED =
+            "issue_report_detailed_logging_enabled"
+        private const val KEY_ISSUE_REPORT_DETAILED_LOGGING_STARTED_AT =
+            "issue_report_detailed_logging_started_at"
+        private const val KEY_ISSUE_REPORT_LAST_EXPORTED_AT = "issue_report_last_exported_at"
         private const val KEY_IGNORED_UPDATE_VERSION = "ignored_update_version"
     }
 }

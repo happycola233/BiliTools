@@ -8,7 +8,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -30,6 +29,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.happycola233.bilitools.R
+import com.happycola233.bilitools.core.AppLog as Log
 import com.happycola233.bilitools.core.appContainer
 import com.happycola233.bilitools.data.model.DownloadItem
 import com.happycola233.bilitools.data.model.DownloadGroup

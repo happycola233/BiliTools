@@ -5,8 +5,9 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.IBinder
 import android.os.SystemClock
-import android.util.Log
 import com.happycola233.bilitools.BiliToolsApp
+import com.happycola233.bilitools.core.AppLog as Log
+import com.happycola233.bilitools.core.createHttpDiagnosticLoggingInterceptor
 import com.happycola233.bilitools.core.appContainer
 import okhttp3.Call
 import okhttp3.OkHttpClient
@@ -24,7 +25,16 @@ import java.io.IOException
 
 class UpdateDownloadService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val httpClient by lazy { OkHttpClient() }
+    private val httpClient by lazy {
+        OkHttpClient.Builder()
+            .addInterceptor(
+                createHttpDiagnosticLoggingInterceptor(
+                    tag = TAG,
+                    settingsRepository = applicationContext.appContainer.settingsRepository,
+                ),
+            )
+            .build()
+    }
     private lateinit var notificationManager: UpdateNotificationManager
     private lateinit var packageCleanupManager: UpdatePackageCleanupManager
 

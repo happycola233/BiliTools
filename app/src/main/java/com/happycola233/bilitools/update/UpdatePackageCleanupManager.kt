@@ -1,7 +1,7 @@
 package com.happycola233.bilitools.update
 
 import android.content.Context
-import android.util.Log
+import com.happycola233.bilitools.core.AppLog as Log
 import androidx.core.content.pm.PackageInfoCompat
 import java.io.File
 
