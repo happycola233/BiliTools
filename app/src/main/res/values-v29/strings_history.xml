@@ -1,0 +1,5 @@
+<resources>
+    <string name="history_view_at_format">%1$s</string>
+    <string name="history_progress_format">%1$s / %2$s</string>
+    <string name="history_progress_completed">已看完 · %1$s</string>
+</resources>

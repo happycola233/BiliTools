@@ -54,6 +54,25 @@
         <item name="android:textStyle">bold</item>
     </style>
 
+    <style name="TextAppearance.BiliTools.History.ItemTitle" parent="TextAppearance.Material3.TitleSmall">
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:lineHeight">20sp</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="TextAppearance.BiliTools.History.Meta" parent="TextAppearance.Material3.BodySmall">
+        <item name="android:textSize">12sp</item>
+        <item name="android:lineHeight">16sp</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="TextAppearance.BiliTools.History.Author" parent="TextAppearance.Material3.LabelLarge">
+        <item name="android:textSize">13sp</item>
+        <item name="android:lineHeight">16sp</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
     <style name="TextAppearance.BiliTools.Main.CollapsedTitle" parent="TextAppearance.Material3.TitleLarge">
         <item name="android:textStyle">bold</item>
     </style>
