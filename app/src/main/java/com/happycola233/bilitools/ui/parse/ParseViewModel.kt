@@ -1354,9 +1354,7 @@ class ParseViewModel(
                     }
                     return@launch
                 }
-                if (entry != null) {
-                    _events.emit(ParseEvent.CopySingleSubtitle(entry))
-                }
+                _events.emit(ParseEvent.CopySingleSubtitle(entry))
                 return@launch
             }
             _events.emit(ParseEvent.ShowSubtitleCopyDialog(entries))
@@ -1420,9 +1418,7 @@ class ParseViewModel(
                     }
                     return@launch
                 }
-                if (entry != null) {
-                    _events.emit(ParseEvent.CopySingleAiSummary(entry))
-                }
+                _events.emit(ParseEvent.CopySingleAiSummary(entry))
                 return@launch
             }
             _events.emit(ParseEvent.ShowAiSummaryCopyDialog(entries))

@@ -12,6 +12,7 @@ import com.happycola233.bilitools.ui.settings.SettingsViewModel
 class AppViewModelFactory(
     private val container: AppContainer,
 ) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         return when {
             modelClass.isAssignableFrom(LoginViewModel::class.java) -> {

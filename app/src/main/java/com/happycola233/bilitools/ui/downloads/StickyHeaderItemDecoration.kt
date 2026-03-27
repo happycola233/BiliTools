@@ -5,7 +5,6 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.view.GestureDetectorCompat
 import androidx.recyclerview.widget.RecyclerView
 
 class StickyHeaderItemDecoration(private val adapter: StickyHeaderInterface) : RecyclerView.ItemDecoration(), RecyclerView.OnItemTouchListener {
@@ -14,7 +13,7 @@ class StickyHeaderItemDecoration(private val adapter: StickyHeaderInterface) : R
     private var currentHeaderPosition: Int = RecyclerView.NO_POSITION
     private val headerCache = mutableMapOf<Int, View>()
     private var currentHeaderY: Float = 0f
-    private var gestureDetector: GestureDetectorCompat? = null
+    private var gestureDetector: GestureDetector? = null
 
     override fun onDrawOver(c: Canvas, parent: RecyclerView, state: RecyclerView.State) {
         super.onDrawOver(c, parent, state)
@@ -96,7 +95,7 @@ class StickyHeaderItemDecoration(private val adapter: StickyHeaderInterface) : R
 
     override fun onInterceptTouchEvent(rv: RecyclerView, e: MotionEvent): Boolean {
         if (gestureDetector == null) {
-            gestureDetector = GestureDetectorCompat(rv.context, object : GestureDetector.SimpleOnGestureListener() {
+            gestureDetector = GestureDetector(rv.context, object : GestureDetector.SimpleOnGestureListener() {
                 override fun onSingleTapUp(e: MotionEvent): Boolean {
                     val header = currentHeader ?: return false
                     if (e.y >= currentHeaderY && e.y <= currentHeaderY + header.height) {

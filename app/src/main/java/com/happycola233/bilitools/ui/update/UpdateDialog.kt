@@ -274,7 +274,7 @@ private fun UpdateBottomSheet(
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         dragHandle = { BottomSheetDefaults.DragHandle() },
-        contentWindowInsets = { BottomSheetDefaults.windowInsets },
+        contentWindowInsets = { BottomSheetDefaults.modalWindowInsets },
     ) {
         Column(
             modifier = Modifier

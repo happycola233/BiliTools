@@ -446,8 +446,9 @@ class ParseFragment : Fragment() {
             }
         }
 
-        binding.formatGroup.setOnCheckedChangeListener { _, checkedId ->
-            if (suppressUi) return@setOnCheckedChangeListener
+        binding.formatGroup.setOnCheckedStateChangeListener { _, checkedIds ->
+            if (suppressUi) return@setOnCheckedStateChangeListener
+            val checkedId = checkedIds.firstOrNull() ?: View.NO_ID
             preserveScrollAndFocus()
             val format = when (checkedId) {
                 R.id.format_mp4 -> StreamFormat.Mp4
@@ -457,8 +458,9 @@ class ParseFragment : Fragment() {
             viewModel.setFormat(format)
         }
 
-        binding.outputGroup.setOnCheckedChangeListener { _, checkedId ->
-            if (suppressUi) return@setOnCheckedChangeListener
+        binding.outputGroup.setOnCheckedStateChangeListener { _, checkedIds ->
+            if (suppressUi) return@setOnCheckedStateChangeListener
+            val checkedId = checkedIds.firstOrNull() ?: View.NO_ID
             preserveScrollAndFocus()
             val output = when (checkedId) {
                 R.id.output_audio -> OutputType.AudioOnly

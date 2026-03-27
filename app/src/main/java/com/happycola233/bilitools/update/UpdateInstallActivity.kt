@@ -62,7 +62,7 @@ class UpdateInstallActivity : AppCompatActivity() {
             "$packageName.fileprovider",
             apkFile,
         )
-        val installIntent = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
+        val installIntent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(apkUri, APK_MIME_TYPE)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }

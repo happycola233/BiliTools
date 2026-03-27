@@ -3,6 +3,12 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+kotlin {
+    compilerOptions {
+        freeCompilerArgs.add("-Xannotation-default-target=first-only")
+    }
+}
+
 android {
     namespace = "com.happycola233.bilitools"
     compileSdk {

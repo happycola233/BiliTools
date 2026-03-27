@@ -168,7 +168,6 @@ class MediaRepository(
             MediaType.UserVideo -> fetchUserVideoInfo(id, options)
             MediaType.UserOpus -> fetchUserOpusInfo(id, options)
             MediaType.UserAudio -> fetchUserAudioInfo(id, options)
-            else -> throw IllegalArgumentException("Unsupported media type: $type")
         }
     }
 
