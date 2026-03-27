@@ -344,8 +344,20 @@ class DownloadsAdapter(
         private val swipeTarget = (80f * density) + (8f * density)
         private val snapThreshold = swipeTarget / 2
         private val dismissThreshold = 140f * density
-        private val checkboxMarginEndPx = (8f * density).toInt()
-        private val checkboxMinWidthPx = (32f * density).toInt()
+        private val cardHorizontalMarginNormalPx = (16f * density).toInt()
+        private val cardHorizontalMarginSelectionPx = (10f * density).toInt()
+        private val headerHorizontalPaddingNormalPx = (16f * density).toInt()
+        private val headerHorizontalPaddingSelectionPx = (12f * density).toInt()
+        private val coverWidthNormalPx = (80f * density).toInt()
+        private val coverHeightNormalPx = (56f * density).toInt()
+        private val coverWidthSelectionPx = (72f * density).toInt()
+        private val coverHeightSelectionPx = (50f * density).toInt()
+        private val textGapNormalPx = (16f * density).toInt()
+        private val textGapSelectionPx = (12f * density).toInt()
+        private val textEndGapNormalPx = (8f * density).toInt()
+        private val textEndGapSelectionPx = 0
+        private val checkboxMarginEndPx = (6f * density).toInt()
+        private val checkboxMinWidthPx = (28f * density).toInt()
         private var boundGroupId: Long = -1L
         private var currentGroup: DownloadGroup? = null
         private var downX = 0f
@@ -535,6 +547,7 @@ class DownloadsAdapter(
             val context = binding.root.context
             val selectionMode = adapter.selectionMode
             val isSelected = adapter.selectedGroupIds.contains(group.id)
+            applySelectionLayout(selectionMode)
             updateSelectionCheckboxVisibility(selectionMode, animate = false)
             binding.groupSelect.isChecked = isSelected
             binding.groupSelect.setOnClickListener {
@@ -663,7 +676,6 @@ class DownloadsAdapter(
             
             val shouldExpand = expanded && !selectionMode
             applyExpandedStateImmediate(group, shouldExpand)
-            binding.groupToggle.visibility = if (selectionMode) View.INVISIBLE else View.VISIBLE
             
             // Re-apply click listeners logic via standard SetOnClickListener for accessibility/fallback
             // But we primarily handle clicks in OnTouch. 
@@ -700,6 +712,7 @@ class DownloadsAdapter(
         fun bindSelectionModeState(group: DownloadGroup) {
             val selectionMode = adapter.selectionMode
             val isSelected = adapter.selectedGroupIds.contains(group.id)
+            applySelectionLayout(selectionMode)
             updateSelectionCheckboxVisibility(selectionMode, animate = true)
             binding.groupSelect.isChecked = isSelected
             binding.groupSelect.setOnClickListener {
@@ -731,12 +744,12 @@ class DownloadsAdapter(
 
             val shouldExpand = adapter.expandedGroups.contains(group.id) && !selectionMode
             applyExpandedStateImmediate(group, shouldExpand)
-            binding.groupToggle.visibility = if (selectionMode) View.INVISIBLE else View.VISIBLE
         }
 
         fun bindSelectionState(group: DownloadGroup) {
             val selectionMode = adapter.selectionMode
             val isSelected = adapter.selectedGroupIds.contains(group.id)
+            applySelectionLayout(selectionMode)
             updateSelectionCheckboxVisibility(selectionMode, animate = false)
             binding.groupSelect.isChecked = isSelected
             binding.groupSelect.setOnClickListener {
@@ -820,6 +833,63 @@ class DownloadsAdapter(
             } else {
                 taskAdapter.submitList(emptyList())
             }
+        }
+
+        private fun applySelectionLayout(selectionMode: Boolean) {
+            val targetHorizontalMargin =
+                if (selectionMode) cardHorizontalMarginSelectionPx else cardHorizontalMarginNormalPx
+            val rootLayoutParams = itemView.layoutParams as? ViewGroup.MarginLayoutParams
+            if (rootLayoutParams != null &&
+                (rootLayoutParams.marginStart != targetHorizontalMargin ||
+                    rootLayoutParams.marginEnd != targetHorizontalMargin)
+            ) {
+                rootLayoutParams.marginStart = targetHorizontalMargin
+                rootLayoutParams.marginEnd = targetHorizontalMargin
+                itemView.layoutParams = rootLayoutParams
+            }
+
+            val targetHeaderPadding =
+                if (selectionMode) headerHorizontalPaddingSelectionPx else headerHorizontalPaddingNormalPx
+            if (binding.groupHeader.paddingStart != targetHeaderPadding ||
+                binding.groupHeader.paddingEnd != targetHeaderPadding
+            ) {
+                binding.groupHeader.setPaddingRelative(
+                    targetHeaderPadding,
+                    binding.groupHeader.paddingTop,
+                    targetHeaderPadding,
+                    binding.groupHeader.paddingBottom,
+                )
+            }
+
+            val coverLayoutParams = binding.groupCover.layoutParams as? LinearLayout.LayoutParams
+            if (coverLayoutParams != null) {
+                val targetCoverWidth = if (selectionMode) coverWidthSelectionPx else coverWidthNormalPx
+                val targetCoverHeight = if (selectionMode) coverHeightSelectionPx else coverHeightNormalPx
+                if (coverLayoutParams.width != targetCoverWidth ||
+                    coverLayoutParams.height != targetCoverHeight
+                ) {
+                    coverLayoutParams.width = targetCoverWidth
+                    coverLayoutParams.height = targetCoverHeight
+                    binding.groupCover.layoutParams = coverLayoutParams
+                }
+            }
+
+            val textLayoutParams =
+                binding.groupTextContainer.layoutParams as? LinearLayout.LayoutParams
+            if (textLayoutParams != null) {
+                val targetStartMargin = if (selectionMode) textGapSelectionPx else textGapNormalPx
+                val targetEndMargin = if (selectionMode) textEndGapSelectionPx else textEndGapNormalPx
+                if (textLayoutParams.marginStart != targetStartMargin ||
+                    textLayoutParams.marginEnd != targetEndMargin
+                ) {
+                    textLayoutParams.marginStart = targetStartMargin
+                    textLayoutParams.marginEnd = targetEndMargin
+                    binding.groupTextContainer.layoutParams = textLayoutParams
+                }
+            }
+
+            binding.groupTitle.maxLines = if (selectionMode) 2 else 1
+            binding.groupToggle.visibility = if (selectionMode) View.GONE else View.VISIBLE
         }
 
         private fun updateSelectionCheckboxVisibility(
