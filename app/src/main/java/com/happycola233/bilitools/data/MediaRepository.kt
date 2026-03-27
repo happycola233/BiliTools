@@ -811,14 +811,11 @@ class MediaRepository(
         val baseIndex = (page - 1) * pageSize
         val list = data.medias.mapIndexed { index, item ->
             val itemStat = item.cntInfo?.let { cnt ->
+                // 收藏夹列表项的 cnt_info 只有基础计数，完整视频统计需要再查视频详情。
                 MediaStat(
                     play = cnt.play,
                     danmaku = cnt.danmaku,
-                    reply = cnt.reply,
-                    like = cnt.thumbUp ?: cnt.like,
-                    coin = cnt.coin,
                     favorite = cnt.collect,
-                    share = cnt.share,
                 )
             } ?: MediaStat()
             MediaItem(

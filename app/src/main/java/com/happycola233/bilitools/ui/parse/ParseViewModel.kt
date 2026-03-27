@@ -1774,7 +1774,7 @@ class ParseViewModel(
         }
 
         if (!shouldFetchPresentationDetail(info, item) || itemKey == null) return
-        val needStat = cachedStat == null || !hasAnyStat(cachedStat)
+        val needStat = shouldFetchPresentationStatDetail(info, cachedStat)
         val needDescription =
             info.type == MediaType.Favorite &&
                 cachedDescription.isNullOrBlank() &&
@@ -1860,8 +1860,24 @@ class ParseViewModel(
     }
 
     private fun shouldFetchPresentationDetail(info: MediaInfo, item: MediaItem): Boolean {
-        if (info.type != MediaType.Favorite && info.type != MediaType.WatchLater) return false
-        return item.bvid?.isNotBlank() == true || item.aid != null
+        return when (info.type) {
+            MediaType.Favorite -> item.type == MediaType.Video && item.bvid?.isNotBlank() == true
+            MediaType.WatchLater -> item.type == MediaType.Video &&
+                (item.bvid?.isNotBlank() == true || item.aid != null)
+            else -> false
+        }
+    }
+
+    private fun shouldFetchPresentationStatDetail(info: MediaInfo, stat: MediaStat?): Boolean {
+        if (stat == null) return true
+        return when (info.type) {
+            MediaType.Favorite -> stat.reply == null ||
+                stat.like == null ||
+                stat.coin == null ||
+                stat.share == null
+            MediaType.WatchLater -> !hasAnyStat(stat)
+            else -> !hasAnyStat(stat)
+        }
     }
 
     private fun itemCacheKey(item: MediaItem): String? {
