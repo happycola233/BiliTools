@@ -6,6 +6,7 @@ import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.os.bundleOf
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
@@ -28,6 +29,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var appliedThemeSnapshot: ThemeSettingsSnapshot
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         enableEdgeToEdge()
         appliedThemeSnapshot = applySettingsThemeOverlays()
         super.onCreate(savedInstanceState)

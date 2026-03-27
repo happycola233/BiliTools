@@ -31,6 +31,12 @@
         <item name="colorSurfaceContainerHighest">@color/md_theme_light_surfaceContainerHighest</item>
     </style>
 
+    <style name="Theme.BiliTools.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/md_theme_light_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_bilitools_icon</item>
+        <item name="postSplashScreenTheme">@style/Theme.BiliTools</item>
+    </style>
+
     <style name="Theme.BiliTools.ExternalDialog" parent="Theme.BiliTools">
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowIsTranslucent">true</item>
@@ -276,9 +282,9 @@
         <item name="colorOnTertiary">#FFFFFFFF</item>
         <item name="colorTertiaryContainer">#FFBCECE7</item>
         <item name="colorOnTertiaryContainer">#FF1F4E4B</item>
-        <item name="android:colorBackground">#FFF9FAEF</item>
+        <item name="android:colorBackground">#FFFEFBFF</item>
         <item name="colorOnBackground">#FF1A1C16</item>
-        <item name="colorSurface">#FFF9FAEF</item>
+        <item name="colorSurface">#FFFEFBFF</item>
         <item name="colorOnSurface">#FF1A1C16</item>
         <item name="colorSurfaceVariant">#FFE1E4D5</item>
         <item name="colorOnSurfaceVariant">#FF44483D</item>
