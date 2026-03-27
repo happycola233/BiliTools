@@ -1,25 +1,29 @@
-# BiliTools for Android 📺
+<div align="center">
+  <img src="./.github/images/BiliTools_icon_rounded_transparent.png" width="120" alt="BiliTools Logo" />
+  <h1>BiliTools for Android 📺</h1>
+  <p><strong>一款运行在 Android 平台上的强大、清爽、开源的哔哩哔哩（Bilibili）视频解析与下载工具，让你畅享纯粹的下载体验！✨</strong></p>
+  
+  <p>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL%203.0-blue.svg?style=for-the-badge&logo=gnu" alt="License"></a>
+    <a href="https://kotlinlang.org"><img src="https://img.shields.io/badge/Kotlin-2.3.20-purple.svg?style=for-the-badge&logo=kotlin" alt="Kotlin"></a>
+    <a href="https://www.android.com"><img src="https://img.shields.io/badge/Platform-Android-green.svg?style=for-the-badge&logo=android" alt="Android"></a>
+  </p>
+</div>
 
-[![License](https://img.shields.io/badge/License-GPL%203.0-blue.svg)](LICENSE)
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.2.10-purple.svg)](https://kotlinlang.org)
-[![Android](https://img.shields.io/badge/Platform-Android-green.svg)](https://www.android.com)
+> [!NOTE]  
+> 🌟 本项目复刻自 [btjawa/BiliTools](https://github.com/btjawa/BiliTools)，免费开源。
 
-**BiliTools** 是一款运行在 Android 平台上的哔哩哔哩（Bilibili）视频解析与下载工具。
+## 📸 APP 截图
 
-> [!NOTE]
-> 本项目复刻自 [btjawa/BiliTools](https://github.com/btjawa/BiliTools)，免费开源。
-
-## 📱 APP 截图
+采用全新的 **Material Design Expressive** 设计语言，为您提供更加灵动、沉浸与现代化的视觉与使用体验：
 
 <div align="center">
-
-| **首页（解析）** | **首页（下载与导出）** |
-|:---:|:---:|
-| <img src="./.github/images/Screenshot_2026-02-04-20-54-34-673_com.happycola233.bilitools.jpg" width="300" alt="Long Screenshot 1"> | <img src="./.github/images/Screenshot_2026-02-04-20-54-21-465_com.happycola233.bilitools.jpg" width="300" alt="Long Screenshot 2"> |
-
-| 下载页 | 个人页 | 设置页 |
+  
+| **🏠 首页（解析展示）** | **📥 首页（下载与导出）** | **⬇️ 下载管理页** |
 |:---:|:---:|:---:|
-| <img src="./.github/images/Screenshot_2026-02-04-20-55-01-655_com.happycola233.bilitools.jpg" width="250" alt="Detail 1"> | <img src="./.github/images/Screenshot_2026-02-04-20-55-38-588_com.happycola233.bilitools.jpg" width="250" alt="Detail 2"> | <img src="./.github/images/Screenshot_2026-02-04-20-55-40-984_com.happycola233.bilitools.jpg" width="250" alt="Detail 3"> |
+| <img src="./.github/images/主页（解析）.jpg" width="250" alt="首页解析"> | <img src="./.github/images/主页（下载与导出）.jpg" width="250" alt="首页面板"> | <img src="./.github/images/下载页.jpg" width="250" alt="下载页"> |
+| **👤 个人中心页** | **⚙️ 全局设置页** | **🎨 设置（个性化外观）** |
+| <img src="./.github/images/我页.jpg" width="250" alt="个人页"> | <img src="./.github/images/设置页.jpg" width="250" alt="设置页"> | <img src="./.github/images/设置页（外观）.jpg" width="250" alt="主题外观"> |
 
 </div>
 
@@ -55,16 +59,11 @@
 *   **元数据写入**：下载音视频时自动写入标题、封面、艺术家等元信息（使用 JAudiotagger）。
 *   **个性化主题**：
     *   支持浅色/深色模式（含纯黑夜间模式）。
-    *   支持动态取色（Material You / Monet）及多种预设主题色（经典蓝、薄荷绿、暖橙、B站粉）。
-
-## 📱 环境要求
-
-*   **Android 版本**：Android 10 (API Level 29) 及以上。
-*   **编译环境**：JDK 11+。
+    *   支持动态取色（Material You / Monet）及多种预设主题色。
 
 ## 🛠️ 构建指南
 
-本项目使用 Gradle 进行构建。
+本项目使用 Gradle 进行自动化构建与依赖管理。构建要求：Android 10 (API Level 29) +，并配置 JDK 17+ 环境。
 
 1.  克隆仓库：
     ```bash
@@ -78,10 +77,10 @@
 
 ## ⚠️ 免责声明
 
-*   **数据安全**：该应用用于持久化的所有数据均仅 **明文存储于用户本地**！
-*   **用户责任**：因使用本项目而产生的任何后果均由用户个人承担，与开发者无关，概不负责。
-*   **版权声明**：“哔哩哔哩” 及 “Bilibili” 名称、LOGO及相关图形是上海幻电信息科技有限公司的注册商标或商标。本项目与哔哩哔哩及其关联公司无任何关联、合作、授权或背书等关系。
+*   🛡️ **数据安全**：本应用运行时产生及持久化的所有用户数据，均 **仅以明文形式存储于您的本地设备中**，不提供任何云端上传服务，请您妥善保管本设备数据。
+*   ⚖️ **用户责任**：因使用本项目而产生的任何后果均由用户个人承担，与开发者无关，概不负责。
+*   ©️ **版权声明**：“哔哩哔哩” 及 “Bilibili” 名称、LOGO及相关图形是上海幻电信息科技有限公司的注册商标或商标。本项目与哔哩哔哩及其关联公司无任何关联、合作、授权或背书等关系。
 
-## 📄 许可证
+## 📜 开源协议
 
 本项目基于 [GPL-3.0-or-later](LICENSE) 协议开源。
