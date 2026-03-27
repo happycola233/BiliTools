@@ -186,7 +186,8 @@ private fun MeOverviewScreen(
     onConfirmLogout: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val isLoggedIn = loginState.isLoggedIn && loginState.userInfo != null
+    val isLoggedIn = loginState.isLoggedIn
+    val hasUserInfo = loginState.userInfo != null
     val contentItems = listOf(
         MeActionItem(
             iconRes = R.drawable.ic_history_24,
@@ -207,7 +208,7 @@ private fun MeOverviewScreen(
             } else {
                 R.string.me_favorite_entry_disabled_desc
             },
-            enabled = isLoggedIn,
+            enabled = hasUserInfo,
             onClick = onOpenFavorite,
         ),
         MeActionItem(
@@ -256,7 +257,12 @@ private fun MeOverviewScreen(
         ) {
             item {
                 if (isLoggedIn) {
-                    ProfileCard(userInfo = loginState.userInfo!!)
+                    val userInfo = loginState.userInfo
+                    if (userInfo != null) {
+                        ProfileCard(userInfo = userInfo)
+                    } else {
+                        ProfileLoadingCard()
+                    }
                 } else {
                     MeClickableListItem(
                         items = 1,
@@ -1053,6 +1059,31 @@ private fun ProfileCard(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ProfileLoadingCard(
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        color = MeExpressiveDefaults.listItemContainerColor,
+        shape = MeExpressiveShapes.cardShape,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(132.dp),
+        ) {
+            AndroidView(
+                factory = { context ->
+                    android.view.LayoutInflater.from(context)
+                        .inflate(R.layout.view_expressive_loading_indicator, null, false)
+                },
+            )
         }
     }
 }

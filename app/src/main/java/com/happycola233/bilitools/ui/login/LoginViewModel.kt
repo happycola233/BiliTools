@@ -14,6 +14,7 @@ import com.happycola233.bilitools.data.model.QrLoginStatus
 import com.happycola233.bilitools.data.model.UserInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -106,6 +107,7 @@ class LoginViewModel(
     val events: SharedFlow<LoginEvent> = _events.asSharedFlow()
 
     private var pollJob: Job? = null
+    private var userInfoJob: Job? = null
     private var pendingCaptcha: PendingCaptcha? = null
     private var pendingSms: PendingSms? = null
     private var pendingPwd: PendingPwd? = null
@@ -128,14 +130,19 @@ class LoginViewModel(
 
     fun refreshLoginState() {
         val isLoggedIn = authRepository.isLoggedIn()
+        if (!isLoggedIn) {
+            userInfoJob?.cancel()
+        }
+        var shouldRefreshUserInfo = false
         _state.update {
+            shouldRefreshUserInfo = isLoggedIn && it.userInfo == null
             it.copy(
                 isLoggedIn = isLoggedIn,
                 userInfo = if (isLoggedIn) it.userInfo else null,
                 errorText = null,
             )
         }
-        if (isLoggedIn) {
+        if (shouldRefreshUserInfo) {
             refreshUserInfo()
         }
     }
@@ -207,6 +214,7 @@ class LoginViewModel(
     }
 
     fun logout() {
+        userInfoJob?.cancel()
         pendingCaptcha = null
         pendingSms = null
         pendingPwd = null
@@ -560,9 +568,30 @@ class LoginViewModel(
     }
 
     private fun refreshUserInfo() {
-        viewModelScope.launch {
-            val info = runCatching { authRepository.getUserInfo() }.getOrNull()
-            _state.update { it.copy(userInfo = info) }
+        if (userInfoJob?.isActive == true) return
+        userInfoJob = viewModelScope.launch {
+            try {
+                val info = authRepository.getUserInfo()
+                val isLoggedIn = authRepository.isLoggedIn()
+                _state.update {
+                    it.copy(
+                        isLoggedIn = isLoggedIn,
+                        userInfo = if (isLoggedIn) info ?: it.userInfo else null,
+                    )
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Throwable) {
+                val isLoggedIn = authRepository.isLoggedIn()
+                _state.update {
+                    it.copy(
+                        isLoggedIn = isLoggedIn,
+                        userInfo = if (isLoggedIn) it.userInfo else null,
+                    )
+                }
+            } finally {
+                userInfoJob = null
+            }
         }
     }
 

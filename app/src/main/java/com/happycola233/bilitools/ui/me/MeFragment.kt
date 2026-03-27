@@ -65,7 +65,6 @@ class MeFragment : Fragment(R.layout.fragment_me) {
             )
         }
 
-        viewModel.refreshLoginState()
     }
 
     override fun onResume() {
