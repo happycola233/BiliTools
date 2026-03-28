@@ -71,6 +71,7 @@ dependencies {
     implementation(libs.moshi.kotlin)
     implementation(libs.zxing.core)
     implementation(libs.coil)
+    implementation(libs.coil.compose)
     implementation(libs.coil.svg)
     implementation(libs.markwon.core)
     implementation(libs.jaudiotagger)
