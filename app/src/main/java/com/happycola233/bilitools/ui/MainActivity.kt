@@ -3,7 +3,6 @@ package com.happycola233.bilitools.ui
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
-import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.os.bundleOf
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -30,7 +29,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
-        enableEdgeToEdge()
+        enableBiliEdgeToEdge()
         appliedThemeSnapshot = applySettingsThemeOverlays()
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)

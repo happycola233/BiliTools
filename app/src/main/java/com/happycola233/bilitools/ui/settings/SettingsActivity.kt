@@ -7,7 +7,6 @@ import android.os.Bundle
 import android.provider.DocumentsContract
 import android.widget.Toast
 import androidx.activity.viewModels
-import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.collectAsState
@@ -25,6 +24,7 @@ import com.happycola233.bilitools.data.UpdateCheckResult
 import com.happycola233.bilitools.ui.AppViewModelFactory
 import com.happycola233.bilitools.ui.attachNavigationEventDispatcherOwner
 import com.happycola233.bilitools.ui.applySettingsThemeOverlays
+import com.happycola233.bilitools.ui.enableBiliEdgeToEdge
 import com.happycola233.bilitools.ui.update.UpdateDialog
 import kotlinx.coroutines.launch
 
@@ -53,7 +53,7 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
+        enableBiliEdgeToEdge()
         applySettingsThemeOverlays()
         super.onCreate(savedInstanceState)
         viewModel.refreshIssueReportState()

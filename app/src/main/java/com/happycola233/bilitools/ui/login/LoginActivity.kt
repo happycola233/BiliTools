@@ -2,7 +2,6 @@ package com.happycola233.bilitools.ui.login
 
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.LaunchedEffect
@@ -19,6 +18,7 @@ import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.appContainer
 import com.happycola233.bilitools.ui.AppViewModelFactory
 import com.happycola233.bilitools.ui.applySettingsThemeOverlays
+import com.happycola233.bilitools.ui.enableBiliEdgeToEdge
 import com.happycola233.bilitools.ui.me.BiliToolsLoginContent
 import kotlinx.coroutines.launch
 
@@ -28,7 +28,7 @@ class LoginActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
+        enableBiliEdgeToEdge()
         applySettingsThemeOverlays()
         super.onCreate(savedInstanceState)
 

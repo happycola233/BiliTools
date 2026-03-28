@@ -29,6 +29,10 @@
         <item name="colorSurfaceContainer">@color/md_theme_light_surfaceContainer</item>
         <item name="colorSurfaceContainerHigh">@color/md_theme_light_surfaceContainerHigh</item>
         <item name="colorSurfaceContainerHighest">@color/md_theme_light_surfaceContainerHighest</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
     </style>
 
     <style name="Theme.BiliTools.Splash" parent="Theme.SplashScreen">

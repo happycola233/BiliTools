@@ -4,7 +4,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.collectAsState
@@ -19,6 +18,7 @@ import com.happycola233.bilitools.ui.AppViewModelFactory
 import com.happycola233.bilitools.ui.ExternalDownloadContract
 import com.happycola233.bilitools.ui.MainActivity
 import com.happycola233.bilitools.ui.applySettingsThemeOverlays
+import com.happycola233.bilitools.ui.enableBiliEdgeToEdge
 
 class HistoryActivity : AppCompatActivity() {
     private val viewModel: HistoryViewModel by viewModels {
@@ -26,7 +26,7 @@ class HistoryActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
+        enableBiliEdgeToEdge()
         applySettingsThemeOverlays()
         super.onCreate(savedInstanceState)
 
