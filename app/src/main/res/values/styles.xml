@@ -30,6 +30,7 @@
         <item name="indicatorColor">?attr/colorPrimary</item>
         <item name="trackColor">?attr/colorSurfaceVariant</item>
         <item name="waveSpeed">40dp</item>
+        <item name="trackStopIndicatorSize">0dp</item>
     </style>
 
     <style name="TextAppearance.BiliTools.Settings.Section" parent="TextAppearance.Material3.TitleMedium">

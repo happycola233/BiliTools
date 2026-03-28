@@ -773,6 +773,7 @@ private fun HistoryItemCard(
                             .align(Alignment.BottomCenter)
                             .fillMaxWidth()
                             .height(3.dp),
+                        drawStopIndicator = {},
                     )
                 }
             }
