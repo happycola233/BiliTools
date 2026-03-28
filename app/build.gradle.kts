@@ -19,8 +19,8 @@ android {
         applicationId = "com.happycola233.bilitools"
         minSdk = 29
         targetSdk = 36
-        versionCode = 8
-        versionName = "2.1"
+        versionCode = 9
+        versionName = "2.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
