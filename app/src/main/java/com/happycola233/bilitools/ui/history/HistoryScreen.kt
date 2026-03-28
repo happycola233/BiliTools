@@ -3,8 +3,8 @@ package com.happycola233.bilitools.ui.history
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -26,6 +26,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -40,7 +42,9 @@ import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.LinearProgressIndicator
@@ -56,7 +60,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -71,6 +77,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -94,6 +102,7 @@ import com.happycola233.bilitools.data.model.HistoryItem
 import com.happycola233.bilitools.data.model.HistoryTab
 import com.happycola233.bilitools.ui.theme.BiliToolsSettingsTheme
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -165,7 +174,7 @@ fun BiliToolsHistoryContent(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(HistoryExpressiveDefaults.pageContainerColor)
+                .background(HistoryExpressiveDefaults.pageBackgroundBrush)
                 .then(modifier),
         ) {
             Scaffold(
@@ -283,6 +292,15 @@ fun BiliToolsHistoryContent(
                                             start = 16.dp,
                                             end = 16.dp,
                                             top = 8.dp,
+                                            bottom = 10.dp,
+                                        ),
+                                    )
+
+                                    HistoryActiveFiltersRow(
+                                        filter = state.filter,
+                                        modifier = Modifier.padding(
+                                            start = 16.dp,
+                                            end = 16.dp,
                                             bottom = 10.dp,
                                         ),
                                     )
@@ -418,6 +436,14 @@ private fun HistoryBody(
     onDownload: (HistoryItem) -> Unit,
     onOpenAuthor: (HistoryItem) -> Unit,
 ) {
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(state.page) {
+        if (listState.firstVisibleItemIndex != 0 || listState.firstVisibleItemScrollOffset != 0) {
+            listState.scrollToItem(0)
+        }
+    }
+
     when {
         state.loading && state.items.isEmpty() -> {
             Box(
@@ -447,28 +473,111 @@ private fun HistoryBody(
 
         else -> {
             LazyColumn(
+                state = listState,
                 contentPadding = PaddingValues(
                     start = 16.dp,
-                    top = innerPadding.calculateTopPadding() + 8.dp,
+                    top = innerPadding.calculateTopPadding() + 10.dp,
                     end = 16.dp,
-                    bottom = innerPadding.calculateBottomPadding() + 28.dp,
+                    bottom = innerPadding.calculateBottomPadding() + 32.dp,
                 ),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {
-                items(
+                itemsIndexed(
                     items = state.items,
-                    key = { item -> "${item.bvid ?: item.uri ?: item.title}-${item.viewAt}" },
-                ) { item ->
+                    key = { _, item -> "${item.bvid ?: item.uri ?: item.title}-${item.viewAt}" },
+                ) { index, item ->
+                    val previousItem = state.items.getOrNull(index - 1)
+                    val showSectionHeader =
+                        previousItem == null || !isSameHistorySection(item.viewAt, previousItem.viewAt)
+
+                    if (showSectionHeader) {
+                        HistoryDateHeader(
+                            title = formatHistorySectionTitle(item.viewAt),
+                            modifier = Modifier.padding(
+                                top = if (index == 0) 2.dp else 14.dp,
+                                bottom = 8.dp,
+                            ),
+                        )
+                    }
+
                     HistoryItemCard(
                         item = item,
                         onDownload = { onDownload(item) },
                         onOpenAuthor = { onOpenAuthor(item) },
+                        showDivider = index != state.items.lastIndex,
                     )
                 }
             }
         }
     }
+}
+
+@Composable
+private fun HistoryActiveFiltersRow(
+    filter: HistoryFilter,
+    modifier: Modifier = Modifier,
+) {
+    val keyword = filter.keyword.trim()
+    val labels = mutableListOf<String>()
+    if (keyword.isNotEmpty()) {
+        labels += "${stringResource(R.string.history_keyword)} / $keyword"
+    }
+    if (filter.duration != HistoryDurationFilter.All) {
+        labels +=
+            "${stringResource(R.string.history_filter_duration)} / " +
+                historyDurationFilterLabel(filter.duration)
+    }
+    if (filter.time != HistoryTimeFilter.All) {
+        labels +=
+            "${stringResource(R.string.history_filter_time)} / " +
+                historyTimeFilterLabel(
+                    filter = filter.time,
+                    startUtcMillis = filter.customStartUtcMillis,
+                    endUtcMillis = filter.customEndUtcMillis,
+                )
+    }
+    if (filter.device != HistoryDeviceFilter.All) {
+        labels +=
+            "${stringResource(R.string.history_filter_device)} / " +
+                historyDeviceFilterLabel(filter.device)
+    }
+
+    if (labels.isEmpty()) return
+
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+    ) {
+        labels.forEach { label ->
+            Surface(
+                color = HistoryExpressiveDefaults.filterChipColor,
+                shape = CircleShape,
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HistoryDateHeader(
+    title: String,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = modifier,
+    )
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -498,44 +607,41 @@ private fun HistoryPagerCard(
     onNext: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val pagerButtonShapes = ButtonDefaults.shapesFor(40.dp)
+    val pagerButtonShapes = ButtonDefaults.shapesFor(38.dp)
+    val pageSummary = if (total > 0) {
+        stringResource(R.string.history_page_status_with_total, page, total)
+    } else {
+        stringResource(R.string.history_page_status, page)
+    }
 
     Surface(
-        color = HistoryExpressiveDefaults.cardContainerColor,
+        color = HistoryExpressiveDefaults.groupContainerColor,
         shape = MaterialTheme.shapes.largeIncreased,
-        border = HistoryExpressiveDefaults.cardBorder,
         modifier = modifier.fillMaxWidth(),
     ) {
-        val pageSummary = if (total > 0) {
-            stringResource(R.string.history_page_status_with_total, page, total)
-        } else {
-            stringResource(R.string.history_page_status, page)
-        }
-
         Row(
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+                .padding(horizontal = 12.dp, vertical = 10.dp),
         ) {
-            OutlinedButton(
+            TextButton(
                 onClick = onPrev,
-                shapes = pagerButtonShapes,
                 enabled = page > 1 && !loading,
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
-                modifier = Modifier.height(40.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                modifier = Modifier.height(38.dp),
             ) {
                 Text(text = stringResource(R.string.history_page_prev))
             }
 
             Surface(
-                color = MaterialTheme.colorScheme.surface,
+                color = HistoryExpressiveDefaults.inputContainerColor,
                 shape = pagerButtonShapes.shape,
-                border = HistoryExpressiveDefaults.cardBorder,
+                border = HistoryExpressiveDefaults.thinBorder,
                 modifier = Modifier
-                    .padding(horizontal = 10.dp)
-                    .width(68.dp)
-                    .height(40.dp)
+                    .width(64.dp)
+                    .height(38.dp)
                     .onFocusChanged { onPageInputFocusChange(it.isFocused) },
             ) {
                 BasicTextField(
@@ -571,19 +677,18 @@ private fun HistoryPagerCard(
 
             Text(
                 text = pageSummary,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
 
-            Button(
+            TextButton(
                 onClick = onNext,
-                shapes = pagerButtonShapes,
                 enabled = hasMore && !loading,
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
-                modifier = Modifier.height(40.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                modifier = Modifier.height(38.dp),
             ) {
                 Text(text = stringResource(R.string.history_page_next))
             }
@@ -597,6 +702,7 @@ private fun HistoryItemCard(
     item: HistoryItem,
     onDownload: () -> Unit,
     onOpenAuthor: () -> Unit,
+    showDivider: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val displayTitle = item.title.ifBlank {
@@ -614,25 +720,40 @@ private fun HistoryItemCard(
         0f
     }
     val showProgressBar = duration > 0 && watched < duration
+    val progressText = if (duration > 0) {
+        if (item.progress < 0) {
+            stringResource(
+                R.string.history_progress_completed,
+                formatHistoryDuration(duration),
+            )
+        } else {
+            stringResource(
+                R.string.history_progress_format,
+                formatHistoryDuration(watched),
+                formatHistoryDuration(duration),
+            )
+        }
+    } else {
+        null
+    }
     val canJumpDownload = !item.toParseUrl().isNullOrBlank()
     val authorClickable = item.authorMid != null
+    val authorName = item.authorName.takeIf { it.isNotBlank() }
+    val viewAtText = formatHistoryTimestamp(item.viewAt)
 
-    Surface(
-        color = HistoryExpressiveDefaults.cardContainerColor,
-        shape = MaterialTheme.shapes.largeIncreased,
-        border = HistoryExpressiveDefaults.cardBorder,
-        modifier = modifier.fillMaxWidth(),
-    ) {
+    Column(modifier = modifier.fillMaxWidth()) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            modifier = Modifier.padding(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 10.dp),
         ) {
             Box(
                 modifier = Modifier
-                    .width(120.dp)
+                    .width(114.dp)
                     .aspectRatio(120f / 72f)
-                    .clip(RoundedCornerShape(18.dp))
+                    .clip(RoundedCornerShape(12.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest),
             ) {
                 AsyncImage(
@@ -644,78 +765,47 @@ private fun HistoryItemCard(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )
+
                 if (showProgressBar) {
                     LinearProgressIndicator(
                         progress = { progressPercent / 100f },
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .fillMaxWidth()
-                            .height(4.dp),
+                            .height(3.dp),
                     )
                 }
             }
 
             Column(
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
                 modifier = Modifier
-                    .align(Alignment.Top)
-                    .weight(1f),
+                    .weight(1f)
+                    .align(Alignment.CenterVertically),
             ) {
                 Text(
                     text = displayTitle,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
 
-                Text(
-                    text = stringResource(
-                        R.string.history_view_at_format,
-                        formatHistoryTimestamp(item.viewAt),
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-
-                if (duration > 0) {
-                    Text(
-                        text = if (item.progress < 0) {
-                            stringResource(
-                                R.string.history_progress_completed,
-                                formatHistoryDuration(duration),
-                            )
-                        } else {
-                            stringResource(
-                                R.string.history_progress_format,
-                                formatHistoryDuration(watched),
-                                formatHistoryDuration(duration),
-                            )
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-
-                val authorName = item.authorName.takeIf { it.isNotBlank() }
                 if (authorName != null) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .padding(top = 6.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .then(
-                                if (authorClickable) {
-                                    Modifier.clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                        onClick = onOpenAuthor,
-                                    )
-                                } else {
-                                    Modifier
-                                }
-                            )
-                            .padding(end = 8.dp),
+                        modifier = Modifier.then(
+                            if (authorClickable) {
+                                Modifier.clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = onOpenAuthor,
+                                )
+                            } else {
+                                Modifier
+                            }
+                        ),
                     ) {
                         AsyncImage(
                             model = item.authorAvatarUrl ?: R.drawable.default_avatar,
@@ -725,38 +815,71 @@ private fun HistoryItemCard(
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier
-                                .size(22.dp)
+                                .size(16.dp)
                                 .clip(CircleShape),
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = authorName,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    if (progressText != null) {
+                        Text(
+                            text = progressText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Text(
+                        text = viewAtText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        textAlign = TextAlign.End,
+                    )
+                }
+
             }
 
             if (canJumpDownload) {
-                FilledTonalIconButton(
+                IconButton(
                     onClick = onDownload,
-                    shapes = IconButtonDefaults.shapes(),
-                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    ),
                     modifier = Modifier
-                        .size(40.dp),
+                        .size(32.dp)
+                        .align(Alignment.CenterVertically),
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_save_alt_24),
                         contentDescription = stringResource(R.string.history_download),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
+        }
+
+        if (showDivider) {
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                modifier = Modifier.padding(start = 126.dp),
+            )
         }
     }
 }
@@ -804,43 +927,66 @@ private fun HistoryFilterBottomSheet(
     onApply: () -> Unit,
     onPickCustomRange: () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = true,
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val durationOptions = listOf(
+        HistoryToggleOption(
+            HistoryDurationFilter.All,
+            stringResource(R.string.history_filter_duration_all),
+        ),
+        HistoryToggleOption(
+            HistoryDurationFilter.Under10,
+            stringResource(R.string.history_filter_duration_under_10),
+        ),
+        HistoryToggleOption(
+            HistoryDurationFilter.Between10And30,
+            stringResource(R.string.history_filter_duration_10_30),
+        ),
+        HistoryToggleOption(
+            HistoryDurationFilter.Between30And60,
+            stringResource(R.string.history_filter_duration_30_60),
+        ),
+        HistoryToggleOption(
+            HistoryDurationFilter.Over60,
+            stringResource(R.string.history_filter_duration_over_60),
+        ),
     )
-    val durationOptions = remember {
-        listOf(
-            HistoryToggleOption(HistoryDurationFilter.All, "全部"),
-            HistoryToggleOption(HistoryDurationFilter.Under10, "10分钟以下"),
-            HistoryToggleOption(HistoryDurationFilter.Between10And30, "10-30分钟"),
-            HistoryToggleOption(HistoryDurationFilter.Between30And60, "30-60分钟"),
-            HistoryToggleOption(HistoryDurationFilter.Over60, "60分钟以上"),
-        )
-    }
-    val timeOptions = remember {
-        listOf(
-            HistoryToggleOption(HistoryTimeFilter.All, "全部"),
-            HistoryToggleOption(HistoryTimeFilter.Today, "今天"),
-            HistoryToggleOption(HistoryTimeFilter.Yesterday, "昨天"),
-            HistoryToggleOption(HistoryTimeFilter.Week, "近一周"),
-            HistoryToggleOption(HistoryTimeFilter.Custom, "自定义"),
-        )
-    }
-    val deviceOptions = remember {
-        listOf(
-            HistoryToggleOption(HistoryDeviceFilter.All, "全部"),
-            HistoryToggleOption(HistoryDeviceFilter.Pc, "PC"),
-            HistoryToggleOption(HistoryDeviceFilter.Phone, "手机"),
-            HistoryToggleOption(HistoryDeviceFilter.Pad, "平板"),
-            HistoryToggleOption(HistoryDeviceFilter.Tv, "TV"),
-        )
-    }
+    val timeOptions = listOf(
+        HistoryToggleOption(HistoryTimeFilter.All, stringResource(R.string.history_filter_time_all)),
+        HistoryToggleOption(HistoryTimeFilter.Today, stringResource(R.string.history_filter_time_today)),
+        HistoryToggleOption(
+            HistoryTimeFilter.Yesterday,
+            stringResource(R.string.history_filter_time_yesterday),
+        ),
+        HistoryToggleOption(HistoryTimeFilter.Week, stringResource(R.string.history_filter_time_week)),
+        HistoryToggleOption(
+            HistoryTimeFilter.Custom,
+            stringResource(R.string.history_filter_time_custom),
+        ),
+    )
+    val deviceOptions = listOf(
+        HistoryToggleOption(
+            HistoryDeviceFilter.All,
+            stringResource(R.string.history_filter_device_all),
+        ),
+        HistoryToggleOption(HistoryDeviceFilter.Pc, stringResource(R.string.history_filter_device_pc)),
+        HistoryToggleOption(
+            HistoryDeviceFilter.Phone,
+            stringResource(R.string.history_filter_device_phone),
+        ),
+        HistoryToggleOption(
+            HistoryDeviceFilter.Pad,
+            stringResource(R.string.history_filter_device_pad),
+        ),
+        HistoryToggleOption(HistoryDeviceFilter.Tv, stringResource(R.string.history_filter_device_tv)),
+    )
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
+        containerColor = HistoryExpressiveDefaults.pageContainerColor,
     ) {
         Column(
-            verticalArrangement = Arrangement.spacedBy(18.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
@@ -878,33 +1024,39 @@ private fun HistoryFilterBottomSheet(
 
             AnimatedVisibility(visible = draftFilter.time == HistoryTimeFilter.Custom) {
                 Surface(
-                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    color = HistoryExpressiveDefaults.groupContainerColor,
                     shape = MaterialTheme.shapes.large,
-                    border = HistoryExpressiveDefaults.cardBorder,
                     modifier = Modifier
                         .fillMaxWidth()
                         .animateContentSize(),
                 ) {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.padding(14.dp),
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
                     ) {
-                        Text(
-                            text = stringResource(R.string.history_filter_custom_range_pick),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Medium,
-                        )
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.history_filter_custom_range_pick),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Medium,
+                            )
+                            Text(
+                                text = formatHistoryRange(
+                                    startUtcMillis = draftFilter.customStartUtcMillis,
+                                    endUtcMillis = draftFilter.customEndUtcMillis,
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+
                         OutlinedButton(onClick = onPickCustomRange) {
                             Text(text = stringResource(R.string.history_filter_custom_range_pick))
                         }
-                        Text(
-                            text = formatHistoryRange(
-                                startUtcMillis = draftFilter.customStartUtcMillis,
-                                endUtcMillis = draftFilter.customEndUtcMillis,
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
                     }
                 }
             }
@@ -945,6 +1097,13 @@ private fun <T> HistoryFilterToggleSection(
     selected: T,
     onSelect: (T) -> Unit,
 ) {
+    val toggleColors = ToggleButtonDefaults.toggleButtonColors(
+        containerColor = HistoryExpressiveDefaults.toggleContainerColor,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        checkedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+        checkedContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+    )
+
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
             text = title,
@@ -966,6 +1125,7 @@ private fun <T> HistoryFilterToggleSection(
                         options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
                         else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                     },
+                    colors = toggleColors,
                     modifier = Modifier
                         .semantics { role = Role.RadioButton }
                         .heightIn(min = 44.dp),
@@ -1027,28 +1187,141 @@ private fun formatHistoryDuration(seconds: Int): String {
     }
 }
 
+@Composable
+private fun formatHistorySectionTitle(epochSeconds: Long): String {
+    val sectionDate = historySectionDate(epochSeconds) ?: return "--"
+    val today = LocalDate.now(ZoneId.systemDefault())
+    return when (sectionDate) {
+        today -> stringResource(R.string.history_filter_time_today)
+        today.minusDays(1) -> stringResource(R.string.history_filter_time_yesterday)
+        else -> sectionDate.format(HISTORY_SECTION_FORMATTER)
+    }
+}
+
+private fun isSameHistorySection(firstEpochSeconds: Long, secondEpochSeconds: Long): Boolean {
+    return historySectionDate(firstEpochSeconds) == historySectionDate(secondEpochSeconds)
+}
+
+private fun historySectionDate(epochSeconds: Long): LocalDate? {
+    if (epochSeconds <= 0L) return null
+    return runCatching {
+        Instant.ofEpochSecond(epochSeconds)
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate()
+    }.getOrNull()
+}
+
+@Composable
+private fun historyDurationFilterLabel(filter: HistoryDurationFilter): String {
+    return when (filter) {
+        HistoryDurationFilter.All -> stringResource(R.string.history_filter_duration_all)
+        HistoryDurationFilter.Under10 -> stringResource(R.string.history_filter_duration_under_10)
+        HistoryDurationFilter.Between10And30 -> stringResource(R.string.history_filter_duration_10_30)
+        HistoryDurationFilter.Between30And60 -> stringResource(R.string.history_filter_duration_30_60)
+        HistoryDurationFilter.Over60 -> stringResource(R.string.history_filter_duration_over_60)
+    }
+}
+
+@Composable
+private fun historyTimeFilterLabel(
+    filter: HistoryTimeFilter,
+    startUtcMillis: Long?,
+    endUtcMillis: Long?,
+): String {
+    return when (filter) {
+        HistoryTimeFilter.All -> stringResource(R.string.history_filter_time_all)
+        HistoryTimeFilter.Today -> stringResource(R.string.history_filter_time_today)
+        HistoryTimeFilter.Yesterday -> stringResource(R.string.history_filter_time_yesterday)
+        HistoryTimeFilter.Week -> stringResource(R.string.history_filter_time_week)
+        HistoryTimeFilter.Custom -> formatHistoryRange(startUtcMillis, endUtcMillis)
+    }
+}
+
+@Composable
+private fun historyDeviceFilterLabel(filter: HistoryDeviceFilter): String {
+    return when (filter) {
+        HistoryDeviceFilter.All -> stringResource(R.string.history_filter_device_all)
+        HistoryDeviceFilter.Pc -> stringResource(R.string.history_filter_device_pc)
+        HistoryDeviceFilter.Phone -> stringResource(R.string.history_filter_device_phone)
+        HistoryDeviceFilter.Pad -> stringResource(R.string.history_filter_device_pad)
+        HistoryDeviceFilter.Tv -> stringResource(R.string.history_filter_device_tv)
+    }
+}
+
 private object HistoryExpressiveDefaults {
     val pageContainerColor
         @Composable
-        get() = MaterialTheme.colorScheme.surface
+        get() = if (!MaterialTheme.colorScheme.usesPureBlackSurfaces()) {
+            MaterialTheme.colorScheme.surfaceContainer
+        } else {
+            MaterialTheme.colorScheme.surface
+        }
+
+    val pageBackgroundBrush
+        @Composable
+        get() = Brush.verticalGradient(
+            colors = listOf(
+                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.26f),
+                pageContainerColor,
+                pageContainerColor,
+            ),
+        )
 
     val toolbarActionColor
         @Composable
-        get() = MaterialTheme.colorScheme.surfaceContainerHigh
+        get() = if (!MaterialTheme.colorScheme.usesPureBlackSurfaces()) {
+            MaterialTheme.colorScheme.surfaceBright
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        }
 
-    val cardContainerColor
+    val listItemContainerColor
         @Composable
-        get() = MaterialTheme.colorScheme.surfaceContainerLow
+        get() = if (!MaterialTheme.colorScheme.usesPureBlackSurfaces()) {
+            MaterialTheme.colorScheme.surfaceBright
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        }
 
-    val cardBorder
+    val groupContainerColor
         @Composable
-        get() = androidx.compose.foundation.BorderStroke(
+        get() = if (!MaterialTheme.colorScheme.usesPureBlackSurfaces()) {
+            MaterialTheme.colorScheme.surfaceContainerLow
+        } else {
+            MaterialTheme.colorScheme.surfaceContainer
+        }
+
+    val inputContainerColor
+        @Composable
+        get() = MaterialTheme.colorScheme.surface
+
+    val authorChipColor
+        @Composable
+        get() = MaterialTheme.colorScheme.surfaceContainerHighest
+
+    val filterChipColor
+        @Composable
+        get() = MaterialTheme.colorScheme.surfaceContainerHighest
+
+    val toggleContainerColor
+        @Composable
+        get() = MaterialTheme.colorScheme.surfaceContainerHighest
+
+    val thinBorder
+        @Composable
+        get() = BorderStroke(
             width = 1.dp,
-            color = MaterialTheme.colorScheme.outlineVariant,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f),
         )
+}
+
+private fun androidx.compose.material3.ColorScheme.usesPureBlackSurfaces(): Boolean {
+    return surface == Color.Black && background == Color.Black
 }
 
 private val HISTORY_TIME_FORMATTER =
     DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm", Locale.getDefault())
 private val HISTORY_DATE_FORMATTER =
+    DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.getDefault())
+private val HISTORY_SECTION_FORMATTER =
     DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.getDefault())
