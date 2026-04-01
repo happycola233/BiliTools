@@ -31,9 +31,9 @@
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:layout_gravity="center"
+                android:contentDescription="@string/delete"
                 android:src="@drawable/ic_delete_24"
-                app:tint="?attr/colorOnError"
-                android:contentDescription="@string/delete" />
+                app:tint="?attr/colorOnError" />
         </com.google.android.material.card.MaterialCardView>
     </FrameLayout>
 
@@ -61,9 +61,9 @@
                 android:id="@+id/group_header"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:padding="16dp"
-                android:gravity="center_vertical">
+                android:padding="16dp">
 
                 <com.google.android.material.checkbox.MaterialCheckBox
                     android:id="@+id/group_select"
@@ -80,8 +80,8 @@
                     android:id="@+id/group_cover"
                     android:layout_width="80dp"
                     android:layout_height="56dp"
-                    android:scaleType="centerCrop"
                     android:background="?attr/colorSurfaceVariant"
+                    android:scaleType="centerCrop"
                     app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Small"
                     tools:src="@drawable/ic_launcher_background" />
 
@@ -99,46 +99,78 @@
                         android:id="@+id/group_title"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:maxLines="1"
                         android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
                         android:textColor="?attr/colorOnSurface"
-                        android:maxLines="1"
-                        android:ellipsize="end"
                         tools:text="Video Title" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:layout_marginTop="4dp">
+                        android:layout_marginTop="4dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
                         <TextView
                             android:id="@+id/group_bvid"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
+                            android:layout_marginEnd="12dp"
                             android:textAppearance="@style/TextAppearance.Material3.BodySmall"
                             android:textColor="?attr/colorPrimary"
-                            android:layout_marginEnd="8dp"
-                            tools:text="BV..."
-                            android:visibility="gone"/>
+                            android:visibility="gone"
+                            tools:text="BV1xx411c7mD" />
 
                         <TextView
-                            android:id="@+id/group_summary"
+                            android:id="@+id/group_created_at"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
+                            android:ellipsize="end"
+                            android:maxLines="1"
                             android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-                            android:textColor="?attr/colorOnSurfaceVariant"
-                            tools:text="2/4 Completed • 50%" />
+                            android:textColor="?attr/colorOutline"
+                            tools:text="创建于：2023-01-01 00:00:00" />
                     </LinearLayout>
 
-                    <TextView
-                        android:id="@+id/group_created_at"
+                    <LinearLayout
+                        android:id="@+id/group_progress_row"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-                        android:textColor="?attr/colorOutline"
-                        tools:text="2023-01-01" />
+                        android:layout_marginTop="8dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.progressindicator.LinearProgressIndicator
+                            android:id="@+id/group_progress"
+                            style="@style/Widget.BiliTools.DownloadProgress"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="8dp"
+                            android:indeterminate="false" />
+
+                        <TextView
+                            android:id="@+id/group_completed_count"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:gravity="end"
+                            android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                            android:textColor="?attr/colorOnSurface"
+                            tools:text="0/1 项 · 94%" />
+
+                        <TextView
+                            android:id="@+id/group_progress_percent"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:gravity="end"
+                            android:minEms="4"
+                            android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
+                            android:textColor="?attr/colorOnSurface"
+                            android:visibility="gone"
+                            tools:text="100%" />
+                    </LinearLayout>
                 </LinearLayout>
 
                 <!-- Expand Icon -->
@@ -146,20 +178,10 @@
                     android:id="@+id/group_toggle"
                     android:layout_width="24dp"
                     android:layout_height="24dp"
+                    android:contentDescription="@string/downloads_group_toggle"
                     android:src="@drawable/ic_expand_more_24"
-                    app:tint="?attr/colorOnSurfaceVariant"
-                    android:contentDescription="@string/downloads_group_toggle" />
+                    app:tint="?attr/colorOnSurfaceVariant" />
             </LinearLayout>
-
-            <!-- Progress Bar (Matched to sub-item style) -->
-            <com.google.android.material.progressindicator.LinearProgressIndicator
-                android:id="@+id/group_progress"
-                style="@style/Widget.BiliTools.DownloadProgress"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginHorizontal="16dp"
-                android:layout_marginBottom="12dp"
-                android:indeterminate="false" />
 
             <!-- Expanded Content Area -->
             <LinearLayout
@@ -173,26 +195,40 @@
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
-                    android:background="?attr/colorOutlineVariant"
-                    android:alpha="0.2" />
-                
+                    android:alpha="0.2"
+                    android:background="?attr/colorOutlineVariant" />
+
                 <!-- Action Buttons Row -->
                 <LinearLayout
                     android:id="@+id/group_actions_container"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
                     android:orientation="horizontal"
                     android:paddingStart="16dp"
+                    android:paddingTop="6dp"
                     android:paddingEnd="16dp"
-                    android:paddingTop="12dp"
-                    android:paddingBottom="12dp">
+                    android:paddingBottom="6dp">
+
+                    <TextView
+                        android:id="@+id/group_actions_summary"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textStyle="bold"
+                        tools:text="共 1 项 · 498.0 MB / 1.4 GB - 5.4 MB/s" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/group_pause_resume"
                         style="@style/Widget.Material3Expressive.Button.TonalButton"
-                        android:layout_width="0dp"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
+                        android:layout_marginStart="12dp"
+                        android:minWidth="0dp"
                         android:text="@string/download_pause"
                         app:icon="@drawable/ic_pause_24" />
                 </LinearLayout>

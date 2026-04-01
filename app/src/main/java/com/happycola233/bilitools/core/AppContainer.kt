@@ -31,7 +31,14 @@ class AppContainer(context: Context) {
     val updateRepository by lazy { UpdateRepository(appContext, gitHubRouteManager, settingsRepository) }
     val appUpdateManager by lazy { AppUpdateManager(appContext) }
     internal val updatePackageCleanupManager by lazy { UpdatePackageCleanupManager(appContext) }
-    val downloadRepository by lazy { DownloadRepository(appContext, cookieStore, settingsRepository) }
+    val downloadRepository by lazy {
+        DownloadRepository(
+            appContext,
+            cookieStore,
+            settingsRepository,
+            mediaRepository,
+        )
+    }
     val exportRepository by lazy { ExportRepository(appContext) }
     val issueReportRepository by lazy {
         IssueReportRepository(

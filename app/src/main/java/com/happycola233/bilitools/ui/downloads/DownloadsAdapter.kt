@@ -5,12 +5,16 @@ import android.os.SystemClock
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
+import android.text.SpannableStringBuilder
+import android.text.style.ForegroundColorSpan
 import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewConfiguration
 import android.widget.LinearLayout
+import android.widget.TextView
+import androidx.core.view.doOnLayout
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
@@ -337,7 +341,7 @@ class DownloadsAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
         private val taskAdapter =
             DownloadTaskAdapter(onPauseResume, onRetry, onDelete, onTaskClick, onLocationClick)
-        private val timeFormatter = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+        private val timeFormatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
         private val density = binding.root.context.resources.displayMetrics.density
         private val touchSlop = ViewConfiguration.get(binding.root.context).scaledTouchSlop.toFloat()
         private val longPressTimeoutMs = ViewConfiguration.getLongPressTimeout().toLong()
@@ -588,6 +592,7 @@ class DownloadsAdapter(
             
             // Standard Bind Logic ...
             binding.groupTitle.text = group.title
+            updateGroupTitleMaxLines(group)
 
             val allMissing = group.tasks.isNotEmpty() && group.tasks.all {
                 it.status == DownloadStatus.Success && it.outputMissing
@@ -609,8 +614,9 @@ class DownloadsAdapter(
             
             val completed = group.tasks.count { it.status == DownloadStatus.Success }
             val progress = calculateGroupProgress(group.tasks)
-            binding.groupSummary.text = context.getString(
-                R.string.downloads_group_summary,
+            bindGroupProgressSummary(
+                context,
+                group,
                 completed,
                 group.tasks.size,
                 progress,
@@ -621,7 +627,7 @@ class DownloadsAdapter(
             } else {
                 context.getString(R.string.download_time_unknown)
             }
-            binding.groupCreatedAt.text = context.getString(R.string.downloads_group_created, dateStr)
+            bindCreatedAtText(context, dateStr)
 
             val coverUrl = group.coverUrl?.trim().orEmpty()
             if (coverUrl.isBlank()) {
@@ -634,9 +640,9 @@ class DownloadsAdapter(
                 }
             }
 
+            binding.groupProgress.isIndeterminate = false
             binding.groupProgress.setProgressCompat(progress, true)
-            val allSuccess = group.tasks.all { it.status == DownloadStatus.Success }
-            binding.groupProgress.visibility = if (allSuccess) View.GONE else View.VISIBLE
+            bindGroupActionsSummary(context, group)
 
             val hasRunning = group.tasks.any { item ->
                 isManaged(item) && when (item.status) {
@@ -713,6 +719,7 @@ class DownloadsAdapter(
             val selectionMode = adapter.selectionMode
             val isSelected = adapter.selectedGroupIds.contains(group.id)
             applySelectionLayout(selectionMode)
+            updateGroupTitleMaxLines(group)
             updateSelectionCheckboxVisibility(selectionMode, animate = true)
             binding.groupSelect.isChecked = isSelected
             binding.groupSelect.setOnClickListener {
@@ -750,6 +757,7 @@ class DownloadsAdapter(
             val selectionMode = adapter.selectionMode
             val isSelected = adapter.selectedGroupIds.contains(group.id)
             applySelectionLayout(selectionMode)
+            updateGroupTitleMaxLines(group)
             updateSelectionCheckboxVisibility(selectionMode, animate = false)
             binding.groupSelect.isChecked = isSelected
             binding.groupSelect.setOnClickListener {
@@ -767,17 +775,19 @@ class DownloadsAdapter(
         fun bindProgress(group: DownloadGroup) {
             currentGroup = group
             val context = binding.root.context
+            updateGroupTitleMaxLines(group)
             val completed = group.tasks.count { it.status == DownloadStatus.Success }
             val progress = calculateGroupProgress(group.tasks)
-            binding.groupSummary.text = context.getString(
-                R.string.downloads_group_summary,
+            bindGroupProgressSummary(
+                context,
+                group,
                 completed,
                 group.tasks.size,
                 progress,
             )
+            binding.groupProgress.isIndeterminate = false
             binding.groupProgress.setProgressCompat(progress, true)
-            val allSuccess = group.tasks.all { it.status == DownloadStatus.Success }
-            binding.groupProgress.visibility = if (allSuccess) View.GONE else View.VISIBLE
+            bindGroupActionsSummary(context, group)
 
             val hasRunning = group.tasks.any { item ->
                 isManaged(item) && when (item.status) {
@@ -813,6 +823,110 @@ class DownloadsAdapter(
             if (adapter.expandedGroups.contains(group.id) && !adapter.selectionMode) {
                 taskAdapter.groupPath = group.relativePath
                 taskAdapter.submitList(group.tasks)
+            }
+        }
+
+        private fun bindGroupProgressSummary(
+            context: Context,
+            group: DownloadGroup,
+            completed: Int,
+            totalCount: Int,
+            progress: Int,
+        ) {
+            val isCompletedGroup =
+                group.tasks.isNotEmpty() && group.tasks.all { it.status == DownloadStatus.Success }
+            binding.groupProgressRow.visibility = if (isCompletedGroup) View.GONE else View.VISIBLE
+            if (isCompletedGroup) {
+                binding.groupProgressPercent.visibility = View.GONE
+                binding.groupCompletedCount.text = ""
+                return
+            }
+
+            val baseText = context.getString(
+                R.string.downloads_group_progress_compact,
+                completed,
+                totalCount,
+                progress,
+            )
+            val hasFailedTask = group.tasks.any { it.status == DownloadStatus.Failed }
+            binding.groupCompletedCount.text = if (!hasFailedTask) {
+                baseText
+            } else {
+                val errorColor = MaterialColors.getColor(
+                    binding.groupCompletedCount,
+                    android.R.attr.colorError,
+                )
+                SpannableStringBuilder(baseText)
+                    .append(" · ")
+                    .append(
+                        context.getString(R.string.downloads_group_progress_failed),
+                        ForegroundColorSpan(errorColor),
+                        0,
+                    )
+            }
+            binding.groupProgressPercent.visibility = View.GONE
+        }
+
+        private fun bindCreatedAtText(context: Context, dateStr: String) {
+            val fullText = context.getString(R.string.downloads_group_created, dateStr)
+            binding.groupCreatedAt.text = fullText
+            binding.groupCreatedAt.doOnLayout { view ->
+                val textView = view as TextView
+                val availableWidth = (textView.width - textView.paddingLeft - textView.paddingRight)
+                    .coerceAtLeast(0)
+                val displayText = if (availableWidth > 0 &&
+                    textView.paint.measureText(fullText) > availableWidth
+                ) {
+                    dateStr
+                } else {
+                    fullText
+                }
+                if (textView.text.toString() != displayText) {
+                    textView.text = displayText
+                }
+            }
+        }
+
+        private fun bindGroupActionsSummary(context: Context, group: DownloadGroup) {
+            val taskCount = group.tasks.size
+            val sizeTasks = group.tasks.filter { it.totalBytes > 0L }
+            val downloadedBytes = sizeTasks.sumOf { item ->
+                item.downloadedBytes.coerceAtMost(item.totalBytes)
+            }
+            val totalBytes = sizeTasks.sumOf { it.totalBytes }
+            val sizeSummary = if (totalBytes > 0L) {
+                context.getString(
+                    R.string.download_size_progress,
+                    formatBytes(downloadedBytes),
+                    formatBytes(totalBytes),
+                )
+            } else {
+                val fallbackDownloaded = group.tasks.sumOf { it.downloadedBytes.coerceAtLeast(0L) }
+                context.getString(
+                    R.string.download_size_downloaded,
+                    formatBytes(fallbackDownloaded),
+                )
+            }
+            val totalSpeedBytesPerSec = group.tasks.sumOf { item ->
+                if (item.status == DownloadStatus.Running) item.speedBytesPerSec else 0L
+            }
+            binding.groupActionsSummary.text = if (totalSpeedBytesPerSec > 0L) {
+                val speedText = context.getString(
+                    R.string.download_speed_format,
+                    formatBytes(totalSpeedBytesPerSec),
+                )
+                context.getString(
+                    R.string.downloads_group_actions_summary_size_speed,
+                    taskCount,
+                    sizeSummary,
+                    speedText,
+                )
+            } else {
+                context.getString(
+                    R.string.downloads_group_actions_summary_size,
+                    taskCount,
+                    sizeSummary,
+                )
             }
         }
 
@@ -888,8 +1002,13 @@ class DownloadsAdapter(
                 }
             }
 
-            binding.groupTitle.maxLines = if (selectionMode) 2 else 1
             binding.groupToggle.visibility = if (selectionMode) View.GONE else View.VISIBLE
+        }
+
+        private fun updateGroupTitleMaxLines(group: DownloadGroup) {
+            val isCompletedGroup =
+                group.tasks.isNotEmpty() && group.tasks.all { it.status == DownloadStatus.Success }
+            binding.groupTitle.maxLines = if (adapter.selectionMode || isCompletedGroup) 2 else 1
         }
 
         private fun updateSelectionCheckboxVisibility(
@@ -1137,6 +1256,7 @@ class DownloadsAdapter(
 
         private fun calculateGroupProgress(tasks: List<DownloadItem>): Int {
             if (tasks.isEmpty()) return 0
+            if (tasks.all { it.status == DownloadStatus.Success }) return 100
             val sizeTasks = tasks.filter { it.totalBytes > 0 }
             if (sizeTasks.isEmpty()) {
                 val avg = tasks.sumOf { it.progress } / tasks.size
@@ -1322,20 +1442,8 @@ private class DownloadTaskAdapter(
                 binding.downloadDetail.alpha = 1.0f
             }
             
-            binding.downloadDetail.text = buildDetailText(context, item)
-
-            val isProcessing = item.status == DownloadStatus.Pending || item.status == DownloadStatus.Merging
-            binding.downloadProgress.isIndeterminate = isProcessing
-            
-            val showProgress = when(item.status) {
-                DownloadStatus.Pending, 
-                DownloadStatus.Running, 
-                DownloadStatus.Paused, 
-                DownloadStatus.Merging -> true
-                else -> false
-            }
-            binding.downloadProgress.visibility = if (showProgress) View.VISIBLE else View.GONE
-            binding.downloadProgress.setProgressCompat(item.progress, true)
+            bindDetailText(context, item)
+            bindProgressState(context, item)
 
             val managed = isManaged(item)
             val actionType = if (managed) {
@@ -1385,20 +1493,8 @@ private class DownloadTaskAdapter(
 
         fun bindProgress(item: DownloadItem) {
             val context = binding.root.context
-            binding.downloadDetail.text = buildDetailText(context, item)
-
-            val isProcessing = item.status == DownloadStatus.Pending || item.status == DownloadStatus.Merging
-            binding.downloadProgress.isIndeterminate = isProcessing
-
-            val showProgress = when(item.status) {
-                DownloadStatus.Pending,
-                DownloadStatus.Running,
-                DownloadStatus.Paused,
-                DownloadStatus.Merging -> true
-                else -> false
-            }
-            binding.downloadProgress.visibility = if (showProgress) View.VISIBLE else View.GONE
-            binding.downloadProgress.setProgressCompat(item.progress, true)
+            bindDetailText(context, item)
+            bindProgressState(context, item)
 
             val managed = isManaged(item)
             val actionType = if (managed) {
@@ -1436,6 +1532,57 @@ private class DownloadTaskAdapter(
                 }
             } else {
                 binding.downloadPauseResume.visibility = View.GONE
+            }
+        }
+
+        private fun bindDetailText(context: Context, item: DownloadItem) {
+            binding.downloadDetail.text = buildDetailText(context, item)
+            val detailColor = if (item.status == DownloadStatus.Failed) {
+                MaterialColors.getColor(
+                    binding.downloadDetail,
+                    android.R.attr.colorError,
+                )
+            } else {
+                MaterialColors.getColor(
+                    binding.downloadDetail,
+                    com.google.android.material.R.attr.colorOnSurfaceVariant,
+                )
+            }
+            binding.downloadDetail.setTextColor(detailColor)
+        }
+
+        private fun bindProgressState(context: Context, item: DownloadItem) {
+            val isProcessing = item.status == DownloadStatus.Pending || item.status == DownloadStatus.Merging
+            binding.downloadProgress.isIndeterminate = isProcessing
+
+            val showProgress = when (item.status) {
+                DownloadStatus.Pending,
+                DownloadStatus.Running,
+                DownloadStatus.Paused,
+                DownloadStatus.Merging -> true
+                else -> false
+            }
+            binding.downloadProgressRow.visibility = if (showProgress) View.VISIBLE else View.GONE
+            binding.downloadProgress.setProgressCompat(item.progress, true)
+
+            val progressText = buildProgressText(context, item)
+            binding.downloadProgressText.text = progressText.orEmpty()
+            binding.downloadProgressText.visibility =
+                if (progressText.isNullOrBlank()) View.GONE else View.VISIBLE
+        }
+
+        private fun buildProgressText(context: Context, item: DownloadItem): String? {
+            val progress = item.progress.coerceIn(0, 100)
+            return when (item.status) {
+                DownloadStatus.Running,
+                DownloadStatus.Paused -> context.getString(
+                    R.string.download_progress_percent,
+                    progress,
+                )
+                DownloadStatus.Merging -> progress
+                    .takeIf { it > 0 }
+                    ?.let { context.getString(R.string.download_progress_percent, it) }
+                else -> null
             }
         }
 

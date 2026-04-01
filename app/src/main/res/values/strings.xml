@@ -258,15 +258,19 @@
 ]]></string>
     <string name="downloads_multi_done_clear">已清除 %1$d 项记录</string>
     <string name="downloads_multi_done_delete">已处理 %1$d 项任务</string>
-    <string name="downloads_group_summary">%1$d/%2$d 已完成 · %3$d%%</string>
+    <string name="downloads_group_progress_compact">%1$d/%2$d 项 · %3$d%%</string>
+    <string name="downloads_group_progress_failed">存在失败项</string>
     <string name="downloads_group_toggle">展开详情</string>
     <string name="downloads_group_pause">暂停该组</string>
     <string name="downloads_group_resume">继续该组</string>
     <string name="downloads_group_delete">删除该组</string>
     <string name="downloads_group_location_action">查看保存位置</string>
     <string name="downloads_group_cover_desc">视频封面</string>
-    <string name="downloads_group_created">创建时间：%1$s</string>
+    <string name="downloads_group_created">创建于：%1$s</string>
     <string name="downloads_group_location">保存到：%1$s</string>
+    <string name="downloads_group_actions_summary_count">共 %1$d 项</string>
+    <string name="downloads_group_actions_summary_size">共 %1$d 项 · %2$s</string>
+    <string name="downloads_group_actions_summary_size_speed">共 %1$d 项 · %2$s - %3$s</string>
     <string name="downloads_section_downloading">正在下载</string>
     <string name="downloads_section_downloaded">已下载</string>
     <string name="downloads_section_count">%1$d 项</string>
@@ -315,6 +319,7 @@
     <string name="download_task_danmaku_history">历史弹幕</string>
     <string name="download_task_cover">封面</string>
     <string name="download_task_collection_cover">合集封面</string>
+    <string name="download_progress_percent">%1$d%%</string>
     <string name="download_size_progress">%1$s / %2$s</string>
     <string name="download_size_downloaded">%1$s</string>
     <string name="download_speed_format">%1$s/s</string>

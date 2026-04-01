@@ -14,13 +14,21 @@ import android.provider.MediaStore
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.AppLog as Log
 import com.happycola233.bilitools.core.BiliHttpClient
+import com.happycola233.bilitools.data.model.AudioStream
 import com.happycola233.bilitools.core.CookieStore
 import com.happycola233.bilitools.core.createHttpDiagnosticLoggingInterceptor
 import com.happycola233.bilitools.data.model.DownloadEmbeddedMetadata
 import com.happycola233.bilitools.data.model.DownloadGroup
 import com.happycola233.bilitools.data.model.DownloadItem
+import com.happycola233.bilitools.data.model.DownloadMediaParams
 import com.happycola233.bilitools.data.model.DownloadStatus
 import com.happycola233.bilitools.data.model.DownloadTaskType
+import com.happycola233.bilitools.data.model.MediaInfo
+import com.happycola233.bilitools.data.model.MediaItem
+import com.happycola233.bilitools.data.model.MediaType
+import com.happycola233.bilitools.data.model.StreamFormat
+import com.happycola233.bilitools.data.model.VideoCodec
+import com.happycola233.bilitools.data.model.VideoStream
 import com.happycola233.bilitools.download.DownloadForegroundService
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
@@ -36,9 +44,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.jaudiotagger.audio.AudioFile
 import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.audio.mp4.Mp4TagReader
@@ -55,6 +65,7 @@ class DownloadRepository(
     private val context: Context,
     private val cookieStore: CookieStore,
     private val settingsRepository: SettingsRepository,
+    private val mediaRepository: MediaRepository,
 ) {
     private val resolver = context.contentResolver
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -393,35 +404,15 @@ class DownloadRepository(
         if (!isManagedTask(target)) return
         val mergeTask = mergeTasks[id]
         if (mergeTask != null) {
-            retryMerged(mergeTask)
+            scope.launch {
+                retryMergedWithRefresh(id)
+            }
             return
         }
         if (target.status != DownloadStatus.Failed) return
-        val tempFile = tempFileFor(id, target.fileName)
-        val existing = if (tempFile.exists()) tempFile.length() else 0L
-        val state = downloadStates[id] ?: ResumableState(
-            id = id,
-            url = target.url,
-            fileName = target.fileName,
-            tempFile = tempFile,
-            downloadedBytes = existing,
-            totalBytes = target.totalBytes,
-        )
-        state.downloadedBytes = existing
-        if (state.totalBytes <= 0 && target.totalBytes > 0) {
-            state.totalBytes = target.totalBytes
+        scope.launch {
+            retryManagedWithRefresh(id)
         }
-        downloadStates[id] = state
-        updateTask(
-            target.copy(
-                status = DownloadStatus.Pending,
-                speedBytesPerSec = 0,
-                etaSeconds = null,
-                userPaused = false,
-                errorMessage = null,
-            ),
-        )
-        startDownload(id)
     }
 
     fun cancel(id: Long) {
@@ -708,18 +699,43 @@ class DownloadRepository(
             try {
                 if (resumed && response.code == 200) {
                     if (!restarted) {
-                        target.tempFile.delete()
+                        resetTargetForFreshDownload(target, resetTotalBytes = false)
                         existing = 0
-                        target.downloadedBytes = 0
                         resumed = false
                         restarted = true
                         continue
                     }
                 }
                 if (resumed && response.code == 416) {
-                    return
+                    val remoteTotal = parseContentRangeTotal(response.header("Content-Range"))
+                        ?: target.totalBytes
+                    if (remoteTotal > 0L && existing == remoteTotal) {
+                        target.totalBytes = remoteTotal
+                        target.downloadedBytes = existing
+                        target.speedBytesPerSec = 0
+                        onProgress(existing, remoteTotal, 0, null)
+                        return
+                    }
+                    if (!restarted) {
+                        resetTargetForFreshDownload(target, resetTotalBytes = false)
+                        if (remoteTotal > 0L) {
+                            target.totalBytes = remoteTotal
+                        }
+                        existing = 0
+                        resumed = false
+                        restarted = true
+                        continue
+                    }
+                    throw RuntimeException("HTTP ${response.code}")
                 }
                 if (!response.isSuccessful && response.code != 206) {
+                    if (resumed && !restarted) {
+                        resetTargetForFreshDownload(target, resetTotalBytes = false)
+                        existing = 0
+                        resumed = false
+                        restarted = true
+                        continue
+                    }
                     throw RuntimeException("HTTP ${response.code}")
                 }
                 val totalBytes = resolveTotalBytes(response, existing)
@@ -781,6 +797,341 @@ class DownloadRepository(
             } finally {
                 response.close()
             }
+        }
+    }
+
+    private suspend fun retryManagedWithRefresh(id: Long) {
+        val target = tasks[id] ?: return
+        if (!isManagedTask(target) || target.status != DownloadStatus.Failed) return
+        val prepared = refreshManagedUrlIfPossible(target) ?: target
+        val latest = tasks[id] ?: prepared
+        val tempFile = tempFileFor(id, latest.fileName)
+        val existing = if (tempFile.exists()) tempFile.length() else 0L
+        val state = downloadStates[id] ?: ResumableState(
+            id = id,
+            url = latest.url,
+            fileName = latest.fileName,
+            tempFile = tempFile,
+            downloadedBytes = existing,
+            totalBytes = latest.totalBytes,
+        )
+        state.url = latest.url
+        state.downloadedBytes = existing
+        state.etag = null
+        state.lastModified = null
+        if (state.totalBytes <= 0 && latest.totalBytes > 0) {
+            state.totalBytes = latest.totalBytes
+        }
+        downloadStates[id] = state
+        updateTask(
+            latest.copy(
+                status = DownloadStatus.Pending,
+                speedBytesPerSec = 0,
+                etaSeconds = null,
+                userPaused = false,
+                errorMessage = null,
+            ),
+        )
+        startDownload(id)
+    }
+
+    private suspend fun retryMergedWithRefresh(id: Long) {
+        val task = mergeTasks[id] ?: return
+        refreshMergedUrlsIfPossible(id, task)
+        val latest = mergeTasks[id] ?: task
+        retryMerged(latest)
+    }
+
+    private fun resetTargetForFreshDownload(
+        target: ResumableTarget,
+        resetTotalBytes: Boolean,
+    ) {
+        runCatching { target.tempFile.delete() }
+        target.downloadedBytes = 0
+        target.speedBytesPerSec = 0
+        if (resetTotalBytes) {
+            target.totalBytes = 0
+        }
+    }
+
+    private suspend fun refreshManagedUrlIfPossible(item: DownloadItem): DownloadItem? {
+        val refreshedUrl = resolveManagedRetryUrl(item) ?: return null
+        if (refreshedUrl == item.url) return item
+        val updated = item.copy(url = refreshedUrl)
+        updateTask(updated)
+        downloadStates[item.id]?.let { state ->
+            state.url = refreshedUrl
+            state.etag = null
+            state.lastModified = null
+        }
+        schedulePersist()
+        Log.i(
+            TAG,
+            "[retry-refresh] managed url refreshed, taskId=${item.id}, oldUrl=${item.url}, newUrl=$refreshedUrl",
+        )
+        return updated
+    }
+
+    private suspend fun refreshMergedUrlsIfPossible(
+        id: Long,
+        task: MergedDownload,
+    ): Boolean {
+        val refreshed = resolveMergedRetryUrls(id) ?: return false
+        var changed = false
+        if (task.video.url != refreshed.videoUrl) {
+            task.video.url = refreshed.videoUrl
+            task.video.etag = null
+            task.video.lastModified = null
+            changed = true
+        }
+        if (task.audio.url != refreshed.audioUrl) {
+            task.audio.url = refreshed.audioUrl
+            task.audio.etag = null
+            task.audio.lastModified = null
+            changed = true
+        }
+        if (changed) {
+            tasks[id]?.let { current ->
+                updateTask(current.copy(url = refreshed.videoUrl))
+            }
+            schedulePersist()
+            Log.i(
+                TAG,
+                "[retry-refresh] merged urls refreshed, taskId=$id, videoUrl=${refreshed.videoUrl}, audioUrl=${refreshed.audioUrl}",
+            )
+        }
+        return changed
+    }
+
+    private suspend fun resolveManagedRetryUrl(item: DownloadItem): String? {
+        val resolved = resolveRetrySource(item) ?: return null
+        return when (item.taskType) {
+            DownloadTaskType.Audio -> {
+                val audio = selectAudioStreamForRetry(
+                    streams = resolved.playUrlInfo.audio,
+                    params = item.mediaParams,
+                ) ?: return null
+                audio.url
+            }
+
+            DownloadTaskType.Video,
+            DownloadTaskType.AudioVideo,
+            -> {
+                val stream = selectVideoStreamForRetry(
+                    streams = resolved.playUrlInfo.video,
+                    params = item.mediaParams,
+                    preferMergeCompatible = false,
+                ) ?: return null
+                stream.url
+            }
+
+            else -> null
+        }
+    }
+
+    private suspend fun resolveMergedRetryUrls(id: Long): RefreshedMergeUrls? {
+        val item = tasks[id] ?: return null
+        val resolved = resolveRetrySource(item, formatOverride = StreamFormat.Dash) ?: return null
+        val video = selectVideoStreamForRetry(
+            streams = resolved.playUrlInfo.video,
+            params = item.mediaParams,
+            preferMergeCompatible = true,
+        ) ?: return null
+        val audio = selectAudioStreamForRetry(
+            streams = resolved.playUrlInfo.audio,
+            params = item.mediaParams,
+        ) ?: return null
+        return RefreshedMergeUrls(
+            videoUrl = video.url,
+            audioUrl = audio.url,
+        )
+    }
+
+    private suspend fun resolveRetrySource(
+        item: DownloadItem,
+        formatOverride: StreamFormat? = null,
+    ): RetrySourceContext? = withContext(Dispatchers.IO) {
+        val sourceInput = item.embeddedMetadata?.originalUrl
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+            ?: groupInfo[item.groupId]?.bvid?.trim()?.takeIf { it.isNotBlank() }
+            ?: return@withContext null
+        val parsed = runCatching { mediaRepository.parseInput(sourceInput, allowRaw = false) }
+            .getOrElse { err ->
+                Log.w(
+                    TAG,
+                    "[retry-refresh] parse input failed, taskId=${item.id}, source=$sourceInput",
+                    err,
+                )
+                return@withContext null
+            }
+        val type = parsed.type ?: return@withContext null
+        val info = runCatching { mediaRepository.getMediaInfo(parsed.id, type) }
+            .getOrElse { err ->
+                Log.w(
+                    TAG,
+                    "[retry-refresh] get media info failed, taskId=${item.id}, source=$sourceInput, type=$type",
+                    err,
+                )
+                return@withContext null
+            }
+        val sourceItem = findRetrySourceItem(info, item) ?: return@withContext null
+        val format = formatOverride ?: inferRetryStreamFormat(item)
+        val playUrlInfo = runCatching { mediaRepository.getPlayUrlInfo(sourceItem, type, format) }
+            .getOrElse { err ->
+                Log.w(
+                    TAG,
+                    "[retry-refresh] get playurl failed, taskId=${item.id}, source=${sourceItem.url}, type=$type, format=$format",
+                    err,
+                )
+                return@withContext null
+            }
+        RetrySourceContext(
+            mediaInfo = info,
+            item = sourceItem,
+            mediaType = type,
+            playUrlInfo = playUrlInfo,
+        )
+    }
+
+    private fun findRetrySourceItem(
+        info: MediaInfo,
+        item: DownloadItem,
+    ): MediaItem? {
+        val candidates = info.list
+        if (candidates.isEmpty()) return null
+
+        val meta = item.embeddedMetadata
+        val trackNumber = meta?.trackNumber
+        if (trackNumber != null) {
+            candidates.firstOrNull { it.index + 1 == trackNumber }?.let { return it }
+        }
+
+        val metaTitle = meta?.title?.trim().orEmpty()
+        if (metaTitle.isNotBlank()) {
+            candidates.firstOrNull { candidate ->
+                candidate.title.trim() == metaTitle
+            }?.let { return it }
+        }
+
+        val groupBvid = groupInfo[item.groupId]?.bvid?.trim().orEmpty()
+        if (groupBvid.isNotBlank()) {
+            candidates.firstOrNull { candidate -> candidate.bvid == groupBvid }?.let { return it }
+        }
+
+        return candidates.firstOrNull { it.isTarget } ?: candidates.firstOrNull()
+    }
+
+    private fun inferRetryStreamFormat(item: DownloadItem): StreamFormat {
+        if (item.taskType == DownloadTaskType.Audio) {
+            return StreamFormat.Dash
+        }
+        return when (item.fileName.substringAfterLast('.', "").lowercase(Locale.US)) {
+            "m4s" -> StreamFormat.Dash
+            "flv" -> StreamFormat.Flv
+            else -> StreamFormat.Mp4
+        }
+    }
+
+    private fun selectVideoStreamForRetry(
+        streams: List<VideoStream>,
+        params: DownloadMediaParams?,
+        preferMergeCompatible: Boolean,
+    ): VideoStream? {
+        if (streams.isEmpty()) return null
+        var candidates = streams
+        val targetResolution = params?.resolution?.trim().orEmpty()
+        if (targetResolution.isNotBlank()) {
+            val matched = streams.filter { mapResolutionLabel(it) == targetResolution }
+            if (matched.isNotEmpty()) {
+                candidates = matched
+            }
+        }
+
+        val targetCodec = parseCodecLabel(params?.codec)
+        if (targetCodec != null) {
+            val matched = candidates.filter { (it.codec ?: VideoCodec.Avc) == targetCodec }
+            if (matched.isNotEmpty()) {
+                candidates = matched
+            }
+        }
+
+        var selected = candidates.maxByOrNull { it.bandwidth ?: 0L }
+            ?: streams.maxByOrNull { it.bandwidth ?: 0L }
+            ?: streams.first()
+        if (preferMergeCompatible && selected.codec == VideoCodec.Av1) {
+            val sameResolution = streams.filter { it.id == selected.id }
+            selected = sameResolution.firstOrNull { it.codec == VideoCodec.Avc }
+                ?: sameResolution.firstOrNull { it.codec == VideoCodec.Hevc }
+                ?: selected
+        }
+        return selected
+    }
+
+    private fun selectAudioStreamForRetry(
+        streams: List<AudioStream>,
+        params: DownloadMediaParams?,
+    ): AudioStream? {
+        if (streams.isEmpty()) return null
+        val targetAudio = params?.audioBitrate?.trim().orEmpty()
+        if (targetAudio.isNotBlank()) {
+            val matched = streams.filter { mapAudioLabel(it.id) == targetAudio }
+            if (matched.isNotEmpty()) {
+                return matched.maxByOrNull { it.bandwidth ?: 0L } ?: matched.first()
+            }
+        }
+        return streams.maxByOrNull { it.bandwidth ?: 0L } ?: streams.first()
+    }
+
+    private fun parseCodecLabel(label: String?): VideoCodec? {
+        val normalized = label?.trim().orEmpty()
+        if (normalized.isBlank()) return null
+        return when (normalized) {
+            context.getString(R.string.parse_codec_avc) -> VideoCodec.Avc
+            context.getString(R.string.parse_codec_hevc) -> VideoCodec.Hevc
+            context.getString(R.string.parse_codec_av1) -> VideoCodec.Av1
+            else -> null
+        }
+    }
+
+    private fun mapResolutionLabel(stream: VideoStream): String {
+        return mapResolutionLabel(stream.id, stream.height)
+    }
+
+    private fun mapResolutionLabel(id: Int, height: Int?): String {
+        return when (id) {
+            127 -> context.getString(R.string.parse_resolution_8k)
+            126 -> context.getString(R.string.parse_resolution_dolby)
+            125 -> context.getString(R.string.parse_resolution_hdr)
+            120 -> context.getString(R.string.parse_resolution_4k)
+            116 -> context.getString(R.string.parse_resolution_1080_60)
+            112 -> context.getString(R.string.parse_resolution_1080_high)
+            80 -> context.getString(R.string.parse_resolution_1080)
+            64 -> context.getString(R.string.parse_resolution_720)
+            32 -> context.getString(R.string.parse_resolution_480)
+            16 -> context.getString(R.string.parse_resolution_360)
+            6 -> context.getString(R.string.parse_resolution_240)
+            else -> {
+                val resolvedHeight = height ?: 0
+                when {
+                    resolvedHeight >= 4320 -> context.getString(R.string.parse_resolution_8k)
+                    resolvedHeight >= 2160 -> context.getString(R.string.parse_resolution_4k)
+                    resolvedHeight >= 1080 -> context.getString(R.string.parse_resolution_1080)
+                    resolvedHeight >= 720 -> context.getString(R.string.parse_resolution_720)
+                    resolvedHeight >= 480 -> context.getString(R.string.parse_resolution_480)
+                    resolvedHeight >= 360 -> context.getString(R.string.parse_resolution_360)
+                    else -> context.getString(R.string.parse_resolution_other)
+                }
+            }
+        }
+    }
+
+    private fun mapAudioLabel(id: Int): String {
+        return when (id) {
+            30280 -> context.getString(R.string.parse_bitrate_192)
+            30232 -> context.getString(R.string.parse_bitrate_132)
+            30216 -> context.getString(R.string.parse_bitrate_64)
+            else -> context.getString(R.string.parse_bitrate_other)
         }
     }
 
@@ -889,20 +1240,48 @@ class DownloadRepository(
         if (task.completed) return
         task.failed = false
         task.userPaused = false
+        task.isMerging = false
         task.video.failed = false
         task.audio.failed = false
-        if (!task.video.tempFile.exists()) {
-            task.video.completed = false
-            task.video.downloadedBytes = 0
-            task.video.totalBytes = 0
-        }
-        if (!task.audio.tempFile.exists()) {
-            task.audio.completed = false
-            task.audio.downloadedBytes = 0
-            task.audio.totalBytes = 0
-        }
+        prepareMergedPartForRetry(task.video, "video/")
+        prepareMergedPartForRetry(task.audio, "audio/")
         updateMergedProgress(task, true, null)
         startMergedDownloads(task)
+    }
+
+    private fun prepareMergedPartForRetry(part: ResumablePart, mimePrefix: String) {
+        part.job = null
+        val file = part.tempFile
+        if (!file.exists()) {
+            resetMergedPartForFreshDownload(part)
+            return
+        }
+
+        val currentSize = file.length().coerceAtLeast(0L)
+        if (part.completed) {
+            if (!isMediaPartUsable(file, mimePrefix)) {
+                runCatching { file.delete() }
+                resetMergedPartForFreshDownload(part)
+                return
+            }
+            part.downloadedBytes = currentSize
+            if (part.totalBytes <= 0L) {
+                part.totalBytes = currentSize
+            }
+            return
+        }
+
+        part.downloadedBytes = currentSize
+        if (currentSize <= 0L) {
+            resetMergedPartForFreshDownload(part)
+        }
+    }
+
+    private fun resetMergedPartForFreshDownload(part: ResumablePart) {
+        part.completed = false
+        part.failed = false
+        part.downloadedBytes = 0
+        part.speedBytesPerSec = 0
     }
 
     private fun cancelMerged(task: MergedDownload) {
@@ -1188,6 +1567,7 @@ class DownloadRepository(
         if (old.status != new.status) return true
         if (old.userPaused != new.userPaused) return true
         if (old.errorMessage != new.errorMessage) return true
+        if (old.url != new.url) return true
         if (old.localUri != new.localUri) return true
         if (old.outputMissing != new.outputMissing) return true
         if (old.totalBytes != new.totalBytes && new.totalBytes > 0) return true
@@ -1535,13 +1915,11 @@ class DownloadRepository(
             errorMessage = null
         } else if (status == DownloadStatus.Running ||
             (status == DownloadStatus.Paused && !item.userPaused)) {
-            // Unsafe exit detected
+            // Preserve the temp file so retry can continue from the breakpoint when possible.
             status = DownloadStatus.Failed
             userPaused = false
             autoResume = false
             errorMessage = context.getString(R.string.download_error_unsafe_exit)
-            // Force delete potentially corrupted file
-            tempFile.delete()
         }
 
         val progress = calculateProgress(downloaded, total, item.progress)
@@ -1560,8 +1938,7 @@ class DownloadRepository(
             "[restore-managed] rebuilt task state, taskId=${item.id}, file=${item.fileName}, finalStatus=${finalItem.status}, downloaded=$downloaded, total=$total, progress=$progress, autoResume=$autoResume",
         )
         val state = if (finalItem.status != DownloadStatus.Success &&
-            finalItem.status != DownloadStatus.Cancelled &&
-            finalItem.status != DownloadStatus.Failed) {
+            finalItem.status != DownloadStatus.Cancelled) {
             ResumableState(
                 id = item.id,
                 url = snapshot?.url ?: item.url,
@@ -1690,23 +2067,19 @@ class DownloadRepository(
             errorMessage = null
         } else if (status == DownloadStatus.Running ||
             (status == DownloadStatus.Paused && !item.userPaused)) {
-            // Unsafe exit during download - potentially corrupted files
+            // Preserve the temp parts so retry can resume or restart them selectively.
             status = DownloadStatus.Failed
             userPaused = false
             autoResume = false
             autoMerge = false
             errorMessage = context.getString(R.string.download_error_unsafe_exit)
-            // Force delete potentially corrupted files
-            videoTemp.delete()
-            audioTemp.delete()
         } else if (status == DownloadStatus.Merging) {
-            // Unsafe exit during merge - source files are likely safe
+            // Preserve source parts so retry can try merge again first.
             status = DownloadStatus.Failed
             userPaused = false
             autoResume = false
             autoMerge = false
             errorMessage = context.getString(R.string.download_error_unsafe_exit)
-            // Do NOT delete videoTemp and audioTemp, allow retry to re-merge
         }
 
         if (status != DownloadStatus.Failed && !userPaused && videoCompleted && audioCompleted) {
@@ -1738,7 +2111,7 @@ class DownloadRepository(
                 lastModified = snapshot.video.lastModified,
                 speedBytesPerSec = 0,
                 completed = videoCompleted,
-                failed = item.status == DownloadStatus.Failed,
+                failed = status == DownloadStatus.Failed,
             ),
             audio = ResumablePart(
                 url = snapshot.audio.url,
@@ -1750,12 +2123,12 @@ class DownloadRepository(
                 lastModified = snapshot.audio.lastModified,
                 speedBytesPerSec = 0,
                 completed = audioCompleted,
-                failed = item.status == DownloadStatus.Failed,
+                failed = status == DownloadStatus.Failed,
             ),
             userPaused = userPaused,
             isMerging = false,
             completed = false,
-            failed = item.status == DownloadStatus.Failed,
+            failed = status == DownloadStatus.Failed,
             outputUri = item.localUri,
         )
         return MergedRestoreResult(
@@ -1977,6 +2350,21 @@ class DownloadRepository(
             }
         }
         return -1
+    }
+
+    private fun isMediaPartUsable(file: File, prefix: String): Boolean {
+        if (!file.exists() || file.length() <= 0L) return false
+        val extractor = MediaExtractor()
+        val input = runCatching { FileInputStream(file) }.getOrNull() ?: return false
+        return try {
+            extractor.setDataSource(input.fd)
+            selectTrack(extractor, prefix) >= 0
+        } catch (_: Throwable) {
+            false
+        } finally {
+            runCatching { extractor.release() }
+            runCatching { input.close() }
+        }
     }
 
     private fun copySamples(
@@ -3183,7 +3571,7 @@ class DownloadRepository(
 
     private data class ResumableState(
         val id: Long,
-        val url: String,
+        var url: String,
         val fileName: String,
         override val tempFile: File,
         override var downloadedBytes: Long = 0,
@@ -3194,7 +3582,7 @@ class DownloadRepository(
     ) : ResumableTarget
 
     private data class ResumablePart(
-        val url: String,
+        var url: String,
         val fileName: String,
         override val tempFile: File,
         override var downloadedBytes: Long = 0,
@@ -3246,6 +3634,18 @@ class DownloadRepository(
         val mergeTask: MergedDownload?,
         val autoResume: Boolean,
         val autoMerge: Boolean,
+    )
+
+    private data class RetrySourceContext(
+        val mediaInfo: MediaInfo,
+        val item: MediaItem,
+        val mediaType: MediaType,
+        val playUrlInfo: com.happycola233.bilitools.data.model.PlayUrlInfo,
+    )
+
+    private data class RefreshedMergeUrls(
+        val videoUrl: String,
+        val audioUrl: String,
     )
 
     private data class DownloadStore(
