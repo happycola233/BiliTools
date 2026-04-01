@@ -590,12 +590,7 @@ private fun QrLoginPanel(
             .fillMaxSize()
             .padding(horizontal = 20.dp, vertical = 24.dp),
     ) {
-        Text(
-            text = qrPrompt,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+        LoginPanelSubtitle(text = qrPrompt)
         Spacer(Modifier.height(10.dp))
 
         Surface(
@@ -679,6 +674,10 @@ private fun PasswordLoginPanel(
             .fillMaxSize()
             .padding(horizontal = 20.dp, vertical = 20.dp),
     ) {
+        LoginPanelSubtitle(
+            text = stringResource(R.string.login_account_subtitle),
+            modifier = Modifier.fillMaxWidth(),
+        )
         OutlinedTextField(
             value = account,
             onValueChange = onAccountChange,
@@ -771,6 +770,10 @@ private fun SmsLoginPanel(
             .fillMaxSize()
             .padding(horizontal = 20.dp, vertical = 20.dp),
     ) {
+        LoginPanelSubtitle(
+            text = stringResource(R.string.login_account_subtitle),
+            modifier = Modifier.fillMaxWidth(),
+        )
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -894,6 +897,21 @@ private fun SmsLoginPanel(
             Text(stringResource(R.string.login_action))
         }
     }
+}
+
+@Composable
+private fun LoginPanelSubtitle(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurface,
+        textAlign = TextAlign.Center,
+        modifier = modifier.padding(bottom = 8.dp),
+    )
 }
 
 @Composable
