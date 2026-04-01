@@ -117,6 +117,13 @@ private val ProfileCardHeaderSpacing = 12.dp
 private val ProfileAvatarSize = 64.dp
 private val ProfileVipBadgeSize = 20.dp
 
+private data class RemoteImageRequest(
+    val model: String?,
+    @DrawableRes val fallbackRes: Int?,
+    val fadeInOnLoad: Boolean,
+    val fadeInDurationMillis: Int,
+)
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun BiliToolsMeContent(
@@ -967,6 +974,7 @@ private fun ProfileCard(
                         .blur(18.dp)
                         .alpha(0.22f),
                     contentScale = ContentScale.Crop,
+                    fadeInOnLoad = true,
                 )
             }
 
@@ -1191,6 +1199,8 @@ private fun RemoteImage(
     modifier: Modifier = Modifier,
     @DrawableRes fallbackRes: Int? = null,
     contentScale: ContentScale = ContentScale.Fit,
+    fadeInOnLoad: Boolean = false,
+    fadeInDurationMillis: Int = 320,
 ) {
     AndroidView(
         factory = { context ->
@@ -1200,14 +1210,55 @@ private fun RemoteImage(
             }
         },
         update = { imageView ->
+            val request = RemoteImageRequest(
+                model = model,
+                fallbackRes = fallbackRes,
+                fadeInOnLoad = fadeInOnLoad,
+                fadeInDurationMillis = fadeInDurationMillis,
+            )
             imageView.scaleType = contentScale.toScaleType()
-            when {
-                model.isNullOrBlank() && fallbackRes != null -> imageView.setImageResource(fallbackRes)
-                model.isNullOrBlank() -> imageView.setImageDrawable(null)
-                else -> imageView.load(model) {
-                    decoderFactory(SvgDecoder.Factory())
-                    fallback(fallbackRes ?: 0)
-                    error(fallbackRes ?: 0)
+            if (imageView.tag != request || imageView.drawable == null) {
+                imageView.tag = request
+                imageView.animate().cancel()
+                when {
+                    model.isNullOrBlank() && fallbackRes != null -> {
+                        imageView.alpha = 1f
+                        imageView.setImageResource(fallbackRes)
+                    }
+
+                    model.isNullOrBlank() -> {
+                        imageView.alpha = 1f
+                        imageView.setImageDrawable(null)
+                    }
+
+                    else -> imageView.load(model) {
+                        decoderFactory(SvgDecoder.Factory())
+                        if (fallbackRes != null) {
+                            fallback(fallbackRes)
+                            error(fallbackRes)
+                        }
+                        listener(
+                            onStart = {
+                                imageView.alpha = if (fadeInOnLoad) 0f else 1f
+                            },
+                            onCancel = {
+                                imageView.alpha = 1f
+                            },
+                            onError = { _, _ ->
+                                imageView.alpha = 1f
+                            },
+                            onSuccess = { _, _ ->
+                                if (fadeInOnLoad) {
+                                    imageView.animate()
+                                        .alpha(1f)
+                                        .setDuration(fadeInDurationMillis.toLong())
+                                        .start()
+                                } else {
+                                    imageView.alpha = 1f
+                                }
+                            },
+                        )
+                    }
                 }
             }
             imageView.contentDescription = contentDescription
