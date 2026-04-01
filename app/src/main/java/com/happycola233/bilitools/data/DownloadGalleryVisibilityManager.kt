@@ -20,20 +20,24 @@ internal class DownloadGalleryVisibilityManager(
     fun applyPolicy(
         downloadRootRelativePath: String,
         hideFromSystemAlbum: Boolean,
+        forceRefresh: Boolean = false,
     ) {
         val normalizedRoot = normalizeRootPath(downloadRootRelativePath)
         if (normalizedRoot.isBlank()) return
         val mediaStoreRoot = toMediaStoreRelativePath(normalizedRoot)
+        recoverStaleRenameRefreshDirectory(mediaStoreRoot)
 
         val fileUpdated = if (hideFromSystemAlbum) {
             ensureNoMediaFile(mediaStoreRoot)
         } else {
             removeNoMediaFile(mediaStoreRoot)
         }
-        refreshMediaIndex(mediaStoreRoot)
+        if (fileUpdated || forceRefresh) {
+            refreshMediaIndex(mediaStoreRoot)
+        }
         Log.i(
             TAG,
-            "[nomedia] policy applied, root=$mediaStoreRoot, hide=$hideFromSystemAlbum, fileUpdated=$fileUpdated",
+            "[nomedia] policy applied, root=$mediaStoreRoot, hide=$hideFromSystemAlbum, fileUpdated=$fileUpdated, forceRefresh=$forceRefresh",
         )
     }
 
@@ -275,26 +279,6 @@ internal class DownloadGalleryVisibilityManager(
             )
         }
 
-        if (rootDir != null) {
-            val renamed = tryRenameRoundTrip(rootDir)
-            if (renamed) {
-                MediaScannerConnection.scanFile(
-                    appContext,
-                    arrayOf(rootDir.absolutePath),
-                    null,
-                    null,
-                )
-                Log.d(
-                    TAG,
-                    "[nomedia] rename-refresh succeeded, root=${rootDir.absolutePath}",
-                )
-            } else {
-                Log.d(
-                    TAG,
-                    "[nomedia] rename-refresh skipped or failed, root=${rootDir.absolutePath}",
-                )
-            }
-        }
     }
 
     private fun queryMediaPathsUnderRoot(mediaStoreRoot: String): List<String> {
@@ -540,20 +524,39 @@ internal class DownloadGalleryVisibilityManager(
         ).absolutePath
     }
 
-    private fun tryRenameRoundTrip(rootDir: File): Boolean {
-        if (!rootDir.exists() || !rootDir.isDirectory) return false
-        val parent = rootDir.parentFile ?: return false
-        val tmp = File(parent, "${rootDir.name}.bt_refresh_${System.currentTimeMillis()}")
-        if (tmp.exists()) return false
-        val moved = runCatching { rootDir.renameTo(tmp) }.getOrDefault(false)
-        if (!moved) return false
-
-        val restored = runCatching { tmp.renameTo(rootDir) }.getOrDefault(false)
-        if (!restored) {
-            runCatching { tmp.renameTo(rootDir) }
-            return false
+    private fun recoverStaleRenameRefreshDirectory(mediaStoreRoot: String) {
+        val rootDir = resolveRootDirectory(mediaStoreRoot) ?: return
+        if (rootDir.exists()) return
+        val parent = rootDir.parentFile ?: return
+        val prefix = "${rootDir.name}.bt_refresh_"
+        val candidates = parent.listFiles { file ->
+            file.isDirectory && file.name.startsWith(prefix)
+        }?.sortedByDescending { it.lastModified() }.orEmpty()
+        if (candidates.size != 1) {
+            if (candidates.isNotEmpty()) {
+                Log.w(
+                    TAG,
+                    "[nomedia] stale refresh directories detected but cannot auto-restore, root=${rootDir.absolutePath}, candidates=${candidates.joinToString { it.name }}",
+                )
+            }
+            return
         }
-        return true
+        val candidate = candidates.first()
+        val restored = runCatching { candidate.renameTo(rootDir) }
+            .onFailure { err ->
+                Log.w(
+                    TAG,
+                    "[nomedia] stale refresh directory restore failed, from=${candidate.absolutePath}, to=${rootDir.absolutePath}",
+                    err,
+                )
+            }
+            .getOrDefault(false)
+        if (restored) {
+            Log.i(
+                TAG,
+                "[nomedia] restored stale refresh directory, from=${candidate.absolutePath}, to=${rootDir.absolutePath}",
+            )
+        }
     }
 
     private fun normalizeRootPath(rawPath: String): String {

@@ -148,7 +148,7 @@ class SettingsRepository(context: Context) {
         prefs.edit().putBoolean(KEY_HIDE_DOWNLOADED_VIDEOS_IN_SYSTEM_ALBUM, enabled).apply()
         val updated = current.copy(hideDownloadedVideosInSystemAlbum = enabled)
         _settings.value = updated
-        scheduleDownloadGalleryVisibilitySync(updated)
+        scheduleDownloadGalleryVisibilitySync(updated, forceRefresh = true)
     }
 
     fun setParseQuickActionEnabled(enabled: Boolean) {
@@ -266,6 +266,7 @@ class SettingsRepository(context: Context) {
         scheduleDownloadGalleryVisibilitySync(
             settings = updated,
             previousRootRelativePath = previousRoot,
+            forceRefresh = true,
         )
     }
 
@@ -354,6 +355,7 @@ class SettingsRepository(context: Context) {
     private fun scheduleDownloadGalleryVisibilitySync(
         settings: AppSettings,
         previousRootRelativePath: String? = null,
+        forceRefresh: Boolean = false,
     ) {
         val currentRoot = normalizeDownloadRoot(settings.downloadRootRelativePath)
         val previousRoot = previousRootRelativePath
@@ -366,11 +368,13 @@ class SettingsRepository(context: Context) {
                 galleryVisibilityManager.applyPolicy(
                     downloadRootRelativePath = previousRoot,
                     hideFromSystemAlbum = false,
+                    forceRefresh = forceRefresh,
                 )
             }
             galleryVisibilityManager.applyPolicy(
                 downloadRootRelativePath = currentRoot,
                 hideFromSystemAlbum = settings.hideDownloadedVideosInSystemAlbum,
+                forceRefresh = forceRefresh,
             )
         }
     }
