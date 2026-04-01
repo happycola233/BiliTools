@@ -11,7 +11,13 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -71,6 +77,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
@@ -560,6 +567,20 @@ private fun AboutSettingsScreen(
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
     val appIconPainter = painterResource(R.drawable.about_bilitools_icon)
+    val iconBackgroundRotation by rememberInfiniteTransition(
+        label = "aboutIconBackgroundRotation",
+    ).animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 24000,
+                easing = LinearEasing,
+            ),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "aboutIconBackgroundRotationValue",
+    )
     val issueReportActiveColor = MaterialTheme.colorScheme.error
     val issueReportSummary = remember(
         context,
@@ -609,12 +630,17 @@ private fun AboutSettingsScreen(
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier
-                                .size(64.dp)
-                                .background(
-                                    color = Color.White,
-                                    shape = MaterialShapes.Cookie9Sided.toShape(),
-                                ),
+                                .size(64.dp),
                         ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer { rotationZ = iconBackgroundRotation }
+                                    .background(
+                                        color = Color.White,
+                                        shape = MaterialShapes.Cookie9Sided.toShape(),
+                                    ),
+                            )
                             Image(
                                 painter = appIconPainter,
                                 contentDescription = null,
