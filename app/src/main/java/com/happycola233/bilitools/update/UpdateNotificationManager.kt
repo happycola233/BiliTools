@@ -78,6 +78,7 @@ internal class UpdateNotificationManager(
             .setSilent(true)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .setProgress(100, progress, totalBytes <= 0L)
             .build()
     }

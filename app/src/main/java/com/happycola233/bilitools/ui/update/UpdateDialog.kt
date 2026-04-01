@@ -8,6 +8,8 @@ import android.net.Uri
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -76,7 +78,6 @@ import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.app.ActivityCompat
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.appContainer
 import com.happycola233.bilitools.data.ReleaseInfo
@@ -86,7 +87,6 @@ import kotlinx.coroutines.launch
 
 object UpdateDialog {
     private const val HOST_VIEW_TAG = "biltools_update_dialog_host"
-    private const val REQUEST_CODE_POST_NOTIFICATIONS = 3101
 
     fun show(
         activity: AppCompatActivity,
@@ -133,48 +133,13 @@ object UpdateDialog {
                             ).show()
                         }
                     },
-                    onDownloadUpdate = {
-                        requestNotificationPermissionIfNeeded(activity)
-                        when (val result = appUpdateManager.startDownload(release)) {
-                            UpdateStartResult.Started -> {
-                                Toast.makeText(
-                                    activity,
-                                    activity.getString(R.string.update_dialog_download_started),
-                                    Toast.LENGTH_SHORT,
-                                ).show()
-                                true
-                            }
-
-                            UpdateStartResult.AlreadyRunning -> {
-                                Toast.makeText(
-                                    activity,
-                                    activity.getString(R.string.update_dialog_download_running),
-                                    Toast.LENGTH_SHORT,
-                                ).show()
-                                true
-                            }
-
-                            UpdateStartResult.MissingAsset -> {
-                                Toast.makeText(
-                                    activity,
-                                    activity.getString(R.string.update_dialog_apk_missing),
-                                    Toast.LENGTH_SHORT,
-                                ).show()
-                                false
-                            }
-
-                            is UpdateStartResult.Failed -> {
-                                Toast.makeText(
-                                    activity,
-                                    activity.getString(
-                                        R.string.update_dialog_download_failed,
-                                        result.errorMessage,
-                                    ),
-                                    Toast.LENGTH_SHORT,
-                                ).show()
-                                false
-                            }
-                        }
+                    activity = activity,
+                    onDownloadUpdateNow = {
+                        startUpdateDownload(
+                            activity = activity,
+                            release = release,
+                            appUpdateManager = appUpdateManager,
+                        )
                     },
                     onIgnoreUpdate = {
                         appUpdateManager.ignoreRelease(release.versionName)
@@ -191,35 +156,101 @@ object UpdateDialog {
             }
         }
     }
+}
 
-    private fun requestNotificationPermissionIfNeeded(activity: AppCompatActivity) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
-        val granted = ContextCompat.checkSelfPermission(
-            activity,
-            Manifest.permission.POST_NOTIFICATIONS,
-        ) == PackageManager.PERMISSION_GRANTED
-        if (granted) return
+private fun shouldRequestNotificationPermission(activity: AppCompatActivity): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return false
+    return ContextCompat.checkSelfPermission(
+        activity,
+        Manifest.permission.POST_NOTIFICATIONS,
+    ) != PackageManager.PERMISSION_GRANTED
+}
 
-        ActivityCompat.requestPermissions(
-            activity,
-            arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-            REQUEST_CODE_POST_NOTIFICATIONS,
-        )
+private fun startUpdateDownload(
+    activity: AppCompatActivity,
+    release: ReleaseInfo,
+    appUpdateManager: com.happycola233.bilitools.update.AppUpdateManager,
+): Boolean {
+    return when (val result = appUpdateManager.startDownload(release)) {
+        UpdateStartResult.Started -> {
+            Toast.makeText(
+                activity,
+                activity.getString(R.string.update_dialog_download_started),
+                Toast.LENGTH_SHORT,
+            ).show()
+            true
+        }
+
+        UpdateStartResult.AlreadyRunning -> {
+            Toast.makeText(
+                activity,
+                activity.getString(R.string.update_dialog_download_running),
+                Toast.LENGTH_SHORT,
+            ).show()
+            true
+        }
+
+        UpdateStartResult.MissingAsset -> {
+            Toast.makeText(
+                activity,
+                activity.getString(R.string.update_dialog_apk_missing),
+                Toast.LENGTH_SHORT,
+            ).show()
+            false
+        }
+
+        is UpdateStartResult.Failed -> {
+            Toast.makeText(
+                activity,
+                activity.getString(
+                    R.string.update_dialog_download_failed,
+                    result.errorMessage,
+                ),
+                Toast.LENGTH_SHORT,
+            ).show()
+            false
+        }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun UpdateDialogHost(
+    activity: AppCompatActivity,
     release: ReleaseInfo,
     currentVersion: String,
     onRemoveHost: () -> Unit,
     onOpenRelease: () -> Unit,
-    onDownloadUpdate: () -> Boolean,
+    onDownloadUpdateNow: () -> Boolean,
     onIgnoreUpdate: () -> Unit,
 ) {
     var isVisible by remember { mutableStateOf(true) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    val coroutineScope = rememberCoroutineScope()
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (!granted) {
+            Toast.makeText(
+                activity,
+                activity.getString(R.string.notification_permission_denied_tip),
+                Toast.LENGTH_SHORT,
+            ).show()
+        }
+        if (onDownloadUpdateNow()) {
+            coroutineScope.launch {
+                sheetState.hide()
+                isVisible = false
+            }
+        }
+    }
+
+    fun dismissSheet() {
+        coroutineScope.launch {
+            sheetState.hide()
+            isVisible = false
+        }
+    }
 
     if (!isVisible && !sheetState.isVisible) {
         LaunchedEffect(Unit) {
@@ -235,7 +266,13 @@ private fun UpdateDialogHost(
             currentVersion = currentVersion,
             onDismiss = { isVisible = false },
             onOpenRelease = onOpenRelease,
-            onDownloadUpdate = onDownloadUpdate,
+            onDownloadUpdate = {
+                if (shouldRequestNotificationPermission(activity)) {
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } else if (onDownloadUpdateNow()) {
+                    dismissSheet()
+                }
+            },
             onIgnoreUpdate = onIgnoreUpdate,
         )
     }
@@ -249,7 +286,7 @@ private fun UpdateBottomSheet(
     currentVersion: String,
     onDismiss: () -> Unit,
     onOpenRelease: () -> Unit,
-    onDownloadUpdate: () -> Boolean,
+    onDownloadUpdate: () -> Unit,
     onIgnoreUpdate: () -> Unit,
 ) {
     val scrollState = rememberScrollState()
@@ -289,14 +326,7 @@ private fun UpdateBottomSheet(
 
             UpdateActionButtons(
                 release = release,
-                onDownloadUpdate = {
-                    if (onDownloadUpdate()) {
-                        coroutineScope.launch {
-                            sheetState.hide()
-                            onDismiss()
-                        }
-                    }
-                },
+                onDownloadUpdate = onDownloadUpdate,
                 onIgnoreUpdate = {
                     onIgnoreUpdate()
                     coroutineScope.launch {
