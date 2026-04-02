@@ -21,6 +21,7 @@ import com.happycola233.bilitools.data.model.DownloadEmbeddedMetadata
 import com.happycola233.bilitools.data.model.DownloadGroup
 import com.happycola233.bilitools.data.model.DownloadItem
 import com.happycola233.bilitools.data.model.DownloadMediaParams
+import com.happycola233.bilitools.data.model.DownloadProgressRules
 import com.happycola233.bilitools.data.model.DownloadStatus
 import com.happycola233.bilitools.data.model.DownloadTaskType
 import com.happycola233.bilitools.data.model.MediaInfo
@@ -1521,20 +1522,22 @@ class DownloadRepository(
     }
 
     private fun addTask(item: DownloadItem) {
+        val normalizedItem = DownloadProgressRules.normalizeTask(item)
         synchronized(lock) {
-            tasks[item.id] = item
-            val list = groupTaskIds.getOrPut(item.groupId) { mutableListOf() }
-            list.add(item.id)
+            tasks[normalizedItem.id] = normalizedItem
+            val list = groupTaskIds.getOrPut(normalizedItem.groupId) { mutableListOf() }
+            list.add(normalizedItem.id)
         }
         updateGroups()
         schedulePersist()
     }
 
     private fun updateTask(item: DownloadItem) {
+        val normalizedItem = DownloadProgressRules.normalizeTask(item)
         val shouldPersist = synchronized(lock) {
-            val previous = tasks[item.id]
-            tasks[item.id] = item
-            shouldPersistTaskChange(previous, item)
+            val previous = tasks[normalizedItem.id]
+            tasks[normalizedItem.id] = normalizedItem
+            shouldPersistTaskChange(previous, normalizedItem)
         }
         updateGroups()
         if (shouldPersist) {
@@ -1543,17 +1546,18 @@ class DownloadRepository(
     }
 
     private fun replaceTask(oldId: Long, newItem: DownloadItem) {
+        val normalizedItem = DownloadProgressRules.normalizeTask(newItem)
         val shouldPersist = synchronized(lock) {
             tasks.remove(oldId)
-            tasks[newItem.id] = newItem
-            val list = groupTaskIds[newItem.groupId] ?: mutableListOf()
+            tasks[normalizedItem.id] = normalizedItem
+            val list = groupTaskIds[normalizedItem.groupId] ?: mutableListOf()
             val idx = list.indexOf(oldId)
             if (idx >= 0) {
-                list[idx] = newItem.id
+                list[idx] = normalizedItem.id
             } else {
-                list.add(newItem.id)
+                list.add(normalizedItem.id)
             }
-            groupTaskIds[newItem.groupId] = list
+            groupTaskIds[normalizedItem.groupId] = list
             true
         }
         updateGroups()
@@ -1632,10 +1636,20 @@ class DownloadRepository(
                 item.downloadedBytes.coerceAtMost(item.totalBytes)
             }
 
-            val progress = if (totalBytes > 0L) {
+            val rawProgress = if (totalBytes > 0L) {
                 ((downloadedBytes * 100) / totalBytes).toInt().coerceIn(0, 100)
             } else if (activeTasks.isNotEmpty()) {
-                activeTasks.map { item -> item.progress.coerceIn(0, 100) }.average().toInt()
+                activeTasks.map { item ->
+                    DownloadProgressRules.normalizeTaskProgress(item.status, item.progress)
+                }.average().toInt()
+            } else {
+                0
+            }
+            val progress = if (activeTasks.isNotEmpty()) {
+                DownloadProgressRules.normalizeAggregateProgress(
+                    progress = rawProgress,
+                    allTasksSucceeded = activeTasks.all { item -> item.status == DownloadStatus.Success },
+                )
             } else {
                 0
             }
@@ -1840,7 +1854,9 @@ class DownloadRepository(
             groupTaskIds.clear()
             groupTaskIds.putAll(restoredGroupTaskIds)
             tasks.clear()
-            tasks.putAll(restoredTasks)
+            tasks.putAll(restoredTasks.mapValues { (_, item) ->
+                DownloadProgressRules.normalizeTask(item)
+            })
         }
         downloadStates.clear()
         downloadStates.putAll(restoredStates)

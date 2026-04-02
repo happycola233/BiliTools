@@ -26,6 +26,7 @@ import com.google.android.material.color.MaterialColors
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.model.DownloadGroup
 import com.happycola233.bilitools.data.model.DownloadItem
+import com.happycola233.bilitools.data.model.DownloadProgressRules
 import com.happycola233.bilitools.data.model.DownloadStatus
 import com.happycola233.bilitools.data.model.DownloadTaskType
 import com.happycola233.bilitools.databinding.ItemDownloadBinding
@@ -40,6 +41,7 @@ sealed class DownloadsListItem {
         val type: DownloadSectionType,
         val count: Int,
         val speedBytesPerSec: Long = 0,
+        val etaSeconds: Long? = null,
         val isCollapsed: Boolean = false,
     ) : DownloadsListItem()
 
@@ -112,19 +114,7 @@ class DownloadsAdapter(
             DownloadSectionType.Downloaded -> R.string.downloads_section_downloaded
         }
         binding.sectionTitle.text = context.getString(titleRes)
-        binding.sectionMeta.text = if (item.type == DownloadSectionType.Downloading) {
-            val speedText = context.getString(
-                R.string.download_speed_format,
-                formatBytes(item.speedBytesPerSec),
-            )
-            context.getString(
-                R.string.downloads_section_count_speed,
-                item.count,
-                speedText,
-            )
-        } else {
-            context.getString(R.string.downloads_section_count, item.count)
-        }
+        binding.sectionMeta.text = buildSectionMetaText(context, item)
         
         // Animate rotation for smooth effect
         val targetRotation = if (collapsed) -90f else 0f
@@ -541,6 +531,11 @@ class DownloadsAdapter(
             longPressRunnable = null
         }
 
+        private fun latestGroup(fallback: DownloadGroup): DownloadGroup {
+            val current = currentGroup
+            return if (current != null && current.id == fallback.id) current else fallback
+        }
+
         fun bind(group: DownloadGroup, expanded: Boolean) {
             boundGroupId = group.id
             currentGroup = group
@@ -587,7 +582,7 @@ class DownloadsAdapter(
             
             // Delete Button Action
             binding.swipeDeleteBtn.setOnClickListener {
-                groupDeleteAction(group, { adapter.closeSwipedItem() })
+                groupDeleteAction(latestGroup(group), { adapter.closeSwipedItem() })
             }
             
             // Standard Bind Logic ...
@@ -675,8 +670,9 @@ class DownloadsAdapter(
             }
             binding.groupPauseResume.setOnLongClickListener {
                 if (adapter.selectionMode) return@setOnLongClickListener false
+                val latest = latestGroup(group)
                 binding.cardView.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                adapter.onGroupSelectionToggle(group)
+                adapter.onGroupSelectionToggle(latest)
                 true
             }
             
@@ -687,8 +683,9 @@ class DownloadsAdapter(
             // But we primarily handle clicks in OnTouch. 
             // We just need to ensure performClick works.
             binding.cardView.setOnClickListener {
+                val latest = latestGroup(group)
                 if (adapter.selectionMode) {
-                    adapter.onGroupSelectionToggle(group)
+                    adapter.onGroupSelectionToggle(latest)
                     return@setOnClickListener
                 }
                 if (adapter.swipedGroupId != null) {
@@ -705,13 +702,13 @@ class DownloadsAdapter(
                     adapter.expandedGroups.remove(group.id)
                     adapter.expandingGroups.remove(group.id)
                 } else {
-                    adapter.expandedGroups.add(group.id)
-                    adapter.expandingGroups[group.id] =
+                    adapter.expandedGroups.add(latest.id)
+                    adapter.expandingGroups[latest.id] =
                         SystemClock.uptimeMillis() + EXPAND_ANIM_DURATION_MS
                 }
 
                 val newExpanded = !isExpanded
-                animateExpandedState(group, newExpanded)
+                animateExpandedState(latest, newExpanded)
             }
         }
 
@@ -1256,28 +1253,22 @@ class DownloadsAdapter(
 
         private fun calculateGroupProgress(tasks: List<DownloadItem>): Int {
             if (tasks.isEmpty()) return 0
-            if (tasks.all { it.status == DownloadStatus.Success }) return 100
+            val allTasksSucceeded = tasks.all { it.status == DownloadStatus.Success }
+            if (allTasksSucceeded) return 100
             val sizeTasks = tasks.filter { it.totalBytes > 0 }
             if (sizeTasks.isEmpty()) {
-                val avg = tasks.sumOf { it.progress } / tasks.size
-                val progress = avg.coerceIn(0, 100)
-                return adjustMergingProgress(progress, tasks)
+                val avg = tasks.sumOf { item ->
+                    DownloadProgressRules.normalizeTaskProgress(item.status, item.progress)
+                } / tasks.size
+                return DownloadProgressRules.normalizeAggregateProgress(avg, allTasksSucceeded)
             }
             val total = sizeTasks.sumOf { it.totalBytes }
             if (total <= 0L) return 0
             val downloaded = sizeTasks.sumOf { item ->
                 item.downloadedBytes.coerceAtMost(item.totalBytes)
             }
-            val progress = ((downloaded * 100) / total).toInt().coerceIn(0, 100)
-            return adjustMergingProgress(progress, tasks)
-        }
-
-        private fun adjustMergingProgress(progress: Int, tasks: List<DownloadItem>): Int {
-            return if (progress >= 100 && tasks.any { it.status == DownloadStatus.Merging }) {
-                99
-            } else {
-                progress
-            }
+            val progress = ((downloaded * 100) / total).toInt()
+            return DownloadProgressRules.normalizeAggregateProgress(progress, allTasksSucceeded)
         }
 
         private fun isManaged(item: DownloadItem): Boolean {
@@ -1309,19 +1300,7 @@ class DownloadsAdapter(
                 DownloadSectionType.Downloaded -> R.string.downloads_section_downloaded
             }
             binding.sectionTitle.text = context.getString(titleRes)
-            binding.sectionMeta.text = if (item.type == DownloadSectionType.Downloading) {
-                val speedText = context.getString(
-                    R.string.download_speed_format,
-                    formatBytes(item.speedBytesPerSec),
-                )
-                context.getString(
-                    R.string.downloads_section_count_speed,
-                    item.count,
-                    speedText,
-                )
-            } else {
-                context.getString(R.string.downloads_section_count, item.count)
-            }
+            binding.sectionMeta.text = buildSectionMetaText(context, item)
         }
     }
 
@@ -1366,7 +1345,10 @@ class DownloadsAdapter(
                     if (oldItem.isCollapsed != newItem.isCollapsed) {
                         payloads.add(PAYLOAD_COLLAPSED_CHANGED)
                     }
-                    if (oldItem.count != newItem.count || oldItem.speedBytesPerSec != newItem.speedBytesPerSec) {
+                    if (oldItem.count != newItem.count ||
+                        oldItem.speedBytesPerSec != newItem.speedBytesPerSec ||
+                        oldItem.etaSeconds != newItem.etaSeconds
+                    ) {
                         payloads.add(PAYLOAD_META_CHANGED)
                     }
                     if (payloads.isNotEmpty()) return payloads
@@ -1425,8 +1407,15 @@ private class DownloadTaskAdapter(
         private val onTaskClick: (DownloadItem) -> Unit,
         private val onLocationClick: (String) -> Unit,
     ) : RecyclerView.ViewHolder(binding.root) {
+        private var currentItem: DownloadItem? = null
+
+        private fun latestItem(fallback: DownloadItem): DownloadItem {
+            val current = currentItem
+            return if (current != null && current.id == fallback.id) current else fallback
+        }
         
         fun bind(item: DownloadItem, groupPath: String) {
+            currentItem = item
             val context = binding.root.context
             
             binding.downloadTitle.text = item.title.ifBlank { item.fileName }
@@ -1464,34 +1453,39 @@ private class DownloadTaskAdapter(
                         binding.downloadPauseResume.setIconResource(R.drawable.ic_pause_24)
                         binding.downloadPauseResume.contentDescription =
                             context.getString(R.string.download_pause)
-                        binding.downloadPauseResume.setOnClickListener { onPauseResume(item) }
+                        binding.downloadPauseResume.setOnClickListener {
+                            onPauseResume(latestItem(item))
+                        }
                     }
                     TaskAction.Resume -> {
                         binding.downloadPauseResume.setIconResource(R.drawable.ic_play_arrow_24)
                         binding.downloadPauseResume.contentDescription =
                             context.getString(R.string.download_resume)
-                        binding.downloadPauseResume.setOnClickListener { onPauseResume(item) }
+                        binding.downloadPauseResume.setOnClickListener {
+                            onPauseResume(latestItem(item))
+                        }
                     }
                     TaskAction.Retry -> {
                         binding.downloadPauseResume.setIconResource(R.drawable.ic_retry_24)
                         binding.downloadPauseResume.contentDescription =
                             context.getString(R.string.download_retry)
-                        binding.downloadPauseResume.setOnClickListener { onRetry(item) }
+                        binding.downloadPauseResume.setOnClickListener { onRetry(latestItem(item)) }
                     }
                 }
             } else {
                 binding.downloadPauseResume.visibility = View.GONE
             }
 
-            binding.downloadDelete.setOnClickListener { onDelete(item) }
             if (isMissing) {
                 binding.root.setOnClickListener(null)
             } else {
-                binding.root.setOnClickListener { onTaskClick(item) }
+                binding.root.setOnClickListener { onTaskClick(latestItem(item)) }
             }
+            binding.downloadDelete.setOnClickListener { onDelete(latestItem(item)) }
         }
 
         fun bindProgress(item: DownloadItem) {
+            currentItem = item
             val context = binding.root.context
             bindDetailText(context, item)
             bindProgressState(context, item)
@@ -1515,19 +1509,23 @@ private class DownloadTaskAdapter(
                         binding.downloadPauseResume.setIconResource(R.drawable.ic_pause_24)
                         binding.downloadPauseResume.contentDescription =
                             context.getString(R.string.download_pause)
-                        binding.downloadPauseResume.setOnClickListener { onPauseResume(item) }
+                        binding.downloadPauseResume.setOnClickListener {
+                            onPauseResume(latestItem(item))
+                        }
                     }
                     TaskAction.Resume -> {
                         binding.downloadPauseResume.setIconResource(R.drawable.ic_play_arrow_24)
                         binding.downloadPauseResume.contentDescription =
                             context.getString(R.string.download_resume)
-                        binding.downloadPauseResume.setOnClickListener { onPauseResume(item) }
+                        binding.downloadPauseResume.setOnClickListener {
+                            onPauseResume(latestItem(item))
+                        }
                     }
                     TaskAction.Retry -> {
                         binding.downloadPauseResume.setIconResource(R.drawable.ic_retry_24)
                         binding.downloadPauseResume.contentDescription =
                             context.getString(R.string.download_retry)
-                        binding.downloadPauseResume.setOnClickListener { onRetry(item) }
+                        binding.downloadPauseResume.setOnClickListener { onRetry(latestItem(item)) }
                     }
                 }
             } else {
@@ -1554,6 +1552,7 @@ private class DownloadTaskAdapter(
         private fun bindProgressState(context: Context, item: DownloadItem) {
             val isProcessing = item.status == DownloadStatus.Pending || item.status == DownloadStatus.Merging
             binding.downloadProgress.isIndeterminate = isProcessing
+            val progress = DownloadProgressRules.normalizeTaskProgress(item.status, item.progress)
 
             val showProgress = when (item.status) {
                 DownloadStatus.Pending,
@@ -1563,7 +1562,7 @@ private class DownloadTaskAdapter(
                 else -> false
             }
             binding.downloadProgressRow.visibility = if (showProgress) View.VISIBLE else View.GONE
-            binding.downloadProgress.setProgressCompat(item.progress, true)
+            binding.downloadProgress.setProgressCompat(progress, true)
 
             val progressText = buildProgressText(context, item)
             binding.downloadProgressText.text = progressText.orEmpty()
@@ -1572,7 +1571,7 @@ private class DownloadTaskAdapter(
         }
 
         private fun buildProgressText(context: Context, item: DownloadItem): String? {
-            val progress = item.progress.coerceIn(0, 100)
+            val progress = DownloadProgressRules.normalizeTaskProgress(item.status, item.progress)
             return when (item.status) {
                 DownloadStatus.Running,
                 DownloadStatus.Paused -> context.getString(
@@ -1587,6 +1586,7 @@ private class DownloadTaskAdapter(
         }
 
         private fun buildDetailText(context: Context, item: DownloadItem): String {
+            val progress = DownloadProgressRules.normalizeTaskProgress(item.status, item.progress)
             val downloaded = formatBytes(item.downloadedBytes)
             val sizeText = if (item.totalBytes > 0) {
                 val total = formatBytes(item.totalBytes)
@@ -1614,7 +1614,7 @@ private class DownloadTaskAdapter(
                     if (speedText.isNotBlank()) "$sizeText - $speedText" else sizeText
                 }
                 DownloadStatus.Pending -> context.getString(R.string.download_status_pending)
-                DownloadStatus.Paused -> context.getString(R.string.download_status_paused, item.progress)
+                DownloadStatus.Paused -> context.getString(R.string.download_status_paused, progress)
                 DownloadStatus.Failed -> context.getString(R.string.download_status_failed)
                 DownloadStatus.Merging -> context.getString(R.string.download_status_merging)
                 DownloadStatus.Success -> if (item.outputMissing) {
@@ -1727,6 +1727,25 @@ private class DownloadTaskAdapter(
     }
 }
 
+private fun buildSectionMetaText(
+    context: Context,
+    item: DownloadsListItem.SectionHeader,
+): String {
+    val countText = context.getString(R.string.downloads_section_count, item.count)
+    if (item.type != DownloadSectionType.Downloading) {
+        return countText
+    }
+
+    val speedText = context.getString(
+        R.string.download_speed_format,
+        formatBytes(item.speedBytesPerSec),
+    )
+    val etaText = item.etaSeconds?.let { seconds ->
+        context.getString(R.string.download_eta_format, formatEta(seconds))
+    }
+    return listOfNotNull(countText, speedText, etaText).joinToString(" · ")
+}
+
 private fun formatBytes(bytes: Long): String {
     if (bytes <= 0) return "0 B"
     val units = arrayOf("B", "KB", "MB", "GB", "TB")
@@ -1737,4 +1756,16 @@ private fun formatBytes(bytes: Long): String {
         index++
     }
     return String.format(Locale.US, "%.1f %s", value, units[index])
+}
+
+private fun formatEta(totalSeconds: Long): String {
+    val seconds = totalSeconds.coerceAtLeast(0L)
+    val hours = seconds / 3600
+    val minutes = (seconds % 3600) / 60
+    val remain = seconds % 60
+    return when {
+        hours > 0L -> String.format(Locale.US, "%d小时%02d分", hours, minutes)
+        minutes > 0L -> String.format(Locale.US, "%d分%02d秒", minutes, remain)
+        else -> String.format(Locale.US, "%d秒", remain)
+    }
 }

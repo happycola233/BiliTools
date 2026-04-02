@@ -258,12 +258,14 @@ class DownloadsFragment : Fragment() {
                 if (task.status == DownloadStatus.Running) task.speedBytesPerSec else 0
             }
         }
+        val etaSeconds = calculateDownloadingEtaSeconds(downloadingGroups)
         val items = mutableListOf<DownloadsListItem>()
         items.add(
             DownloadsListItem.SectionHeader(
                 DownloadSectionType.Downloading,
                 downloadingGroups.size,
                 totalSpeed,
+                etaSeconds,
             ),
         )
         items.addAll(downloadingGroups.map { DownloadsListItem.GroupItem(it) })
@@ -275,6 +277,38 @@ class DownloadsFragment : Fragment() {
         )
         items.addAll(downloadedGroups.map { DownloadsListItem.GroupItem(it) })
         return items
+    }
+
+    private fun calculateDownloadingEtaSeconds(groups: List<DownloadGroup>): Long? {
+        val activeTasks = groups.flatMap { group -> group.tasks }
+            .filter { task ->
+                isManagedTask(task) && when (task.status) {
+                    DownloadStatus.Pending,
+                    DownloadStatus.Running,
+                    DownloadStatus.Paused,
+                    DownloadStatus.Merging -> true
+                    else -> false
+                }
+            }
+        if (activeTasks.isEmpty()) return null
+
+        val speedBytesPerSec = activeTasks.sumOf { task ->
+            if (task.status == DownloadStatus.Running) task.speedBytesPerSec else 0L
+        }
+        if (speedBytesPerSec <= 0L) return null
+
+        val sizeTasks = activeTasks.filter { task -> task.totalBytes > 0L }
+        if (sizeTasks.isEmpty()) return null
+
+        val totalBytes = sizeTasks.sumOf { task -> task.totalBytes }
+        val downloadedBytes = sizeTasks.sumOf { task ->
+            task.downloadedBytes.coerceAtMost(task.totalBytes)
+        }
+        return if (totalBytes > downloadedBytes) {
+            (totalBytes - downloadedBytes) / speedBytesPerSec
+        } else {
+            null
+        }
     }
 
     private fun enterSelectionMode(initialGroupId: Long? = null) {
