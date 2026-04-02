@@ -1809,6 +1809,7 @@ class DownloadRepository(
         val restoredTasks = mutableMapOf<Long, DownloadItem>()
         val restoredStates = mutableMapOf<Long, ResumableState>()
         val restoredMerges = mutableMapOf<Long, MergedDownload>()
+        val completedTempFiles = mutableListOf<File>()
         val autoResumeIds = mutableListOf<Long>()
         val autoResumeMerges = mutableListOf<MergedDownload>()
         val autoMerge = mutableListOf<MergedDownload>()
@@ -1857,6 +1858,7 @@ class DownloadRepository(
                 if (task.taskType == DownloadTaskType.AudioVideo) {
                     val restored = restoreMergedTask(task, mergeById[task.id])
                     restoredTasks[task.id] = restored.item
+                    completedTempFiles += restored.cleanupTempFiles
                     val mergeTask = restored.mergeTask
                     if (mergeTask != null) {
                         restoredMerges[task.id] = mergeTask
@@ -1872,6 +1874,7 @@ class DownloadRepository(
                 if (isManagedTask(task)) {
                     val restored = restoreManagedTask(task, resumableById[task.id])
                     restoredTasks[task.id] = restored.item
+                    completedTempFiles += restored.cleanupTempFiles
                     if (restored.state != null) {
                         restoredStates[task.id] = restored.state
                     }
@@ -1909,6 +1912,7 @@ class DownloadRepository(
         mergeIds.set(if (minMergeId != null) minMergeId - 1L else -1L)
         extraTaskIds.set(if (minExtraId != null) minExtraId - 1L else EXTRA_TASK_ID_START)
 
+        cleanupCompletedTempFiles(completedTempFiles)
         updateGroups()
 
         autoResumeIds.forEach { startDownload(it) }
@@ -1921,6 +1925,7 @@ class DownloadRepository(
         snapshot: ResumableStateSnapshot?,
     ): ManagedRestoreResult {
         val tempFile = tempFileFor(item.id, item.fileName)
+        val cleanupTempFiles = tempFilesForCleanup(item.id, item.fileName)
         val downloaded = if (tempFile.exists()) tempFile.length() else 0L
         val total = if (snapshot != null && snapshot.totalBytes > 0) {
             snapshot.totalBytes
@@ -1958,12 +1963,37 @@ class DownloadRepository(
                     ),
                     state = null,
                     autoResume = false,
+                    cleanupTempFiles = cleanupTempFiles,
                 )
             }
             Log.d(
                 TAG,
                 "[restore-managed] existing output not found, taskId=${item.id}, file=${item.fileName}",
             )
+        } else if (item.status == DownloadStatus.Success) {
+            val existingUri = resolveCompletedOutputUri(
+                item = item,
+                traceSource = "restore-managed-success-${item.id}",
+            )
+            if (existingUri != null) {
+                Log.i(
+                    TAG,
+                    "[restore-managed] verified completed output, cleanup temp, taskId=${item.id}, file=${item.fileName}, uri=$existingUri",
+                )
+                return ManagedRestoreResult(
+                    item = item.copy(
+                        progress = 100,
+                        localUri = existingUri,
+                        speedBytesPerSec = 0,
+                        etaSeconds = null,
+                        userPaused = false,
+                        errorMessage = null,
+                    ),
+                    state = null,
+                    autoResume = false,
+                    cleanupTempFiles = cleanupTempFiles,
+                )
+            }
         }
 
         if (status == DownloadStatus.Pending) {
@@ -2010,13 +2040,23 @@ class DownloadRepository(
         } else {
             null
         }
-        return ManagedRestoreResult(finalItem, state, autoResume)
+        return ManagedRestoreResult(
+            item = finalItem,
+            state = state,
+            autoResume = autoResume,
+            cleanupTempFiles = emptyList(),
+        )
     }
 
     private fun restoreMergedTask(
         item: DownloadItem,
         snapshot: MergedTaskSnapshot?,
     ): MergedRestoreResult {
+        val cleanupTempFiles = mergedTempFilesForCleanup(
+            id = item.id,
+            outputName = item.fileName,
+            snapshot = snapshot,
+        )
         val shouldCheckExisting = item.status == DownloadStatus.Pending ||
             item.status == DownloadStatus.Running ||
             item.status == DownloadStatus.Merging ||
@@ -2045,12 +2085,37 @@ class DownloadRepository(
                     mergeTask = null,
                     autoResume = false,
                     autoMerge = false,
+                    cleanupTempFiles = cleanupTempFiles,
                 )
             }
             Log.d(
                 TAG,
                 "[restore-merge] existing output not found, taskId=${item.id}, file=${item.fileName}",
             )
+        } else if (item.status == DownloadStatus.Success) {
+            val existingUri = resolveCompletedOutputUri(
+                item = item,
+                traceSource = "restore-merge-success-${item.id}",
+            )
+            if (existingUri != null) {
+                Log.i(
+                    TAG,
+                    "[restore-merge] verified completed output, cleanup temp, taskId=${item.id}, file=${item.fileName}, uri=$existingUri",
+                )
+                return MergedRestoreResult(
+                    item = item.copy(
+                        progress = 100,
+                        localUri = existingUri,
+                        speedBytesPerSec = 0,
+                        etaSeconds = null,
+                        errorMessage = null,
+                    ),
+                    mergeTask = null,
+                    autoResume = false,
+                    autoMerge = false,
+                    cleanupTempFiles = cleanupTempFiles,
+                )
+            }
         }
         if (snapshot == null) {
             if (item.status == DownloadStatus.Success) {
@@ -2062,6 +2127,7 @@ class DownloadRepository(
                     mergeTask = null,
                     autoResume = false,
                     autoMerge = false,
+                    cleanupTempFiles = emptyList(),
                 )
             }
             val failedItem = item.copy(
@@ -2075,6 +2141,7 @@ class DownloadRepository(
                 mergeTask = null,
                 autoResume = false,
                 autoMerge = false,
+                cleanupTempFiles = emptyList(),
             )
         }
 
@@ -2109,6 +2176,7 @@ class DownloadRepository(
                 mergeTask = null,
                 autoResume = false,
                 autoMerge = false,
+                cleanupTempFiles = emptyList(),
             )
         }
 
@@ -2194,6 +2262,7 @@ class DownloadRepository(
             mergeTask = mergeTask,
             autoResume = autoResume,
             autoMerge = autoMerge,
+            cleanupTempFiles = emptyList(),
         )
     }
 
@@ -3342,9 +3411,13 @@ class DownloadRepository(
         }
     }
 
-    private fun tempFileFor(id: Long, fileName: String): File {
+    private fun tempLegacyFileFor(id: Long, fileName: String): File {
         val safeName = fileName.replace(Regex("[\\\\/:*?\"<>|]"), "_")
-        val legacy = File(tempDir, "$id-$safeName.part")
+        return File(tempDir, "$id-$safeName.part")
+    }
+
+    private fun tempFileFor(id: Long, fileName: String): File {
+        val legacy = tempLegacyFileFor(id, fileName)
         val target = tempFileForNewSchema(id, fileName)
         return if (legacy.exists() && !target.exists()) legacy else target
     }
@@ -3380,6 +3453,59 @@ class DownloadRepository(
             }
             target
         }.getOrElse { tempFile }
+    }
+
+    private fun tempFilesForCleanup(id: Long, fileName: String): List<File> {
+        return listOf(
+            tempLegacyFileFor(id, fileName),
+            tempFileForNewSchema(id, fileName),
+        ).distinctBy { it.absolutePath }
+    }
+
+    private fun mergedTempFilesForCleanup(
+        id: Long,
+        outputName: String,
+        snapshot: MergedTaskSnapshot?,
+    ): List<File> {
+        val candidates = linkedSetOf(outputName)
+        if (snapshot != null) {
+            candidates += snapshot.video.fileName
+            candidates += snapshot.audio.fileName
+        } else {
+            val baseName = outputName.substringBeforeLast('.')
+            candidates += "$baseName-video.m4s"
+            candidates += "$baseName-audio.m4s"
+        }
+        return candidates
+            .flatMap { fileName -> tempFilesForCleanup(id, fileName) }
+            .distinctBy { it.absolutePath }
+    }
+
+    private fun resolveCompletedOutputUri(item: DownloadItem, traceSource: String): String? {
+        val currentUri = item.localUri
+        if (isLocalUriAccessible(currentUri, traceSource)) {
+            return currentUri
+        }
+        return findAccessibleDownload(item.fileName, item.groupId)
+            ?: findAccessibleDownloadAnywhere(item.fileName)
+    }
+
+    private fun cleanupCompletedTempFiles(files: Collection<File>) {
+        files.distinctBy { it.absolutePath }.forEach { file ->
+            if (!file.exists()) return@forEach
+            val deleted = runCatching { file.delete() }.getOrDefault(false)
+            if (deleted) {
+                Log.i(
+                    TAG,
+                    "[temp-cleanup] deleted completed task temp file, path=${file.absolutePath}",
+                )
+            } else {
+                Log.w(
+                    TAG,
+                    "[temp-cleanup] failed to delete completed task temp file, path=${file.absolutePath}",
+                )
+            }
+        }
     }
 
     private fun buildGroupFolderName(
@@ -3840,6 +3966,7 @@ class DownloadRepository(
         val item: DownloadItem,
         val state: ResumableState?,
         val autoResume: Boolean,
+        val cleanupTempFiles: List<File>,
     )
 
     private data class MergedRestoreResult(
@@ -3847,6 +3974,7 @@ class DownloadRepository(
         val mergeTask: MergedDownload?,
         val autoResume: Boolean,
         val autoMerge: Boolean,
+        val cleanupTempFiles: List<File>,
     )
 
     private data class RetrySourceContext(
