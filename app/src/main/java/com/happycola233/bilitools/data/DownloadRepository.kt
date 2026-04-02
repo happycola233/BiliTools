@@ -212,14 +212,19 @@ class DownloadRepository(
         subtitle: String?,
         bvid: String? = null,
         coverUrl: String? = null,
+        relativePath: String? = null,
     ): Long {
         val id = groupIds.incrementAndGet()
-        val folderName = buildGroupFolderName(
-            title = title,
-            bvid = bvid,
-            existingNames = existingGroupFolderNames(),
-        )
-        val relativePath = buildGroupRelativePath(folderName)
+        val resolvedRelativePath = relativePath?.takeIf { it.isNotBlank() }?.let(
+            ::resolveRequestedGroupRelativePath,
+        ) ?: run {
+            val folderName = buildGroupFolderName(
+                title = title,
+                bvid = bvid,
+                existingNames = existingGroupFolderNames(),
+            )
+            resolveRequestedGroupRelativePath(buildGroupRelativePath(folderName))
+        }
         synchronized(lock) {
             groupInfo[id] = GroupInfo(
                 title,
@@ -227,7 +232,7 @@ class DownloadRepository(
                 bvid,
                 coverUrl,
                 System.currentTimeMillis(),
-                relativePath,
+                resolvedRelativePath,
             )
             groupTaskIds[id] = mutableListOf()
         }
@@ -245,7 +250,7 @@ class DownloadRepository(
             bvid = info?.bvid,
             existingNames = existingGroupFolderNames(),
         )
-        val relativePath = buildGroupRelativePath(folderName)
+        val relativePath = resolveRequestedGroupRelativePath(buildGroupRelativePath(folderName))
         if (info != null) {
             groupInfo[groupId] = info.copy(relativePath = relativePath)
             updateGroups()
@@ -544,10 +549,40 @@ class DownloadRepository(
 
     private fun deleteGroupFolder(relativePath: String) {
         runCatching {
-             val dir = File(Environment.getExternalStorageDirectory(), relativePath)
-             if (dir.exists()) {
-                 dir.deleteRecursively()
+             val normalizedRelativePath = relativePath.replace('\\', '/').trim().trim('/')
+             if (normalizedRelativePath.isBlank()) return@runCatching
+             val dir = File(Environment.getExternalStorageDirectory(), normalizedRelativePath)
+             if (dir.exists() && !dir.deleteRecursively() && dir.exists()) {
+                 return@runCatching
              }
+             cleanupEmptyManagedParentFolders(normalizedRelativePath)
+        }
+    }
+
+    private fun cleanupEmptyManagedParentFolders(relativePath: String) {
+        val normalizedTarget = normalizeRelativePath(relativePath)
+        val managedRoot = normalizeRelativePath(settingsRepository.downloadRootRelativePath())
+        if (normalizedTarget.isBlank() || managedRoot.isBlank()) return
+        if (!normalizedTarget.startsWith(managedRoot, ignoreCase = true)) return
+
+        var current = File(Environment.getExternalStorageDirectory(), relativePath)
+            .parentFile
+        val managedRootDir = File(
+            Environment.getExternalStorageDirectory(),
+            managedRoot.trimEnd('/'),
+        )
+
+        while (current != null &&
+            !current.path.equals(managedRootDir.path, ignoreCase = true)
+        ) {
+            val children = current.listFiles()
+            if (children == null || children.isNotEmpty()) {
+                return
+            }
+            if (!current.delete()) {
+                return
+            }
+            current = current.parentFile
         }
     }
 
@@ -2560,6 +2595,7 @@ class DownloadRepository(
     ): String? {
         val expectedSize = tempFile.length().coerceAtLeast(0L)
         val normalizedRelativePath = normalizeRelativePath(relativePath)
+        val overwriteExisting = settingsRepository.shouldOverwriteExistingNamingTargets()
         Log.d(
             TAG,
             "[save-output] start, file=$fileName, relativePath=$relativePath, temp=${tempFile.absolutePath}, tempExists=${tempFile.exists()}, expectedSize=$expectedSize",
@@ -2568,6 +2604,7 @@ class DownloadRepository(
             fileName = fileName,
             relativePath = normalizedRelativePath,
             excludeUri = null,
+            overwriteExisting = overwriteExisting,
         )
         if (preDeleteCount > 0) {
             Log.w(
@@ -2616,6 +2653,7 @@ class DownloadRepository(
                     relativePath = normalizedRelativePath,
                     expectedSize = expectedSize,
                     finalizeErr = finalizeErr,
+                    overwriteExisting = overwriteExisting,
                 )
             }
             runCatching { tempFile.delete() }
@@ -2804,6 +2842,14 @@ class DownloadRepository(
         return if (trimmed.isBlank()) "" else "$trimmed/"
     }
 
+    private fun isManagedDownloadRelativePath(relativePath: String): Boolean {
+        val normalizedTargetPath = normalizeRelativePath(relativePath)
+        if (normalizedTargetPath.isBlank()) return false
+        val managedRoot = normalizeRelativePath(settingsRepository.downloadRootRelativePath())
+        if (managedRoot.isBlank()) return false
+        return normalizedTargetPath.startsWith(managedRoot, ignoreCase = true)
+    }
+
     private fun isSameRelativePath(candidatePath: String, normalizedTargetPath: String): Boolean {
         if (normalizedTargetPath.isBlank()) return false
         val normalizedCandidate = normalizeRelativePath(candidatePath)
@@ -2814,9 +2860,18 @@ class DownloadRepository(
         fileName: String,
         relativePath: String,
         excludeUri: String?,
+        overwriteExisting: Boolean,
     ): Int {
         if (fileName.isBlank()) return 0
-        if (relativePath.isBlank()) return 0
+        val normalizedTargetPath = normalizeRelativePath(relativePath)
+        if (normalizedTargetPath.isBlank()) return 0
+        if (!isManagedDownloadRelativePath(normalizedTargetPath)) {
+            Log.w(
+                TAG,
+                "[save-output] skip deleting conflicts outside managed download root, file=$fileName, relativePath=$normalizedTargetPath",
+            )
+            return 0
+        }
         val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
         val projection = arrayOf(
             MediaStore.Downloads._ID,
@@ -2832,13 +2887,13 @@ class DownloadRepository(
             val pendingIndex = cursor.getColumnIndex(MediaStore.Downloads.IS_PENDING)
             while (idIndex >= 0 && cursor.moveToNext()) {
                 val path = if (pathIndex >= 0) cursor.getString(pathIndex).orEmpty() else ""
-                if (!isSameRelativePath(path, relativePath)) continue
+                if (!isSameRelativePath(path, normalizedTargetPath)) continue
                 val id = cursor.getLong(idIndex)
                 val uri = Uri.withAppendedPath(collection, id.toString()).toString()
                 if (excludeUri != null && uri == excludeUri) continue
                 val pending = if (pendingIndex >= 0) cursor.getInt(pendingIndex) else -1
                 val accessible = isLocalUriAccessible(uri, "deleteConflictingDownloadsForTarget")
-                val shouldDelete = pending == 1 || !accessible
+                val shouldDelete = overwriteExisting || pending == 1 || !accessible
                 if (!shouldDelete) {
                     Log.d(
                         TAG,
@@ -3095,6 +3150,7 @@ class DownloadRepository(
         relativePath: String,
         expectedSize: Long,
         finalizeErr: Throwable,
+        overwriteExisting: Boolean,
     ): String? {
         val insertedUriString = insertedUri.toString()
         Log.w(
@@ -3106,6 +3162,7 @@ class DownloadRepository(
             fileName = fileName,
             relativePath = relativePath,
             excludeUri = insertedUriString,
+            overwriteExisting = overwriteExisting,
         )
         if (deletedConflict > 0) {
             Log.w(
@@ -3317,6 +3374,67 @@ class DownloadRepository(
             root
         }
         return "$normalizedRoot/$folderName"
+    }
+
+    private fun resolveRequestedGroupRelativePath(requestedRelativePath: String): String {
+        val normalized = requestedRelativePath
+            .replace('\\', '/')
+            .trim()
+            .trim('/')
+        if (normalized.isBlank()) {
+            return buildGroupRelativePath("BiliTools")
+        }
+        if (settingsRepository.shouldOverwriteExistingNamingTargets()) {
+            return normalized
+        }
+        if (!groupRelativePathExists(normalized) && !relativePathHasExistingOutputs(normalized)) {
+            return normalized
+        }
+        return buildUniqueRelativePath(normalized)
+    }
+
+    private fun groupRelativePathExists(relativePath: String): Boolean {
+        return synchronized(lock) {
+            groupInfo.values.any { info ->
+                info.relativePath.equals(relativePath, ignoreCase = true)
+            }
+        }
+    }
+
+    private fun relativePathHasExistingOutputs(relativePath: String): Boolean {
+        val collection = MediaStore.Files.getContentUri("external")
+        val normalized = normalizeRelativePath(relativePath)
+        if (normalized.isBlank()) return false
+        return resolver.query(
+            collection,
+            arrayOf(MediaStore.MediaColumns._ID),
+            "${MediaStore.MediaColumns.RELATIVE_PATH}=?",
+            arrayOf(normalized),
+            null,
+        )?.use { cursor ->
+            cursor.moveToFirst()
+        } ?: false
+    }
+
+    private fun buildUniqueRelativePath(relativePath: String): String {
+        val normalized = relativePath.replace('\\', '/').trim().trim('/')
+        val parent = normalized.substringBeforeLast('/', "")
+        val leaf = normalized.substringAfterLast('/')
+        if (leaf.isBlank()) return normalized
+        var index = 1
+        while (index <= 200) {
+            val candidateLeaf = "$leaf($index)"
+            val candidate = if (parent.isBlank()) {
+                candidateLeaf
+            } else {
+                "$parent/$candidateLeaf"
+            }
+            if (!groupRelativePathExists(candidate) && !relativePathHasExistingOutputs(candidate)) {
+                return candidate
+            }
+            index++
+        }
+        return normalized
     }
 
     private fun sanitizeFolderName(name: String): String {

@@ -39,7 +39,7 @@ class AppContainer(context: Context) {
             mediaRepository,
         )
     }
-    val exportRepository by lazy { ExportRepository(appContext) }
+    val exportRepository by lazy { ExportRepository(appContext, settingsRepository) }
     val issueReportRepository by lazy {
         IssueReportRepository(
             context = appContext,

@@ -166,6 +166,19 @@ class SettingsActivity : AppCompatActivity() {
                 onAddMetadataChange = viewModel::setAddMetadata,
                 onConfirmCellularChange = viewModel::setConfirmCellularDownload,
                 onHideInAlbumChange = viewModel::setHideDownloadedVideosInSystemAlbum,
+                onNamingTopLevelFolderModeChange = viewModel::setNamingTopLevelFolderMode,
+                onNamingOverwriteExistingFilesChange = viewModel::setNamingOverwriteExistingFiles,
+                onNamingTopLevelFolderTemplateChange = viewModel::setNamingTopLevelFolderTemplate,
+                onNamingItemFolderTemplateChange = viewModel::setNamingItemFolderTemplate,
+                onNamingFileTemplateChange = viewModel::setNamingFileTemplate,
+                onRestoreNamingDefaults = {
+                    viewModel.restoreNamingDefaults()
+                    Toast.makeText(
+                        this@SettingsActivity,
+                        getString(R.string.settings_naming_restore_defaults_done),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                },
                 onBlackThemeChange = { enabled ->
                     if (settings.darkModePureBlack != enabled) {
                         viewModel.setDarkModePureBlack(enabled)

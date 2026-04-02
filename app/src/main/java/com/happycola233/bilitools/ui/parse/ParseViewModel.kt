@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.BiliHttpException
+import com.happycola233.bilitools.core.DownloadNaming
+import com.happycola233.bilitools.core.NamingRenderContext
 import com.happycola233.bilitools.core.NfoGenerator
 import com.happycola233.bilitools.core.StringProvider
 import com.happycola233.bilitools.data.AuthRepository
@@ -11,6 +13,8 @@ import com.happycola233.bilitools.data.DownloadRepository
 import com.happycola233.bilitools.data.ExportRepository
 import com.happycola233.bilitools.data.ExtrasRepository
 import com.happycola233.bilitools.data.MediaRepository
+import com.happycola233.bilitools.data.SettingsRepository
+import com.happycola233.bilitools.data.TopLevelFolderMode
 import com.happycola233.bilitools.data.model.AudioStream
 import com.happycola233.bilitools.data.model.DownloadMediaParams
 import com.happycola233.bilitools.data.model.DownloadEmbeddedMetadata
@@ -80,6 +84,15 @@ private data class GroupNaming(
     val useVideoNaming: Boolean,
     val pageCount: Int,
     val videoTitle: String,
+)
+
+private data class NamingSession(
+    val useTopLevelFolder: Boolean,
+    val topLevelFolderTemplate: String,
+    val itemFolderTemplate: String,
+    val fileTemplate: String,
+    val downTimeEpochSeconds: Long,
+    val topLevelFolderName: String?,
 )
 
 enum class QualityMode {
@@ -169,6 +182,7 @@ class ParseViewModel(
     private val extrasRepository: ExtrasRepository,
     private val downloadRepository: DownloadRepository,
     private val exportRepository: ExportRepository,
+    private val settingsRepository: SettingsRepository,
     private val authRepository: AuthRepository,
     private val strings: StringProvider,
 ) : ViewModel() {
@@ -870,6 +884,10 @@ class ParseViewModel(
             val snapshot = state
             viewModelScope.launch(Dispatchers.IO) {
                 val targets = buildDownloadTargets(snapshot, info, selectedIndices)
+                val namingSession = createNamingSession(
+                    info = info,
+                    targets = targets,
+                )
                 var lastDownload: DownloadItem? = null
                 targets.items.forEach { rawItem ->
                     val item = runCatching { mediaRepository.resolveItemForPlay(rawItem, rawItem.type) }
@@ -891,11 +909,19 @@ class ParseViewModel(
                     )
                     val saved = mutableListOf<String>()
 
+                    val requestedGroupRelativePath = buildRequestedGroupRelativePath(
+                        info = info,
+                        item = item,
+                        naming = naming,
+                        namingSession = namingSession,
+                    )
+
                     val groupId = downloadRepository.createGroup(
                         naming.groupTitle,
                         naming.groupSubtitle,
                         item.bvid,
                         item.coverUrl,
+                        relativePath = requestedGroupRelativePath,
                     )
                     val groupRelativePath = downloadRepository.groupRelativePath(groupId)
 
@@ -967,28 +993,58 @@ class ParseViewModel(
                                 OutputType.VideoOnly -> strings.get(R.string.output_video)
                                 OutputType.AudioVideo -> strings.get(R.string.output_audio_video)
                             }
+                            val outputVideoCodec = when (outputType) {
+                                OutputType.AudioOnly -> null
+                                OutputType.VideoOnly -> selectedVideo?.codec ?: snapshot.selectedCodec
+                                OutputType.AudioVideo -> mergeVideo?.codec ?: selectedVideo?.codec ?: snapshot.selectedCodec
+                            }
                             when (outputType) {
                                 OutputType.AudioOnly -> {
-                                    val audioName = buildAudioFileName(naming.baseName, selectedAudio!!)
                                     val mediaParams = buildMediaParams(null, null, selectedAudio)
+                                    val audioNamingContext = buildNamingRenderContext(
+                                        info = info,
+                                        item = item,
+                                        naming = naming,
+                                        namingSession = namingSession,
+                                        taskType = DownloadTaskType.Audio,
+                                        taskLabel = downloadTitle,
+                                        mediaParams = mediaParams,
+                                        formatLabel = mapStreamFormatLabel(StreamFormat.Dash),
+                                    )
+                                    val audioName = resolveTemplateFileName(
+                                        taskType = DownloadTaskType.Audio,
+                                        namingSession = namingSession,
+                                        context = audioNamingContext,
+                                        extension = "m4a",
+                                    )
                                     lastDownload = downloadRepository.enqueue(
                                         groupId,
                                         DownloadTaskType.Audio,
                                         downloadTitle,
                                         audioName,
-                                        selectedAudio.url,
+                                        selectedAudio!!.url,
                                         mediaParams,
                                         embeddedMetadata = embeddedMetadata,
                                     )
                                 }
                                 OutputType.VideoOnly -> {
-                                    val videoName =
-                                        buildVideoFileName(
-                                            naming.baseName,
-                                            selectedVideo!!,
-                                            snapshot.selectedCodec,
-                                        )
-                                    val mediaParams = buildMediaParams(selectedVideo, snapshot.selectedCodec, null)
+                                    val mediaParams = buildMediaParams(selectedVideo, outputVideoCodec, null)
+                                    val videoNamingContext = buildNamingRenderContext(
+                                        info = info,
+                                        item = item,
+                                        naming = naming,
+                                        namingSession = namingSession,
+                                        taskType = DownloadTaskType.Video,
+                                        taskLabel = downloadTitle,
+                                        mediaParams = mediaParams,
+                                        formatLabel = mapStreamFormatLabel(selectedVideo!!.format),
+                                    )
+                                    val videoName = resolveTemplateFileName(
+                                        taskType = DownloadTaskType.Video,
+                                        namingSession = namingSession,
+                                        context = videoNamingContext,
+                                        extension = extensionForVideoStream(selectedVideo!!),
+                                    )
                                     lastDownload = downloadRepository.enqueue(
                                         groupId,
                                         DownloadTaskType.Video,
@@ -1001,30 +1057,50 @@ class ParseViewModel(
                                 }
                                 OutputType.AudioVideo -> {
                                     if (playUrlInfo.format == StreamFormat.Dash && selectedAudio != null) {
-                                        val outputName =
-                                            buildMergedFileName(
-                                                naming.baseName,
-                                                mergeVideo!!,
-                                                snapshot.selectedCodec,
-                                            )
-                                        val mediaParams = buildMediaParams(mergeVideo, snapshot.selectedCodec, selectedAudio)
+                                        val mediaParams = buildMediaParams(mergeVideo, outputVideoCodec, selectedAudio)
+                                        val mergedNamingContext = buildNamingRenderContext(
+                                            info = info,
+                                            item = item,
+                                            naming = naming,
+                                            namingSession = namingSession,
+                                            taskType = DownloadTaskType.AudioVideo,
+                                            taskLabel = downloadTitle,
+                                            mediaParams = mediaParams,
+                                            formatLabel = mapStreamFormatLabel(StreamFormat.Mp4),
+                                        )
+                                        val outputName = resolveTemplateFileName(
+                                            taskType = DownloadTaskType.AudioVideo,
+                                            namingSession = namingSession,
+                                            context = mergedNamingContext,
+                                            extension = "mp4",
+                                        )
                                         lastDownload = downloadRepository.enqueueDashMerge(
                                             groupId,
                                             downloadTitle,
                                             outputName,
-                                            mergeVideo.url,
-                                            selectedAudio.url,
+                                            mergeVideo!!.url,
+                                            selectedAudio!!.url,
                                             mediaParams,
                                             embeddedMetadata = embeddedMetadata,
                                         )
                                     } else {
-                                        val videoName =
-                                            buildVideoFileName(
-                                                naming.baseName,
-                                                mergeVideo!!,
-                                                snapshot.selectedCodec,
-                                            )
-                                        val mediaParams = buildMediaParams(mergeVideo, snapshot.selectedCodec, selectedAudio)
+                                        val mediaParams = buildMediaParams(mergeVideo, outputVideoCodec, selectedAudio)
+                                        val mergedNamingContext = buildNamingRenderContext(
+                                            info = info,
+                                            item = item,
+                                            naming = naming,
+                                            namingSession = namingSession,
+                                            taskType = DownloadTaskType.AudioVideo,
+                                            taskLabel = downloadTitle,
+                                            mediaParams = mediaParams,
+                                            formatLabel = mapStreamFormatLabel(mergeVideo!!.format),
+                                        )
+                                        val videoName = resolveTemplateFileName(
+                                            taskType = DownloadTaskType.AudioVideo,
+                                            namingSession = namingSession,
+                                            context = mergedNamingContext,
+                                            extension = extensionForVideoStream(mergeVideo!!),
+                                        )
                                         lastDownload = downloadRepository.enqueue(
                                             groupId,
                                             DownloadTaskType.AudioVideo,
@@ -1051,8 +1127,21 @@ class ParseViewModel(
                         }
                         val subtitle = selectSubtitle(subtitles, snapshot.selectedSubtitleLan)
                         if (subtitle != null) {
-                            val prefix = prefixedName(subtitleTitle, naming.baseName)
-                            val name = sanitizeFileName("$prefix.${subtitle.lan}.srt")
+                            val subtitleContext = buildNamingRenderContext(
+                                info = info,
+                                item = item,
+                                naming = naming,
+                                namingSession = namingSession,
+                                taskType = DownloadTaskType.Subtitle,
+                                taskLabel = subtitleTitle,
+                                mediaParams = null,
+                            )
+                            val name = resolveTemplateFileName(
+                                taskType = DownloadTaskType.Subtitle,
+                                namingSession = namingSession,
+                                context = subtitleContext,
+                                extension = "${subtitle.lan}.srt",
+                            )
                             saveBytesTask(
                                 groupId,
                                 DownloadTaskType.Subtitle,
@@ -1084,8 +1173,21 @@ class ParseViewModel(
                         val taskTitle = strings.get(R.string.parse_ai_summary_label)
                         if (aid != null && cid != null && bvid != null) {
                             val summaryTitle = info.nfo.showTitle?.ifBlank { item.title } ?: item.title
-                            val prefix = prefixedName(taskTitle, naming.baseName)
-                            val name = sanitizeFileName("$prefix.md")
+                            val aiSummaryContext = buildNamingRenderContext(
+                                info = info,
+                                item = item,
+                                naming = naming,
+                                namingSession = namingSession,
+                                taskType = DownloadTaskType.AiSummary,
+                                taskLabel = taskTitle,
+                                mediaParams = null,
+                            )
+                            val name = resolveTemplateFileName(
+                                taskType = DownloadTaskType.AiSummary,
+                                namingSession = namingSession,
+                                context = aiSummaryContext,
+                                extension = "md",
+                            )
                             saveTextTask(
                                 groupId,
                                 DownloadTaskType.AiSummary,
@@ -1140,8 +1242,21 @@ class ParseViewModel(
                     }
                     if (snapshot.nfoSingleEnabled) {
                         val taskTitle = strings.get(R.string.parse_nfo_single)
-                        val prefix = prefixedName(taskTitle, naming.baseName)
-                        val name = sanitizeFileName("$prefix.nfo")
+                        val nfoContext = buildNamingRenderContext(
+                            info = info,
+                            item = item,
+                            naming = naming,
+                            namingSession = namingSession,
+                            taskType = DownloadTaskType.NfoSingle,
+                            taskLabel = taskTitle,
+                            mediaParams = null,
+                        )
+                        val name = resolveTemplateFileName(
+                            taskType = DownloadTaskType.NfoSingle,
+                            namingSession = namingSession,
+                            context = nfoContext,
+                            extension = "nfo",
+                        )
                         saveTextTask(
                             groupId,
                             DownloadTaskType.NfoSingle,
@@ -1159,8 +1274,21 @@ class ParseViewModel(
                         val cid = item.cid
                         val duration = item.duration
                         val taskTitle = strings.get(R.string.parse_danmaku_live)
-                        val prefix = prefixedName(taskTitle, naming.baseName)
-                        val name = sanitizeFileName("$prefix.ass")
+                        val danmakuLiveContext = buildNamingRenderContext(
+                            info = info,
+                            item = item,
+                            naming = naming,
+                            namingSession = namingSession,
+                            taskType = DownloadTaskType.DanmakuLive,
+                            taskLabel = taskTitle,
+                            mediaParams = null,
+                        )
+                        val name = resolveTemplateFileName(
+                            taskType = DownloadTaskType.DanmakuLive,
+                            namingSession = namingSession,
+                            context = danmakuLiveContext,
+                            extension = "ass",
+                        )
                         if (aid != null && cid != null) {
                             saveBytesTask(
                                 groupId,
@@ -1226,8 +1354,21 @@ class ParseViewModel(
                             )
                             _state.update { it.copy(error = message) }
                         } else {
-                            val prefix = prefixedName(taskTitle, naming.baseName)
-                            val name = sanitizeFileName("$prefix.ass")
+                            val danmakuHistoryContext = buildNamingRenderContext(
+                                info = info,
+                                item = item,
+                                naming = naming,
+                                namingSession = namingSession,
+                                taskType = DownloadTaskType.DanmakuHistory,
+                                taskLabel = taskTitle,
+                                mediaParams = null,
+                            )
+                            val name = resolveTemplateFileName(
+                                taskType = DownloadTaskType.DanmakuHistory,
+                                namingSession = namingSession,
+                                context = danmakuHistoryContext,
+                                extension = "ass",
+                            )
                             saveBytesTask(
                                 groupId,
                                 DownloadTaskType.DanmakuHistory,
@@ -1262,9 +1403,20 @@ class ParseViewModel(
                                     "cover", "pic" -> DownloadTaskType.Cover
                                     else -> DownloadTaskType.CollectionCover
                                 }
-                                val prefix = prefixedName(fileLabel, naming.baseName)
-                                val name = sanitizeFileName(
-                                    "$prefix.${extensionFromUrl(thumb.url)}",
+                                val imageContext = buildNamingRenderContext(
+                                    info = info,
+                                    item = item,
+                                    naming = naming,
+                                    namingSession = namingSession,
+                                    taskType = taskType,
+                                    taskLabel = fileLabel,
+                                    mediaParams = null,
+                                )
+                                val name = resolveTemplateFileName(
+                                    taskType = taskType,
+                                    namingSession = namingSession,
+                                    context = imageContext,
+                                    extension = extensionFromUrl(thumb.url),
                                 )
                                 saveBytesTask(
                                     groupId,
@@ -1683,6 +1835,226 @@ class ParseViewModel(
             pageCount = pageCount,
             videoTitle = videoTitle,
         )
+    }
+
+    private fun createNamingSession(
+        info: MediaInfo,
+        targets: DownloadTargets,
+    ): NamingSession {
+        val namingSettings = settingsRepository.currentNamingSettings()
+        val downTimeEpochSeconds = System.currentTimeMillis() / 1000L
+        val baseNamingSession = NamingSession(
+            useTopLevelFolder = false,
+            topLevelFolderTemplate = namingSettings.topLevelFolderTemplate,
+            itemFolderTemplate = namingSettings.itemFolderTemplate,
+            fileTemplate = namingSettings.fileTemplate,
+            downTimeEpochSeconds = downTimeEpochSeconds,
+            topLevelFolderName = null,
+        )
+        val itemFolderCount = targets.items
+            .map { item ->
+                val naming = resolveGroupNaming(
+                    info = info,
+                    item = item,
+                    isCollectionMode = targets.isCollectionMode,
+                    pageCountByBvid = targets.pageCountByBvid,
+                    videoTitleByBvid = targets.videoTitleByBvid,
+                )
+                val context = buildNamingRenderContext(
+                    info = info,
+                    item = item,
+                    naming = naming,
+                    namingSession = baseNamingSession,
+                    taskType = null,
+                    taskLabel = null,
+                    mediaParams = null,
+                )
+                DownloadNaming.renderComponent(
+                    template = namingSettings.itemFolderTemplate,
+                    context = context,
+                )
+            }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .size
+        val useTopLevelFolder = when (namingSettings.topLevelFolderMode) {
+            TopLevelFolderMode.Auto -> itemFolderCount > 1
+            TopLevelFolderMode.Enabled -> true
+            TopLevelFolderMode.Disabled -> false
+        }
+        val representativeItem = targets.items.firstOrNull()
+        val showTitle = info.nfo.showTitle?.trim()?.takeIf { it.isNotBlank() }
+            ?: representativeItem?.title?.trim()?.takeIf { it.isNotBlank() }
+        val containerLabel = mapMediaTypeLabel(info.type)
+        val topContext = NamingRenderContext(
+            showTitle = showTitle,
+            container = containerLabel,
+            pubTimeEpochSeconds = representativeItem?.pubTime?.takeIf { it > 0L }
+                ?: info.nfo.premiered,
+            downTimeEpochSeconds = downTimeEpochSeconds,
+            upper = info.nfo.upper?.name,
+            upperId = info.nfo.upper?.mid?.toString(),
+            aid = representativeItem?.aid?.toString(),
+            sid = representativeItem?.sid?.toString(),
+            fid = representativeItem?.fid?.toString(),
+            cid = representativeItem?.cid?.toString(),
+            bvid = representativeItem?.bvid,
+            epid = representativeItem?.epid?.toString(),
+            ssid = representativeItem?.ssid?.toString(),
+            opid = representativeItem?.opid,
+        )
+        val topLevelFolderName = if (useTopLevelFolder) {
+            DownloadNaming.renderComponent(
+                template = namingSettings.topLevelFolderTemplate,
+                context = topContext,
+            )
+        } else {
+            null
+        }
+        return baseNamingSession.copy(
+            useTopLevelFolder = useTopLevelFolder,
+            topLevelFolderName = topLevelFolderName,
+        )
+    }
+
+    private fun buildRequestedGroupRelativePath(
+        info: MediaInfo,
+        item: MediaItem,
+        naming: GroupNaming,
+        namingSession: NamingSession,
+    ): String {
+        val context = buildNamingRenderContext(
+            info = info,
+            item = item,
+            naming = naming,
+            namingSession = namingSession,
+            taskType = null,
+            taskLabel = null,
+            mediaParams = null,
+        )
+        val itemFolderName = DownloadNaming.renderComponent(
+            template = namingSession.itemFolderTemplate,
+            context = context,
+        )
+        val segments = buildList {
+            add(settingsRepository.downloadRootRelativePath().replace('\\', '/').trim().trim('/'))
+            if (namingSession.useTopLevelFolder) {
+                namingSession.topLevelFolderName
+                    ?.trim()
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let(::add)
+            }
+            add(itemFolderName)
+        }.filter { it.isNotBlank() }
+        return segments.joinToString("/")
+    }
+
+    private fun buildNamingRenderContext(
+        info: MediaInfo,
+        item: MediaItem,
+        naming: GroupNaming,
+        namingSession: NamingSession,
+        taskType: DownloadTaskType?,
+        taskLabel: String?,
+        mediaParams: DownloadMediaParams?,
+        formatLabel: String? = null,
+    ): NamingRenderContext {
+        val containerLabel = mapMediaTypeLabel(info.type)
+        val mediaTypeLabel = mapMediaTypeLabel(item.type)
+        val showTitle = info.nfo.showTitle?.trim()?.takeIf { it.isNotBlank() }
+            ?: item.title.trim().takeIf { it.isNotBlank() }
+        val resolvedTaskLabel = taskLabel ?: taskType?.let(::mapTaskTypeLabel)
+        return NamingRenderContext(
+            showTitle = showTitle,
+            title = item.title.trim().takeIf { it.isNotBlank() },
+            p = if (naming.useVideoNaming) {
+                (item.index + 1).toString()
+            } else {
+                null
+            },
+            container = containerLabel,
+            mediaType = mediaTypeLabel,
+            taskType = resolvedTaskLabel,
+            index = item.index + 1,
+            pubTimeEpochSeconds = item.pubTime.takeIf { it > 0L } ?: info.nfo.premiered,
+            downTimeEpochSeconds = namingSession.downTimeEpochSeconds,
+            upper = info.nfo.upper?.name,
+            upperId = info.nfo.upper?.mid?.toString(),
+            aid = item.aid?.toString(),
+            sid = item.sid?.toString(),
+            fid = item.fid?.toString(),
+            cid = item.cid?.toString(),
+            bvid = item.bvid?.trim()?.takeIf { it.isNotBlank() },
+            epid = item.epid?.toString(),
+            ssid = item.ssid?.toString(),
+            opid = item.opid?.trim()?.takeIf { it.isNotBlank() },
+            res = mediaParams?.resolution,
+            abr = mediaParams?.audioBitrate,
+            enc = mediaParams?.codec,
+            fmt = formatLabel,
+        )
+    }
+
+    private fun resolveTemplateFileName(
+        taskType: DownloadTaskType,
+        namingSession: NamingSession,
+        context: NamingRenderContext,
+        extension: String,
+    ): String {
+        val baseName = DownloadNaming.renderComponent(
+            template = namingSession.fileTemplate,
+            context = context,
+        )
+        return DownloadNaming.appendExtension(baseName, extension)
+    }
+
+    private fun extensionForVideoStream(stream: VideoStream): String {
+        return when (stream.format) {
+            StreamFormat.Dash -> "m4s"
+            StreamFormat.Mp4 -> "mp4"
+            StreamFormat.Flv -> "flv"
+        }
+    }
+
+    private fun mapMediaTypeLabel(type: MediaType): String {
+        return when (type) {
+            MediaType.Video -> strings.get(R.string.parse_media_type_video)
+            MediaType.Bangumi -> strings.get(R.string.parse_media_type_bangumi)
+            MediaType.Lesson -> strings.get(R.string.parse_media_type_lesson)
+            MediaType.Music -> strings.get(R.string.parse_media_type_music)
+            MediaType.MusicList -> strings.get(R.string.parse_media_type_music_list)
+            MediaType.WatchLater -> strings.get(R.string.parse_media_type_watch_later)
+            MediaType.Favorite -> strings.get(R.string.parse_media_type_favorite)
+            MediaType.Opus -> strings.get(R.string.parse_media_type_opus)
+            MediaType.OpusList -> strings.get(R.string.parse_media_type_opus_list)
+            MediaType.UserVideo -> strings.get(R.string.parse_media_type_user_video)
+            MediaType.UserOpus -> strings.get(R.string.parse_media_type_user_opus)
+            MediaType.UserAudio -> strings.get(R.string.parse_media_type_user_audio)
+        }
+    }
+
+    private fun mapTaskTypeLabel(type: DownloadTaskType): String {
+        return when (type) {
+            DownloadTaskType.Video -> strings.get(R.string.output_video)
+            DownloadTaskType.Audio -> strings.get(R.string.output_audio)
+            DownloadTaskType.AudioVideo -> strings.get(R.string.output_audio_video)
+            DownloadTaskType.Subtitle -> strings.get(R.string.parse_subtitle_label)
+            DownloadTaskType.AiSummary -> strings.get(R.string.parse_ai_summary_label)
+            DownloadTaskType.NfoCollection -> strings.get(R.string.parse_nfo_collection)
+            DownloadTaskType.NfoSingle -> strings.get(R.string.parse_nfo_single)
+            DownloadTaskType.DanmakuLive -> strings.get(R.string.parse_danmaku_live)
+            DownloadTaskType.DanmakuHistory -> strings.get(R.string.parse_danmaku_history)
+            DownloadTaskType.Cover -> strings.get(R.string.parse_image_option_cover)
+            DownloadTaskType.CollectionCover -> strings.get(R.string.parse_image_label)
+        }
+    }
+
+    private fun mapStreamFormatLabel(format: StreamFormat): String {
+        return when (format) {
+            StreamFormat.Dash -> strings.get(R.string.format_dash)
+            StreamFormat.Mp4 -> strings.get(R.string.format_mp4)
+            StreamFormat.Flv -> strings.get(R.string.format_flv)
+        }
     }
 
     private fun selectSubtitle(subtitles: List<SubtitleInfo>, selectedLan: String?): SubtitleInfo? {

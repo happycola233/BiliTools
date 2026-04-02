@@ -6,18 +6,25 @@ import androidx.annotation.DrawableRes
 import androidx.annotation.RawRes
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -25,6 +32,8 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -40,6 +49,9 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,6 +60,7 @@ import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -58,6 +71,8 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchColors
 import androidx.compose.material3.SwitchDefaults
@@ -67,6 +82,7 @@ import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -86,25 +102,38 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.util.fastForEachIndexed
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.happycola233.bilitools.R
+import com.happycola233.bilitools.core.DownloadNaming
+import com.happycola233.bilitools.core.NamingPreviewSegment
+import com.happycola233.bilitools.core.NamingRenderContext
+import com.happycola233.bilitools.core.NamingTemplateScope
+import com.happycola233.bilitools.core.NamingToken
+import com.happycola233.bilitools.core.NamingTokenGroup
 import com.happycola233.bilitools.data.AppSettings
 import com.happycola233.bilitools.data.AppThemeColor
 import com.happycola233.bilitools.data.AppThemeMode
 import com.happycola233.bilitools.data.IssueReportLogState
+import com.happycola233.bilitools.data.TopLevelFolderMode
 import com.happycola233.bilitools.ui.theme.BiliToolsSettingsTheme
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.max
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -129,6 +158,12 @@ fun BiliToolsSettingsContent(
     onAddMetadataChange: (Boolean) -> Unit,
     onConfirmCellularChange: (Boolean) -> Unit,
     onHideInAlbumChange: (Boolean) -> Unit,
+    onNamingTopLevelFolderModeChange: (TopLevelFolderMode) -> Unit,
+    onNamingOverwriteExistingFilesChange: (Boolean) -> Unit,
+    onNamingTopLevelFolderTemplateChange: (String) -> Unit,
+    onNamingItemFolderTemplateChange: (String) -> Unit,
+    onNamingFileTemplateChange: (String) -> Unit,
+    onRestoreNamingDefaults: () -> Unit,
     onBlackThemeChange: (Boolean) -> Unit,
     onGlassDebugChange: (Boolean) -> Unit,
     onIssueReportLoggingChange: (Boolean) -> Unit,
@@ -186,6 +221,20 @@ fun BiliToolsSettingsContent(
                     )
                 }
 
+                entry<SettingsDestination.Naming> {
+                    NamingSettingsScreen(
+                        settings = settings,
+                        onTopLevelFolderModeChange = onNamingTopLevelFolderModeChange,
+                        onOverwriteExistingFilesChange = onNamingOverwriteExistingFilesChange,
+                        onTopLevelFolderTemplateChange = onNamingTopLevelFolderTemplateChange,
+                        onItemFolderTemplateChange = onNamingItemFolderTemplateChange,
+                        onFileTemplateChange = onNamingFileTemplateChange,
+                        onRestoreDefaults = onRestoreNamingDefaults,
+                        onBack = onNavigateBack,
+                        modifier = modifier,
+                    )
+                }
+
                 entry<SettingsDestination.Appearance> {
                     AppearanceSettingsScreen(
                         settings = settings,
@@ -233,6 +282,12 @@ private data class ThemeOption(
     @StringRes val labelRes: Int,
 )
 
+private data class TopLevelFolderModeOption(
+    val mode: TopLevelFolderMode,
+    @DrawableRes val iconRes: Int,
+    @StringRes val labelRes: Int,
+)
+
 private data class ColorSchemeOption(
     val themeColor: AppThemeColor,
     val seedColor: Color,
@@ -259,6 +314,12 @@ private fun MainSettingsScreen(
                 iconRes = R.drawable.ic_download_for_offline_24,
                 titleRes = R.string.settings_download_title,
                 summaryRes = R.string.settings_download_summary,
+            ),
+            SettingsEntry(
+                destination = SettingsDestination.Naming,
+                iconRes = R.drawable.ic_save_as_filled_24,
+                titleRes = R.string.settings_naming_title,
+                summaryRes = R.string.settings_naming_summary,
             ),
             SettingsEntry(
                 destination = SettingsDestination.Appearance,
@@ -557,6 +618,778 @@ private fun AppearanceSettingsScreen(
 
             item { Spacer(Modifier.height(12.dp)) }
         }
+    }
+}
+
+@OptIn(
+    ExperimentalMaterial3Api::class,
+    ExperimentalMaterial3ExpressiveApi::class,
+    ExperimentalLayoutApi::class,
+)
+@Composable
+private fun NamingSettingsScreen(
+    settings: AppSettings,
+    onTopLevelFolderModeChange: (TopLevelFolderMode) -> Unit,
+    onOverwriteExistingFilesChange: (Boolean) -> Unit,
+    onTopLevelFolderTemplateChange: (String) -> Unit,
+    onItemFolderTemplateChange: (String) -> Unit,
+    onFileTemplateChange: (String) -> Unit,
+    onRestoreDefaults: () -> Unit,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val previewContext = rememberNamingPreviewContext()
+    SettingsScaffold(
+        title = stringResource(R.string.settings_naming_title),
+        subtitle = stringResource(R.string.settings_screen_title),
+        onBack = onBack,
+        scrollBehavior = scrollBehavior,
+        modifier = modifier,
+    ) { innerPadding ->
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = innerPadding,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+        ) {
+            item { Spacer(Modifier.height(14.dp)) }
+
+            item {
+                ExpressiveSwitchListItem(
+                    checked = settings.naming.overwriteExistingFiles,
+                    iconRes = R.drawable.ic_file_save_24,
+                    title = stringResource(R.string.settings_naming_overwrite_existing),
+                    description = stringResource(R.string.settings_naming_overwrite_existing_desc),
+                    items = 1,
+                    index = 0,
+                    onCheckedChange = onOverwriteExistingFilesChange,
+                )
+            }
+
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    TopLevelFolderModeListItem(
+                        mode = settings.naming.topLevelFolderMode,
+                        items = 2,
+                        index = 0,
+                        onModeChange = onTopLevelFolderModeChange,
+                    )
+                    NamingTemplateEditorPanel(
+                        iconRes = R.drawable.ic_folder_special_24,
+                        title = stringResource(R.string.settings_naming_top_level_folder_template),
+                        description = stringResource(R.string.settings_naming_top_level_folder_template_desc),
+                        value = settings.naming.topLevelFolderTemplate,
+                        scope = NamingTemplateScope.TopFolder,
+                        previewContext = previewContext,
+                        previewExtension = null,
+                        shape = SettingsExpressiveShapes.groupShape(index = 1, items = 2),
+                        onValueChange = onTopLevelFolderTemplateChange,
+                    )
+                }
+            }
+
+            item {
+                NamingTemplateEditorPanel(
+                    iconRes = R.drawable.ic_bookmark_manager_24,
+                    title = stringResource(R.string.settings_naming_item_folder_template),
+                    description = stringResource(R.string.settings_naming_item_folder_template_desc),
+                    value = settings.naming.itemFolderTemplate,
+                    scope = NamingTemplateScope.ItemFolder,
+                    previewContext = previewContext,
+                    previewExtension = null,
+                    onValueChange = onItemFolderTemplateChange,
+                )
+            }
+
+            item {
+                NamingTemplateEditorPanel(
+                    iconRes = R.drawable.ic_save_as_24,
+                    title = stringResource(R.string.settings_naming_file_template),
+                    description = stringResource(R.string.settings_naming_file_template_desc),
+                    value = settings.naming.fileTemplate,
+                    scope = NamingTemplateScope.File,
+                    previewContext = previewContext,
+                    previewExtension = "mp4",
+                    onValueChange = onFileTemplateChange,
+                )
+            }
+
+            item {
+                ClickableListItem(
+                    items = 1,
+                    index = 0,
+                    leadingContent = { SettingsItemIcon(R.drawable.ic_refresh_24) },
+                    headlineContent = {
+                        SettingsItemTitle(stringResource(R.string.settings_naming_restore_defaults))
+                    },
+                    supportingContent = {
+                        Text(stringResource(R.string.settings_naming_restore_defaults_desc))
+                    },
+                    onClick = onRestoreDefaults,
+                )
+            }
+
+            item { Spacer(Modifier.height(12.dp)) }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun TopLevelFolderModeListItem(
+    mode: TopLevelFolderMode,
+    items: Int,
+    index: Int,
+    onModeChange: (TopLevelFolderMode) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val options = remember {
+        listOf(
+            TopLevelFolderModeOption(
+                mode = TopLevelFolderMode.Auto,
+                iconRes = R.drawable.ic_brightness_auto_24,
+                labelRes = R.string.settings_naming_top_level_folder_mode_auto,
+            ),
+            TopLevelFolderModeOption(
+                mode = TopLevelFolderMode.Enabled,
+                iconRes = R.drawable.ic_folder_managed_24,
+                labelRes = R.string.settings_naming_top_level_folder_mode_enabled,
+            ),
+            TopLevelFolderModeOption(
+                mode = TopLevelFolderMode.Disabled,
+                iconRes = R.drawable.ic_close_24,
+                labelRes = R.string.settings_naming_top_level_folder_mode_disabled,
+            ),
+        )
+    }
+
+    Column(
+        modifier = modifier.clip(SettingsExpressiveShapes.groupShape(index, items)),
+    ) {
+        ListItem(
+            leadingContent = {
+                SettingsItemIcon(R.drawable.ic_folder_managed_24)
+            },
+            headlineContent = {
+                SettingsItemTitle(stringResource(R.string.settings_naming_top_level_folder_mode_title))
+            },
+            supportingContent = {
+                Text(namingTopLevelFolderModeDescription(mode))
+            },
+            colors = SettingsExpressiveDefaults.listItemColors,
+        )
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+            modifier = Modifier
+                .background(SettingsExpressiveDefaults.listItemColors.containerColor)
+                .padding(start = 52.dp, end = 16.dp, bottom = 8.dp),
+        ) {
+            options.fastForEachIndexed { optionIndex, option ->
+                ToggleButton(
+                    checked = option.mode == mode,
+                    onCheckedChange = { onModeChange(option.mode) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics { role = Role.RadioButton },
+                    shapes = when (optionIndex) {
+                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                        options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                    },
+                ) {
+                    Text(
+                        text = stringResource(option.labelRes),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun NamingTemplateEditorPanel(
+    @DrawableRes iconRes: Int,
+    title: String,
+    description: String,
+    value: String,
+    scope: NamingTemplateScope,
+    previewContext: NamingRenderContext,
+    previewExtension: String?,
+    onValueChange: (String) -> Unit,
+    shape: CornerBasedShape = SettingsExpressiveShapes.cardShape,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by rememberSaveable(scope.name) { mutableStateOf(false) }
+    var textFieldValue by remember {
+        mutableStateOf(
+            TextFieldValue(
+                text = value,
+                selection = TextRange(value.length),
+            ),
+        )
+    }
+    LaunchedEffect(value) {
+        if (value != textFieldValue.text) {
+            val safeCursor = textFieldValue.selection.start.coerceAtMost(value.length)
+            textFieldValue = TextFieldValue(
+                text = value,
+                selection = TextRange(safeCursor),
+            )
+        }
+    }
+    val previewSegments = remember(textFieldValue.text) {
+        DownloadNaming.previewSegments(textFieldValue.text)
+    }
+    val previewValue = remember(textFieldValue.text, previewContext, previewExtension) {
+        val rendered = DownloadNaming.renderComponent(
+            template = textFieldValue.text,
+            context = previewContext,
+        )
+        previewExtension?.let { DownloadNaming.appendExtension(rendered, it) } ?: rendered
+    }
+    val previewLabel = stringResource(R.string.settings_naming_preview_value, "")
+    val tokenSections = remember(scope) { namingTokenSections(scope) }
+    val interactionSource = remember { MutableInteractionSource() }
+    val expandedRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = tween(
+            durationMillis = 180,
+            easing = FastOutSlowInEasing,
+        ),
+        label = "${scope.name}ChevronRotation",
+    )
+    val previewColor by animateColorAsState(
+        targetValue = if (expanded) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
+        label = "${scope.name}PreviewColor",
+    )
+
+    Surface(
+        color = SettingsExpressiveDefaults.listItemContainerColor,
+        shape = shape,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Column {
+            ListItem(
+                leadingContent = { SettingsItemIcon(iconRes) },
+                headlineContent = { SettingsItemTitle(title) },
+                supportingContent = {
+                    Text(
+                        text = description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                trailingContent = {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_expand_more_24),
+                        contentDescription = if (expanded) {
+                            stringResource(R.string.settings_naming_collapse_template)
+                        } else {
+                            stringResource(R.string.settings_naming_expand_template)
+                        },
+                        modifier = Modifier.graphicsLayer { rotationZ = expandedRotation },
+                    )
+                },
+                colors = SettingsExpressiveDefaults.listItemColors,
+                modifier = Modifier.clickable(
+                    interactionSource = interactionSource,
+                    onClick = { expanded = !expanded },
+                ),
+            )
+
+            AnimatedVisibility(
+                visible = expanded,
+                enter = fadeIn(
+                    animationSpec = tween(
+                        durationMillis = 120,
+                        easing = FastOutSlowInEasing,
+                    ),
+                ) +
+                    expandVertically(
+                        animationSpec = tween(
+                            durationMillis = 220,
+                            easing = FastOutSlowInEasing,
+                        ),
+                    ),
+                exit = fadeOut(
+                    animationSpec = tween(
+                        durationMillis = 90,
+                        easing = FastOutLinearInEasing,
+                    ),
+                ) +
+                    shrinkVertically(
+                        animationSpec = tween(
+                            durationMillis = 180,
+                            easing = FastOutLinearInEasing,
+                        ),
+                    ),
+            ) {
+                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Spacer(Modifier.height(14.dp))
+                    Text(
+                        text = stringResource(R.string.settings_naming_rich_preview),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    NamingTemplateRichPreview(
+                        segments = previewSegments,
+                        emptyHint = stringResource(R.string.settings_naming_empty_template_hint),
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = textFieldValue,
+                        onValueChange = {
+                            textFieldValue = it
+                            onValueChange(it.text)
+                        },
+                        label = {
+                            Text(stringResource(R.string.settings_naming_template_editor_label))
+                        },
+                        supportingText = {
+                            Text(
+                                buildAnnotatedString {
+                                    pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
+                                    append(previewLabel)
+                                    pop()
+                                    append(previewValue)
+                                },
+                            )
+                        },
+                        minLines = 2,
+                        maxLines = 4,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+
+                    Spacer(Modifier.height(14.dp))
+                    tokenSections.fastForEachIndexed { index, section ->
+                        if (index > 0) {
+                            Spacer(Modifier.height(12.dp))
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                            Spacer(Modifier.height(12.dp))
+                        }
+                        Text(
+                            text = namingTokenGroupLabel(section.group),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            section.tokens.forEach { token ->
+                                NamingTokenChip(
+                                    text = namingTokenButtonLabel(token),
+                                    onClick = {
+                                        val inserted = insertTokenAtSelection(
+                                            current = textFieldValue,
+                                            token = token,
+                                        )
+                                        textFieldValue = inserted
+                                        onValueChange(inserted.text)
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun NamingTokenChip(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.97f else 1f,
+        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
+        label = "namingTokenChipScale",
+    )
+    val containerColor by animateColorAsState(
+        targetValue = if (isPressed) {
+            MaterialTheme.colorScheme.secondaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHighest
+        },
+        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
+        label = "namingTokenChipContainer",
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (isPressed) {
+            MaterialTheme.colorScheme.onSecondaryContainer
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
+        label = "namingTokenChipContent",
+    )
+
+    Surface(
+        color = containerColor,
+        shape = MaterialTheme.shapes.large,
+        modifier = modifier.graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        },
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .clickable(
+                    interactionSource = interactionSource,
+                    onClick = onClick,
+                )
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelLarge,
+                color = contentColor,
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun NamingTemplateRichPreview(
+    segments: List<NamingPreviewSegment>,
+    emptyHint: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = MaterialTheme.shapes.large,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        if (segments.isEmpty()) {
+            Text(
+                text = emptyHint,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(12.dp),
+            )
+        } else {
+            val bodyStyle = MaterialTheme.typography.bodyMedium
+            val previewLineHeight = 2.5.em
+            val normalColor = MaterialTheme.colorScheme.onSurfaceVariant
+            val tokenContainerColor = MaterialTheme.colorScheme.secondaryContainer
+            val tokenContentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            val invalidContainerColor = MaterialTheme.colorScheme.errorContainer
+            val invalidContentColor = MaterialTheme.colorScheme.onErrorContainer
+            val annotatedText = buildAnnotatedString {
+                segments.fastForEachIndexed { index, segment ->
+                    val token = segment.token
+                    val isTokenLiteral = segment.raw.startsWith("{") && segment.raw.endsWith("}")
+                    when {
+                        token != null -> {
+                            appendInlineContent(
+                                id = "naming_preview_$index",
+                                alternateText = namingTokenPreviewLabel(token),
+                            )
+                        }
+
+                        isTokenLiteral -> {
+                            appendInlineContent(
+                                id = "naming_preview_$index",
+                                alternateText = segment.raw,
+                            )
+                        }
+
+                        else -> append(segment.raw)
+                    }
+                }
+            }
+            val inlineContent = buildMap<String, InlineTextContent> {
+                segments.fastForEachIndexed { index, segment ->
+                    val token = segment.token
+                    val isTokenLiteral = segment.raw.startsWith("{") && segment.raw.endsWith("}")
+                    if (token == null && !isTokenLiteral) return@fastForEachIndexed
+                    val label = token?.let { namingTokenPreviewLabel(it) } ?: segment.raw
+                    val isError = token == null && isTokenLiteral
+                    put(
+                        key = "naming_preview_$index",
+                        value = InlineTextContent(
+                            placeholder = Placeholder(
+                                width = namingPreviewChipWidthEm(label).em,
+                                height = 1.9.em,
+                                placeholderVerticalAlign = PlaceholderVerticalAlign.Center,
+                            ),
+                        ) { _ ->
+                            NamingPreviewInlineChip(
+                                text = label,
+                                containerColor = if (isError) {
+                                    invalidContainerColor
+                                } else {
+                                    tokenContainerColor
+                                },
+                                contentColor = if (isError) {
+                                    invalidContentColor
+                                } else {
+                                    tokenContentColor
+                                },
+                            )
+                        },
+                    )
+                }
+            }
+            BasicText(
+                text = annotatedText,
+                inlineContent = inlineContent,
+                style = bodyStyle.copy(
+                    color = normalColor,
+                    lineHeight = previewLineHeight,
+                ),
+                modifier = Modifier.padding(12.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun NamingPreviewInlineChip(
+    text: String,
+    containerColor: Color,
+    contentColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        color = containerColor,
+        shape = MaterialTheme.shapes.medium,
+        modifier = modifier.fillMaxSize(),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 10.dp, vertical = 4.dp),
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelMedium,
+                color = contentColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+private fun namingPreviewChipWidthEm(text: String): Float {
+    var width = 2.4f
+    text.forEach { char ->
+        width += when {
+            char.isWhitespace() -> 0.35f
+            char.code in 0x4E00..0x9FFF -> 1.0f
+            char.isLetterOrDigit() -> 0.62f
+            else -> 0.5f
+        }
+    }
+    return max(width, 4.5f)
+}
+
+private data class NamingTokenSection(
+    val group: NamingTokenGroup,
+    val tokens: List<NamingToken>,
+)
+
+private fun namingTokenSections(scope: NamingTemplateScope): List<NamingTokenSection> {
+    return listOf(
+        NamingTokenGroup.General,
+        NamingTokenGroup.Time,
+        NamingTokenGroup.Ids,
+        NamingTokenGroup.Stream,
+    ).mapNotNull { group ->
+        val tokens = DownloadNaming.tokensForScope(scope)
+            .filter { it.group == group }
+            .sortedBy(::namingTokenDisplayOrder)
+        if (tokens.isEmpty()) {
+            null
+        } else {
+            NamingTokenSection(group = group, tokens = tokens)
+        }
+    }
+}
+
+private fun namingTokenDisplayOrder(token: NamingToken): Int {
+    return when (token) {
+        NamingToken.ShowTitle -> 0
+        NamingToken.Title -> 1
+        NamingToken.P -> 2
+        NamingToken.Container -> 3
+        NamingToken.MediaType -> 4
+        NamingToken.TaskType -> 5
+        NamingToken.Index -> 10
+        NamingToken.PubTime -> 11
+        NamingToken.DownTime -> 12
+        NamingToken.Upper -> 20
+        NamingToken.UpperId -> 21
+        NamingToken.Aid -> 22
+        NamingToken.Bvid -> 23
+        NamingToken.Sid -> 24
+        NamingToken.Fid -> 25
+        NamingToken.Cid -> 26
+        NamingToken.Epid -> 27
+        NamingToken.Ssid -> 28
+        NamingToken.Opid -> 29
+        NamingToken.Res -> 30
+        NamingToken.Abr -> 31
+        NamingToken.Enc -> 32
+        NamingToken.Fmt -> 33
+    }
+}
+
+private fun insertTokenAtSelection(
+    current: TextFieldValue,
+    token: NamingToken,
+): TextFieldValue {
+    val insertion = "{${token.key}}"
+    val start = minOf(current.selection.start, current.selection.end)
+    val end = maxOf(current.selection.start, current.selection.end)
+    val next = buildString {
+        append(current.text.substring(0, start))
+        append(insertion)
+        append(current.text.substring(end))
+    }
+    val cursor = start + insertion.length
+    return TextFieldValue(
+        text = next,
+        selection = TextRange(cursor),
+    )
+}
+
+@Composable
+private fun rememberNamingPreviewContext(): NamingRenderContext {
+    val showTitle = stringResource(R.string.settings_naming_preview_show_title)
+    val title = stringResource(R.string.settings_naming_preview_item_title)
+    val container = stringResource(R.string.parse_media_type_video)
+    val mediaType = stringResource(R.string.parse_media_type_video)
+    val taskType = stringResource(R.string.output_audio_video)
+    val resolution = stringResource(R.string.parse_resolution_1080)
+    val codec = stringResource(R.string.parse_codec_avc)
+    val audioBitrate = stringResource(R.string.parse_bitrate_192)
+    val format = stringResource(R.string.format_mp4)
+    val upper = stringResource(R.string.settings_naming_preview_upper)
+    return remember(
+        showTitle,
+        title,
+        container,
+        mediaType,
+        taskType,
+        resolution,
+        codec,
+        audioBitrate,
+        format,
+    ) {
+        NamingRenderContext(
+            showTitle = showTitle,
+            title = title,
+            p = "1",
+            container = container,
+            mediaType = mediaType,
+            taskType = taskType,
+            index = 1,
+            pubTimeEpochSeconds = 1_719_331_200L,
+            downTimeEpochSeconds = 1_744_412_800L,
+            upper = upper,
+            upperId = "2333333",
+            aid = "123456789",
+            sid = "10001",
+            fid = "556677",
+            cid = "99887766",
+            bvid = "BV1xx411c7mD",
+            epid = "20001",
+            ssid = "30001",
+            opid = "opus-42",
+            res = resolution,
+            abr = audioBitrate,
+            enc = codec,
+            fmt = format,
+        )
+    }
+}
+
+@Composable
+private fun namingTopLevelFolderModeDescription(mode: TopLevelFolderMode): String {
+    return when (mode) {
+        TopLevelFolderMode.Auto -> {
+            stringResource(R.string.settings_naming_top_level_folder_mode_auto_desc)
+        }
+        TopLevelFolderMode.Enabled -> {
+            stringResource(R.string.settings_naming_top_level_folder_mode_enabled_desc)
+        }
+        TopLevelFolderMode.Disabled -> {
+            stringResource(R.string.settings_naming_top_level_folder_mode_disabled_desc)
+        }
+    }
+}
+
+@Composable
+private fun namingTokenGroupLabel(group: NamingTokenGroup): String {
+    return when (group) {
+        NamingTokenGroup.General -> stringResource(R.string.settings_naming_group_general)
+        NamingTokenGroup.Time -> stringResource(R.string.settings_naming_group_time)
+        NamingTokenGroup.Ids -> stringResource(R.string.settings_naming_group_ids)
+        NamingTokenGroup.Stream -> stringResource(R.string.settings_naming_group_stream)
+    }
+}
+
+@Composable
+private fun namingTokenButtonLabel(token: NamingToken): String {
+    return stringResource(
+        R.string.settings_naming_token_button_format,
+        namingTokenPreviewLabel(token),
+        token.key,
+    )
+}
+
+@Composable
+private fun namingTokenPreviewLabel(token: NamingToken): String {
+    return when (token) {
+        NamingToken.ShowTitle -> stringResource(R.string.settings_naming_token_show_title)
+        NamingToken.Title -> stringResource(R.string.settings_naming_token_title)
+        NamingToken.P -> stringResource(R.string.settings_naming_token_p)
+        NamingToken.Container -> stringResource(R.string.settings_naming_token_container)
+        NamingToken.MediaType -> stringResource(R.string.settings_naming_token_media_type)
+        NamingToken.TaskType -> stringResource(R.string.settings_naming_token_task_type)
+        NamingToken.Index -> stringResource(R.string.settings_naming_token_index)
+        NamingToken.PubTime -> stringResource(R.string.settings_naming_token_pub_time)
+        NamingToken.DownTime -> stringResource(R.string.settings_naming_token_down_time)
+        NamingToken.Upper -> stringResource(R.string.settings_naming_token_upper)
+        NamingToken.UpperId -> stringResource(R.string.settings_naming_token_upper_id)
+        NamingToken.Aid -> stringResource(R.string.settings_naming_token_aid)
+        NamingToken.Sid -> stringResource(R.string.settings_naming_token_sid)
+        NamingToken.Fid -> stringResource(R.string.settings_naming_token_fid)
+        NamingToken.Cid -> stringResource(R.string.settings_naming_token_cid)
+        NamingToken.Bvid -> stringResource(R.string.settings_naming_token_bvid)
+        NamingToken.Epid -> stringResource(R.string.settings_naming_token_epid)
+        NamingToken.Ssid -> stringResource(R.string.settings_naming_token_ssid)
+        NamingToken.Opid -> stringResource(R.string.settings_naming_token_opid)
+        NamingToken.Res -> stringResource(R.string.settings_naming_token_res)
+        NamingToken.Abr -> stringResource(R.string.settings_naming_token_abr)
+        NamingToken.Enc -> stringResource(R.string.settings_naming_token_enc)
+        NamingToken.Fmt -> stringResource(R.string.settings_naming_token_fmt)
     }
 }
 

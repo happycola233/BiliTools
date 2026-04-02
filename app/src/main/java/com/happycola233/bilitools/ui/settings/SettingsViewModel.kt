@@ -8,11 +8,13 @@ import com.happycola233.bilitools.data.AppThemeColor
 import com.happycola233.bilitools.data.AppThemeMode
 import com.happycola233.bilitools.data.IssueReportRepository
 import com.happycola233.bilitools.data.SettingsRepository
+import com.happycola233.bilitools.data.TopLevelFolderMode
 
 sealed class SettingsDestination : NavKey {
     data object Main : SettingsDestination()
     data object General : SettingsDestination()
     data object Download : SettingsDestination()
+    data object Naming : SettingsDestination()
     data object Appearance : SettingsDestination()
     data object About : SettingsDestination()
 }
@@ -78,6 +80,30 @@ class SettingsViewModel(
 
     fun setDownloadsGlassDebugEnabled(enabled: Boolean) {
         settingsRepository.setDownloadsGlassDebugEnabled(enabled)
+    }
+
+    fun setNamingTopLevelFolderMode(mode: TopLevelFolderMode) {
+        settingsRepository.setNamingTopLevelFolderMode(mode)
+    }
+
+    fun setNamingOverwriteExistingFiles(enabled: Boolean) {
+        settingsRepository.setNamingOverwriteExistingFiles(enabled)
+    }
+
+    fun setNamingTopLevelFolderTemplate(template: String) {
+        settingsRepository.setNamingTopLevelFolderTemplate(template)
+    }
+
+    fun setNamingItemFolderTemplate(template: String) {
+        settingsRepository.setNamingItemFolderTemplate(template)
+    }
+
+    fun setNamingFileTemplate(template: String) {
+        settingsRepository.setNamingFileTemplate(template)
+    }
+
+    fun restoreNamingDefaults() {
+        settingsRepository.restoreNamingDefaults()
     }
 
     fun setIssueReportDetailedLoggingEnabled(enabled: Boolean) {

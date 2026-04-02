@@ -252,6 +252,26 @@ class IssueReportRepository(
             "downloadsGlassChromaticAberration",
             settings.downloadsGlassChromaticAberration.toString(),
         )
+        appendKeyValue(
+            "naming.topLevelFolderMode",
+            settings.naming.topLevelFolderMode.value,
+        )
+        appendKeyValue(
+            "naming.overwriteExistingFiles",
+            settings.naming.overwriteExistingFiles.toString(),
+        )
+        appendKeyValue(
+            "naming.topLevelFolderTemplate",
+            settings.naming.topLevelFolderTemplate,
+        )
+        appendKeyValue(
+            "naming.itemFolderTemplate",
+            settings.naming.itemFolderTemplate,
+        )
+        appendKeyValue(
+            "naming.fileTemplate",
+            settings.naming.fileTemplate,
+        )
         appendKeyValue("ignoredUpdateVersion", settings.ignoredUpdateVersion ?: "null")
     }
 

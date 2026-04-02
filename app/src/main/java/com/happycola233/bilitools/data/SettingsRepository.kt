@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Environment
 import android.provider.DocumentsContract
 import androidx.appcompat.app.AppCompatDelegate
+import com.happycola233.bilitools.core.DownloadNaming
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -13,6 +14,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
+data class DownloadNamingSettings(
+    val topLevelFolderMode: TopLevelFolderMode = TopLevelFolderMode.Auto,
+    val overwriteExistingFiles: Boolean = false,
+    val topLevelFolderTemplate: String = SettingsRepository.DEFAULT_TOP_LEVEL_FOLDER_TEMPLATE,
+    val itemFolderTemplate: String = SettingsRepository.DEFAULT_ITEM_FOLDER_TEMPLATE,
+    val fileTemplate: String = SettingsRepository.DEFAULT_FILE_TEMPLATE,
+)
 
 data class AppSettings(
     val addMetadata: Boolean = true,
@@ -31,6 +40,7 @@ data class AppSettings(
     val downloadsGlassRefractionAmountFrac: Float = SettingsRepository.DEFAULT_DOWNLOADS_GLASS_REFRACTION_AMOUNT_FRAC,
     val downloadsGlassSurfaceAlpha: Float = SettingsRepository.DEFAULT_DOWNLOADS_GLASS_SURFACE_ALPHA,
     val downloadsGlassChromaticAberration: Boolean = SettingsRepository.DEFAULT_DOWNLOADS_GLASS_CHROMATIC_ABERRATION,
+    val naming: DownloadNamingSettings = DownloadNamingSettings(),
     val issueReportDetailedLoggingEnabled: Boolean = false,
     val issueReportDetailedLoggingStartedAtMillis: Long? = null,
     val issueReportLastExportedAtMillis: Long? = null,
@@ -73,6 +83,19 @@ enum class AppThemeColor(val value: String) {
     }
 }
 
+enum class TopLevelFolderMode(val value: String) {
+    Auto("auto"),
+    Enabled("enabled"),
+    Disabled("disabled"),
+    ;
+
+    companion object {
+        fun fromValue(value: String?): TopLevelFolderMode {
+            return entries.firstOrNull { it.value == value } ?: Auto
+        }
+    }
+}
+
 class SettingsRepository(context: Context) {
     private val appContext = context.applicationContext
     private val prefs = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -103,6 +126,10 @@ class SettingsRepository(context: Context) {
 
     fun shouldUseLiveActivityStyleNotification(): Boolean =
         _settings.value.liveActivityStyleNotificationEnabled
+
+    fun currentNamingSettings(): DownloadNamingSettings = _settings.value.naming
+
+    fun shouldOverwriteExistingNamingTargets(): Boolean = _settings.value.naming.overwriteExistingFiles
 
     fun setAddMetadata(enabled: Boolean) {
         val current = _settings.value
@@ -261,6 +288,76 @@ class SettingsRepository(context: Context) {
         _settings.value = current.copy(ignoredUpdateVersion = normalized)
     }
 
+    fun setNamingTopLevelFolderMode(mode: TopLevelFolderMode) {
+        val current = _settings.value
+        if (current.naming.topLevelFolderMode == mode) return
+        prefs.edit().putString(KEY_NAMING_TOP_LEVEL_FOLDER_MODE, mode.value).apply()
+        _settings.value = current.copy(
+            naming = current.naming.copy(topLevelFolderMode = mode),
+        )
+    }
+
+    fun setNamingOverwriteExistingFiles(enabled: Boolean) {
+        val current = _settings.value
+        if (current.naming.overwriteExistingFiles == enabled) return
+        prefs.edit().putBoolean(KEY_NAMING_OVERWRITE_EXISTING_FILES, enabled).apply()
+        _settings.value = current.copy(
+            naming = current.naming.copy(overwriteExistingFiles = enabled),
+        )
+    }
+
+    fun setNamingTopLevelFolderTemplate(template: String) {
+        updateNamingTemplate(
+            currentValue = _settings.value.naming.topLevelFolderTemplate,
+            nextValue = template,
+            key = KEY_NAMING_TOP_LEVEL_FOLDER_TEMPLATE,
+        ) { naming, next ->
+            naming.copy(topLevelFolderTemplate = next)
+        }
+    }
+
+    fun setNamingItemFolderTemplate(template: String) {
+        updateNamingTemplate(
+            currentValue = _settings.value.naming.itemFolderTemplate,
+            nextValue = template,
+            key = KEY_NAMING_ITEM_FOLDER_TEMPLATE,
+        ) { naming, next ->
+            naming.copy(itemFolderTemplate = next)
+        }
+    }
+
+    fun setNamingFileTemplate(template: String) {
+        updateNamingTemplate(
+            currentValue = _settings.value.naming.fileTemplate,
+            nextValue = template,
+            key = KEY_NAMING_FILE_TEMPLATE,
+        ) { naming, next ->
+            naming.copy(fileTemplate = next)
+        }
+    }
+
+    fun restoreNamingDefaults() {
+        val current = _settings.value
+        val defaults = DownloadNamingSettings()
+        val templatesAlreadyDefault =
+            current.naming.topLevelFolderTemplate == defaults.topLevelFolderTemplate &&
+                current.naming.itemFolderTemplate == defaults.itemFolderTemplate &&
+                current.naming.fileTemplate == defaults.fileTemplate
+        if (templatesAlreadyDefault) return
+        prefs.edit()
+            .putString(KEY_NAMING_TOP_LEVEL_FOLDER_TEMPLATE, defaults.topLevelFolderTemplate)
+            .putString(KEY_NAMING_ITEM_FOLDER_TEMPLATE, defaults.itemFolderTemplate)
+            .putString(KEY_NAMING_FILE_TEMPLATE, defaults.fileTemplate)
+            .apply()
+        _settings.value = current.copy(
+            naming = current.naming.copy(
+                topLevelFolderTemplate = defaults.topLevelFolderTemplate,
+                itemFolderTemplate = defaults.itemFolderTemplate,
+                fileTemplate = defaults.fileTemplate,
+            ),
+        )
+    }
+
     fun shouldIgnoreUpdate(version: String): Boolean {
         val normalized = normalizeUpdateVersion(version)
         return !normalized.isNullOrBlank() && _settings.value.ignoredUpdateVersion == normalized
@@ -337,6 +434,30 @@ class SettingsRepository(context: Context) {
             downloadsGlassChromaticAberration = prefs.getBoolean(
                 KEY_DOWNLOADS_GLASS_CHROMATIC_ABERRATION,
                 DEFAULT_DOWNLOADS_GLASS_CHROMATIC_ABERRATION,
+            ),
+            naming = DownloadNamingSettings(
+                topLevelFolderMode = TopLevelFolderMode.fromValue(
+                    prefs.getString(
+                        KEY_NAMING_TOP_LEVEL_FOLDER_MODE,
+                        TopLevelFolderMode.Auto.value,
+                    ),
+                ),
+                overwriteExistingFiles = prefs.getBoolean(
+                    KEY_NAMING_OVERWRITE_EXISTING_FILES,
+                    false,
+                ),
+                topLevelFolderTemplate = prefs.getString(
+                    KEY_NAMING_TOP_LEVEL_FOLDER_TEMPLATE,
+                    DEFAULT_TOP_LEVEL_FOLDER_TEMPLATE,
+                ) ?: DEFAULT_TOP_LEVEL_FOLDER_TEMPLATE,
+                itemFolderTemplate = prefs.getString(
+                    KEY_NAMING_ITEM_FOLDER_TEMPLATE,
+                    DEFAULT_ITEM_FOLDER_TEMPLATE,
+                ) ?: DEFAULT_ITEM_FOLDER_TEMPLATE,
+                fileTemplate = prefs.getString(
+                    KEY_NAMING_FILE_TEMPLATE,
+                    DEFAULT_FILE_TEMPLATE,
+                ) ?: DEFAULT_FILE_TEMPLATE,
             ),
             issueReportDetailedLoggingEnabled = prefs.getBoolean(
                 KEY_ISSUE_REPORT_DETAILED_LOGGING_ENABLED,
@@ -453,6 +574,20 @@ class SettingsRepository(context: Context) {
             ?.takeIf { it.isNotBlank() }
     }
 
+    private fun updateNamingTemplate(
+        currentValue: String,
+        nextValue: String,
+        key: String,
+        update: (DownloadNamingSettings, String) -> DownloadNamingSettings,
+    ) {
+        if (currentValue == nextValue) return
+        val current = _settings.value
+        prefs.edit().putString(key, nextValue).apply()
+        _settings.value = current.copy(
+            naming = update(current.naming, nextValue),
+        )
+    }
+
     companion object {
         // Keep this a true compile-time constant for default values.
         const val DEFAULT_DOWNLOAD_ROOT = "Download/BiliTools"
@@ -462,6 +597,9 @@ class SettingsRepository(context: Context) {
         const val DEFAULT_DOWNLOADS_GLASS_REFRACTION_AMOUNT_FRAC = 0.5f
         const val DEFAULT_DOWNLOADS_GLASS_SURFACE_ALPHA = 0.7f
         const val DEFAULT_DOWNLOADS_GLASS_CHROMATIC_ABERRATION = true
+        const val DEFAULT_TOP_LEVEL_FOLDER_TEMPLATE = DownloadNaming.DEFAULT_TOP_FOLDER_TEMPLATE
+        const val DEFAULT_ITEM_FOLDER_TEMPLATE = DownloadNaming.DEFAULT_ITEM_FOLDER_TEMPLATE
+        const val DEFAULT_FILE_TEMPLATE = DownloadNaming.DEFAULT_FILE_TEMPLATE
 
         private const val PREFS_NAME = "app_settings"
         private const val KEY_ADD_METADATA = "add_metadata"
@@ -482,6 +620,11 @@ class SettingsRepository(context: Context) {
         private const val KEY_DOWNLOADS_GLASS_REFRACTION_AMOUNT_FRAC = "downloads_glass_refraction_amount_frac"
         private const val KEY_DOWNLOADS_GLASS_SURFACE_ALPHA = "downloads_glass_surface_alpha"
         private const val KEY_DOWNLOADS_GLASS_CHROMATIC_ABERRATION = "downloads_glass_chromatic_aberration"
+        private const val KEY_NAMING_TOP_LEVEL_FOLDER_MODE = "naming_top_level_folder_mode"
+        private const val KEY_NAMING_OVERWRITE_EXISTING_FILES = "naming_overwrite_existing_files"
+        private const val KEY_NAMING_TOP_LEVEL_FOLDER_TEMPLATE = "naming_top_level_folder_template"
+        private const val KEY_NAMING_ITEM_FOLDER_TEMPLATE = "naming_item_folder_template"
+        private const val KEY_NAMING_FILE_TEMPLATE = "naming_file_template"
         private const val KEY_ISSUE_REPORT_DETAILED_LOGGING_ENABLED =
             "issue_report_detailed_logging_enabled"
         private const val KEY_ISSUE_REPORT_DETAILED_LOGGING_STARTED_AT =
