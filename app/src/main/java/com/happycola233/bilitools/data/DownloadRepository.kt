@@ -1259,9 +1259,12 @@ class DownloadRepository(
         task.audio.job?.cancel()
         task.video.job = null
         task.audio.job = null
-        // Also cancel the actual merge process if it's running
-        mergeJobs.remove(task.id)?.cancel()
-        task.isMerging = false
+        task.video.speedBytesPerSec = 0
+        task.audio.speedBytesPerSec = 0
+        mergeJobs[task.id]?.cancel()
+        if (mergeJobs[task.id]?.isActive != true) {
+            task.isMerging = false
+        }
         updateMergedProgress(task, true, null)
     }
 
@@ -1326,7 +1329,10 @@ class DownloadRepository(
         task.audio.job?.cancel()
         task.video.job = null
         task.audio.job = null
-        mergeJobs.remove(task.id)?.cancel()
+        task.video.speedBytesPerSec = 0
+        task.audio.speedBytesPerSec = 0
+        mergeJobs[task.id]?.cancel()
+        task.isMerging = false
         task.video.tempFile.delete()
         task.audio.tempFile.delete()
         mergeTasks.remove(task.id)
@@ -2210,66 +2216,120 @@ class DownloadRepository(
             "[merge-chain] start merge, taskId=${task.id}, output=${task.outputName}, videoTemp=${task.video.tempFile.absolutePath}, audioTemp=${task.audio.tempFile.absolutePath}",
         )
         mergeJobs[task.id] = scope.launch {
-            val result = runCatching { performMerge(task) }
-            var uri = result.getOrNull()
-            val target = tasks[task.id]
-            if (uri == null && target != null) {
-                Log.w(
-                    TAG,
-                    "[merge-chain] performMerge returned null, fallback lookup, taskId=${task.id}, file=${target.fileName}, groupId=${target.groupId}",
-                )
-                uri = findAccessibleDownload(target.fileName, target.groupId)
-                    ?: findAccessibleDownloadAnywhere(target.fileName)
-            }
-            if (result.isSuccess && uri != null) {
-                task.completed = true
-                task.outputUri = uri
-                if (target != null) {
-                    updateTask(
-                        target.copy(
-                            status = DownloadStatus.Success,
-                            progress = 100,
-                            localUri = uri,
-                            speedBytesPerSec = 0,
-                            etaSeconds = null,
-                        ),
+            var cancelled = false
+            try {
+                var uri = performMerge(task)
+                val target = tasks[task.id]
+                if (mergeTasks[task.id] !== task) {
+                    Log.i(
+                        TAG,
+                        "[merge-chain] merge finished for stale task, ignore result, taskId=${task.id}, uri=$uri",
                     )
-                    persistState()
+                    return@launch
                 }
-                Log.i(
-                    TAG,
-                    "[merge-chain] merge completed and resolved output, taskId=${task.id}, file=${target?.fileName}, uri=$uri",
-                )
-            } else {
-                task.failed = true
-                if (target != null) {
-                    val mergeErr = result.exceptionOrNull()
+                if (uri == null && target != null) {
                     Log.w(
                         TAG,
-                        "Merge failed for task=${task.id}, file=${target.fileName}, error=${mergeErr?.message}",
-                        mergeErr,
+                        "[merge-chain] performMerge returned null, fallback lookup, taskId=${task.id}, file=${target.fileName}, groupId=${target.groupId}",
                     )
-                    updateTask(
-                        target.copy(
-                            status = DownloadStatus.Failed,
-                            speedBytesPerSec = 0,
-                            etaSeconds = null,
-                            errorMessage = mergeErr?.message ?: "Merge failed",
-                        ),
+                    uri = findAccessibleDownload(target.fileName, target.groupId)
+                        ?: findAccessibleDownloadAnywhere(target.fileName)
+                }
+                if (uri != null) {
+                    task.completed = true
+                    task.outputUri = uri
+                    if (target != null) {
+                        updateTask(
+                            target.copy(
+                                status = DownloadStatus.Success,
+                                progress = 100,
+                                localUri = uri,
+                                speedBytesPerSec = 0,
+                                etaSeconds = null,
+                            ),
+                        )
+                        persistState()
+                    }
+                    Log.i(
+                        TAG,
+                        "[merge-chain] merge completed and resolved output, taskId=${task.id}, file=${target?.fileName}, uri=$uri",
+                    )
+                } else {
+                    task.failed = true
+                    if (target != null) {
+                        Log.w(
+                            TAG,
+                            "Merge failed for task=${task.id}, file=${target.fileName}, error=Merge failed",
+                        )
+                        updateTask(
+                            target.copy(
+                                status = DownloadStatus.Failed,
+                                speedBytesPerSec = 0,
+                                etaSeconds = null,
+                                errorMessage = "Merge failed",
+                            ),
+                        )
+                    }
+                    Log.e(
+                        TAG,
+                        "[merge-chain] merge failed to resolve output, taskId=${task.id}, file=${target?.fileName}, performMergeError=null",
                     )
                 }
-                Log.e(
+            } catch (err: CancellationException) {
+                cancelled = true
+                Log.i(
                     TAG,
-                    "[merge-chain] merge failed to resolve output, taskId=${task.id}, file=${target?.fileName}, performMergeError=${result.exceptionOrNull()?.message}",
-                    result.exceptionOrNull(),
+                    "[merge-chain] merge cancelled, taskId=${task.id}, userPaused=${task.userPaused}",
                 )
+            } catch (err: Exception) {
+                if (mergeTasks[task.id] === task) {
+                    task.failed = true
+                    val target = tasks[task.id]
+                    if (target != null) {
+                        Log.w(
+                            TAG,
+                            "Merge failed for task=${task.id}, file=${target.fileName}, error=${err.message}",
+                            err,
+                        )
+                        updateTask(
+                            target.copy(
+                                status = DownloadStatus.Failed,
+                                speedBytesPerSec = 0,
+                                etaSeconds = null,
+                                errorMessage = err.message ?: "Merge failed",
+                            ),
+                        )
+                    }
+                    Log.e(
+                        TAG,
+                        "[merge-chain] merge failed to resolve output, taskId=${task.id}, file=${target?.fileName}, performMergeError=${err.message}",
+                        err,
+                    )
+                }
+            } finally {
+                task.isMerging = false
+                mergeJobs.remove(task.id)
+                if (mergeTasks[task.id] === task) {
+                    when {
+                        cancelled && !task.userPaused && !task.failed && !task.completed &&
+                            task.video.completed && task.audio.completed -> {
+                            Log.d(
+                                TAG,
+                                "[merge-chain] restart merge after cancellation, taskId=${task.id}",
+                            )
+                            startMerge(task)
+                        }
+
+                        cancelled || task.userPaused -> {
+                            updateMergedProgress(task, true, null)
+                        }
+                    }
+                }
             }
-            task.isMerging = false
-            mergeJobs.remove(task.id)
         }
     }
 
-    private fun performMerge(task: MergedDownload): String? {
+    private suspend fun performMerge(task: MergedDownload): String? {
         val groupId = tasks[task.id]?.groupId
         val relativePath = if (groupId != null) {
             groupRelativePath(groupId)
@@ -2298,6 +2358,7 @@ class DownloadRepository(
         val audioInput = FileInputStream(audioFile)
         var merged = false
         try {
+            currentCoroutineContext().ensureActive()
             videoExtractor.setDataSource(videoInput.fd)
             val videoTrack = selectTrack(videoExtractor, "video/")
             audioExtractor.setDataSource(audioInput.fd)
@@ -2338,6 +2399,7 @@ class DownloadRepository(
                     audioExtractor.getTrackFormat(audioTrack),
                 )
             }
+            currentCoroutineContext().ensureActive()
             muxer.stop()
             merged = true
             Log.d(
@@ -2350,8 +2412,6 @@ class DownloadRepository(
             audioExtractor.release()
             videoInput.close()
             audioInput.close()
-            videoFile.delete()
-            audioFile.delete()
             if (!merged) {
                 runCatching { outputTemp.delete() }
             }
@@ -2359,10 +2419,12 @@ class DownloadRepository(
 
         if (!merged) return null
 
+        currentCoroutineContext().ensureActive()
         tasks[task.id]?.let { item ->
             applyEmbeddedMetadataIfPossible(item, outputTemp)
         }
 
+        currentCoroutineContext().ensureActive()
         var uri = saveToDownloads(outputTemp, task.outputName, relativePath)
         if (uri == null && groupId != null) {
             Log.w(
@@ -2385,6 +2447,8 @@ class DownloadRepository(
                 "[merge-chain] merge output unresolved after save+fallback, taskId=${task.id}, output=${task.outputName}",
             )
         } else {
+            runCatching { videoFile.delete() }
+            runCatching { audioFile.delete() }
             Log.i(
                 TAG,
                 "[merge-chain] merge output resolved, taskId=${task.id}, output=${task.outputName}, uri=$uri",
@@ -2419,7 +2483,7 @@ class DownloadRepository(
         }
     }
 
-    private fun copySamples(
+    private suspend fun copySamples(
         extractor: MediaExtractor,
         muxer: MediaMuxer,
         trackIndex: Int,
@@ -2433,6 +2497,7 @@ class DownloadRepository(
         val buffer = java.nio.ByteBuffer.allocate(maxSize)
         val info = MediaCodec.BufferInfo()
         while (true) {
+            currentCoroutineContext().ensureActive()
             val size = extractor.readSampleData(buffer, 0)
             if (size < 0) {
                 info.size = 0
@@ -2588,7 +2653,7 @@ class DownloadRepository(
         }
     }
 
-    private fun saveToDownloads(
+    private suspend fun saveToDownloads(
         tempFile: File,
         fileName: String,
         relativePath: String,
@@ -2629,7 +2694,13 @@ class DownloadRepository(
             output.pfd.use { pfd ->
                 FileInputStream(tempFile).use { input ->
                     FileOutputStream(pfd.fileDescriptor).use { outputStream ->
-                        input.copyTo(outputStream)
+                        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                        while (true) {
+                            currentCoroutineContext().ensureActive()
+                            val read = input.read(buffer)
+                            if (read < 0) break
+                            outputStream.write(buffer, 0, read)
+                        }
                     }
                 }
                 copied = true
@@ -2678,6 +2749,13 @@ class DownloadRepository(
                 runCatching { resolver.delete(uri, null, null) }
                 null
             }
+        } catch (err: CancellationException) {
+            Log.i(
+                TAG,
+                "[save-output] cancelled, cleanup partial output, file=$fileName, uri=$uri, copied=$copied",
+            )
+            runCatching { resolver.delete(uri, null, null) }
+            throw err
         } catch (err: Throwable) {
             Log.w(
                 TAG,
