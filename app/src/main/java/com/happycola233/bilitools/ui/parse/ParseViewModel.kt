@@ -91,6 +91,7 @@ private data class NamingSession(
     val topLevelFolderTemplate: String,
     val itemFolderTemplate: String,
     val fileTemplate: String,
+    val cleanSeparators: Boolean,
     val downTimeEpochSeconds: Long,
     val topLevelFolderName: String?,
 )
@@ -1861,6 +1862,7 @@ class ParseViewModel(
             topLevelFolderTemplate = namingSettings.topLevelFolderTemplate,
             itemFolderTemplate = namingSettings.itemFolderTemplate,
             fileTemplate = namingSettings.fileTemplate,
+            cleanSeparators = namingSettings.cleanSeparators,
             downTimeEpochSeconds = downTimeEpochSeconds,
             topLevelFolderName = null,
         )
@@ -1885,6 +1887,7 @@ class ParseViewModel(
                 DownloadNaming.renderComponent(
                     template = namingSettings.itemFolderTemplate,
                     context = context,
+                    cleanSeparators = namingSettings.cleanSeparators,
                 )
             }
             .filter { it.isNotBlank() }
@@ -1920,6 +1923,7 @@ class ParseViewModel(
             DownloadNaming.renderComponent(
                 template = namingSettings.topLevelFolderTemplate,
                 context = topContext,
+                cleanSeparators = namingSettings.cleanSeparators,
             )
         } else {
             null
@@ -1948,6 +1952,7 @@ class ParseViewModel(
         val itemFolderName = DownloadNaming.renderComponent(
             template = namingSession.itemFolderTemplate,
             context = context,
+            cleanSeparators = namingSession.cleanSeparators,
         )
         val segments = buildList {
             add(settingsRepository.downloadRootRelativePath().replace('\\', '/').trim().trim('/'))
@@ -2017,8 +2022,13 @@ class ParseViewModel(
         val baseName = DownloadNaming.renderComponent(
             template = namingSession.fileTemplate,
             context = context,
+            cleanSeparators = namingSession.cleanSeparators,
         )
-        return DownloadNaming.appendExtension(baseName, extension)
+        return DownloadNaming.appendExtension(
+            baseName = baseName,
+            extension = extension,
+            cleanSeparators = namingSession.cleanSeparators,
+        )
     }
 
     private fun extensionForVideoStream(stream: VideoStream): String {

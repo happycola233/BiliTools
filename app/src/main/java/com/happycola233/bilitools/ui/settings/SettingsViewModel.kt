@@ -94,6 +94,10 @@ class SettingsViewModel(
         settingsRepository.setNamingOverwriteExistingFiles(enabled)
     }
 
+    fun setNamingCleanSeparators(enabled: Boolean) {
+        settingsRepository.setNamingCleanSeparators(enabled)
+    }
+
     fun setNamingTopLevelFolderTemplate(template: String) {
         settingsRepository.setNamingTopLevelFolderTemplate(template)
     }

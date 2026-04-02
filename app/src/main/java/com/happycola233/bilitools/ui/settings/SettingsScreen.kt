@@ -161,6 +161,7 @@ fun BiliToolsSettingsContent(
     onHideInAlbumChange: (Boolean) -> Unit,
     onNamingTopLevelFolderModeChange: (TopLevelFolderMode) -> Unit,
     onNamingOverwriteExistingFilesChange: (Boolean) -> Unit,
+    onNamingCleanSeparatorsChange: (Boolean) -> Unit,
     onNamingTopLevelFolderTemplateChange: (String) -> Unit,
     onNamingItemFolderTemplateChange: (String) -> Unit,
     onNamingFileTemplateChange: (String) -> Unit,
@@ -228,6 +229,7 @@ fun BiliToolsSettingsContent(
                         settings = settings,
                         onTopLevelFolderModeChange = onNamingTopLevelFolderModeChange,
                         onOverwriteExistingFilesChange = onNamingOverwriteExistingFilesChange,
+                        onCleanSeparatorsChange = onNamingCleanSeparatorsChange,
                         onTopLevelFolderTemplateChange = onNamingTopLevelFolderTemplateChange,
                         onItemFolderTemplateChange = onNamingItemFolderTemplateChange,
                         onFileTemplateChange = onNamingFileTemplateChange,
@@ -646,6 +648,7 @@ private fun NamingSettingsScreen(
     settings: AppSettings,
     onTopLevelFolderModeChange: (TopLevelFolderMode) -> Unit,
     onOverwriteExistingFilesChange: (Boolean) -> Unit,
+    onCleanSeparatorsChange: (Boolean) -> Unit,
     onTopLevelFolderTemplateChange: (String) -> Unit,
     onItemFolderTemplateChange: (String) -> Unit,
     onFileTemplateChange: (String) -> Unit,
@@ -687,6 +690,18 @@ private fun NamingSettingsScreen(
             }
 
             item {
+                ExpressiveSwitchListItem(
+                    checked = settings.naming.cleanSeparators,
+                    iconRes = R.drawable.ic_wand_shine_24,
+                    title = stringResource(R.string.settings_naming_clean_separators),
+                    description = stringResource(R.string.settings_naming_clean_separators_desc),
+                    items = 1,
+                    index = 0,
+                    onCheckedChange = onCleanSeparatorsChange,
+                )
+            }
+
+            item {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     TopLevelFolderModeListItem(
                         mode = settings.naming.topLevelFolderMode,
@@ -703,6 +718,7 @@ private fun NamingSettingsScreen(
                             scope = NamingTemplateScope.TopFolder,
                             previewContext = previewContext,
                             previewExtension = null,
+                            cleanSeparators = settings.naming.cleanSeparators,
                             shape = SettingsExpressiveShapes.groupShape(
                                 index = 1,
                                 items = topLevelFolderGroupItems,
@@ -722,6 +738,7 @@ private fun NamingSettingsScreen(
                     scope = NamingTemplateScope.ItemFolder,
                     previewContext = previewContext,
                     previewExtension = null,
+                    cleanSeparators = settings.naming.cleanSeparators,
                     onValueChange = onItemFolderTemplateChange,
                 )
             }
@@ -735,6 +752,7 @@ private fun NamingSettingsScreen(
                     scope = NamingTemplateScope.File,
                     previewContext = previewContext,
                     previewExtension = "mp4",
+                    cleanSeparators = settings.naming.cleanSeparators,
                     onValueChange = onFileTemplateChange,
                 )
             }
@@ -844,6 +862,7 @@ private fun NamingTemplateEditorPanel(
     scope: NamingTemplateScope,
     previewContext: NamingRenderContext,
     previewExtension: String?,
+    cleanSeparators: Boolean,
     onValueChange: (String) -> Unit,
     shape: CornerBasedShape = SettingsExpressiveShapes.cardShape,
     modifier: Modifier = Modifier,
@@ -869,12 +888,24 @@ private fun NamingTemplateEditorPanel(
     val previewSegments = remember(textFieldValue.text) {
         DownloadNaming.previewSegments(textFieldValue.text)
     }
-    val previewValue = remember(textFieldValue.text, previewContext, previewExtension) {
+    val previewValue = remember(
+        textFieldValue.text,
+        previewContext,
+        previewExtension,
+        cleanSeparators,
+    ) {
         val rendered = DownloadNaming.renderComponent(
             template = textFieldValue.text,
             context = previewContext,
+            cleanSeparators = cleanSeparators,
         )
-        previewExtension?.let { DownloadNaming.appendExtension(rendered, it) } ?: rendered
+        previewExtension?.let {
+            DownloadNaming.appendExtension(
+                baseName = rendered,
+                extension = it,
+                cleanSeparators = cleanSeparators,
+            )
+        } ?: rendered
     }
     val previewLabel = stringResource(R.string.settings_naming_preview_value, "")
     val tokenSections = remember(scope) { namingTokenSections(scope) }

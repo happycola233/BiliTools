@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 data class DownloadNamingSettings(
     val topLevelFolderMode: TopLevelFolderMode = TopLevelFolderMode.Auto,
     val overwriteExistingFiles: Boolean = false,
+    val cleanSeparators: Boolean = true,
     val topLevelFolderTemplate: String = SettingsRepository.DEFAULT_TOP_LEVEL_FOLDER_TEMPLATE,
     val itemFolderTemplate: String = SettingsRepository.DEFAULT_ITEM_FOLDER_TEMPLATE,
     val fileTemplate: String = SettingsRepository.DEFAULT_FILE_TEMPLATE,
@@ -316,6 +317,15 @@ class SettingsRepository(context: Context) {
         )
     }
 
+    fun setNamingCleanSeparators(enabled: Boolean) {
+        val current = _settings.value
+        if (current.naming.cleanSeparators == enabled) return
+        prefs.edit().putBoolean(KEY_NAMING_CLEAN_SEPARATORS, enabled).apply()
+        _settings.value = current.copy(
+            naming = current.naming.copy(cleanSeparators = enabled),
+        )
+    }
+
     fun setNamingTopLevelFolderTemplate(template: String) {
         updateNamingTemplate(
             currentValue = _settings.value.naming.topLevelFolderTemplate,
@@ -456,6 +466,10 @@ class SettingsRepository(context: Context) {
                 overwriteExistingFiles = prefs.getBoolean(
                     KEY_NAMING_OVERWRITE_EXISTING_FILES,
                     false,
+                ),
+                cleanSeparators = prefs.getBoolean(
+                    KEY_NAMING_CLEAN_SEPARATORS,
+                    true,
                 ),
                 topLevelFolderTemplate = prefs.getString(
                     KEY_NAMING_TOP_LEVEL_FOLDER_TEMPLATE,
@@ -634,6 +648,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_DOWNLOADS_GLASS_CHROMATIC_ABERRATION = "downloads_glass_chromatic_aberration"
         private const val KEY_NAMING_TOP_LEVEL_FOLDER_MODE = "naming_top_level_folder_mode"
         private const val KEY_NAMING_OVERWRITE_EXISTING_FILES = "naming_overwrite_existing_files"
+        private const val KEY_NAMING_CLEAN_SEPARATORS = "naming_clean_separators"
         private const val KEY_NAMING_TOP_LEVEL_FOLDER_TEMPLATE = "naming_top_level_folder_template"
         private const val KEY_NAMING_ITEM_FOLDER_TEMPLATE = "naming_item_folder_template"
         private const val KEY_NAMING_FILE_TEMPLATE = "naming_file_template"

@@ -59,4 +59,6 @@
     <string name="settings_naming_token_abr">比特率</string>
     <string name="settings_naming_token_enc">编码格式</string>
     <string name="settings_naming_token_fmt">流媒体格式</string>
+    <string name="settings_naming_clean_separators">自动清理多余连接符</string>
+    <string name="settings_naming_clean_separators_desc">开启后，会自动清理命名结果首尾多余的空格和“-”，以解决变量缺失时文件名的冗余。</string>
 </resources>

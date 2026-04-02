@@ -295,8 +295,24 @@ object DownloadNaming {
     fun renderComponent(
         template: String,
         context: NamingRenderContext,
+        cleanSeparators: Boolean = true,
     ): String {
-        return sanitizeComponent(renderTemplate(template, context))
+        return normalizeComponent(
+            raw = renderTemplate(template, context),
+            cleanSeparators = cleanSeparators,
+        )
+    }
+
+    fun normalizeComponent(
+        raw: String,
+        cleanSeparators: Boolean = true,
+    ): String {
+        val sanitized = sanitizeComponent(raw)
+        return if (cleanSeparators) {
+            trimOuterSeparators(sanitized)
+        } else {
+            sanitized
+        }
     }
 
     fun sanitizeComponent(raw: String): String {
@@ -306,14 +322,22 @@ object DownloadNaming {
             .trim()
     }
 
-    fun appendExtension(baseName: String, extension: String): String {
-        val normalizedBase = sanitizeComponent(baseName)
+    fun appendExtension(
+        baseName: String,
+        extension: String,
+        cleanSeparators: Boolean = true,
+    ): String {
+        val normalizedBase = normalizeComponent(baseName, cleanSeparators)
         val normalizedExt = extension.trim().trimStart('.')
         return when {
             normalizedExt.isBlank() -> normalizedBase
             normalizedBase.isBlank() -> ".$normalizedExt"
             else -> sanitizeComponent("$normalizedBase.$normalizedExt")
         }
+    }
+
+    private fun trimOuterSeparators(raw: String): String {
+        return raw.trim { it.isWhitespace() || it == '-' }
     }
 
     private fun valueFor(

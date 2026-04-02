@@ -169,6 +169,7 @@ class SettingsActivity : AppCompatActivity() {
                 onHideInAlbumChange = viewModel::setHideDownloadedVideosInSystemAlbum,
                 onNamingTopLevelFolderModeChange = viewModel::setNamingTopLevelFolderMode,
                 onNamingOverwriteExistingFilesChange = viewModel::setNamingOverwriteExistingFiles,
+                onNamingCleanSeparatorsChange = viewModel::setNamingCleanSeparators,
                 onNamingTopLevelFolderTemplateChange = viewModel::setNamingTopLevelFolderTemplate,
                 onNamingItemFolderTemplateChange = viewModel::setNamingItemFolderTemplate,
                 onNamingFileTemplateChange = viewModel::setNamingFileTemplate,
