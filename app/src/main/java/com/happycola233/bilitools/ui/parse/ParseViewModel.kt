@@ -1269,6 +1269,7 @@ class ParseViewModel(
                             saved,
                         )
                     }
+                    val convertXmlDanmakuToAss = settingsRepository.shouldConvertXmlDanmakuToAss()
                     if (snapshot.danmakuLiveEnabled) {
                         val aid = item.aid
                         val cid = item.cid
@@ -1287,7 +1288,7 @@ class ParseViewModel(
                             taskType = DownloadTaskType.DanmakuLive,
                             namingSession = namingSession,
                             context = danmakuLiveContext,
-                            extension = "ass",
+                            extension = if (convertXmlDanmakuToAss) "ass" else "xml",
                         )
                         if (aid != null && cid != null) {
                             saveBytesTask(
@@ -1297,7 +1298,13 @@ class ParseViewModel(
                                 name,
                                 null,
                                 groupRelativePath,
-                                { extrasRepository.getDanmakuLiveAss(aid, cid, duration) },
+                                {
+                                    if (convertXmlDanmakuToAss) {
+                                        extrasRepository.getDanmakuLiveAss(aid, cid, duration)
+                                    } else {
+                                        extrasRepository.getDanmakuLiveXml(aid, cid, duration)
+                                    }
+                                },
                                 strings.get(R.string.common_error_unknown),
                                 saved,
                             )
@@ -1367,7 +1374,7 @@ class ParseViewModel(
                                 taskType = DownloadTaskType.DanmakuHistory,
                                 namingSession = namingSession,
                                 context = danmakuHistoryContext,
-                                extension = "ass",
+                                extension = if (convertXmlDanmakuToAss) "ass" else "xml",
                             )
                             saveBytesTask(
                                 groupId,
@@ -1376,7 +1383,13 @@ class ParseViewModel(
                                 name,
                                 null,
                                 groupRelativePath,
-                                { extrasRepository.getDanmakuHistoryAss(cid, date, hour) },
+                                {
+                                    if (convertXmlDanmakuToAss) {
+                                        extrasRepository.getDanmakuHistoryAss(cid, date, hour)
+                                    } else {
+                                        extrasRepository.getDanmakuHistoryXml(cid, date, hour)
+                                    }
+                                },
                                 strings.get(R.string.common_error_unknown),
                                 saved,
                             )

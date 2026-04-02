@@ -156,6 +156,7 @@ fun BiliToolsSettingsContent(
     onParseQuickActionChange: (Boolean) -> Unit,
     onLiveActivityStyleNotificationChange: (Boolean) -> Unit,
     onAddMetadataChange: (Boolean) -> Unit,
+    onConvertXmlDanmakuToAssChange: (Boolean) -> Unit,
     onConfirmCellularChange: (Boolean) -> Unit,
     onHideInAlbumChange: (Boolean) -> Unit,
     onNamingTopLevelFolderModeChange: (TopLevelFolderMode) -> Unit,
@@ -214,6 +215,7 @@ fun BiliToolsSettingsContent(
                         settings = settings,
                         onOpenDownloadLocationPicker = onOpenDownloadLocationPicker,
                         onAddMetadataChange = onAddMetadataChange,
+                        onConvertXmlDanmakuToAssChange = onConvertXmlDanmakuToAssChange,
                         onConfirmCellularChange = onConfirmCellularChange,
                         onHideInAlbumChange = onHideInAlbumChange,
                         onBack = onNavigateBack,
@@ -458,6 +460,7 @@ private fun DownloadSettingsScreen(
     settings: AppSettings,
     onOpenDownloadLocationPicker: (String) -> Unit,
     onAddMetadataChange: (Boolean) -> Unit,
+    onConvertXmlDanmakuToAssChange: (Boolean) -> Unit,
     onConfirmCellularChange: (Boolean) -> Unit,
     onHideInAlbumChange: (Boolean) -> Unit,
     onBack: () -> Unit,
@@ -482,7 +485,7 @@ private fun DownloadSettingsScreen(
 
             item {
                 ClickableListItem(
-                    items = 4,
+                    items = 5,
                     index = 0,
                     leadingContent = { SettingsItemIcon(R.drawable.ic_folder_24) },
                     headlineContent = {
@@ -511,9 +514,21 @@ private fun DownloadSettingsScreen(
                     iconRes = R.drawable.ic_metadata_24,
                     title = stringResource(R.string.settings_add_metadata),
                     description = stringResource(R.string.settings_add_metadata_desc),
-                    items = 4,
+                    items = 5,
                     index = 1,
                     onCheckedChange = onAddMetadataChange,
+                )
+            }
+
+            item {
+                ExpressiveSwitchListItem(
+                    checked = settings.convertXmlDanmakuToAss,
+                    iconRes = R.drawable.ic_transform_24,
+                    title = stringResource(R.string.settings_convert_xml_danmaku_to_ass),
+                    description = stringResource(R.string.settings_convert_xml_danmaku_to_ass_desc),
+                    items = 5,
+                    index = 2,
+                    onCheckedChange = onConvertXmlDanmakuToAssChange,
                 )
             }
 
@@ -523,8 +538,8 @@ private fun DownloadSettingsScreen(
                     iconRes = R.drawable.ic_cell_tower_24,
                     title = stringResource(R.string.settings_confirm_cellular),
                     description = stringResource(R.string.settings_confirm_cellular_desc),
-                    items = 4,
-                    index = 2,
+                    items = 5,
+                    index = 3,
                     onCheckedChange = onConfirmCellularChange,
                 )
             }
@@ -535,8 +550,8 @@ private fun DownloadSettingsScreen(
                     iconRes = R.drawable.ic_hide_image_24,
                     title = stringResource(R.string.settings_hide_download_video_in_system_album),
                     description = stringResource(R.string.settings_hide_download_video_in_system_album_desc),
-                    items = 4,
-                    index = 3,
+                    items = 5,
+                    index = 4,
                     onCheckedChange = onHideInAlbumChange,
                 )
             }

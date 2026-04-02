@@ -25,6 +25,7 @@ data class DownloadNamingSettings(
 
 data class AppSettings(
     val addMetadata: Boolean = true,
+    val convertXmlDanmakuToAss: Boolean = true,
     val themeMode: AppThemeMode = AppThemeMode.System,
     val themeColor: AppThemeColor = AppThemeColor.Dynamic,
     val darkModePureBlack: Boolean = false,
@@ -115,6 +116,8 @@ class SettingsRepository(context: Context) {
 
     fun shouldAddMetadata(): Boolean = _settings.value.addMetadata
 
+    fun shouldConvertXmlDanmakuToAss(): Boolean = _settings.value.convertXmlDanmakuToAss
+
     fun downloadRootRelativePath(): String = _settings.value.downloadRootRelativePath
 
     fun shouldConfirmCellularDownload(): Boolean = _settings.value.confirmCellularDownload
@@ -136,6 +139,13 @@ class SettingsRepository(context: Context) {
         if (current.addMetadata == enabled) return
         prefs.edit().putBoolean(KEY_ADD_METADATA, enabled).apply()
         _settings.value = current.copy(addMetadata = enabled)
+    }
+
+    fun setConvertXmlDanmakuToAss(enabled: Boolean) {
+        val current = _settings.value
+        if (current.convertXmlDanmakuToAss == enabled) return
+        prefs.edit().putBoolean(KEY_CONVERT_XML_DANMAKU_TO_ASS, enabled).apply()
+        _settings.value = current.copy(convertXmlDanmakuToAss = enabled)
     }
 
     fun setThemeMode(mode: AppThemeMode, applyImmediately: Boolean = true) {
@@ -387,6 +397,7 @@ class SettingsRepository(context: Context) {
     private fun loadSettings(): AppSettings {
         return AppSettings(
             addMetadata = prefs.getBoolean(KEY_ADD_METADATA, true),
+            convertXmlDanmakuToAss = prefs.getBoolean(KEY_CONVERT_XML_DANMAKU_TO_ASS, true),
             themeMode = AppThemeMode.fromValue(
                 prefs.getString(KEY_THEME_MODE, AppThemeMode.System.value),
             ),
@@ -603,6 +614,7 @@ class SettingsRepository(context: Context) {
 
         private const val PREFS_NAME = "app_settings"
         private const val KEY_ADD_METADATA = "add_metadata"
+        private const val KEY_CONVERT_XML_DANMAKU_TO_ASS = "convert_xml_danmaku_to_ass"
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_THEME_COLOR = "theme_color"
         private const val KEY_DARK_MODE_PURE_BLACK = "dark_mode_pure_black"

@@ -2,6 +2,7 @@ package com.happycola233.bilitools.data
 
 import com.happycola233.bilitools.core.BiliHttpClient
 import com.happycola233.bilitools.core.BiliHttpException
+import com.happycola233.bilitools.core.DanmakuElem
 import com.happycola233.bilitools.core.DanmakuParser
 import com.happycola233.bilitools.core.WbiSigner
 import com.happycola233.bilitools.data.model.HistoryCursorInfo
@@ -13,6 +14,9 @@ import com.happycola233.bilitools.data.model.SubtitleInfo
 import com.squareup.moshi.Json
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import java.time.Duration
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 
 class ExtrasRepository(
     private val httpClient: BiliHttpClient,
@@ -114,24 +118,13 @@ class ExtrasRepository(
     }
 
     suspend fun getDanmakuLiveAss(aid: Long, cid: Long, durationSeconds: Int): ByteArray {
-        val segments = ((durationSeconds + 359) / 360).coerceAtLeast(1)
-        val elems = mutableListOf<com.happycola233.bilitools.core.DanmakuElem>()
-        for (index in 1..segments) {
-            val params = mapOf(
-                "type" to "1",
-                "oid" to cid.toString(),
-                "pid" to aid.toString(),
-                "segment_index" to index.toString(),
-            )
-            val url = wbiSigner.signedUrl(
-                "https://api.bilibili.com/x/v2/dm/wbi/web/seg.so",
-                params,
-            )
-            val bytes = httpClient.getBytes(url)
-            elems.addAll(DanmakuParser.parse(bytes))
-        }
-        val ass = DanmakuParser.toAss(elems)
+        val ass = DanmakuParser.toAss(getDanmakuLiveElements(aid, cid, durationSeconds))
         return ass.toByteArray(Charsets.UTF_8)
+    }
+
+    suspend fun getDanmakuLiveXml(aid: Long, cid: Long, durationSeconds: Int): ByteArray {
+        val xml = DanmakuParser.toXml(getDanmakuLiveElements(aid, cid, durationSeconds))
+        return xml.toByteArray(Charsets.UTF_8)
     }
 
     suspend fun getDanmakuHistoryAss(
@@ -139,35 +132,19 @@ class ExtrasRepository(
         date: String,
         hour: Int?,
     ): ByteArray {
-        val params = mapOf(
-            "type" to "1",
-            "oid" to cid.toString(),
-            "date" to date,
-        )
-        val url = "https://api.bilibili.com/x/v2/dm/web/history/seg.so"
-            .toHttpUrl()
-            .newBuilder()
-            .apply {
-                params.forEach { (key, value) -> addQueryParameter(key, value) }
-            }
-            .build()
-        val bytes = httpClient.getBytes(url)
-        val elems = DanmakuParser.parse(bytes)
-        val zoneId = java.time.ZoneId.of("Asia/Shanghai")
-        val targetDate = if (date.isNotBlank()) java.time.LocalDate.parse(date) else null
-        val filtered = if (targetDate == null && hour == null) {
-            elems
-        } else {
-            elems.filter { elem ->
-                val instant = java.time.Instant.ofEpochSecond(elem.ctime)
-                val time = instant.atZone(zoneId)
-                if (targetDate != null && time.toLocalDate() != targetDate) return@filter false
-                if (hour != null && time.hour != hour) return@filter false
-                true
-            }
-        }
+        val filtered = filterDanmakuElements(getDanmakuHistoryElements(cid, date), date, hour)
         val ass = DanmakuParser.toAss(filtered)
         return ass.toByteArray(Charsets.UTF_8)
+    }
+
+    suspend fun getDanmakuHistoryXml(
+        cid: Long,
+        date: String,
+        hour: Int?,
+    ): ByteArray {
+        val filtered = filterDanmakuElements(getDanmakuHistoryElements(cid, date), date, hour)
+        val xml = DanmakuParser.toXml(filtered)
+        return xml.toByteArray(Charsets.UTF_8)
     }
 
     suspend fun fetchBytes(url: String): ByteArray {
@@ -255,6 +232,66 @@ class ExtrasRepository(
             String.format("%d:%02d:%02d", hours, minutes, secs)
         } else {
             String.format("%02d:%02d", minutes, secs)
+        }
+    }
+
+    private suspend fun getDanmakuLiveElements(
+        aid: Long,
+        cid: Long,
+        durationSeconds: Int,
+    ): List<DanmakuElem> {
+        val segments = ((durationSeconds + 359) / 360).coerceAtLeast(1)
+        val elems = mutableListOf<DanmakuElem>()
+        for (index in 1..segments) {
+            val params = mapOf(
+                "type" to "1",
+                "oid" to cid.toString(),
+                "pid" to aid.toString(),
+                "segment_index" to index.toString(),
+            )
+            val url = wbiSigner.signedUrl(
+                "https://api.bilibili.com/x/v2/dm/wbi/web/seg.so",
+                params,
+            )
+            val bytes = httpClient.getBytes(url)
+            elems.addAll(DanmakuParser.parse(bytes))
+        }
+        return elems
+    }
+
+    private suspend fun getDanmakuHistoryElements(
+        cid: Long,
+        date: String,
+    ): List<DanmakuElem> {
+        val params = mapOf(
+            "type" to "1",
+            "oid" to cid.toString(),
+            "date" to date,
+        )
+        val url = "https://api.bilibili.com/x/v2/dm/web/history/seg.so"
+            .toHttpUrl()
+            .newBuilder()
+            .apply {
+                params.forEach { (key, value) -> addQueryParameter(key, value) }
+            }
+            .build()
+        val bytes = httpClient.getBytes(url)
+        return DanmakuParser.parse(bytes)
+    }
+
+    private fun filterDanmakuElements(
+        elems: List<DanmakuElem>,
+        date: String,
+        hour: Int?,
+    ): List<DanmakuElem> {
+        val zoneId = ZoneId.of("Asia/Shanghai")
+        val targetDate = date.takeIf { it.isNotBlank() }?.let(LocalDate::parse)
+        if (targetDate == null && hour == null) return elems
+        return elems.filter { elem ->
+            val time = Instant.ofEpochSecond(elem.ctime).atZone(zoneId)
+            if (targetDate != null && time.toLocalDate() != targetDate) return@filter false
+            if (hour != null && time.hour != hour) return@filter false
+            true
         }
     }
 

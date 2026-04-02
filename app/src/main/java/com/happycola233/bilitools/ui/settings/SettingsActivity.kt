@@ -164,6 +164,7 @@ class SettingsActivity : AppCompatActivity() {
                 onParseQuickActionChange = viewModel::setParseQuickActionEnabled,
                 onLiveActivityStyleNotificationChange = viewModel::setLiveActivityStyleNotificationEnabled,
                 onAddMetadataChange = viewModel::setAddMetadata,
+                onConvertXmlDanmakuToAssChange = viewModel::setConvertXmlDanmakuToAss,
                 onConfirmCellularChange = viewModel::setConfirmCellularDownload,
                 onHideInAlbumChange = viewModel::setHideDownloadedVideosInSystemAlbum,
                 onNamingTopLevelFolderModeChange = viewModel::setNamingTopLevelFolderMode,

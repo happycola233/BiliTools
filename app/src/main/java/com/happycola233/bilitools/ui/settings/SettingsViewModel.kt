@@ -46,6 +46,10 @@ class SettingsViewModel(
         settingsRepository.setAddMetadata(enabled)
     }
 
+    fun setConvertXmlDanmakuToAss(enabled: Boolean) {
+        settingsRepository.setConvertXmlDanmakuToAss(enabled)
+    }
+
     fun setThemeMode(mode: AppThemeMode, applyImmediately: Boolean = true) {
         settingsRepository.setThemeMode(mode, applyImmediately)
     }

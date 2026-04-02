@@ -164,18 +164,63 @@ object DanmakuParser {
         while (!reader.isAtEnd()) {
             val tag = reader.readTag()
             val field = tag ushr 3
+            val wire = tag and 0x7
             when (field) {
-                1 -> reader.readVarint().also { /* id, ignore */ }
-                2 -> progress = reader.readVarint()
-                3 -> mode = reader.readVarint().toInt()
-                4 -> fontSize = reader.readVarint().toInt()
-                5 -> color = reader.readVarint().toInt()
-                6 -> midHash = reader.readString()
-                7 -> content = reader.readString()
-                8 -> ctime = reader.readVarint()
-                9 -> reader.readString().also { /* action, ignore */ }
-                10 -> pool = reader.readVarint().toInt()
-                11 -> idStr = reader.readString()
+                1 -> if (wire == 0) {
+                    reader.readVarint().also { /* id, ignore */ }
+                } else {
+                    reader.skipField(tag)
+                }
+                2 -> if (wire == 0) {
+                    progress = reader.readVarint()
+                } else {
+                    reader.skipField(tag)
+                }
+                3 -> if (wire == 0) {
+                    mode = reader.readVarint().toInt()
+                } else {
+                    reader.skipField(tag)
+                }
+                4 -> if (wire == 0) {
+                    fontSize = reader.readVarint().toInt()
+                } else {
+                    reader.skipField(tag)
+                }
+                5 -> if (wire == 0) {
+                    color = reader.readVarint().toInt()
+                } else {
+                    reader.skipField(tag)
+                }
+                6 -> if (wire == 2) {
+                    midHash = reader.readString()
+                } else {
+                    reader.skipField(tag)
+                }
+                7 -> if (wire == 2) {
+                    content = reader.readString()
+                } else {
+                    reader.skipField(tag)
+                }
+                8 -> if (wire == 0) {
+                    ctime = reader.readVarint()
+                } else {
+                    reader.skipField(tag)
+                }
+                9 -> if (wire == 2) {
+                    reader.readString().also { /* action, ignore */ }
+                } else {
+                    reader.skipField(tag)
+                }
+                10 -> if (wire == 0) {
+                    pool = reader.readVarint().toInt()
+                } else {
+                    reader.skipField(tag)
+                }
+                11 -> if (wire == 2) {
+                    idStr = reader.readString()
+                } else {
+                    reader.skipField(tag)
+                }
                 else -> reader.skipField(tag)
             }
         }
@@ -330,7 +375,10 @@ private class ProtoReader(
         when (tag and 0x7) {
             0 -> readVarint()
             1 -> position = (position + 8).coerceAtMost(limit)
-            2 -> position = (position + readLength()).coerceAtMost(limit)
+            2 -> {
+                val length = readLength()
+                position = (position + length).coerceAtMost(limit)
+            }
             5 -> position = (position + 4).coerceAtMost(limit)
             else -> position = limit
         }

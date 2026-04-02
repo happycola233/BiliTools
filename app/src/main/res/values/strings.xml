@@ -436,12 +436,14 @@
     <string name="settings_download_title">下载</string>
     <string name="settings_appearance_title">外观</string>
     <string name="settings_general_summary">解析页快捷按钮、实时活动通知</string>
-    <string name="settings_download_summary">下载位置、元数据、移动网络、系统相册</string>
+    <string name="settings_download_summary">下载位置、元数据、弹幕、移动网络、系统相册</string>
     <string name="settings_appearance_summary">主题、配色、纯黑主题、液态玻璃</string>
     <string name="settings_about_summary">版本、更新、日志导出、开源协议、免责声明</string>
     <string name="settings_download_behavior">下载行为</string>
     <string name="settings_add_metadata">为下载文件添加元数据</string>
     <string name="settings_add_metadata_desc">下载音频或视频完成后自动写入标题、封面等元信息。</string>
+    <string name="settings_convert_xml_danmaku_to_ass">将 XML 弹幕转换为 ASS 字幕</string>
+    <string name="settings_convert_xml_danmaku_to_ass_desc">下载弹幕时自动将 XML 转换为 ASS 字幕；关闭后保存 XML 文件。</string>
     <string name="settings_confirm_cellular">移动网络下载前确认</string>
     <string name="settings_confirm_cellular_desc">使用移动网络时，点击下载会先弹出确认提示。</string>
     <string name="settings_hide_download_video_in_system_album">在系统相册隐藏下载的视频</string>
