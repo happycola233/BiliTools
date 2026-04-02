@@ -647,6 +647,9 @@ private fun NamingSettingsScreen(
         scrollBehavior = scrollBehavior,
         modifier = modifier,
     ) { innerPadding ->
+        val showTopLevelFolderTemplate =
+            settings.naming.topLevelFolderMode != TopLevelFolderMode.Disabled
+        val topLevelFolderGroupItems = if (showTopLevelFolderTemplate) 2 else 1
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = innerPadding,
@@ -672,21 +675,26 @@ private fun NamingSettingsScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     TopLevelFolderModeListItem(
                         mode = settings.naming.topLevelFolderMode,
-                        items = 2,
+                        items = topLevelFolderGroupItems,
                         index = 0,
                         onModeChange = onTopLevelFolderModeChange,
                     )
-                    NamingTemplateEditorPanel(
-                        iconRes = R.drawable.ic_folder_special_24,
-                        title = stringResource(R.string.settings_naming_top_level_folder_template),
-                        description = stringResource(R.string.settings_naming_top_level_folder_template_desc),
-                        value = settings.naming.topLevelFolderTemplate,
-                        scope = NamingTemplateScope.TopFolder,
-                        previewContext = previewContext,
-                        previewExtension = null,
-                        shape = SettingsExpressiveShapes.groupShape(index = 1, items = 2),
-                        onValueChange = onTopLevelFolderTemplateChange,
-                    )
+                    if (showTopLevelFolderTemplate) {
+                        NamingTemplateEditorPanel(
+                            iconRes = R.drawable.ic_folder_special_24,
+                            title = stringResource(R.string.settings_naming_top_level_folder_template),
+                            description = stringResource(R.string.settings_naming_top_level_folder_template_desc),
+                            value = settings.naming.topLevelFolderTemplate,
+                            scope = NamingTemplateScope.TopFolder,
+                            previewContext = previewContext,
+                            previewExtension = null,
+                            shape = SettingsExpressiveShapes.groupShape(
+                                index = 1,
+                                items = topLevelFolderGroupItems,
+                            ),
+                            onValueChange = onTopLevelFolderTemplateChange,
+                        )
+                    }
                 }
             }
 
