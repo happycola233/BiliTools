@@ -1673,6 +1673,7 @@ class DownloadRepository(
                 speedBytesPerSec = speedBytesPerSec,
                 etaSeconds = etaSeconds,
                 primaryTitle = primaryTask?.title?.ifBlank { primaryTask.fileName },
+                primaryStatus = primaryTask?.status,
                 hasForegroundWork = activeTasks.isNotEmpty(),
             )
         }
@@ -3699,6 +3700,7 @@ data class DownloadNotificationState(
     val speedBytesPerSec: Long = 0,
     val etaSeconds: Long? = null,
     val primaryTitle: String? = null,
+    val primaryStatus: DownloadStatus? = null,
     val hasForegroundWork: Boolean = false,
 )
 

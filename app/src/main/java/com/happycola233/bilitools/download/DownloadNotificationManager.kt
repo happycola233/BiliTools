@@ -12,6 +12,8 @@ import androidx.core.app.NotificationManagerCompat
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.DownloadNotificationState
 import com.happycola233.bilitools.data.DownloadOutcomeSummary
+import com.happycola233.bilitools.data.model.DownloadStatus
+import com.happycola233.bilitools.notification.applyPromotedOngoing
 import com.happycola233.bilitools.ui.MainActivity
 import java.util.Locale
 
@@ -47,6 +49,16 @@ internal class DownloadNotificationManager(
     }
 
     fun buildProgressNotification(state: DownloadNotificationState): Notification {
+        return buildProgressNotification(
+            state = state,
+            liveActivityStyleEnabled = true,
+        )
+    }
+
+    fun buildProgressNotification(
+        state: DownloadNotificationState,
+        liveActivityStyleEnabled: Boolean,
+    ): Notification {
         val title = when {
             state.inProgressCount > 1 -> context.getString(
                 R.string.notification_title_downloading_multiple,
@@ -82,13 +94,18 @@ internal class DownloadNotificationManager(
         }
 
         val content = listOfNotNull(progressText, speedText, etaText).joinToString(" | ")
-        val subText = if (state.pausedCount > 0) {
-            context.getString(R.string.notification_content_paused_count, state.pausedCount)
+        val subText = if (liveActivityStyleEnabled) {
+            buildStatusText(state)
+        } else {
+            buildLegacySubText(state)
+        }
+        val shortCriticalText = if (liveActivityStyleEnabled) {
+            buildShortCriticalText(state)
         } else {
             null
         }
 
-        return NotificationCompat.Builder(context, CHANNEL_PROGRESS_ID)
+        val builder = NotificationCompat.Builder(context, CHANNEL_PROGRESS_ID)
             .setSmallIcon(R.drawable.ic_download_for_offline_24)
             .setContentTitle(title)
             .setContentText(content)
@@ -120,7 +137,69 @@ internal class DownloadNotificationManager(
                     },
                 ),
             )
-            .build()
+        if (liveActivityStyleEnabled) {
+            builder
+                .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+                .applyPromotedOngoing(shortCriticalText)
+        }
+        return builder.build()
+    }
+
+    private fun buildLegacySubText(state: DownloadNotificationState): String? {
+        return if (state.pausedCount > 0) {
+            context.getString(R.string.notification_content_paused_count, state.pausedCount)
+        } else {
+            null
+        }
+    }
+
+    private fun buildStatusText(state: DownloadNotificationState): String? {
+        val baseStatus = when {
+            state.inProgressCount == 0 && state.pausedCount > 0 -> {
+                if (state.pausedCount == 1) {
+                    context.getString(R.string.notification_status_paused)
+                } else {
+                    context.getString(R.string.notification_content_paused_count, state.pausedCount)
+                }
+            }
+            state.primaryStatus == DownloadStatus.Merging -> {
+                context.getString(R.string.notification_status_merging)
+            }
+            state.primaryStatus == DownloadStatus.Pending -> {
+                context.getString(R.string.notification_status_preparing)
+            }
+            state.inProgressCount > 0 -> {
+                context.getString(R.string.notification_status_downloading)
+            }
+            else -> null
+        } ?: return null
+
+        if (state.inProgressCount > 0 && state.pausedCount > 0) {
+            return baseStatus + " | " +
+                context.getString(R.string.notification_content_paused_count, state.pausedCount)
+        }
+        return baseStatus
+    }
+
+    private fun buildShortCriticalText(state: DownloadNotificationState): String? {
+        return when {
+            state.inProgressCount == 0 && state.pausedCount > 0 -> {
+                context.getString(R.string.notification_short_paused)
+            }
+            state.primaryStatus == DownloadStatus.Merging -> {
+                context.getString(R.string.notification_short_merging)
+            }
+            state.primaryStatus == DownloadStatus.Pending -> {
+                context.getString(R.string.notification_short_preparing)
+            }
+            state.totalBytes > 0L -> {
+                context.getString(R.string.notification_short_progress, state.progress)
+            }
+            state.inProgressCount > 0 -> {
+                context.getString(R.string.notification_short_downloading)
+            }
+            else -> null
+        }
     }
 
     fun notifyProgress(notification: Notification) {

@@ -10,6 +10,7 @@ import androidx.core.content.ContextCompat
 import com.happycola233.bilitools.core.appContainer
 import com.happycola233.bilitools.data.DownloadNotificationState
 import com.happycola233.bilitools.data.DownloadRepository
+import com.happycola233.bilitools.data.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -20,6 +21,7 @@ class DownloadForegroundService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     private lateinit var downloadRepository: DownloadRepository
+    private lateinit var settingsRepository: SettingsRepository
     private lateinit var notificationManager: DownloadNotificationManager
 
     private var isForegroundStarted = false
@@ -30,6 +32,7 @@ class DownloadForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         downloadRepository = applicationContext.appContainer.downloadRepository
+        settingsRepository = applicationContext.appContainer.settingsRepository
         downloadRepository.ensureLoaded()
 
         notificationManager = DownloadNotificationManager(this)
@@ -74,7 +77,10 @@ class DownloadForegroundService : Service() {
         trackedTaskIds = state.activeTaskIds
 
         if (state.hasForegroundWork) {
-            val notification = notificationManager.buildProgressNotification(state)
+            val notification = notificationManager.buildProgressNotification(
+                state = state,
+                liveActivityStyleEnabled = settingsRepository.shouldUseLiveActivityStyleNotification(),
+            )
             if (!isForegroundStarted) {
                 startForeground(
                     DownloadNotificationManager.NOTIFICATION_ID_PROGRESS,

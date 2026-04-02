@@ -60,6 +60,10 @@ class SettingsViewModel(
         settingsRepository.setDarkModePureBlack(enabled)
     }
 
+    fun setLiveActivityStyleNotificationEnabled(enabled: Boolean) {
+        settingsRepository.setLiveActivityStyleNotificationEnabled(enabled)
+    }
+
     fun setConfirmCellularDownload(enabled: Boolean) {
         settingsRepository.setConfirmCellularDownload(enabled)
     }

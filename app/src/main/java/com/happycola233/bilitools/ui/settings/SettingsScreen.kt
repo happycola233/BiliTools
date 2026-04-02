@@ -125,6 +125,7 @@ fun BiliToolsSettingsContent(
     onThemeModeChange: (AppThemeMode) -> Unit,
     onThemeColorChange: (AppThemeColor) -> Unit,
     onParseQuickActionChange: (Boolean) -> Unit,
+    onLiveActivityStyleNotificationChange: (Boolean) -> Unit,
     onAddMetadataChange: (Boolean) -> Unit,
     onConfirmCellularChange: (Boolean) -> Unit,
     onHideInAlbumChange: (Boolean) -> Unit,
@@ -165,8 +166,9 @@ fun BiliToolsSettingsContent(
 
                 entry<SettingsDestination.General> {
                     GeneralSettingsScreen(
-                        enabled = settings.parseQuickActionEnabled,
-                        onEnabledChange = onParseQuickActionChange,
+                        settings = settings,
+                        onParseQuickActionChange = onParseQuickActionChange,
+                        onLiveActivityStyleNotificationChange = onLiveActivityStyleNotificationChange,
                         onBack = onNavigateBack,
                         modifier = modifier,
                     )
@@ -340,8 +342,9 @@ private fun MainSettingsScreen(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun GeneralSettingsScreen(
-    enabled: Boolean,
-    onEnabledChange: (Boolean) -> Unit,
+    settings: AppSettings,
+    onParseQuickActionChange: (Boolean) -> Unit,
+    onLiveActivityStyleNotificationChange: (Boolean) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -363,13 +366,24 @@ private fun GeneralSettingsScreen(
             item { Spacer(Modifier.height(14.dp)) }
             item {
                 ExpressiveSwitchListItem(
-                    checked = enabled,
+                    checked = settings.parseQuickActionEnabled,
                     iconRes = R.drawable.ic_switch_access_shortcut_24,
                     title = stringResource(R.string.settings_parse_quick_action),
                     description = stringResource(R.string.settings_parse_quick_action_desc),
-                    items = 1,
+                    items = 2,
                     index = 0,
-                    onCheckedChange = onEnabledChange,
+                    onCheckedChange = onParseQuickActionChange,
+                )
+            }
+            item {
+                ExpressiveSwitchListItem(
+                    checked = settings.liveActivityStyleNotificationEnabled,
+                    iconRes = R.drawable.ic_dynamic_feed_24,
+                    title = stringResource(R.string.settings_live_activity_style_notification),
+                    description = stringResource(R.string.settings_live_activity_style_notification_desc),
+                    items = 2,
+                    index = 1,
+                    onCheckedChange = onLiveActivityStyleNotificationChange,
                 )
             }
             item { Spacer(Modifier.height(12.dp)) }

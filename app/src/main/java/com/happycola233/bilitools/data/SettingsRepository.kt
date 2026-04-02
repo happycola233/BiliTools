@@ -19,6 +19,7 @@ data class AppSettings(
     val themeMode: AppThemeMode = AppThemeMode.System,
     val themeColor: AppThemeColor = AppThemeColor.Dynamic,
     val darkModePureBlack: Boolean = false,
+    val liveActivityStyleNotificationEnabled: Boolean = true,
     val downloadRootRelativePath: String = SettingsRepository.DEFAULT_DOWNLOAD_ROOT,
     val confirmCellularDownload: Boolean = true,
     val hideDownloadedVideosInSystemAlbum: Boolean = false,
@@ -100,6 +101,9 @@ class SettingsRepository(context: Context) {
 
     fun shouldShowParseQuickAction(): Boolean = _settings.value.parseQuickActionEnabled
 
+    fun shouldUseLiveActivityStyleNotification(): Boolean =
+        _settings.value.liveActivityStyleNotificationEnabled
+
     fun setAddMetadata(enabled: Boolean) {
         val current = _settings.value
         if (current.addMetadata == enabled) return
@@ -133,6 +137,13 @@ class SettingsRepository(context: Context) {
         if (current.darkModePureBlack == enabled) return
         prefs.edit().putBoolean(KEY_DARK_MODE_PURE_BLACK, enabled).apply()
         _settings.value = current.copy(darkModePureBlack = enabled)
+    }
+
+    fun setLiveActivityStyleNotificationEnabled(enabled: Boolean) {
+        val current = _settings.value
+        if (current.liveActivityStyleNotificationEnabled == enabled) return
+        prefs.edit().putBoolean(KEY_LIVE_ACTIVITY_STYLE_NOTIFICATION_ENABLED, enabled).apply()
+        _settings.value = current.copy(liveActivityStyleNotificationEnabled = enabled)
     }
 
     fun setConfirmCellularDownload(enabled: Boolean) {
@@ -286,6 +297,10 @@ class SettingsRepository(context: Context) {
                 prefs.getString(KEY_THEME_COLOR, AppThemeColor.Dynamic.value),
             ),
             darkModePureBlack = prefs.getBoolean(KEY_DARK_MODE_PURE_BLACK, false),
+            liveActivityStyleNotificationEnabled = prefs.getBoolean(
+                KEY_LIVE_ACTIVITY_STYLE_NOTIFICATION_ENABLED,
+                true,
+            ),
             downloadRootRelativePath = normalizeDownloadRoot(
                 prefs.getString(KEY_DOWNLOAD_ROOT_RELATIVE_PATH, DEFAULT_DOWNLOAD_ROOT),
             ),
@@ -453,6 +468,8 @@ class SettingsRepository(context: Context) {
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_THEME_COLOR = "theme_color"
         private const val KEY_DARK_MODE_PURE_BLACK = "dark_mode_pure_black"
+        private const val KEY_LIVE_ACTIVITY_STYLE_NOTIFICATION_ENABLED =
+            "live_activity_style_notification_enabled"
         private const val KEY_DOWNLOAD_ROOT_RELATIVE_PATH = "download_root_relative_path"
         private const val KEY_CONFIRM_CELLULAR_DOWNLOAD = "confirm_cellular_download"
         private const val KEY_HIDE_DOWNLOADED_VIDEOS_IN_SYSTEM_ALBUM =

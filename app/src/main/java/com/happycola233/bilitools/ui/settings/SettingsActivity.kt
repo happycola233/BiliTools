@@ -162,6 +162,7 @@ class SettingsActivity : AppCompatActivity() {
                     }
                 },
                 onParseQuickActionChange = viewModel::setParseQuickActionEnabled,
+                onLiveActivityStyleNotificationChange = viewModel::setLiveActivityStyleNotificationEnabled,
                 onAddMetadataChange = viewModel::setAddMetadata,
                 onConfirmCellularChange = viewModel::setConfirmCellularDownload,
                 onHideInAlbumChange = viewModel::setHideDownloadedVideosInSystemAlbum,

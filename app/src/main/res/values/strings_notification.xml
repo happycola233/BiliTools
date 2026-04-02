@@ -6,9 +6,18 @@
     <string name="notification_title_downloading_default">正在下载</string>
     <string name="notification_title_downloading_multiple">%1$d 个任务下载中</string>
     <string name="notification_title_paused_multiple">%1$d 个任务已暂停</string>
+    <string name="notification_status_downloading">下载中</string>
+    <string name="notification_status_preparing">准备下载</string>
+    <string name="notification_status_merging">合并中</string>
+    <string name="notification_status_paused">已暂停</string>
     <string name="notification_content_progress_percent">%1$d%%</string>
     <string name="notification_content_progress_bytes">%1$d%% %2$s/%3$s</string>
     <string name="notification_content_paused_count">已暂停 %1$d 个</string>
+    <string name="notification_short_downloading">下载中</string>
+    <string name="notification_short_preparing">准备中</string>
+    <string name="notification_short_merging">合并中</string>
+    <string name="notification_short_paused">已暂停</string>
+    <string name="notification_short_progress">%1$d%%</string>
 
     <string name="notification_summary_all_completed">下载完成</string>
     <string name="notification_summary_finished">下载已结束</string>
