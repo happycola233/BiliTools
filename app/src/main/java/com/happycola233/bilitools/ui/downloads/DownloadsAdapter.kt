@@ -23,6 +23,7 @@ import androidx.recyclerview.widget.SimpleItemAnimator
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import coil.load
 import com.google.android.material.color.MaterialColors
+import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.model.DownloadGroup
 import com.happycola233.bilitools.data.model.DownloadItem
@@ -51,6 +52,148 @@ sealed class DownloadsListItem {
 enum class DownloadSectionType {
     Downloading,
     Downloaded,
+}
+
+private enum class ProgressVisualState {
+    WaveDeterminate,
+    WaveIndeterminate,
+    FlatDeterminate,
+}
+
+private data class GroupActionState(
+    val hasActiveDownloads: Boolean,
+    val hasUserPausedDownloads: Boolean,
+)
+
+private class ProgressIndicatorController(
+    private val indicator: LinearProgressIndicator,
+) {
+    private var currentState: ProgressVisualState? = null
+    private var waveAmplitudeAnimator: ValueAnimator? = null
+    private val defaultWaveAmplitude = indicator.getWaveAmplitude()
+
+    fun bind(
+        state: ProgressVisualState,
+        progress: Int,
+        animateStateChange: Boolean,
+        animateProgress: Boolean,
+    ) {
+        val normalizedProgress = progress.coerceIn(0, 100)
+        val previousState = currentState
+        val sameState = previousState == state
+        val useIndeterminate = state == ProgressVisualState.WaveIndeterminate
+
+        if (indicator.isIndeterminate != useIndeterminate) {
+            indicator.isIndeterminate = useIndeterminate
+        }
+
+        if (!useIndeterminate) {
+            indicator.setProgressCompat(
+                normalizedProgress,
+                animateProgress && sameState,
+            )
+        }
+
+        val targetAmplitude = if (state == ProgressVisualState.FlatDeterminate) {
+            0
+        } else {
+            defaultWaveAmplitude
+        }
+        val shouldAnimateAmplitude =
+            animateStateChange && previousState != null && previousState != state
+        setWaveAmplitude(targetAmplitude, animate = shouldAnimateAmplitude)
+        currentState = state
+    }
+
+    private fun setWaveAmplitude(
+        target: Int,
+        animate: Boolean,
+    ) {
+        waveAmplitudeAnimator?.cancel()
+        val start = indicator.getWaveAmplitude()
+        if (!animate || start == target) {
+            indicator.setWaveAmplitude(target)
+            return
+        }
+
+        indicator.setWaveAmplitude(start)
+        waveAmplitudeAnimator = ValueAnimator.ofInt(start, target).apply {
+            duration = STATE_CHANGE_DURATION_MS
+            interpolator = FastOutSlowInInterpolator()
+            addUpdateListener { animator ->
+                indicator.setWaveAmplitude(animator.animatedValue as Int)
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    indicator.setWaveAmplitude(target)
+                    waveAmplitudeAnimator = null
+                }
+
+                override fun onAnimationCancel(animation: Animator) {
+                    waveAmplitudeAnimator = null
+                }
+            })
+            start()
+        }
+    }
+
+    private companion object {
+        private const val STATE_CHANGE_DURATION_MS = 220L
+    }
+}
+
+private fun resolveTaskProgressVisualState(item: DownloadItem): ProgressVisualState {
+    return when (item.status) {
+        DownloadStatus.Pending,
+        DownloadStatus.Merging -> ProgressVisualState.WaveIndeterminate
+        DownloadStatus.Running -> ProgressVisualState.WaveDeterminate
+        DownloadStatus.Paused -> ProgressVisualState.FlatDeterminate
+        DownloadStatus.Failed,
+        DownloadStatus.Success,
+        DownloadStatus.Cancelled -> ProgressVisualState.FlatDeterminate
+    }
+}
+
+private fun resolveGroupActionState(group: DownloadGroup): GroupActionState {
+    var hasActiveDownloads = false
+    var hasUserPausedDownloads = false
+    group.tasks.forEach { item ->
+        if (!isManagedDownload(item)) return@forEach
+        when (item.status) {
+            DownloadStatus.Pending,
+            DownloadStatus.Running,
+            DownloadStatus.Merging -> hasActiveDownloads = true
+            DownloadStatus.Paused -> {
+                if (item.userPaused) {
+                    hasUserPausedDownloads = true
+                }
+            }
+            else -> Unit
+        }
+    }
+    return GroupActionState(
+        hasActiveDownloads = hasActiveDownloads,
+        hasUserPausedDownloads = hasUserPausedDownloads,
+    )
+}
+
+private fun resolveGroupProgressVisualState(
+    actionState: GroupActionState,
+): ProgressVisualState {
+    return if (actionState.hasActiveDownloads) {
+        ProgressVisualState.WaveDeterminate
+    } else {
+        ProgressVisualState.FlatDeterminate
+    }
+}
+
+private fun isManagedDownload(item: DownloadItem): Boolean {
+    return when (item.taskType) {
+        DownloadTaskType.Video,
+        DownloadTaskType.Audio,
+        DownloadTaskType.AudioVideo -> true
+        else -> false
+    }
 }
 
 class DownloadsAdapter(
@@ -366,6 +509,9 @@ class DownloadsAdapter(
         private var checkboxWidthAnimator: ValueAnimator? = null
         private var checkboxAnimationTargetVisible: Boolean? = null
         private var cachedCheckboxExpandedWidthPx: Int = 0
+        private val groupProgressController = ProgressIndicatorController(
+            indicator = binding.groupProgress,
+        )
 
         init {
             binding.groupTasks.layoutManager = LinearLayoutManager(binding.root.context)
@@ -609,6 +755,7 @@ class DownloadsAdapter(
             
             val completed = group.tasks.count { it.status == DownloadStatus.Success }
             val progress = calculateGroupProgress(group.tasks)
+            val groupActionState = resolveGroupActionState(group)
             bindGroupProgressSummary(
                 context,
                 group,
@@ -635,32 +782,22 @@ class DownloadsAdapter(
                 }
             }
 
-            binding.groupProgress.isIndeterminate = false
-            binding.groupProgress.setProgressCompat(progress, true)
+            groupProgressController.bind(
+                state = resolveGroupProgressVisualState(groupActionState),
+                progress = progress,
+                animateStateChange = false,
+                animateProgress = false,
+            )
             bindGroupActionsSummary(context, group)
-
-            val hasRunning = group.tasks.any { item ->
-                isManaged(item) && when (item.status) {
-                    DownloadStatus.Pending,
-                    DownloadStatus.Running,
-                    DownloadStatus.Merging -> true
-                    else -> false
-                }
-            }
-            val hasPaused = group.tasks.any { item ->
-                isManaged(item) &&
-                    item.status == DownloadStatus.Paused &&
-                    item.userPaused
-            }
             
             if (selectionMode) {
                 binding.groupActionsContainer.visibility = View.GONE
-            } else if (hasRunning) {
+            } else if (groupActionState.hasActiveDownloads) {
                 binding.groupPauseResume.setIconResource(R.drawable.ic_pause_24)
                 binding.groupPauseResume.text = context.getString(R.string.download_pause)
                 binding.groupPauseResume.setOnClickListener { onGroupPause(group) }
                 binding.groupActionsContainer.visibility = View.VISIBLE
-            } else if (hasPaused) {
+            } else if (groupActionState.hasUserPausedDownloads) {
                 binding.groupPauseResume.setIconResource(R.drawable.ic_play_arrow_24)
                 binding.groupPauseResume.text = context.getString(R.string.download_resume)
                 binding.groupPauseResume.setOnClickListener { onGroupResume(group) }
@@ -775,6 +912,7 @@ class DownloadsAdapter(
             updateGroupTitleMaxLines(group)
             val completed = group.tasks.count { it.status == DownloadStatus.Success }
             val progress = calculateGroupProgress(group.tasks)
+            val groupActionState = resolveGroupActionState(group)
             bindGroupProgressSummary(
                 context,
                 group,
@@ -782,32 +920,22 @@ class DownloadsAdapter(
                 group.tasks.size,
                 progress,
             )
-            binding.groupProgress.isIndeterminate = false
-            binding.groupProgress.setProgressCompat(progress, true)
+            groupProgressController.bind(
+                state = resolveGroupProgressVisualState(groupActionState),
+                progress = progress,
+                animateStateChange = true,
+                animateProgress = true,
+            )
             bindGroupActionsSummary(context, group)
-
-            val hasRunning = group.tasks.any { item ->
-                isManaged(item) && when (item.status) {
-                    DownloadStatus.Pending,
-                    DownloadStatus.Running,
-                    DownloadStatus.Merging -> true
-                    else -> false
-                }
-            }
-            val hasPaused = group.tasks.any { item ->
-                isManaged(item) &&
-                    item.status == DownloadStatus.Paused &&
-                    item.userPaused
-            }
 
             if (adapter.selectionMode) {
                 binding.groupActionsContainer.visibility = View.GONE
-            } else if (hasRunning) {
+            } else if (groupActionState.hasActiveDownloads) {
                 binding.groupPauseResume.setIconResource(R.drawable.ic_pause_24)
                 binding.groupPauseResume.text = context.getString(R.string.download_pause)
                 binding.groupPauseResume.setOnClickListener { onGroupPause(group) }
                 binding.groupActionsContainer.visibility = View.VISIBLE
-            } else if (hasPaused) {
+            } else if (groupActionState.hasUserPausedDownloads) {
                 binding.groupPauseResume.setIconResource(R.drawable.ic_play_arrow_24)
                 binding.groupPauseResume.text = context.getString(R.string.download_resume)
                 binding.groupPauseResume.setOnClickListener { onGroupResume(group) }
@@ -1271,14 +1399,6 @@ class DownloadsAdapter(
             return DownloadProgressRules.normalizeAggregateProgress(progress, allTasksSucceeded)
         }
 
-        private fun isManaged(item: DownloadItem): Boolean {
-            return when (item.taskType) {
-                DownloadTaskType.Video,
-                DownloadTaskType.Audio,
-                DownloadTaskType.AudioVideo -> true
-                else -> false
-            }
-        }
     }
 
     class SectionHeaderViewHolder(
@@ -1408,6 +1528,9 @@ private class DownloadTaskAdapter(
         private val onLocationClick: (String) -> Unit,
     ) : RecyclerView.ViewHolder(binding.root) {
         private var currentItem: DownloadItem? = null
+        private val progressController = ProgressIndicatorController(
+            indicator = binding.downloadProgress,
+        )
 
         private fun latestItem(fallback: DownloadItem): DownloadItem {
             val current = currentItem
@@ -1432,7 +1555,12 @@ private class DownloadTaskAdapter(
             }
             
             bindDetailText(context, item)
-            bindProgressState(context, item)
+            bindProgressState(
+                context = context,
+                item = item,
+                animateStateChange = false,
+                animateProgress = false,
+            )
 
             val managed = isManaged(item)
             val actionType = if (managed) {
@@ -1488,7 +1616,12 @@ private class DownloadTaskAdapter(
             currentItem = item
             val context = binding.root.context
             bindDetailText(context, item)
-            bindProgressState(context, item)
+            bindProgressState(
+                context = context,
+                item = item,
+                animateStateChange = true,
+                animateProgress = true,
+            )
 
             val managed = isManaged(item)
             val actionType = if (managed) {
@@ -1549,9 +1682,12 @@ private class DownloadTaskAdapter(
             binding.downloadDetail.setTextColor(detailColor)
         }
 
-        private fun bindProgressState(context: Context, item: DownloadItem) {
-            val isProcessing = item.status == DownloadStatus.Pending || item.status == DownloadStatus.Merging
-            binding.downloadProgress.isIndeterminate = isProcessing
+        private fun bindProgressState(
+            context: Context,
+            item: DownloadItem,
+            animateStateChange: Boolean,
+            animateProgress: Boolean,
+        ) {
             val progress = DownloadProgressRules.normalizeTaskProgress(item.status, item.progress)
 
             val showProgress = when (item.status) {
@@ -1562,7 +1698,12 @@ private class DownloadTaskAdapter(
                 else -> false
             }
             binding.downloadProgressRow.visibility = if (showProgress) View.VISIBLE else View.GONE
-            binding.downloadProgress.setProgressCompat(progress, true)
+            progressController.bind(
+                state = resolveTaskProgressVisualState(item),
+                progress = progress,
+                animateStateChange = animateStateChange,
+                animateProgress = animateProgress,
+            )
 
             val progressText = buildProgressText(context, item)
             binding.downloadProgressText.text = progressText.orEmpty()
