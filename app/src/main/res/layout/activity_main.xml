@@ -7,24 +7,27 @@
     android:layout_height="match_parent"
     android:background="?attr/colorSurface">
 
-    <com.google.android.material.appbar.AppBarLayout
+    <com.happycola233.bilitools.ui.widget.StableAppBarLayout
         android:id="@+id/app_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="?attr/colorSurface"
+        android:fitsSystemWindows="false"
         android:stateListAnimator="@null"
         app:elevation="0dp"
         app:liftOnScroll="false">
 
-        <com.google.android.material.appbar.CollapsingToolbarLayout
+        <com.happycola233.bilitools.ui.widget.StableCollapsingToolbarLayout
             android:id="@+id/collapsing_toolbar"
             android:layout_width="match_parent"
             android:layout_height="96dp"
+            android:fitsSystemWindows="false"
             app:collapsedTitleTextAppearance="@style/TextAppearance.BiliTools.Main.CollapsedTitle"
             app:contentScrim="?attr/colorSurface"
             app:expandedTitleMarginBottom="28dp"
             app:expandedTitleMarginStart="16dp"
             app:expandedTitleTextAppearance="@style/TextAppearance.BiliTools.Main.ExpandedTitle"
+            app:forceApplySystemWindowInsetTop="false"
             app:layout_scrollFlags="scroll|exitUntilCollapsed|snap"
             app:titleCollapseMode="scale">
 
@@ -32,11 +35,12 @@
                 android:id="@+id/toolbar"
                 android:layout_width="match_parent"
                 android:layout_height="?attr/actionBarSize"
+                android:fitsSystemWindows="false"
                 app:layout_collapseMode="pin"
                 app:titleCentered="false" />
 
-        </com.google.android.material.appbar.CollapsingToolbarLayout>
-    </com.google.android.material.appbar.AppBarLayout>
+        </com.happycola233.bilitools.ui.widget.StableCollapsingToolbarLayout>
+    </com.happycola233.bilitools.ui.widget.StableAppBarLayout>
 
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/view_pager"

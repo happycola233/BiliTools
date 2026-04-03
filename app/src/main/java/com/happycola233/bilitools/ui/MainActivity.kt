@@ -1,12 +1,14 @@
 package com.happycola233.bilitools.ui
 
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.os.bundleOf
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.ViewCompat
+import androidx.core.view.ViewGroupCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
@@ -33,27 +35,26 @@ class MainActivity : AppCompatActivity() {
         appliedThemeSnapshot = applySettingsThemeOverlays()
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        val bottomNavBaseBottomPadding = binding.bottomNav.paddingBottom
+        val viewPagerBaseBottomPadding = binding.viewPager.paddingBottom
 
         // Handle edge-to-edge manually.
         // AppBar gets its own listener that returns CONSUMED so the Material library's
-        // internal AppBarLayout.onApplyWindowInsets() cannot double-apply the top inset.
+        // internal AppBarLayout.onApplyWindowInsets() cannot re-apply top insets.
         ViewCompat.setOnApplyWindowInsetsListener(binding.appBar) { v, windowInsets ->
-            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.updatePadding(top = insets.top)
+            val topInsets = windowInsets.getInsets(TOP_BAR_INSET_TYPES)
+            v.updatePadding(top = topInsets.top)
             WindowInsetsCompat.CONSUMED
         }
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, windowInsets ->
-            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-            binding.bottomNav.updatePadding(bottom = insets.bottom)
-
-            // Adjust ViewPager padding to avoid content being covered by the bottom nav
-            // 80dp is roughly the height of bottom nav, plus the system bottom inset
-            val basePadding = (80 * resources.displayMetrics.density).toInt()
-            binding.viewPager.updatePadding(bottom = basePadding + insets.bottom)
-
+            val bottomInsets = windowInsets.getInsets(BOTTOM_BAR_INSET_TYPES)
+            binding.bottomNav.updatePadding(bottom = bottomNavBaseBottomPadding + bottomInsets.bottom)
+            binding.viewPager.updatePadding(bottom = viewPagerBaseBottomPadding + bottomInsets.bottom)
             windowInsets
         }
+        ViewGroupCompat.installCompatInsetsDispatch(binding.root)
+        setContentView(binding.root)
+        requestInsetsRefresh()
 
         val pagerAdapter = MainPagerAdapter(this)
         binding.viewPager.adapter = pagerAdapter
@@ -69,7 +70,7 @@ class MainActivity : AppCompatActivity() {
                     else -> R.id.parseFragment
                 }
                 binding.bottomNav.menu.findItem(menuId).isChecked = true
-                
+
                 // Update title
                 binding.collapsingToolbar.title = when (position) {
                     0 -> getString(R.string.app_name)
@@ -112,6 +113,19 @@ class MainActivity : AppCompatActivity() {
         recreateIfThemeSettingsChanged()
     }
 
+    override fun onResume() {
+        super.onResume()
+        requestInsetsRefresh()
+    }
+
+    override fun onMultiWindowModeChanged(
+        isInMultiWindowMode: Boolean,
+        newConfig: Configuration,
+    ) {
+        super.onMultiWindowModeChanged(isInMultiWindowMode, newConfig)
+        requestInsetsRefresh()
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -147,6 +161,15 @@ class MainActivity : AppCompatActivity() {
             return
         }
         appliedThemeSnapshot = currentSnapshot
+    }
+
+    private fun requestInsetsRefresh() {
+        if (!::binding.isInitialized) return
+        binding.root.post {
+            if (binding.root.isAttachedToWindow) {
+                ViewCompat.requestApplyInsets(binding.root)
+            }
+        }
     }
 
     private fun checkForUpdatesInBackground() {
@@ -196,6 +219,10 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_OPEN_DOWNLOADS = "extra_open_downloads"
+        private val TOP_BAR_INSET_TYPES =
+            WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.displayCutout()
+        private val BOTTOM_BAR_INSET_TYPES =
+            WindowInsetsCompat.Type.navigationBars()
     }
 }
 
