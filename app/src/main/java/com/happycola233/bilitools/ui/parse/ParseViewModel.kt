@@ -3,6 +3,7 @@
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.happycola233.bilitools.R
+import com.happycola233.bilitools.core.AudioQualities
 import com.happycola233.bilitools.core.BiliHttpException
 import com.happycola233.bilitools.core.DownloadNaming
 import com.happycola233.bilitools.core.NamingRenderContext
@@ -192,7 +193,7 @@ class ParseViewModel(
     private val _events = MutableSharedFlow<ParseEvent>(extraBufferCapacity = 1)
     val events: SharedFlow<ParseEvent> = _events.asSharedFlow()
     private val fullResolutionIds = listOf(127, 126, 125, 120, 116, 112, 80, 64, 32, 16, 6)
-    private val fullAudioIds = listOf(30280, 30232, 30216)
+    private val fullAudioIds = AudioQualities.allIds
     private val offsetMap = mutableMapOf<Int, String>()
     private val collectionStatCache = mutableMapOf<String, MediaStat>()
     private val itemStatCache = mutableMapOf<String, MediaStat>()
@@ -1002,6 +1003,7 @@ class ParseViewModel(
                             when (outputType) {
                                 OutputType.AudioOnly -> {
                                     val mediaParams = buildMediaParams(null, null, selectedAudio)
+                                    val audioExtension = extensionForAudioStream(selectedAudio!!)
                                     val audioNamingContext = buildNamingRenderContext(
                                         info = info,
                                         item = item,
@@ -1010,13 +1012,13 @@ class ParseViewModel(
                                         taskType = DownloadTaskType.Audio,
                                         taskLabel = downloadTitle,
                                         mediaParams = mediaParams,
-                                        formatLabel = mapStreamFormatLabel(StreamFormat.Dash),
+                                        formatLabel = mapOutputExtensionLabel(audioExtension),
                                     )
                                     val audioName = resolveTemplateFileName(
                                         taskType = DownloadTaskType.Audio,
                                         namingSession = namingSession,
                                         context = audioNamingContext,
-                                        extension = "m4a",
+                                        extension = audioExtension,
                                     )
                                     lastDownload = downloadRepository.enqueue(
                                         groupId,
@@ -1059,6 +1061,7 @@ class ParseViewModel(
                                 OutputType.AudioVideo -> {
                                     if (playUrlInfo.format == StreamFormat.Dash && selectedAudio != null) {
                                         val mediaParams = buildMediaParams(mergeVideo, outputVideoCodec, selectedAudio)
+                                        val mergedExtension = extensionForMergedOutput(selectedAudio!!)
                                         val mergedNamingContext = buildNamingRenderContext(
                                             info = info,
                                             item = item,
@@ -1067,13 +1070,13 @@ class ParseViewModel(
                                             taskType = DownloadTaskType.AudioVideo,
                                             taskLabel = downloadTitle,
                                             mediaParams = mediaParams,
-                                            formatLabel = mapStreamFormatLabel(StreamFormat.Mp4),
+                                            formatLabel = mapOutputExtensionLabel(mergedExtension),
                                         )
                                         val outputName = resolveTemplateFileName(
                                             taskType = DownloadTaskType.AudioVideo,
                                             namingSession = namingSession,
                                             context = mergedNamingContext,
-                                            extension = "mp4",
+                                            extension = mergedExtension,
                                         )
                                         lastDownload = downloadRepository.enqueueDashMerge(
                                             groupId,
@@ -2039,6 +2042,14 @@ class ParseViewModel(
         }
     }
 
+    private fun extensionForAudioStream(stream: AudioStream): String {
+        return AudioQualities.audioFileExtension(stream.id)
+    }
+
+    private fun extensionForMergedOutput(stream: AudioStream): String {
+        return AudioQualities.mergedContainerExtension(stream.id)
+    }
+
     private fun mapMediaTypeLabel(type: MediaType): String {
         return when (type) {
             MediaType.Video -> strings.get(R.string.parse_media_type_video)
@@ -2078,6 +2089,10 @@ class ParseViewModel(
             StreamFormat.Mp4 -> strings.get(R.string.format_mp4)
             StreamFormat.Flv -> strings.get(R.string.format_flv)
         }
+    }
+
+    private fun mapOutputExtensionLabel(extension: String): String {
+        return extension.trim().uppercase()
     }
 
     private fun selectSubtitle(subtitles: List<SubtitleInfo>, selectedLan: String?): SubtitleInfo? {
@@ -2430,9 +2445,9 @@ class ParseViewModel(
         if (streams.isEmpty()) return null
         val ids = streams.map { it.id }.distinct()
         return when (mode) {
-            QualityMode.Highest -> ids.maxOrNull()
-            QualityMode.Lowest -> ids.minOrNull()
-            QualityMode.Fixed -> selectedId?.takeIf { ids.contains(it) } ?: ids.maxOrNull()
+            QualityMode.Highest -> AudioQualities.highest(ids)
+            QualityMode.Lowest -> AudioQualities.lowest(ids)
+            QualityMode.Fixed -> selectedId?.takeIf { ids.contains(it) } ?: AudioQualities.highest(ids)
         }
     }
 
@@ -2506,9 +2521,10 @@ class ParseViewModel(
     }
 
     private fun buildAudioOptions(streams: List<AudioStream>): List<AudioOption> {
-        return streams.map { audio ->
-            AudioOption(audio.id, mapAudioLabel(audio.id))
-        }.distinctBy { it.id }.sortedByDescending { it.id }
+        val labelsById = streams.associate { it.id to mapAudioLabel(it.id) }
+        return AudioQualities.sortDescending(labelsById.keys).map { id ->
+            AudioOption(id, labelsById[id] ?: mapAudioLabel(id))
+        }
     }
 
     private fun buildAudioOptionsAll(streams: List<AudioStream>): List<AudioOption> {
@@ -2517,7 +2533,7 @@ class ParseViewModel(
         }
         return (known + buildAudioOptions(streams))
             .distinctBy { it.id }
-            .sortedByDescending { it.id }
+            .sortedByDescending { AudioQualities.allIds.indexOf(it.id) }
     }
 
     private fun mapResolutionLabel(stream: VideoStream): String {
@@ -2561,12 +2577,7 @@ class ParseViewModel(
     }
 
     private fun mapAudioLabel(id: Int): String {
-        return when (id) {
-            30280 -> strings.get(R.string.parse_bitrate_192)
-            30232 -> strings.get(R.string.parse_bitrate_132)
-            30216 -> strings.get(R.string.parse_bitrate_64)
-            else -> strings.get(R.string.parse_bitrate_other)
-        }
+        return strings.get(AudioQualities.labelRes(id))
     }
 
     private fun mapImageLabel(id: String): String {

@@ -187,8 +187,13 @@
     <string name="parse_codec_hevc">HEVC (H.265)</string>
     <string name="parse_codec_av1">AV1</string>
     <string name="parse_bitrate_192">192K</string>
+    <string name="parse_bitrate_128">128K</string>
     <string name="parse_bitrate_132">132K</string>
     <string name="parse_bitrate_64">64K</string>
+    <string name="parse_bitrate_320">320K</string>
+    <string name="parse_bitrate_dolby">杜比全景声</string>
+    <string name="parse_bitrate_hires">Hi-Res 无损</string>
+    <string name="parse_bitrate_flac">无损 FLAC</string>
     <string name="parse_bitrate_other">其他</string>
     <string name="parse_notice_saved">已保存：%1$s</string>
     <string name="parse_notice_multi_saved">已保存 %1$d 个文件</string>

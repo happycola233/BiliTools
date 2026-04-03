@@ -3,6 +3,7 @@
 import com.happycola233.bilitools.core.BiliHttpClient
 import com.happycola233.bilitools.core.BiliHttpException
 import com.happycola233.bilitools.core.CookieStore
+import com.happycola233.bilitools.core.AudioQualities
 import com.happycola233.bilitools.core.WbiSigner
 import com.happycola233.bilitools.data.model.AudioStream
 import com.happycola233.bilitools.data.model.MediaInfo
@@ -1576,6 +1577,67 @@ class MediaRepository(
     }
 
     private suspend fun fetchMusicPlayUrl(item: MediaItem): PlayUrlInfo {
+        return runCatching { fetchMusicPlayUrlViaAppApi(item) }
+            .getOrElse { fetchMusicPlayUrlViaWebApi(item) }
+    }
+
+    private suspend fun fetchMusicPlayUrlViaAppApi(item: MediaItem): PlayUrlInfo {
+        val sid = item.sid ?: throw BiliHttpException("Missing sid", -1)
+        val mid = cookieStore.getCookie("DedeUserID")?.toLongOrNull()?.coerceAtLeast(0L) ?: 0L
+        var initial: MusicPlayUrlData? = null
+        for (quality in listOf(3, 2, 1, 0)) {
+            val data = runCatching { requestMusicPlayUrlApi(sid, quality, mid) }.getOrNull()
+            if (data != null) {
+                initial = data
+                break
+            }
+        }
+        initial = initial ?: throw BiliHttpException("Empty music playurl", -1)
+        val qualityInfoByType = initial.qualities.orEmpty()
+            .mapNotNull { info -> info.type?.let { type -> type to info } }
+            .toMap()
+        val requestedTypes = initial.qualities.orEmpty()
+            .mapNotNull { it.type }
+            .ifEmpty {
+                listOfNotNull(initial.type.takeIf { it >= 0 })
+            }
+            .distinct()
+            .sortedDescending()
+        val streams = LinkedHashMap<Int, AudioStream>()
+        for (qualityType in requestedTypes) {
+            val data = if (initial.type == qualityType) {
+                initial
+            } else {
+                runCatching { requestMusicPlayUrlApi(sid, qualityType, mid) }.getOrNull()
+                    ?: continue
+            }
+            if (data.type != qualityType && data.type != -1) {
+                continue
+            }
+            val stream = buildMusicAudioStream(
+                data = data,
+                bandwidthHint = qualityInfoByType[qualityType]?.bps?.let(::parseMusicQualityBps),
+            ) ?: continue
+            streams.putIfAbsent(stream.id, stream)
+        }
+        if (streams.isEmpty()) {
+            buildMusicAudioStream(initial)?.let { stream ->
+                streams[stream.id] = stream
+            }
+        }
+        if (streams.isEmpty()) {
+            throw BiliHttpException("No playable stream", -1)
+        }
+        return PlayUrlInfo(
+            format = StreamFormat.Dash,
+            video = emptyList(),
+            audio = AudioQualities.sortDescending(streams.keys).mapNotNull { streams[it] },
+            acceptQuality = emptyList(),
+            acceptDescription = emptyList(),
+        )
+    }
+
+    private suspend fun fetchMusicPlayUrlViaWebApi(item: MediaItem): PlayUrlInfo {
         val sid = item.sid ?: throw BiliHttpException("Missing sid", -1)
         val params = mapOf(
             "sid" to sid.toString(),
@@ -1589,15 +1651,8 @@ class MediaRepository(
         if (resp.code != 0 || resp.data == null) {
             throw BiliHttpException(resp.msg ?: "Music playurl error", resp.code)
         }
-        val data = resp.data
-        val id = MUSIC_QUALITY_MAP[data.type] ?: -1
-        val audio = listOf(
-            AudioStream(
-                id = id,
-                url = data.cdns.firstOrNull().orEmpty(),
-                backupUrls = data.cdns,
-            ),
-        )
+        val audio = buildMusicAudioStream(resp.data)?.let(::listOf)
+            ?: throw BiliHttpException("No playable stream", -1)
         return PlayUrlInfo(
             format = StreamFormat.Dash,
             video = emptyList(),
@@ -1605,6 +1660,57 @@ class MediaRepository(
             acceptQuality = emptyList(),
             acceptDescription = emptyList(),
         )
+    }
+
+    private suspend fun requestMusicPlayUrlApi(
+        sid: Long,
+        quality: Int,
+        mid: Long,
+    ): MusicPlayUrlData {
+        val url = buildUrl(
+            "https://api.bilibili.com/audio/music-service-c/url",
+            mapOf(
+                "songid" to sid.toString(),
+                "quality" to quality.toString(),
+                "privilege" to "2",
+                "mid" to mid.toString(),
+                "platform" to "android",
+            ),
+        )
+        val body = httpClient.get(url)
+        val adapter = httpClient.adapter(MusicPlayUrlResponse::class.java)
+        val resp = adapter.fromJson(body) ?: throw BiliHttpException("Empty music playurl", -1)
+        if (resp.code != 0 || resp.data == null) {
+            throw BiliHttpException(resp.msg ?: "Music playurl error", resp.code)
+        }
+        return resp.data
+    }
+
+    private fun buildMusicAudioStream(
+        data: MusicPlayUrlData,
+        bandwidthHint: Long? = null,
+    ): AudioStream? {
+        val streamId = AudioQualities.musicApiTypeToStreamId(data.type) ?: return null
+        val urls = data.cdns.filter { it.isNotBlank() }
+        if (urls.isEmpty()) return null
+        val fallbackBandwidth = (AudioQualities.allIds.indexOf(streamId) + 1).toLong()
+        return AudioStream(
+            id = streamId,
+            bandwidth = bandwidthHint ?: fallbackBandwidth,
+            url = urls.first(),
+            backupUrls = urls,
+        )
+    }
+
+    private fun parseMusicQualityBps(raw: String?): Long? {
+        val value = raw?.trim().orEmpty()
+        if (value.isBlank()) return null
+        val number = Regex("(\\d+)").find(value)?.groupValues?.getOrNull(1)?.toLongOrNull() ?: return null
+        return when {
+            value.contains("mbit", ignoreCase = true) -> number * 1_000_000L
+            value.contains("kbit", ignoreCase = true) -> number * 1_000L
+            else -> number
+        }
     }
 
     private fun buildUrl(base: String, params: Map<String, String>): HttpUrl {
@@ -1659,12 +1765,6 @@ class MediaRepository(
             RegexOption.IGNORE_CASE,
         )
 
-        private val MUSIC_QUALITY_MAP = mapOf(
-            0 to 30228,
-            1 to 30280,
-            2 to 30380,
-            3 to 30252,
-        )
     }
 }
 
@@ -2290,6 +2390,12 @@ private data class MusicPlayUrlResponse(
 private data class MusicPlayUrlData(
     @Json(name = "type") val type: Int,
     @Json(name = "cdns") val cdns: List<String>,
+    @Json(name = "qualities") val qualities: List<MusicPlayUrlQualityInfo>?,
+)
+
+private data class MusicPlayUrlQualityInfo(
+    @Json(name = "type") val type: Int?,
+    @Json(name = "bps") val bps: String?,
 )
 
 private data class PlayUrlResponse(

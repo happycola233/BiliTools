@@ -24,6 +24,7 @@ markwon = "4.6.2"
 compose = "1.11.0-beta02"
 composeMaterial3 = "1.5.0-alpha16"
 backdrop = "1.0.6"
+ffmpegKit = "6.1.7"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -60,6 +61,7 @@ androidx-compose-ui = { group = "androidx.compose.ui", name = "ui", version.ref 
 androidx-compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics", version.ref = "compose" }
 backdrop = { group = "io.github.kyant0", name = "backdrop", version.ref = "backdrop" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "composeMaterial3" }
+ffmpeg-kit-main-android16kb = { group = "io.github.jamaismagic.ffmpeg", name = "ffmpeg-kit-main-16kb", version.ref = "ffmpegKit" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

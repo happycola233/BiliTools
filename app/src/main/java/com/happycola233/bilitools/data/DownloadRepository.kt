@@ -2,18 +2,18 @@ package com.happycola233.bilitools.data
 
 import android.content.ContentValues
 import android.content.Context
-import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
-import android.media.MediaMuxer
 import android.net.Uri
 import android.os.Environment
 import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import android.provider.MediaStore
 import com.happycola233.bilitools.R
+import com.happycola233.bilitools.core.AudioQualities
 import com.happycola233.bilitools.core.AppLog as Log
 import com.happycola233.bilitools.core.BiliHttpClient
+import com.happycola233.bilitools.core.MediaMergeEngine
 import com.happycola233.bilitools.data.model.AudioStream
 import com.happycola233.bilitools.core.CookieStore
 import com.happycola233.bilitools.core.createHttpDiagnosticLoggingInterceptor
@@ -1116,6 +1116,13 @@ class DownloadRepository(
                 return matched.maxByOrNull { it.bandwidth ?: 0L } ?: matched.first()
             }
         }
+        val highestId = AudioQualities.highest(streams.map { it.id })
+        if (highestId != null) {
+            val highest = streams.filter { it.id == highestId }
+            if (highest.isNotEmpty()) {
+                return highest.maxByOrNull { it.bandwidth ?: 0L } ?: highest.first()
+            }
+        }
         return streams.maxByOrNull { it.bandwidth ?: 0L } ?: streams.first()
     }
 
@@ -1163,12 +1170,7 @@ class DownloadRepository(
     }
 
     private fun mapAudioLabel(id: Int): String {
-        return when (id) {
-            30280 -> context.getString(R.string.parse_bitrate_192)
-            30232 -> context.getString(R.string.parse_bitrate_132)
-            30216 -> context.getString(R.string.parse_bitrate_64)
-            else -> context.getString(R.string.parse_bitrate_other)
-        }
+        return context.getString(AudioQualities.labelRes(id))
     }
 
     private fun buildRequest(
@@ -2418,69 +2420,28 @@ class DownloadRepository(
             )
             return null
         }
+        val videoUsable = isMediaPartUsable(videoFile, "video/")
+        val audioUsable = isMediaPartUsable(audioFile, "audio/")
+        if (!videoUsable || !audioUsable) {
+            Log.w(
+                TAG,
+                "[merge-chain] merge source unreadable, taskId=${task.id}, videoUsable=$videoUsable, audioUsable=$audioUsable",
+            )
+            return null
+        }
         val outputTemp = tempFileFor(task.id, task.outputName)
         runCatching { outputTemp.delete() }
-        val muxer = MediaMuxer(outputTemp.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
-        val videoExtractor = MediaExtractor()
-        val audioExtractor = MediaExtractor()
-        val videoInput = FileInputStream(videoFile)
-        val audioInput = FileInputStream(audioFile)
         var merged = false
         try {
             currentCoroutineContext().ensureActive()
-            videoExtractor.setDataSource(videoInput.fd)
-            val videoTrack = selectTrack(videoExtractor, "video/")
-            audioExtractor.setDataSource(audioInput.fd)
-            val audioTrack = selectTrack(audioExtractor, "audio/")
-            val videoTrackIndex = if (videoTrack >= 0) {
-                muxer.addTrack(videoExtractor.getTrackFormat(videoTrack))
-            } else {
-                -1
-            }
-            val audioTrackIndex = if (audioTrack >= 0) {
-                muxer.addTrack(audioExtractor.getTrackFormat(audioTrack))
-            } else {
-                -1
-            }
-            if (videoTrackIndex < 0 && audioTrackIndex < 0) {
-                Log.w(
-                    TAG,
-                    "[merge-chain] no readable tracks for mux, taskId=${task.id}, output=${task.outputName}",
-                )
-                return null
-            }
-            muxer.start()
-            if (videoTrack >= 0) {
-                videoExtractor.selectTrack(videoTrack)
-                copySamples(
-                    videoExtractor,
-                    muxer,
-                    videoTrackIndex,
-                    videoExtractor.getTrackFormat(videoTrack),
-                )
-            }
-            if (audioTrack >= 0) {
-                audioExtractor.selectTrack(audioTrack)
-                copySamples(
-                    audioExtractor,
-                    muxer,
-                    audioTrackIndex,
-                    audioExtractor.getTrackFormat(audioTrack),
-                )
-            }
+            MediaMergeEngine.merge(videoFile, audioFile, outputTemp)
             currentCoroutineContext().ensureActive()
-            muxer.stop()
             merged = true
             Log.d(
                 TAG,
                 "[merge-chain] mux success, taskId=${task.id}, outputTemp=${outputTemp.absolutePath}, outputTempSize=${outputTemp.length()}",
             )
         } finally {
-            runCatching { muxer.release() }
-            videoExtractor.release()
-            audioExtractor.release()
-            videoInput.close()
-            audioInput.close()
             if (!merged) {
                 runCatching { outputTemp.delete() }
             }
@@ -2552,44 +2513,13 @@ class DownloadRepository(
         }
     }
 
-    private suspend fun copySamples(
-        extractor: MediaExtractor,
-        muxer: MediaMuxer,
-        trackIndex: Int,
-        format: MediaFormat,
-    ) {
-        val maxSize = if (format.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE)) {
-            format.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE).coerceAtLeast(512 * 1024)
-        } else {
-            2 * 1024 * 1024
-        }
-        val buffer = java.nio.ByteBuffer.allocate(maxSize)
-        val info = MediaCodec.BufferInfo()
-        while (true) {
-            currentCoroutineContext().ensureActive()
-            val size = extractor.readSampleData(buffer, 0)
-            if (size < 0) {
-                info.size = 0
-                break
-            }
-            info.offset = 0
-            info.size = size
-            info.presentationTimeUs = extractor.sampleTime
-            info.flags = extractor.sampleFlags
-            buffer.position(0)
-            buffer.limit(size)
-            muxer.writeSampleData(trackIndex, buffer, info)
-            extractor.advance()
-        }
-    }
-
     private fun applyEmbeddedMetadataIfPossible(item: DownloadItem, tempFile: File) {
         if (!settingsRepository.shouldAddMetadata()) return
         val metadata = item.embeddedMetadata ?: return
         if (!tempFile.exists()) return
 
         val ext = item.fileName.substringAfterLast('.', "").lowercase(Locale.US)
-        val supported = ext == "mp3" || ext == "m4a" || ext == "mp4"
+        val supported = ext == "mp3" || ext == "m4a" || ext == "mp4" || ext == "flac"
         if (!supported) return
 
         runCatching {
@@ -3402,10 +3332,13 @@ class DownloadRepository(
         val ext = fileName.substringAfterLast('.', "").lowercase(Locale.US)
         return when (ext) {
             "mp4" -> "video/mp4"
+            "mkv" -> "video/x-matroska"
             "m4s" -> "video/mp4"
             "m4a" -> "audio/mp4"
             "flv" -> "video/x-flv"
+            "flac" -> "audio/flac"
             "mp3" -> "audio/mpeg"
+            "eac3" -> "audio/eac3"
             "aac" -> "audio/aac"
             else -> "application/octet-stream"
         }

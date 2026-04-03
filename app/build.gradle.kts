@@ -76,6 +76,7 @@ dependencies {
     implementation(libs.coil.svg)
     implementation(libs.markwon.core)
     implementation(libs.jaudiotagger)
+    implementation(libs.ffmpeg.kit.main.android16kb)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
