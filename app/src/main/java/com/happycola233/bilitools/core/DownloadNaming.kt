@@ -24,8 +24,17 @@ enum class NamingToken(
     val group: NamingTokenGroup,
     val supportsPattern: Boolean = false,
 ) {
-    ShowTitle(
-        key = "showtitle",
+    VideoTitle(
+        key = "videotitle",
+        scopes = setOf(
+            NamingTemplateScope.TopFolder,
+            NamingTemplateScope.ItemFolder,
+            NamingTemplateScope.File,
+        ),
+        group = NamingTokenGroup.General,
+    ),
+    CollectionTitle(
+        key = "collectiontitle",
         scopes = setOf(
             NamingTemplateScope.TopFolder,
             NamingTemplateScope.ItemFolder,
@@ -205,7 +214,8 @@ enum class NamingToken(
 }
 
 data class NamingRenderContext(
-    val showTitle: String? = null,
+    val videoTitle: String? = null,
+    val collectionTitle: String? = null,
     val title: String? = null,
     val p: String? = null,
     val container: String? = null,
@@ -236,9 +246,9 @@ data class NamingPreviewSegment(
 )
 
 object DownloadNaming {
-    const val DEFAULT_TOP_FOLDER_TEMPLATE = "{container} - {showtitle} ({downtime:YYYY-MM-DD_HH-mm-ss})"
-    const val DEFAULT_ITEM_FOLDER_TEMPLATE = "{mediaType} - {bvid} - (P{p}) {title}"
-    const val DEFAULT_FILE_TEMPLATE = "{taskType} - {title} - {res}"
+    const val DEFAULT_TOP_FOLDER_TEMPLATE = "{container} - {collectiontitle} ({downtime:YYYY-MM-DD_HH-mm-ss})"
+    const val DEFAULT_ITEM_FOLDER_TEMPLATE = "{mediaType} - {bvid} - {videotitle}"
+    const val DEFAULT_FILE_TEMPLATE = "{taskType} - (P{p}) {title} - {res}"
 
     private val tokenRegex = Regex("\\{([^{}]+)\\}")
     private val trailingDotsRegex = Regex("\\.+$")
@@ -346,7 +356,8 @@ object DownloadNaming {
         formatPattern: String?,
     ): String? {
         return when (token) {
-            NamingToken.ShowTitle -> context.showTitle
+            NamingToken.VideoTitle -> context.videoTitle
+            NamingToken.CollectionTitle -> context.collectionTitle
             NamingToken.Title -> context.title
             NamingToken.P -> context.p
             NamingToken.Container -> context.container

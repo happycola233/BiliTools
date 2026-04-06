@@ -11,7 +11,7 @@
     <string name="settings_naming_overwrite_existing">重名时直接覆盖</string>
     <string name="settings_naming_overwrite_existing_desc">开启后，检测到同名文件（夹）时将直接覆盖。若关闭，会自动追加序号以解决命名冲突。</string>
     <string name="settings_naming_top_level_folder_template">顶层文件夹模板</string>
-    <string name="settings_naming_top_level_folder_template_desc">适合放合集标题、下载时间等批次级信息。</string>
+    <string name="settings_naming_top_level_folder_template_desc">适合放合集标题、视频标题、下载时间等批次级信息。</string>
     <string name="settings_naming_item_folder_template">项目文件夹模板</string>
     <string name="settings_naming_item_folder_template_desc">控制每个下载条目的文件夹名称。</string>
     <string name="settings_naming_file_template">文件名模板</string>
@@ -33,10 +33,12 @@
     <string name="settings_naming_group_ids">标识变量</string>
     <string name="settings_naming_group_stream">流信息</string>
     <string name="settings_naming_token_button_format">%1$s · {%2$s}</string>
-    <string name="settings_naming_preview_show_title">样片日记</string>
+    <string name="settings_naming_preview_video_title">【新疆2.0】从阿勒泰到魔鬼城，俯瞰不一样的新疆！</string>
+    <string name="settings_naming_preview_collection_title">样片日记</string>
     <string name="settings_naming_preview_item_title">【杜比视界】从阿勒泰到魔鬼城，俯瞰不一样的新疆！</string>
     <string name="settings_naming_preview_upper">影视飓风</string>
-    <string name="settings_naming_token_show_title">视频/合集标题</string>
+    <string name="settings_naming_token_video_title">视频标题</string>
+    <string name="settings_naming_token_collection_title">合集标题</string>
     <string name="settings_naming_token_title">分P/单集标题</string>
     <string name="settings_naming_token_p">分P编号</string>
     <string name="settings_naming_token_container">资源分类</string>

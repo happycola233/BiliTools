@@ -1854,6 +1854,42 @@ class ParseViewModel(
         )
     }
 
+    private fun resolveNamingCollectionTitle(info: MediaInfo): String? {
+        val parentTitle = info.nfo.showTitle?.trim()?.takeIf { it.isNotBlank() } ?: return null
+        return when (info.type) {
+            MediaType.Video -> parentTitle.takeIf { info.collection }
+            MediaType.Bangumi,
+            MediaType.Lesson,
+            MediaType.MusicList,
+            MediaType.Favorite,
+            MediaType.OpusList,
+            MediaType.UserVideo,
+            -> parentTitle
+            else -> null
+        }
+    }
+
+    private fun resolveNamingVideoTitle(
+        info: MediaInfo,
+        item: MediaItem?,
+        groupedVideoTitle: String? = null,
+    ): String? {
+        val resolvedGroupedTitle = groupedVideoTitle?.trim()?.takeIf { it.isNotBlank() }
+        if (resolvedGroupedTitle != null) {
+            return resolvedGroupedTitle
+        }
+        if (info.type == MediaType.Video && !info.collection) {
+            info.nfo.showTitle?.trim()?.takeIf { it.isNotBlank() }?.let { return it }
+        }
+        item?.title?.trim()?.takeIf { it.isNotBlank() }?.let { return it }
+        return when (info.type) {
+            MediaType.Music,
+            MediaType.Opus,
+            -> info.nfo.showTitle?.trim()?.takeIf { it.isNotBlank() }
+            else -> null
+        }
+    }
+
     private fun createNamingSession(
         info: MediaInfo,
         targets: DownloadTargets,
@@ -1902,11 +1938,20 @@ class ParseViewModel(
             TopLevelFolderMode.Disabled -> false
         }
         val representativeItem = targets.items.firstOrNull()
-        val showTitle = info.nfo.showTitle?.trim()?.takeIf { it.isNotBlank() }
-            ?: representativeItem?.title?.trim()?.takeIf { it.isNotBlank() }
+        val representativeGroupedTitle = representativeItem?.bvid
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+            ?.let { targets.videoTitleByBvid[it] }
+        val videoTitle = resolveNamingVideoTitle(
+            info = info,
+            item = representativeItem,
+            groupedVideoTitle = representativeGroupedTitle,
+        )
+        val collectionTitle = resolveNamingCollectionTitle(info)
         val containerLabel = mapMediaTypeLabel(info.type)
         val topContext = NamingRenderContext(
-            showTitle = showTitle,
+            videoTitle = videoTitle,
+            collectionTitle = collectionTitle,
             container = containerLabel,
             pubTimeEpochSeconds = representativeItem?.pubTime?.takeIf { it > 0L }
                 ?: info.nfo.premiered,
@@ -1982,11 +2027,16 @@ class ParseViewModel(
     ): NamingRenderContext {
         val containerLabel = mapMediaTypeLabel(info.type)
         val mediaTypeLabel = mapMediaTypeLabel(item.type)
-        val showTitle = info.nfo.showTitle?.trim()?.takeIf { it.isNotBlank() }
-            ?: item.title.trim().takeIf { it.isNotBlank() }
+        val videoTitle = resolveNamingVideoTitle(
+            info = info,
+            item = item,
+            groupedVideoTitle = naming.videoTitle,
+        )
+        val collectionTitle = resolveNamingCollectionTitle(info)
         val resolvedTaskLabel = taskLabel ?: taskType?.let(::mapTaskTypeLabel)
         return NamingRenderContext(
-            showTitle = showTitle,
+            videoTitle = videoTitle,
+            collectionTitle = collectionTitle,
             title = item.title.trim().takeIf { it.isNotBlank() },
             p = if (naming.useVideoNaming) {
                 (item.index + 1).toString()

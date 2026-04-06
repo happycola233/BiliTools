@@ -1288,12 +1288,13 @@ private fun namingTokenSections(scope: NamingTemplateScope): List<NamingTokenSec
 
 private fun namingTokenDisplayOrder(token: NamingToken): Int {
     return when (token) {
-        NamingToken.ShowTitle -> 0
-        NamingToken.Title -> 1
-        NamingToken.P -> 2
-        NamingToken.Container -> 3
-        NamingToken.MediaType -> 4
-        NamingToken.TaskType -> 5
+        NamingToken.VideoTitle -> 0
+        NamingToken.CollectionTitle -> 1
+        NamingToken.Title -> 2
+        NamingToken.P -> 3
+        NamingToken.Container -> 4
+        NamingToken.MediaType -> 5
+        NamingToken.TaskType -> 6
         NamingToken.Index -> 10
         NamingToken.PubTime -> 11
         NamingToken.DownTime -> 12
@@ -1335,7 +1336,8 @@ private fun insertTokenAtSelection(
 
 @Composable
 private fun rememberNamingPreviewContext(): NamingRenderContext {
-    val showTitle = stringResource(R.string.settings_naming_preview_show_title)
+    val videoTitle = stringResource(R.string.settings_naming_preview_video_title)
+    val collectionTitle = stringResource(R.string.settings_naming_preview_collection_title)
     val title = stringResource(R.string.settings_naming_preview_item_title)
     val container = stringResource(R.string.parse_media_type_video)
     val mediaType = stringResource(R.string.parse_media_type_video)
@@ -1346,7 +1348,8 @@ private fun rememberNamingPreviewContext(): NamingRenderContext {
     val format = stringResource(R.string.format_mp4)
     val upper = stringResource(R.string.settings_naming_preview_upper)
     return remember(
-        showTitle,
+        videoTitle,
+        collectionTitle,
         title,
         container,
         mediaType,
@@ -1357,7 +1360,8 @@ private fun rememberNamingPreviewContext(): NamingRenderContext {
         format,
     ) {
         NamingRenderContext(
-            showTitle = showTitle,
+            videoTitle = videoTitle,
+            collectionTitle = collectionTitle,
             title = title,
             p = "1",
             container = container,
@@ -1421,7 +1425,8 @@ private fun namingTokenButtonLabel(token: NamingToken): String {
 @Composable
 private fun namingTokenPreviewLabel(token: NamingToken): String {
     return when (token) {
-        NamingToken.ShowTitle -> stringResource(R.string.settings_naming_token_show_title)
+        NamingToken.VideoTitle -> stringResource(R.string.settings_naming_token_video_title)
+        NamingToken.CollectionTitle -> stringResource(R.string.settings_naming_token_collection_title)
         NamingToken.Title -> stringResource(R.string.settings_naming_token_title)
         NamingToken.P -> stringResource(R.string.settings_naming_token_p)
         NamingToken.Container -> stringResource(R.string.settings_naming_token_container)
