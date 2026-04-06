@@ -56,6 +56,7 @@ import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.Image
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -77,6 +78,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchColors
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
@@ -658,6 +660,35 @@ private fun NamingSettingsScreen(
 ) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val previewContext = rememberNamingPreviewContext()
+    var showRestoreDefaultsConfirmDialog by rememberSaveable { mutableStateOf(false) }
+
+    if (showRestoreDefaultsConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showRestoreDefaultsConfirmDialog = false },
+            title = {
+                Text(stringResource(R.string.settings_naming_restore_defaults))
+            },
+            text = {
+                Text(stringResource(R.string.settings_naming_restore_defaults_confirm_message))
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showRestoreDefaultsConfirmDialog = false
+                        onRestoreDefaults()
+                    },
+                ) {
+                    Text(stringResource(R.string.settings_naming_restore_defaults_confirm_action))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRestoreDefaultsConfirmDialog = false }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            },
+        )
+    }
+
     SettingsScaffold(
         title = stringResource(R.string.settings_naming_title),
         subtitle = stringResource(R.string.settings_screen_title),
@@ -768,7 +799,7 @@ private fun NamingSettingsScreen(
                     supportingContent = {
                         Text(stringResource(R.string.settings_naming_restore_defaults_desc))
                     },
-                    onClick = onRestoreDefaults,
+                    onClick = { showRestoreDefaultsConfirmDialog = true },
                 )
             }
 
