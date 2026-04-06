@@ -45,6 +45,7 @@ import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -55,6 +56,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
@@ -134,7 +136,7 @@ fun BiliToolsMeContent(
     onOpenFavorite: () -> Unit,
     onOpenWatchLater: () -> Unit,
     onOpenSettings: () -> Unit,
-    onConfirmLogout: () -> Unit,
+    onLogout: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BiliToolsSettingsTheme(settings = settings) {
@@ -145,7 +147,7 @@ fun BiliToolsMeContent(
             onOpenFavorite = onOpenFavorite,
             onOpenWatchLater = onOpenWatchLater,
             onOpenSettings = onOpenSettings,
-            onConfirmLogout = onConfirmLogout,
+            onLogout = onLogout,
             modifier = modifier,
         )
     }
@@ -190,10 +192,18 @@ private fun MeOverviewScreen(
     onOpenFavorite: () -> Unit,
     onOpenWatchLater: () -> Unit,
     onOpenSettings: () -> Unit,
-    onConfirmLogout: () -> Unit,
+    onLogout: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val isLoggedIn = loginState.isLoggedIn
+    var showLogoutConfirmDialog by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(isLoggedIn) {
+        if (!isLoggedIn) {
+            showLogoutConfirmDialog = false
+        }
+    }
+
     val canOpenFavorite = isLoggedIn && loginState.currentMid != null
     val contentItems = listOf(
         MeActionItem(
@@ -247,10 +257,37 @@ private fun MeOverviewScreen(
                     titleRes = R.string.login_logout,
                     summaryRes = R.string.me_logout_summary,
                     enabled = true,
-                    onClick = onConfirmLogout,
+                    onClick = { showLogoutConfirmDialog = true },
                 ),
             )
         }
+    }
+
+    if (showLogoutConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutConfirmDialog = false },
+            title = {
+                Text(stringResource(R.string.login_logout_confirm_title))
+            },
+            text = {
+                Text(stringResource(R.string.login_logout_confirm_message))
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showLogoutConfirmDialog = false
+                        onLogout()
+                    },
+                ) {
+                    Text(stringResource(R.string.login_logout))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutConfirmDialog = false }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            },
+        )
     }
 
     MePageContainer(modifier = modifier) {

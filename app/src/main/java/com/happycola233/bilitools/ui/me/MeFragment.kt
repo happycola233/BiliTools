@@ -8,7 +8,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.appContainer
 import com.happycola233.bilitools.databinding.FragmentMeBinding
@@ -63,7 +62,7 @@ class MeFragment : Fragment(R.layout.fragment_me) {
                 onOpenSettings = {
                     startActivity(Intent(requireContext(), SettingsActivity::class.java))
                 },
-                onConfirmLogout = ::showLogoutConfirmation,
+                onLogout = viewModel::logout,
             )
         }
 
@@ -77,18 +76,6 @@ class MeFragment : Fragment(R.layout.fragment_me) {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
-    }
-
-    private fun showLogoutConfirmation() {
-        if (!viewModel.state.value.isLoggedIn) return
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.login_logout_confirm_title)
-            .setMessage(R.string.login_logout_confirm_message)
-            .setNegativeButton(android.R.string.cancel, null)
-            .setPositiveButton(R.string.login_logout) { _, _ ->
-                viewModel.logout()
-            }
-            .show()
     }
 
     private fun jumpToParse(url: String) {
