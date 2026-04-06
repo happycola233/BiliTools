@@ -272,9 +272,7 @@ class ParseViewModel(
                     offsetMap[1] = ""
                 }
             }.onFailure { err ->
-                _state.update {
-                    it.copy(loading = false, error = mapError(err))
-                }
+                setLoadingError(err)
             }
         }
     }
@@ -285,7 +283,10 @@ class ParseViewModel(
         collectionStatCache.clear()
         itemStatCache.clear()
         itemDescriptionCache.clear()
-        _state.value = ParseUiState(selectedMediaType = selectedType)
+        _state.value = ParseUiState(
+            selectedMediaType = selectedType,
+            isLoggedIn = authRepository.isLoggedIn(),
+        )
     }
 
     fun clearNotice() {
@@ -524,7 +525,7 @@ class ParseViewModel(
                     offsetMap[targetPage + 1] = updated.offset
                 }
             }.onFailure { err ->
-                _state.update { it.copy(loading = false, error = mapError(err)) }
+                setLoadingError(err)
             }
         }
     }
@@ -584,7 +585,7 @@ class ParseViewModel(
                     refreshExtras(updated, item)
                 }
             }.onFailure { err ->
-                _state.update { it.copy(loading = false, error = mapError(err)) }
+                setLoadingError(err)
             }
         }
     }
@@ -639,7 +640,7 @@ class ParseViewModel(
                     refreshExtras(updated, item)
                 }
             }.onFailure { err ->
-                _state.update { it.copy(loading = false, error = mapError(err)) }
+                setLoadingError(err)
             }
         }
     }
@@ -844,9 +845,7 @@ class ParseViewModel(
                 }
                 updateStreamInfo()
             }.onFailure { err ->
-                _state.update {
-                    it.copy(streamLoading = false, error = mapError(err))
-                }
+                setStreamLoadingError(err)
             }
         }
     }
@@ -2891,6 +2890,26 @@ class ParseViewModel(
             is IllegalArgumentException -> strings.get(R.string.parse_error_invalid_input)
             is BiliHttpException -> strings.get(R.string.parse_error_failed)
             else -> err.message ?: strings.get(R.string.common_error_unknown)
+        }
+    }
+
+    private fun setLoadingError(err: Throwable) {
+        _state.update {
+            it.copy(
+                loading = false,
+                error = mapError(err),
+                isLoggedIn = authRepository.isLoggedIn(),
+            )
+        }
+    }
+
+    private fun setStreamLoadingError(err: Throwable) {
+        _state.update {
+            it.copy(
+                streamLoading = false,
+                error = mapError(err),
+                isLoggedIn = authRepository.isLoggedIn(),
+            )
         }
     }
 }

@@ -285,8 +285,16 @@ class AuthRepository(
         val body = httpClient.get(url)
         val adapter = httpClient.adapter(NavResponse::class.java)
         val resp = adapter.fromJson(body) ?: return null
+        if (resp.code == LOGIN_REQUIRED_CODE) {
+            cookieStore.invalidateLogin()
+        }
         val data = resp.data ?: return null
-        if (!data.isLogin) return null
+        if (resp.code != 0 || !data.isLogin) {
+            if (!data.isLogin) {
+                cookieStore.invalidateLogin()
+            }
+            return null
+        }
         val mid = data.mid ?: return null
         val accountInfo = runCatching { fetchAccountInfo(mid) }.getOrNull()
         val stat = runCatching { fetchUserStat() }.getOrNull()
@@ -338,6 +346,10 @@ class AuthRepository(
         val body = httpClient.get(url)
         val adapter = httpClient.adapter(UserInfoResponse::class.java)
         val resp = adapter.fromJson(body) ?: return null
+        if (resp.code == LOGIN_REQUIRED_CODE) {
+            cookieStore.invalidateLogin()
+            return null
+        }
         if (resp.code != 0) return null
         return resp.data
     }
@@ -347,6 +359,10 @@ class AuthRepository(
         val body = httpClient.get(url)
         val adapter = httpClient.adapter(UserStatResponse::class.java)
         val resp = adapter.fromJson(body) ?: return null
+        if (resp.code == LOGIN_REQUIRED_CODE) {
+            cookieStore.invalidateLogin()
+            return null
+        }
         if (resp.code != 0) return null
         return resp.data
     }
@@ -369,6 +385,7 @@ class AuthRepository(
 
     companion object {
         private const val DEFAULT_ZONE_CODE = 86
+        private const val LOGIN_REQUIRED_CODE = -101
     }
 }
 

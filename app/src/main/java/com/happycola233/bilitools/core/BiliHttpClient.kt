@@ -40,6 +40,9 @@ class BiliHttpClient(
             .addInterceptor { chain ->
                 val response = chain.proceed(chain.request())
                 cookieStore.updateFromHeaders(response.headers)
+                if (response.header(BILI_STATUS_CODE_HEADER)?.toIntOrNull() == LOGIN_REQUIRED_CODE) {
+                    cookieStore.invalidateLogin()
+                }
                 response
             }
             .addInterceptor(
@@ -105,6 +108,8 @@ class BiliHttpClient(
 
     companion object {
         private const val TAG = "BiliHttpClient"
+        private const val BILI_STATUS_CODE_HEADER = "bili-status-code"
+        private const val LOGIN_REQUIRED_CODE = -101
         const val USER_AGENT =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36"
     }

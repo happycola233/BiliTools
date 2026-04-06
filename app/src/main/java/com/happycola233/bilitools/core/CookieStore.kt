@@ -36,7 +36,13 @@ class CookieStore(context: Context) {
             val nameValue = header.substringBefore(";").trim()
             val pair = nameValue.split("=", limit = 2)
             if (pair.size == 2) {
-                cookies[pair[0]] = pair[1]
+                val name = pair[0]
+                val value = pair[1]
+                if (value.isBlank()) {
+                    cookies.remove(name)
+                } else {
+                    cookies[name] = value
+                }
             }
         }
         persist()
@@ -57,6 +63,13 @@ class CookieStore(context: Context) {
         return cookies[name]
     }
 
+    fun invalidateLogin(): Boolean {
+        ensureLoaded()
+        if (LOGIN_COOKIE_KEYS.none { key -> cookies[key]?.isNotBlank() == true }) return false
+        clear()
+        return true
+    }
+
     fun clear() {
         ensureLoaded()
         cookies.clear()
@@ -70,5 +83,6 @@ class CookieStore(context: Context) {
     companion object {
         private const val PREFS_NAME = "bili_cookies"
         private const val KEY_COOKIE_RAW = "cookie_raw"
+        private val LOGIN_COOKIE_KEYS = arrayOf("SESSDATA", "DedeUserID", "bili_jct")
     }
 }

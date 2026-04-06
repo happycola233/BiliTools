@@ -94,6 +94,9 @@ class DownloadRepository(
             .addInterceptor { chain ->
                 val response = chain.proceed(chain.request())
                 cookieStore.updateFromHeaders(response.headers)
+                if (response.header(BILI_STATUS_CODE_HEADER)?.toIntOrNull() == LOGIN_REQUIRED_CODE) {
+                    cookieStore.invalidateLogin()
+                }
                 response
             }
             .addInterceptor(
@@ -3956,6 +3959,8 @@ class DownloadRepository(
 
     companion object {
         private const val TAG = "DownloadRepository"
+        private const val BILI_STATUS_CODE_HEADER = "bili-status-code"
+        private const val LOGIN_REQUIRED_CODE = -101
         private const val PROGRESS_UPDATE_INTERVAL_MS = 300L
         private const val PERSIST_DELAY_MS = 1000L
         private const val STORE_VERSION = 1
