@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./.github/images/BiliTools_icon_rounded_transparent.png" width="120" alt="BiliTools Logo" />
+  <img src="./.github/images/BiliTools_icon_rounded.png" width="120" alt="BiliTools Logo" />
   <h1>BiliTools for Android 📺</h1>
   <p><strong>一款运行在 Android 平台上的强大、清爽、开源的哔哩哔哩（Bilibili）视频解析与下载工具，让你畅享纯粹的下载体验！✨</strong></p>
   
