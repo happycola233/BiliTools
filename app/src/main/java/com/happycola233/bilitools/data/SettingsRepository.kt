@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Environment
 import android.provider.DocumentsContract
 import androidx.appcompat.app.AppCompatDelegate
+import com.happycola233.bilitools.core.AudioQualities
 import com.happycola233.bilitools.core.DownloadNaming
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +23,14 @@ data class DownloadNamingSettings(
     val topLevelFolderTemplate: String = SettingsRepository.DEFAULT_TOP_LEVEL_FOLDER_TEMPLATE,
     val itemFolderTemplate: String = SettingsRepository.DEFAULT_ITEM_FOLDER_TEMPLATE,
     val fileTemplate: String = SettingsRepository.DEFAULT_FILE_TEMPLATE,
+)
+
+data class DefaultDownloadQualitySettings(
+    val resolutionMode: DownloadQualityMode = DownloadQualityMode.Highest,
+    val fixedResolutionId: Int = SettingsRepository.DEFAULT_DOWNLOAD_RESOLUTION_ID,
+    val codec: DefaultDownloadVideoCodec = DefaultDownloadVideoCodec.Avc,
+    val audioBitrateMode: DownloadQualityMode = DownloadQualityMode.Highest,
+    val fixedAudioBitrateId: Int = SettingsRepository.DEFAULT_DOWNLOAD_AUDIO_BITRATE_ID,
 )
 
 data class AppSettings(
@@ -42,12 +51,39 @@ data class AppSettings(
     val downloadsGlassRefractionAmountFrac: Float = SettingsRepository.DEFAULT_DOWNLOADS_GLASS_REFRACTION_AMOUNT_FRAC,
     val downloadsGlassSurfaceAlpha: Float = SettingsRepository.DEFAULT_DOWNLOADS_GLASS_SURFACE_ALPHA,
     val downloadsGlassChromaticAberration: Boolean = SettingsRepository.DEFAULT_DOWNLOADS_GLASS_CHROMATIC_ABERRATION,
+    val defaultDownloadQuality: DefaultDownloadQualitySettings = DefaultDownloadQualitySettings(),
     val naming: DownloadNamingSettings = DownloadNamingSettings(),
     val issueReportDetailedLoggingEnabled: Boolean = false,
     val issueReportDetailedLoggingStartedAtMillis: Long? = null,
     val issueReportLastExportedAtMillis: Long? = null,
     val ignoredUpdateVersion: String? = null,
 )
+
+enum class DownloadQualityMode(val value: String) {
+    Highest("highest"),
+    Lowest("lowest"),
+    Fixed("fixed"),
+    ;
+
+    companion object {
+        fun fromValue(value: String?): DownloadQualityMode {
+            return entries.firstOrNull { it.value == value } ?: Highest
+        }
+    }
+}
+
+enum class DefaultDownloadVideoCodec(val value: String) {
+    Avc("avc"),
+    Hevc("hevc"),
+    Av1("av1"),
+    ;
+
+    companion object {
+        fun fromValue(value: String?): DefaultDownloadVideoCodec {
+            return entries.firstOrNull { it.value == value } ?: Avc
+        }
+    }
+}
 
 enum class AppThemeMode(val value: String) {
     System("system"),
@@ -134,6 +170,9 @@ class SettingsRepository(context: Context) {
     fun currentNamingSettings(): DownloadNamingSettings = _settings.value.naming
 
     fun shouldOverwriteExistingNamingTargets(): Boolean = _settings.value.naming.overwriteExistingFiles
+
+    fun currentDefaultDownloadQuality(): DefaultDownloadQualitySettings =
+        _settings.value.defaultDownloadQuality
 
     fun setAddMetadata(enabled: Boolean) {
         val current = _settings.value
@@ -259,6 +298,20 @@ class SettingsRepository(context: Context) {
         if (current.downloadsGlassChromaticAberration == enabled) return
         prefs.edit().putBoolean(KEY_DOWNLOADS_GLASS_CHROMATIC_ABERRATION, enabled).apply()
         _settings.value = current.copy(downloadsGlassChromaticAberration = enabled)
+    }
+
+    fun setDefaultDownloadQuality(quality: DefaultDownloadQualitySettings) {
+        val normalized = normalizeDefaultDownloadQuality(quality)
+        val current = _settings.value
+        if (current.defaultDownloadQuality == normalized) return
+        prefs.edit()
+            .putString(KEY_DEFAULT_DOWNLOAD_RESOLUTION_MODE, normalized.resolutionMode.value)
+            .putInt(KEY_DEFAULT_DOWNLOAD_RESOLUTION_ID, normalized.fixedResolutionId)
+            .putString(KEY_DEFAULT_DOWNLOAD_CODEC, normalized.codec.value)
+            .putString(KEY_DEFAULT_DOWNLOAD_AUDIO_BITRATE_MODE, normalized.audioBitrateMode.value)
+            .putInt(KEY_DEFAULT_DOWNLOAD_AUDIO_BITRATE_ID, normalized.fixedAudioBitrateId)
+            .apply()
+        _settings.value = current.copy(defaultDownloadQuality = normalized)
     }
 
     fun setIssueReportDetailedLoggingEnabled(enabled: Boolean) {
@@ -456,6 +509,36 @@ class SettingsRepository(context: Context) {
                 KEY_DOWNLOADS_GLASS_CHROMATIC_ABERRATION,
                 DEFAULT_DOWNLOADS_GLASS_CHROMATIC_ABERRATION,
             ),
+            defaultDownloadQuality = normalizeDefaultDownloadQuality(
+                DefaultDownloadQualitySettings(
+                    resolutionMode = DownloadQualityMode.fromValue(
+                        prefs.getString(
+                            KEY_DEFAULT_DOWNLOAD_RESOLUTION_MODE,
+                            DownloadQualityMode.Highest.value,
+                        ),
+                    ),
+                    fixedResolutionId = prefs.getInt(
+                        KEY_DEFAULT_DOWNLOAD_RESOLUTION_ID,
+                        DEFAULT_DOWNLOAD_RESOLUTION_ID,
+                    ),
+                    codec = DefaultDownloadVideoCodec.fromValue(
+                        prefs.getString(
+                            KEY_DEFAULT_DOWNLOAD_CODEC,
+                            DefaultDownloadVideoCodec.Avc.value,
+                        ),
+                    ),
+                    audioBitrateMode = DownloadQualityMode.fromValue(
+                        prefs.getString(
+                            KEY_DEFAULT_DOWNLOAD_AUDIO_BITRATE_MODE,
+                            DownloadQualityMode.Highest.value,
+                        ),
+                    ),
+                    fixedAudioBitrateId = prefs.getInt(
+                        KEY_DEFAULT_DOWNLOAD_AUDIO_BITRATE_ID,
+                        DEFAULT_DOWNLOAD_AUDIO_BITRATE_ID,
+                    ),
+                ),
+            ),
             naming = DownloadNamingSettings(
                 topLevelFolderMode = TopLevelFolderMode.fromValue(
                     prefs.getString(
@@ -599,6 +682,22 @@ class SettingsRepository(context: Context) {
             ?.takeIf { it.isNotBlank() }
     }
 
+    private fun normalizeDefaultDownloadQuality(
+        quality: DefaultDownloadQualitySettings,
+    ): DefaultDownloadQualitySettings {
+        val resolutionId = quality.fixedResolutionId
+            .takeIf { DEFAULT_DOWNLOAD_RESOLUTION_IDS.contains(it) }
+            ?: DEFAULT_DOWNLOAD_RESOLUTION_ID
+        val audioBitrateId = quality.fixedAudioBitrateId
+            .takeIf { AudioQualities.allIds.contains(it) }
+            ?: DEFAULT_DOWNLOAD_AUDIO_BITRATE_ID
+
+        return quality.copy(
+            fixedResolutionId = resolutionId,
+            fixedAudioBitrateId = audioBitrateId,
+        )
+    }
+
     private fun updateNamingTemplate(
         currentValue: String,
         nextValue: String,
@@ -622,6 +721,9 @@ class SettingsRepository(context: Context) {
         const val DEFAULT_DOWNLOADS_GLASS_REFRACTION_AMOUNT_FRAC = 0.5f
         const val DEFAULT_DOWNLOADS_GLASS_SURFACE_ALPHA = 0.7f
         const val DEFAULT_DOWNLOADS_GLASS_CHROMATIC_ABERRATION = true
+        val DEFAULT_DOWNLOAD_RESOLUTION_IDS = listOf(127, 126, 125, 120, 116, 112, 80, 64, 32, 16, 6)
+        const val DEFAULT_DOWNLOAD_RESOLUTION_ID = 127
+        const val DEFAULT_DOWNLOAD_AUDIO_BITRATE_ID = AudioQualities.LOSSLESS_FLAC
         const val DEFAULT_TOP_LEVEL_FOLDER_TEMPLATE = DownloadNaming.DEFAULT_TOP_FOLDER_TEMPLATE
         const val DEFAULT_ITEM_FOLDER_TEMPLATE = DownloadNaming.DEFAULT_ITEM_FOLDER_TEMPLATE
         const val DEFAULT_FILE_TEMPLATE = DownloadNaming.DEFAULT_FILE_TEMPLATE
@@ -646,6 +748,11 @@ class SettingsRepository(context: Context) {
         private const val KEY_DOWNLOADS_GLASS_REFRACTION_AMOUNT_FRAC = "downloads_glass_refraction_amount_frac"
         private const val KEY_DOWNLOADS_GLASS_SURFACE_ALPHA = "downloads_glass_surface_alpha"
         private const val KEY_DOWNLOADS_GLASS_CHROMATIC_ABERRATION = "downloads_glass_chromatic_aberration"
+        private const val KEY_DEFAULT_DOWNLOAD_RESOLUTION_MODE = "default_download_resolution_mode"
+        private const val KEY_DEFAULT_DOWNLOAD_RESOLUTION_ID = "default_download_resolution_id"
+        private const val KEY_DEFAULT_DOWNLOAD_CODEC = "default_download_codec"
+        private const val KEY_DEFAULT_DOWNLOAD_AUDIO_BITRATE_MODE = "default_download_audio_bitrate_mode"
+        private const val KEY_DEFAULT_DOWNLOAD_AUDIO_BITRATE_ID = "default_download_audio_bitrate_id"
         private const val KEY_NAMING_TOP_LEVEL_FOLDER_MODE = "naming_top_level_folder_mode"
         private const val KEY_NAMING_OVERWRITE_EXISTING_FILES = "naming_overwrite_existing_files"
         private const val KEY_NAMING_CLEAN_SEPARATORS = "naming_clean_separators"

@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.navigation3.runtime.NavKey
 import com.happycola233.bilitools.data.AppThemeColor
 import com.happycola233.bilitools.data.AppThemeMode
+import com.happycola233.bilitools.data.DefaultDownloadQualitySettings
 import com.happycola233.bilitools.data.IssueReportRepository
 import com.happycola233.bilitools.data.SettingsRepository
 import com.happycola233.bilitools.data.TopLevelFolderMode
@@ -13,6 +14,7 @@ import com.happycola233.bilitools.data.TopLevelFolderMode
 sealed class SettingsDestination : NavKey {
     data object Main : SettingsDestination()
     data object General : SettingsDestination()
+    data object DefaultDownloadQuality : SettingsDestination()
     data object Download : SettingsDestination()
     data object Naming : SettingsDestination()
     data object Appearance : SettingsDestination()
@@ -29,6 +31,16 @@ class SettingsViewModel(
 
     fun navigateTo(destination: SettingsDestination) {
         if (backStack.lastOrNull() == destination) return
+        if (
+            destination == SettingsDestination.DefaultDownloadQuality &&
+            backStack.lastOrNull() == SettingsDestination.General
+        ) {
+            backStack.add(destination)
+            return
+        }
+        while (backStack.size > 2) {
+            backStack.removeAt(backStack.lastIndex)
+        }
         if (backStack.size < 2) {
             backStack.add(destination)
         } else {
@@ -84,6 +96,10 @@ class SettingsViewModel(
 
     fun setDownloadsGlassDebugEnabled(enabled: Boolean) {
         settingsRepository.setDownloadsGlassDebugEnabled(enabled)
+    }
+
+    fun setDefaultDownloadQuality(quality: DefaultDownloadQualitySettings) {
+        settingsRepository.setDefaultDownloadQuality(quality)
     }
 
     fun setNamingTopLevelFolderMode(mode: TopLevelFolderMode) {

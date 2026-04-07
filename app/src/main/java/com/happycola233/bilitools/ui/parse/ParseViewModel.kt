@@ -10,7 +10,9 @@ import com.happycola233.bilitools.core.NamingRenderContext
 import com.happycola233.bilitools.core.NfoGenerator
 import com.happycola233.bilitools.core.StringProvider
 import com.happycola233.bilitools.data.AuthRepository
+import com.happycola233.bilitools.data.DefaultDownloadVideoCodec
 import com.happycola233.bilitools.data.DownloadRepository
+import com.happycola233.bilitools.data.DownloadQualityMode
 import com.happycola233.bilitools.data.ExportRepository
 import com.happycola233.bilitools.data.ExtrasRepository
 import com.happycola233.bilitools.data.MediaRepository
@@ -148,8 +150,8 @@ data class ParseUiState(
     val resolutions: List<QualityOption> = emptyList(),
     val codecs: List<CodecOption> = emptyList(),
     val audioBitrates: List<AudioOption> = emptyList(),
-    val resolutionMode: QualityMode = QualityMode.Fixed,
-    val audioBitrateMode: QualityMode = QualityMode.Fixed,
+    val resolutionMode: QualityMode = QualityMode.Highest,
+    val audioBitrateMode: QualityMode = QualityMode.Highest,
     val selectedResolutionId: Int? = null,
     val selectedCodec: VideoCodec? = null,
     val selectedAudioId: Int? = null,
@@ -188,7 +190,7 @@ class ParseViewModel(
     private val authRepository: AuthRepository,
     private val strings: StringProvider,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(ParseUiState())
+    private val _state = MutableStateFlow(applyDefaultDownloadQuality(ParseUiState()))
     val state: StateFlow<ParseUiState> = _state.asStateFlow()
     private val _events = MutableSharedFlow<ParseEvent>(extraBufferCapacity = 1)
     val events: SharedFlow<ParseEvent> = _events.asSharedFlow()
@@ -235,33 +237,35 @@ class ParseViewModel(
                     info.list.indexOfFirst { it.isTarget }.takeIf { it >= 0 } ?: 0
                 _state.update {
                     normalizeQualityModes(
-                        it.copy(
-                            loading = false,
-                            mediaInfo = info,
-                            items = info.list,
-                            selectedItemIndex = defaultIndex,
-                            selectedItemIndices = if (info.list.isNotEmpty()) listOf(defaultIndex) else emptyList(),
-                            sections = info.sections,
-                            selectedSectionId = info.sections?.target,
-                            pageIndex = 1,
-                            collectionMode = false,
-                            playUrlInfo = null,
-                            videoStreams = emptyList(),
-                            audioStreams = emptyList(),
-                            resolutions = emptyList(),
-                            codecs = emptyList(),
-                            audioBitrates = emptyList(),
-                            selectedResolutionId = null,
-                            selectedCodec = null,
-                            selectedAudioId = null,
-                            format = StreamFormat.Dash,
-                            outputType = OutputType.AudioVideo,
-                            streamInfo = "",
-                            warning = null,
-                            collectionPreviewIndex = null,
-                            collectionPreviewStat = null,
-                            selectedItemStat = info.list.getOrNull(defaultIndex)?.stat,
-                            isLoggedIn = authRepository.isLoggedIn(),
+                        applyDefaultDownloadQuality(
+                            it.copy(
+                                loading = false,
+                                mediaInfo = info,
+                                items = info.list,
+                                selectedItemIndex = defaultIndex,
+                                selectedItemIndices = if (info.list.isNotEmpty()) listOf(defaultIndex) else emptyList(),
+                                sections = info.sections,
+                                selectedSectionId = info.sections?.target,
+                                pageIndex = 1,
+                                collectionMode = false,
+                                playUrlInfo = null,
+                                videoStreams = emptyList(),
+                                audioStreams = emptyList(),
+                                resolutions = emptyList(),
+                                codecs = emptyList(),
+                                audioBitrates = emptyList(),
+                                selectedResolutionId = null,
+                                selectedCodec = null,
+                                selectedAudioId = null,
+                                format = StreamFormat.Dash,
+                                outputType = OutputType.AudioVideo,
+                                streamInfo = "",
+                                warning = null,
+                                collectionPreviewIndex = null,
+                                collectionPreviewStat = null,
+                                selectedItemStat = info.list.getOrNull(defaultIndex)?.stat,
+                                isLoggedIn = authRepository.isLoggedIn(),
+                            ),
                         ),
                     )
                 }
@@ -283,9 +287,11 @@ class ParseViewModel(
         collectionStatCache.clear()
         itemStatCache.clear()
         itemDescriptionCache.clear()
-        _state.value = ParseUiState(
-            selectedMediaType = selectedType,
-            isLoggedIn = authRepository.isLoggedIn(),
+        _state.value = applyDefaultDownloadQuality(
+            ParseUiState(
+                selectedMediaType = selectedType,
+                isLoggedIn = authRepository.isLoggedIn(),
+            ),
         )
     }
 
@@ -665,7 +671,12 @@ class ParseViewModel(
     }
 
     fun setResolution(id: Int) {
-        _state.update { it.copy(selectedResolutionId = id) }
+        _state.update {
+            it.copy(
+                resolutionMode = QualityMode.Fixed,
+                selectedResolutionId = id,
+            )
+        }
         updateStreamInfo()
     }
 
@@ -673,7 +684,7 @@ class ParseViewModel(
         _state.update { current ->
             val selectedCount = current.selectedItemIndices.size
             val nextResolutions = resolveResolutionOptions(current.videoStreams, mode, selectedCount)
-            val nextResolutionId = pickResolutionId(current.selectedResolutionId, nextResolutions)
+            val nextResolutionId = pickResolutionId(current.selectedResolutionId, nextResolutions, mode)
             current.copy(
                 resolutionMode = mode,
                 resolutions = nextResolutions,
@@ -689,7 +700,12 @@ class ParseViewModel(
     }
 
     fun setAudioBitrate(id: Int) {
-        _state.update { it.copy(selectedAudioId = id) }
+        _state.update {
+            it.copy(
+                audioBitrateMode = QualityMode.Fixed,
+                selectedAudioId = id,
+            )
+        }
         updateStreamInfo()
     }
 
@@ -697,7 +713,7 @@ class ParseViewModel(
         _state.update { current ->
             val selectedCount = current.selectedItemIndices.size
             val nextAudioOptions = resolveAudioOptions(current.audioStreams, mode, selectedCount)
-            val nextAudioId = pickAudioId(current.selectedAudioId, nextAudioOptions)
+            val nextAudioId = pickAudioId(current.selectedAudioId, nextAudioOptions, mode)
             current.copy(
                 audioBitrateMode = mode,
                 audioBitrates = nextAudioOptions,
@@ -799,29 +815,22 @@ class ParseViewModel(
                         OutputType.AudioVideo
                     else -> _state.value.outputType
                 }
-                val isMultiSelect = selectedCount > 1
-                val keepFixedResolution =
-                    _state.value.resolutionMode == QualityMode.Fixed && isMultiSelect
-                val selectedResolutionId = if (keepFixedResolution) {
-                    _state.value.selectedResolutionId ?: resolutions.firstOrNull()?.id
-                } else {
-                    _state.value.selectedResolutionId
-                        ?.takeIf { id -> resolutions.any { it.id == id } }
-                        ?: resolutions.firstOrNull()?.id
-                }
+                val resolutionMode = _state.value.resolutionMode
+                val selectedResolutionId = pickResolutionId(
+                    _state.value.selectedResolutionId,
+                    resolutions,
+                    resolutionMode,
+                )
                 val selectedCodec =
                     _state.value.selectedCodec
                         ?.takeIf { codec -> codecs.any { it.codec == codec } }
                         ?: pickDefaultCodec(codecs)
-                val keepFixedAudio =
-                    _state.value.audioBitrateMode == QualityMode.Fixed && isMultiSelect
-                val selectedAudioId = if (keepFixedAudio) {
-                    _state.value.selectedAudioId ?: audio.firstOrNull()?.id
-                } else {
-                    _state.value.selectedAudioId
-                        ?.takeIf { id -> audio.any { it.id == id } }
-                        ?: audio.firstOrNull()?.id
-                }
+                val audioBitrateMode = _state.value.audioBitrateMode
+                val selectedAudioId = pickAudioId(
+                    _state.value.selectedAudioId,
+                    audio,
+                    audioBitrateMode,
+                )
                 _state.update {
                     it.copy(
                         streamLoading = false,
@@ -2382,15 +2391,45 @@ class ParseViewModel(
         _state.update { it.copy(streamInfo = info) }
     }
 
+    private fun applyDefaultDownloadQuality(state: ParseUiState): ParseUiState {
+        val quality = settingsRepository.currentDefaultDownloadQuality()
+        return state.copy(
+            resolutionMode = quality.resolutionMode.toQualityMode(),
+            selectedResolutionId = quality.fixedResolutionId.takeIf {
+                quality.resolutionMode == DownloadQualityMode.Fixed
+            },
+            selectedCodec = quality.codec.toVideoCodec(),
+            audioBitrateMode = quality.audioBitrateMode.toQualityMode(),
+            selectedAudioId = quality.fixedAudioBitrateId.takeIf {
+                quality.audioBitrateMode == DownloadQualityMode.Fixed
+            },
+        )
+    }
+
+    private fun DownloadQualityMode.toQualityMode(): QualityMode {
+        return when (this) {
+            DownloadQualityMode.Highest -> QualityMode.Highest
+            DownloadQualityMode.Lowest -> QualityMode.Lowest
+            DownloadQualityMode.Fixed -> QualityMode.Fixed
+        }
+    }
+
+    private fun DefaultDownloadVideoCodec.toVideoCodec(): VideoCodec {
+        return when (this) {
+            DefaultDownloadVideoCodec.Avc -> VideoCodec.Avc
+            DefaultDownloadVideoCodec.Hevc -> VideoCodec.Hevc
+            DefaultDownloadVideoCodec.Av1 -> VideoCodec.Av1
+        }
+    }
+
     private fun normalizeQualityModes(state: ParseUiState): ParseUiState {
         val selectedCount = state.selectedItemIndices.size
-        val multiSelect = selectedCount > 1
-        val nextResolutionMode = if (multiSelect) state.resolutionMode else QualityMode.Fixed
-        val nextAudioMode = if (multiSelect) state.audioBitrateMode else QualityMode.Fixed
+        val nextResolutionMode = state.resolutionMode
+        val nextAudioMode = state.audioBitrateMode
         val nextResolutions = resolveResolutionOptions(state.videoStreams, nextResolutionMode, selectedCount)
         val nextAudioOptions = resolveAudioOptions(state.audioStreams, nextAudioMode, selectedCount)
-        val nextResolutionId = pickResolutionId(state.selectedResolutionId, nextResolutions)
-        val nextAudioId = pickAudioId(state.selectedAudioId, nextAudioOptions)
+        val nextResolutionId = pickResolutionId(state.selectedResolutionId, nextResolutions, nextResolutionMode)
+        val nextAudioId = pickAudioId(state.selectedAudioId, nextAudioOptions, nextAudioMode)
         return state.copy(
             resolutionMode = nextResolutionMode,
             audioBitrateMode = nextAudioMode,
@@ -2527,17 +2566,27 @@ class ParseViewModel(
     private fun pickResolutionId(
         currentId: Int?,
         options: List<QualityOption>,
+        mode: QualityMode,
     ): Int? {
         if (options.isEmpty()) return currentId
-        return currentId?.takeIf { id -> options.any { it.id == id } } ?: options.first().id
+        return when (mode) {
+            QualityMode.Highest -> options.maxByOrNull { it.id }?.id
+            QualityMode.Lowest -> options.minByOrNull { it.id }?.id
+            QualityMode.Fixed -> currentId?.takeIf { id -> options.any { it.id == id } } ?: options.first().id
+        }
     }
 
     private fun pickAudioId(
         currentId: Int?,
         options: List<AudioOption>,
+        mode: QualityMode,
     ): Int? {
         if (options.isEmpty()) return currentId
-        return currentId?.takeIf { id -> options.any { it.id == id } } ?: options.first().id
+        return when (mode) {
+            QualityMode.Highest -> AudioQualities.highest(options.map { it.id })
+            QualityMode.Lowest -> AudioQualities.lowest(options.map { it.id })
+            QualityMode.Fixed -> currentId?.takeIf { id -> options.any { it.id == id } } ?: options.first().id
+        }
     }
 
     private fun buildResolutionOptions(streams: List<VideoStream>): List<QualityOption> {
@@ -2673,7 +2722,9 @@ class ParseViewModel(
     }
 
     private fun pickDefaultCodec(options: List<CodecOption>): VideoCodec? {
-        return options.firstOrNull { it.codec == VideoCodec.Avc }?.codec
+        val preferredCodec = settingsRepository.currentDefaultDownloadQuality().codec.toVideoCodec()
+        return options.firstOrNull { it.codec == preferredCodec }?.codec
+            ?: options.firstOrNull { it.codec == VideoCodec.Avc }?.codec
             ?: options.firstOrNull { it.codec == VideoCodec.Hevc }?.codec
             ?: options.firstOrNull()?.codec
     }

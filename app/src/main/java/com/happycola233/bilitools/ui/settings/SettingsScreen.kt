@@ -32,6 +32,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -119,6 +120,7 @@ import androidx.compose.ui.util.fastForEachIndexed
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.happycola233.bilitools.R
+import com.happycola233.bilitools.core.AudioQualities
 import com.happycola233.bilitools.core.DownloadNaming
 import com.happycola233.bilitools.core.NamingPreviewSegment
 import com.happycola233.bilitools.core.NamingRenderContext
@@ -128,7 +130,11 @@ import com.happycola233.bilitools.core.NamingTokenGroup
 import com.happycola233.bilitools.data.AppSettings
 import com.happycola233.bilitools.data.AppThemeColor
 import com.happycola233.bilitools.data.AppThemeMode
+import com.happycola233.bilitools.data.DefaultDownloadQualitySettings
+import com.happycola233.bilitools.data.DefaultDownloadVideoCodec
+import com.happycola233.bilitools.data.DownloadQualityMode
 import com.happycola233.bilitools.data.IssueReportLogState
+import com.happycola233.bilitools.data.SettingsRepository
 import com.happycola233.bilitools.data.TopLevelFolderMode
 import com.happycola233.bilitools.ui.theme.BiliToolsSettingsTheme
 import java.time.Instant
@@ -157,6 +163,7 @@ fun BiliToolsSettingsContent(
     onThemeColorChange: (AppThemeColor) -> Unit,
     onParseQuickActionChange: (Boolean) -> Unit,
     onLiveActivityStyleNotificationChange: (Boolean) -> Unit,
+    onDefaultDownloadQualityChange: (DefaultDownloadQualitySettings) -> Unit,
     onAddMetadataChange: (Boolean) -> Unit,
     onConvertXmlDanmakuToAssChange: (Boolean) -> Unit,
     onConfirmCellularChange: (Boolean) -> Unit,
@@ -208,6 +215,16 @@ fun BiliToolsSettingsContent(
                         settings = settings,
                         onParseQuickActionChange = onParseQuickActionChange,
                         onLiveActivityStyleNotificationChange = onLiveActivityStyleNotificationChange,
+                        onNavigate = onNavigate,
+                        onBack = onNavigateBack,
+                        modifier = modifier,
+                    )
+                }
+
+                entry<SettingsDestination.DefaultDownloadQuality> {
+                    DefaultDownloadQualityScreen(
+                        settings = settings,
+                        onDefaultDownloadQualityChange = onDefaultDownloadQualityChange,
                         onBack = onNavigateBack,
                         modifier = modifier,
                     )
@@ -285,6 +302,26 @@ private data class SettingsEntry(
 private data class ThemeOption(
     val mode: AppThemeMode,
     @DrawableRes val iconRes: Int,
+    @StringRes val labelRes: Int,
+)
+
+private data class QualityModeOption(
+    val mode: DownloadQualityMode,
+    @StringRes val labelRes: Int,
+)
+
+private data class ResolutionOption(
+    val id: Int,
+    @StringRes val labelRes: Int,
+)
+
+private data class CodecQualityOption(
+    val codec: DefaultDownloadVideoCodec,
+    @StringRes val labelRes: Int,
+)
+
+private data class AudioBitrateOption(
+    val id: Int,
     @StringRes val labelRes: Int,
 )
 
@@ -412,6 +449,7 @@ private fun GeneralSettingsScreen(
     settings: AppSettings,
     onParseQuickActionChange: (Boolean) -> Unit,
     onLiveActivityStyleNotificationChange: (Boolean) -> Unit,
+    onNavigate: (SettingsDestination) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -432,13 +470,34 @@ private fun GeneralSettingsScreen(
         ) {
             item { Spacer(Modifier.height(14.dp)) }
             item {
+                ClickableListItem(
+                    items = 3,
+                    index = 0,
+                    leadingContent = { SettingsItemIcon(R.drawable.ic_high_quality_24) },
+                    headlineContent = {
+                        SettingsItemTitle(stringResource(R.string.settings_default_download_quality))
+                    },
+                    supportingContent = {
+                        Text(
+                            text = defaultDownloadQualitySummary(settings.defaultDownloadQuality),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
+                    trailingContent = {
+                        SettingsItemIcon(R.drawable.ic_chevron_right_24)
+                    },
+                    onClick = { onNavigate(SettingsDestination.DefaultDownloadQuality) },
+                )
+            }
+            item {
                 ExpressiveSwitchListItem(
                     checked = settings.parseQuickActionEnabled,
                     iconRes = R.drawable.ic_switch_access_shortcut_24,
                     title = stringResource(R.string.settings_parse_quick_action),
                     description = stringResource(R.string.settings_parse_quick_action_desc),
-                    items = 2,
-                    index = 0,
+                    items = 3,
+                    index = 1,
                     onCheckedChange = onParseQuickActionChange,
                 )
             }
@@ -448,8 +507,8 @@ private fun GeneralSettingsScreen(
                     iconRes = R.drawable.ic_dynamic_feed_24,
                     title = stringResource(R.string.settings_live_activity_style_notification),
                     description = stringResource(R.string.settings_live_activity_style_notification_desc),
-                    items = 2,
-                    index = 1,
+                    items = 3,
+                    index = 2,
                     onCheckedChange = onLiveActivityStyleNotificationChange,
                 )
             }
@@ -1764,6 +1823,364 @@ private fun SettingsItemTitle(
         fontWeight = FontWeight.Bold,
         modifier = modifier,
     )
+}
+
+@Composable
+private fun defaultDownloadQualitySummary(quality: DefaultDownloadQualitySettings): String {
+    val resolution = when (quality.resolutionMode) {
+        DownloadQualityMode.Highest -> stringResource(R.string.settings_default_quality_resolution_highest)
+        DownloadQualityMode.Lowest -> stringResource(R.string.settings_default_quality_resolution_lowest)
+        DownloadQualityMode.Fixed -> stringResource(resolutionLabelRes(quality.fixedResolutionId))
+    }
+    val audio = when (quality.audioBitrateMode) {
+        DownloadQualityMode.Highest -> stringResource(R.string.settings_default_quality_audio_highest)
+        DownloadQualityMode.Lowest -> stringResource(R.string.settings_default_quality_audio_lowest)
+        DownloadQualityMode.Fixed -> stringResource(AudioQualities.labelRes(quality.fixedAudioBitrateId))
+    }
+    return stringResource(
+        R.string.settings_default_download_quality_summary_format,
+        resolution,
+        stringResource(codecLabelRes(quality.codec)),
+        audio,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun DefaultDownloadQualityScreen(
+    settings: AppSettings,
+    onDefaultDownloadQualityChange: (DefaultDownloadQualitySettings) -> Unit,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    var draft by remember(settings.defaultDownloadQuality) {
+        mutableStateOf(settings.defaultDownloadQuality)
+    }
+    val modeOptions = remember {
+        listOf(
+            QualityModeOption(DownloadQualityMode.Highest, R.string.settings_default_quality_mode_highest),
+            QualityModeOption(DownloadQualityMode.Lowest, R.string.settings_default_quality_mode_lowest),
+            QualityModeOption(DownloadQualityMode.Fixed, R.string.settings_default_quality_mode_fixed),
+        )
+    }
+    val resolutionOptions = remember {
+        SettingsRepository.DEFAULT_DOWNLOAD_RESOLUTION_IDS.map { id ->
+            ResolutionOption(id, resolutionLabelRes(id))
+        }
+    }
+    val codecOptions = remember {
+        listOf(
+            CodecQualityOption(DefaultDownloadVideoCodec.Avc, R.string.parse_codec_avc),
+            CodecQualityOption(DefaultDownloadVideoCodec.Hevc, R.string.parse_codec_hevc),
+            CodecQualityOption(DefaultDownloadVideoCodec.Av1, R.string.parse_codec_av1),
+        )
+    }
+    val audioOptions = remember {
+        AudioQualities.sortDescending(AudioQualities.allIds).map { id ->
+            AudioBitrateOption(id, AudioQualities.labelRes(id))
+        }
+    }
+    fun updateQuality(quality: DefaultDownloadQualitySettings) {
+        draft = quality
+        onDefaultDownloadQualityChange(quality)
+    }
+
+    SettingsScaffold(
+        title = stringResource(R.string.settings_default_download_quality),
+        subtitle = stringResource(R.string.settings_general_title),
+        onBack = onBack,
+        scrollBehavior = scrollBehavior,
+        modifier = modifier,
+    ) { innerPadding ->
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = innerPadding,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+        ) {
+            item { Spacer(Modifier.height(14.dp)) }
+
+            item {
+                DefaultQualityCard {
+                    Text(
+                        text = stringResource(R.string.settings_default_download_quality_dialog_desc),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = defaultDownloadQualitySummary(draft),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+
+            item {
+                DefaultQualityCard {
+                    DefaultQualityModeSection(
+                        title = stringResource(R.string.settings_default_quality_resolution_title),
+                        mode = draft.resolutionMode,
+                        modeOptions = modeOptions,
+                        fixedLabel = stringResource(R.string.settings_default_quality_resolution_fixed_label),
+                        fixedDescription = stringResource(R.string.settings_default_quality_resolution_fixed_desc),
+                        onModeChange = {
+                            updateQuality(draft.copy(resolutionMode = it))
+                        },
+                    ) {
+                        HorizontalConnectedToggleButtons(
+                            options = resolutionOptions,
+                            selected = resolutionOptions.firstOrNull { it.id == draft.fixedResolutionId }
+                                ?: resolutionOptions.first(),
+                            onSelect = {
+                                updateQuality(
+                                    draft.copy(
+                                        resolutionMode = DownloadQualityMode.Fixed,
+                                        fixedResolutionId = it.id,
+                                    ),
+                                )
+                            },
+                        ) { option ->
+                            Text(
+                                text = stringResource(option.labelRes),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+            }
+
+            item {
+                DefaultQualityCard {
+                    DefaultQualitySectionTitle(
+                        title = stringResource(R.string.settings_default_quality_codec_title),
+                    )
+                    HorizontalConnectedToggleButtons(
+                        options = codecOptions,
+                        selected = codecOptions.firstOrNull { it.codec == draft.codec } ?: codecOptions.first(),
+                        onSelect = {
+                            updateQuality(draft.copy(codec = it.codec))
+                        },
+                    ) { option ->
+                        Text(
+                            text = stringResource(option.labelRes),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    Text(
+                        text = stringResource(R.string.settings_default_quality_codec_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            item {
+                DefaultQualityCard {
+                    DefaultQualityModeSection(
+                        title = stringResource(R.string.settings_default_quality_audio_title),
+                        mode = draft.audioBitrateMode,
+                        modeOptions = modeOptions,
+                        fixedLabel = stringResource(R.string.settings_default_quality_audio_fixed_label),
+                        fixedDescription = stringResource(R.string.settings_default_quality_audio_fixed_desc),
+                        onModeChange = {
+                            updateQuality(draft.copy(audioBitrateMode = it))
+                        },
+                    ) {
+                        HorizontalConnectedToggleButtons(
+                            options = audioOptions,
+                            selected = audioOptions.firstOrNull { it.id == draft.fixedAudioBitrateId }
+                                ?: audioOptions.first(),
+                            onSelect = {
+                                updateQuality(
+                                    draft.copy(
+                                        audioBitrateMode = DownloadQualityMode.Fixed,
+                                        fixedAudioBitrateId = it.id,
+                                    ),
+                                )
+                            },
+                        ) { option ->
+                            Text(
+                                text = stringResource(option.labelRes),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+            }
+
+            item { Spacer(Modifier.height(12.dp)) }
+        }
+    }
+}
+
+@Composable
+private fun DefaultQualityCard(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Surface(
+        color = SettingsExpressiveDefaults.listItemContainerColor,
+        shape = SettingsExpressiveShapes.cardShape,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(16.dp),
+            content = content,
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun DefaultQualityModeSection(
+    title: String,
+    mode: DownloadQualityMode,
+    modeOptions: List<QualityModeOption>,
+    fixedLabel: String,
+    fixedDescription: String,
+    onModeChange: (DownloadQualityMode) -> Unit,
+    fixedContent: @Composable () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        DefaultQualitySectionTitle(title)
+        ConnectedToggleButtons(
+            options = modeOptions,
+            selected = modeOptions.firstOrNull { it.mode == mode } ?: modeOptions.first(),
+            onSelect = { onModeChange(it.mode) },
+        ) { option ->
+            Text(
+                text = stringResource(option.labelRes),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        AnimatedVisibility(
+            visible = mode == DownloadQualityMode.Fixed,
+            enter = fadeIn() + expandVertically(),
+            exit = shrinkVertically() + fadeOut(),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = fixedLabel,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                fixedContent()
+                Text(
+                    text = fixedDescription,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DefaultQualitySectionTitle(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.Bold,
+    )
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun <T> ConnectedToggleButtons(
+    options: List<T>,
+    selected: T,
+    onSelect: (T) -> Unit,
+    modifier: Modifier = Modifier,
+    label: @Composable (T) -> Unit,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        options.fastForEachIndexed { index, option ->
+            ToggleButton(
+                checked = option == selected,
+                onCheckedChange = { onSelect(option) },
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics { role = Role.RadioButton },
+                shapes = connectedButtonShapes(index, options.lastIndex),
+            ) {
+                label(option)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun <T> HorizontalConnectedToggleButtons(
+    options: List<T>,
+    selected: T,
+    onSelect: (T) -> Unit,
+    modifier: Modifier = Modifier,
+    label: @Composable (T) -> Unit,
+) {
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        items(options.size) { index ->
+            val option = options[index]
+            ToggleButton(
+                checked = option == selected,
+                onCheckedChange = { onSelect(option) },
+                modifier = Modifier
+                    .widthIn(min = 112.dp)
+                    .semantics { role = Role.RadioButton },
+                shapes = connectedButtonShapes(index, options.lastIndex),
+            ) {
+                label(option)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun connectedButtonShapes(index: Int, lastIndex: Int) = when (index) {
+    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+    lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+}
+
+@StringRes
+private fun resolutionLabelRes(id: Int): Int {
+    return when (id) {
+        127 -> R.string.parse_resolution_8k
+        126 -> R.string.parse_resolution_dolby
+        125 -> R.string.parse_resolution_hdr
+        120 -> R.string.parse_resolution_4k
+        116 -> R.string.parse_resolution_1080_60
+        112 -> R.string.parse_resolution_1080_high
+        80 -> R.string.parse_resolution_1080
+        64 -> R.string.parse_resolution_720
+        32 -> R.string.parse_resolution_480
+        16 -> R.string.parse_resolution_360
+        6 -> R.string.parse_resolution_240
+        else -> R.string.parse_resolution_other
+    }
+}
+
+@StringRes
+private fun codecLabelRes(codec: DefaultDownloadVideoCodec): Int {
+    return when (codec) {
+        DefaultDownloadVideoCodec.Avc -> R.string.parse_codec_avc
+        DefaultDownloadVideoCodec.Hevc -> R.string.parse_codec_hevc
+        DefaultDownloadVideoCodec.Av1 -> R.string.parse_codec_av1
+    }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
