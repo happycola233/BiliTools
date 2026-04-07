@@ -959,8 +959,12 @@ class ParseFragment : Fragment() {
                             !state.aiSummaryCopying &&
                             (state.aiSummaryAvailable || allowAnyExtras)
 
-                    val collectionAvailable =
-                        info?.collection == true && !info.nfo.showTitle.isNullOrBlank()
+                    val collectionAvailable = info?.let { mediaInfo ->
+                        !mediaInfo.nfo.showTitle.isNullOrBlank() &&
+                            (mediaInfo.collection ||
+                                mediaInfo.type == MediaType.Bangumi ||
+                                mediaInfo.type == MediaType.Lesson)
+                    } == true
                     val collectionModeAvailable = info?.type == MediaType.Video && info?.collection == true
                     binding.collectionToggle.visibility =
                         if (collectionModeAvailable) View.VISIBLE else View.GONE

@@ -151,6 +151,7 @@ data class DownloadItem(
     val createdAt: Long = 0,
     val status: DownloadStatus,
     val progress: Int,
+    val progressIndeterminate: Boolean = false,
     val downloadedBytes: Long = 0,
     val totalBytes: Long = 0,
     val speedBytesPerSec: Long = 0,
@@ -160,6 +161,7 @@ data class DownloadItem(
     val outputMissing: Boolean = false,
     val userPaused: Boolean = false,
     val errorMessage: String? = null,
+    val statusDetail: String? = null,
     val mediaParams: DownloadMediaParams? = null,
     val embeddedMetadata: DownloadEmbeddedMetadata? = null,
 )

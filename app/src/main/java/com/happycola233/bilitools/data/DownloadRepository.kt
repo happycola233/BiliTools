@@ -35,6 +35,7 @@ import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -45,6 +46,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -126,9 +129,11 @@ class DownloadRepository(
     private val loadLock = Any()
 
     private val downloadJobs = ConcurrentHashMap<Long, Job>()
+    private val extraJobs = ConcurrentHashMap<Long, Job>()
     private val downloadStates = ConcurrentHashMap<Long, ResumableState>()
     private val mergeTasks = ConcurrentHashMap<Long, MergedDownload>()
     private val mergeJobs = ConcurrentHashMap<Long, Job>()
+    private val extraTaskSemaphore = Semaphore(EXTRA_TASK_PARALLELISM)
     private val mergeIds = AtomicLong(-1L)
     private val downloadIds = AtomicLong(0L)
     private val groupIds = AtomicLong(0L)
@@ -366,6 +371,124 @@ class DownloadRepository(
         )
         addTask(item)
         return item
+    }
+
+    fun updateExtraTask(
+        id: Long,
+        status: DownloadStatus,
+        progress: Int,
+        downloadedBytes: Long = 0L,
+        totalBytes: Long = 0L,
+        errorMessage: String? = null,
+        localUri: String? = null,
+        statusDetail: String? = null,
+        progressIndeterminate: Boolean = false,
+    ): Boolean {
+        var updated = false
+        var shouldPersist = false
+        synchronized(lock) {
+            val target = tasks[id] ?: return@synchronized
+            if (isManagedTask(target)) return@synchronized
+            val next = DownloadProgressRules.normalizeTask(
+                target.copy(
+                    status = status,
+                    progress = progress,
+                    downloadedBytes = downloadedBytes,
+                    totalBytes = totalBytes,
+                    speedBytesPerSec = 0L,
+                    etaSeconds = null,
+                    errorMessage = errorMessage,
+                    localUri = localUri,
+                    statusDetail = statusDetail,
+                    progressIndeterminate = progressIndeterminate,
+                ),
+            )
+            tasks[id] = next
+            updated = true
+            shouldPersist = shouldPersistTaskChange(target, next)
+        }
+        if (!updated) return false
+        updateGroups()
+        if (shouldPersist) {
+            schedulePersist()
+        }
+        return true
+    }
+
+    fun updateExtraTaskMetadata(
+        id: Long,
+        taskTitle: String,
+        fileName: String,
+    ): Boolean {
+        var updated = false
+        var shouldPersist = false
+        synchronized(lock) {
+            val target = tasks[id] ?: return@synchronized
+            if (isManagedTask(target)) return@synchronized
+            val next = DownloadProgressRules.normalizeTask(
+                target.copy(
+                    title = taskTitle,
+                    fileName = fileName,
+                ),
+            )
+            tasks[id] = next
+            updated = true
+            shouldPersist = shouldPersistTaskChange(target, next)
+        }
+        if (!updated) return false
+        updateGroups()
+        if (shouldPersist) {
+            schedulePersist()
+        }
+        return true
+    }
+
+    fun launchExtraTask(id: Long, block: suspend () -> Unit): Boolean {
+        if (!isActiveExtraTask(id)) return false
+        val job = scope.launch(start = CoroutineStart.LAZY) {
+            val currentJob = coroutineContext[Job]
+            try {
+                extraTaskSemaphore.withPermit {
+                    if (!isActiveExtraTask(id)) return@withPermit
+                    block()
+                }
+            } catch (err: CancellationException) {
+                if (currentJob == null || extraJobs[id] == currentJob) {
+                    cancelExtraTaskIfActive(id, err.message)
+                }
+                throw err
+            } finally {
+                currentJob?.let {
+                    extraJobs.remove(id, it)
+                }
+            }
+        }
+        extraJobs.put(id, job)?.cancel()
+        job.start()
+        return true
+    }
+
+    private fun cancelExtraTaskIfActive(id: Long, errorMessage: String?) {
+        val active = synchronized(lock) {
+            val task = tasks[id] ?: return@synchronized false
+            !isManagedTask(task) &&
+                (task.status == DownloadStatus.Pending || task.status == DownloadStatus.Running)
+        }
+        if (!active) return
+        updateExtraTask(
+            id,
+            DownloadStatus.Cancelled,
+            progress = 0,
+            errorMessage = errorMessage,
+        )
+    }
+
+    private fun isActiveExtraTask(id: Long): Boolean {
+        return synchronized(lock) {
+            val task = tasks[id] ?: return@synchronized false
+            !isManagedTask(task) &&
+                (task.status == DownloadStatus.Pending || task.status == DownloadStatus.Running)
+        }
     }
 
     fun pause(id: Long) {
@@ -1415,10 +1538,13 @@ class DownloadRepository(
     fun clearAllGroups() {
         val downloadJobSnapshot = downloadJobs.values.toList()
         val mergeJobSnapshot = mergeJobs.values.toList()
+        val extraJobSnapshot = extraJobs.values.toList()
         downloadJobs.clear()
         mergeJobs.clear()
+        extraJobs.clear()
         downloadJobSnapshot.forEach { it.cancel() }
         mergeJobSnapshot.forEach { it.cancel() }
+        extraJobSnapshot.forEach { it.cancel() }
 
         val downloadStateSnapshot = downloadStates.values.toList()
         downloadStates.clear()
@@ -1461,6 +1587,7 @@ class DownloadRepository(
             taskIds.forEach { id ->
                 tasks.remove(id)
                 downloadJobs.remove(id)?.cancel()
+                extraJobs.remove(id)?.cancel()
                 downloadStates.remove(id)?.tempFile?.delete()
                 mergeJobs.remove(id)?.cancel()
                 mergeTasks.remove(id)?.let {
@@ -1499,6 +1626,7 @@ class DownloadRepository(
 
     private fun cleanupTaskResources(item: DownloadItem, deleteFile: Boolean) {
         downloadJobs.remove(item.id)?.cancel()
+        extraJobs.remove(item.id)?.cancel()
         downloadStates.remove(item.id)?.tempFile?.delete()
         mergeJobs.remove(item.id)?.cancel()
         mergeTasks.remove(item.id)?.let { merge ->
@@ -1615,11 +1743,15 @@ class DownloadRepository(
     private fun shouldPersistTaskChange(old: DownloadItem?, new: DownloadItem): Boolean {
         if (old == null) return true
         if (old.status != new.status) return true
+        if (old.title != new.title) return true
+        if (old.fileName != new.fileName) return true
         if (old.userPaused != new.userPaused) return true
         if (old.errorMessage != new.errorMessage) return true
         if (old.url != new.url) return true
         if (old.localUri != new.localUri) return true
         if (old.outputMissing != new.outputMissing) return true
+        if (old.progressIndeterminate != new.progressIndeterminate) return true
+        if (old.statusDetail != new.statusDetail) return true
         if (old.totalBytes != new.totalBytes && new.totalBytes > 0) return true
         return false
     }
@@ -1822,6 +1954,7 @@ class DownloadRepository(
         var maxDownloadId = 0L
         var minMergeId: Long? = null
         var minExtraId: Long? = null
+        var restoredExtraStatusChanged = false
 
         val usedFolderNames = mutableSetOf<String>()
         for (group in store.groups) {
@@ -1889,10 +2022,25 @@ class DownloadRepository(
                     continue
                 }
 
-                restoredTasks[task.id] = task.copy(
-                    speedBytesPerSec = 0,
-                    etaSeconds = null,
-                )
+                val restoredExtraTask = if (task.status == DownloadStatus.Pending ||
+                    task.status == DownloadStatus.Running
+                ) {
+                    restoredExtraStatusChanged = true
+                    task.copy(
+                        status = DownloadStatus.Cancelled,
+                        progress = 0,
+                        speedBytesPerSec = 0,
+                        etaSeconds = null,
+                        statusDetail = null,
+                        progressIndeterminate = false,
+                    )
+                } else {
+                    task.copy(
+                        speedBytesPerSec = 0,
+                        etaSeconds = null,
+                    )
+                }
+                restoredTasks[task.id] = restoredExtraTask
             }
             restoredGroupTaskIds[group.id] = ids
         }
@@ -1919,6 +2067,9 @@ class DownloadRepository(
 
         cleanupCompletedTempFiles(completedTempFiles)
         updateGroups()
+        if (restoredExtraStatusChanged) {
+            schedulePersist()
+        }
 
         autoResumeIds.forEach { startDownload(it) }
         autoMerge.forEach { startMerge(it) }
@@ -3801,6 +3952,7 @@ class DownloadRepository(
         createdAt: Long = System.currentTimeMillis(),
         status: DownloadStatus = DownloadStatus.Pending,
         progress: Int = 0,
+        progressIndeterminate: Boolean = false,
         downloadedBytes: Long = 0,
         totalBytes: Long = 0,
         speedBytesPerSec: Long = 0,
@@ -3809,6 +3961,7 @@ class DownloadRepository(
         localUri: String? = null,
         userPaused: Boolean = false,
         errorMessage: String? = null,
+        statusDetail: String? = null,
         mediaParams: com.happycola233.bilitools.data.model.DownloadMediaParams? = null,
         embeddedMetadata: DownloadEmbeddedMetadata? = null,
     ): DownloadItem {
@@ -3822,6 +3975,7 @@ class DownloadRepository(
             createdAt = createdAt,
             status = status,
             progress = progress,
+            progressIndeterminate = progressIndeterminate,
             downloadedBytes = downloadedBytes,
             totalBytes = totalBytes,
             speedBytesPerSec = speedBytesPerSec,
@@ -3830,6 +3984,7 @@ class DownloadRepository(
             localUri = localUri,
             userPaused = userPaused,
             errorMessage = errorMessage,
+            statusDetail = statusDetail,
             mediaParams = mediaParams,
             embeddedMetadata = embeddedMetadata,
         )
@@ -3964,6 +4119,7 @@ class DownloadRepository(
         private const val PROGRESS_UPDATE_INTERVAL_MS = 300L
         private const val PERSIST_DELAY_MS = 1000L
         private const val STORE_VERSION = 1
+        private const val EXTRA_TASK_PARALLELISM = 3
         private const val EXTRA_TASK_ID_START = -1_000_000_000L
     }
 }

@@ -30,6 +30,9 @@ class ExtrasRepository(
         val body = httpClient.get(url)
         val adapter = httpClient.adapter(PlayerInfoResponse::class.java)
         val resp = adapter.fromJson(body) ?: return emptyList()
+        if (resp.code != 0) {
+            throw BiliHttpException(resp.message ?: "Player info failed", resp.code)
+        }
         val subtitles = resp.data?.subtitle?.subtitles.orEmpty()
         return subtitles.map {
             SubtitleInfo(
@@ -69,7 +72,12 @@ class ExtrasRepository(
         val body = httpClient.get(url)
         val adapter = httpClient.adapter(AiSummaryResponse::class.java)
         val resp = adapter.fromJson(body) ?: return false
-        val result = resp.data?.modelResult ?: return false
+        if (resp.code != 0) {
+            throw BiliHttpException(resp.message ?: "AI summary failed", resp.code)
+        }
+        val data = resp.data ?: return false
+        if (data.code != null && data.code != 0) return false
+        val result = data.modelResult ?: return false
         return result.resultType != 0
     }
 
@@ -86,13 +94,19 @@ class ExtrasRepository(
         val body = httpClient.get(url)
         val adapter = httpClient.adapter(AiSummaryResponse::class.java)
         val resp = adapter.fromJson(body) ?: return null
-        val result = resp.data?.modelResult ?: return null
+        if (resp.code != 0) {
+            throw BiliHttpException(resp.message ?: "AI summary failed", resp.code)
+        }
+        val data = resp.data ?: return null
+        if (data.code != null && data.code != 0) return null
+        val result = data.modelResult ?: return null
         if (result.resultType == 0) return null
+        val summary = result.summary?.takeIf { it.isNotBlank() } ?: return null
         val sb = StringBuilder()
         sb.append("# ").append(title).append(" - ").append(bvid).append("\n\n")
-        sb.append(result.summary).append("\n\n")
+        sb.append(summary).append("\n\n")
         if (result.resultType == 2) {
-            result.outline.forEach { section ->
+            result.outline.orEmpty().forEach { section ->
                 sb.append("## ").append(section.title)
                 sb.append(" - [")
                 sb.append(formatDuration(section.timestamp))
@@ -101,7 +115,7 @@ class ExtrasRepository(
                 sb.append("?t=")
                 sb.append(section.timestamp)
                 sb.append(")\n\n")
-                section.partOutline.forEach { part ->
+                section.partOutline.orEmpty().forEach { part ->
                     sb.append("- ")
                     sb.append(part.content)
                     sb.append(" - [")
@@ -117,13 +131,43 @@ class ExtrasRepository(
         return sb.toString()
     }
 
-    suspend fun getDanmakuLiveAss(aid: Long, cid: Long, durationSeconds: Int): ByteArray {
-        val ass = DanmakuParser.toAss(getDanmakuLiveElements(aid, cid, durationSeconds))
+    suspend fun getDanmakuLiveAss(
+        aid: Long,
+        cid: Long,
+        durationSeconds: Int,
+        onProgress: (DanmakuLiveProgress) -> Unit = {},
+    ): ByteArray {
+        val segments = danmakuLiveSegmentCount(durationSeconds)
+        val elements = getDanmakuLiveElements(aid, cid, segments, onProgress)
+        onProgress(
+            DanmakuLiveProgress(
+                phase = DanmakuLiveProgressPhase.Converting,
+                segmentIndex = segments,
+                segmentCount = segments,
+                progress = 99,
+            ),
+        )
+        val ass = DanmakuParser.toAss(elements)
         return ass.toByteArray(Charsets.UTF_8)
     }
 
-    suspend fun getDanmakuLiveXml(aid: Long, cid: Long, durationSeconds: Int): ByteArray {
-        val xml = DanmakuParser.toXml(getDanmakuLiveElements(aid, cid, durationSeconds))
+    suspend fun getDanmakuLiveXml(
+        aid: Long,
+        cid: Long,
+        durationSeconds: Int,
+        onProgress: (DanmakuLiveProgress) -> Unit = {},
+    ): ByteArray {
+        val segments = danmakuLiveSegmentCount(durationSeconds)
+        val elements = getDanmakuLiveElements(aid, cid, segments, onProgress)
+        onProgress(
+            DanmakuLiveProgress(
+                phase = DanmakuLiveProgressPhase.Converting,
+                segmentIndex = segments,
+                segmentCount = segments,
+                progress = 99,
+            ),
+        )
+        val xml = DanmakuParser.toXml(elements)
         return xml.toByteArray(Charsets.UTF_8)
     }
 
@@ -238,11 +282,19 @@ class ExtrasRepository(
     private suspend fun getDanmakuLiveElements(
         aid: Long,
         cid: Long,
-        durationSeconds: Int,
+        segments: Int,
+        onProgress: (DanmakuLiveProgress) -> Unit,
     ): List<DanmakuElem> {
-        val segments = ((durationSeconds + 359) / 360).coerceAtLeast(1)
         val elems = mutableListOf<DanmakuElem>()
         for (index in 1..segments) {
+            onProgress(
+                DanmakuLiveProgress(
+                    phase = DanmakuLiveProgressPhase.FetchingSegment,
+                    segmentIndex = index,
+                    segmentCount = segments,
+                    progress = (((index - 1) * 99) / segments).coerceIn(0, 98),
+                ),
+            )
             val params = mapOf(
                 "type" to "1",
                 "oid" to cid.toString(),
@@ -255,8 +307,20 @@ class ExtrasRepository(
             )
             val bytes = httpClient.getBytes(url)
             elems.addAll(DanmakuParser.parse(bytes))
+            onProgress(
+                DanmakuLiveProgress(
+                    phase = DanmakuLiveProgressPhase.FetchingSegment,
+                    segmentIndex = index,
+                    segmentCount = segments,
+                    progress = ((index * 99) / segments).coerceIn(1, 99),
+                ),
+            )
         }
         return elems
+    }
+
+    private fun danmakuLiveSegmentCount(durationSeconds: Int): Int {
+        return ((durationSeconds + 359) / 360).coerceAtLeast(1)
     }
 
     private suspend fun getDanmakuHistoryElements(
@@ -335,6 +399,18 @@ class ExtrasRepository(
     }
 }
 
+data class DanmakuLiveProgress(
+    val phase: DanmakuLiveProgressPhase,
+    val segmentIndex: Int,
+    val segmentCount: Int,
+    val progress: Int,
+)
+
+enum class DanmakuLiveProgressPhase {
+    FetchingSegment,
+    Converting,
+}
+
 private data class PlayerInfoResponse(
     @param:Json(name = "code") val code: Int,
     @param:Json(name = "message") val message: String?,
@@ -362,19 +438,20 @@ private data class AiSummaryResponse(
 )
 
 private data class AiSummaryData(
+    @param:Json(name = "code") val code: Int? = null,
     @param:Json(name = "model_result") val modelResult: AiSummaryResult?,
 )
 
 private data class AiSummaryResult(
     @param:Json(name = "result_type") val resultType: Int,
-    @param:Json(name = "summary") val summary: String,
-    @param:Json(name = "outline") val outline: List<AiSummarySection>,
+    @param:Json(name = "summary") val summary: String? = null,
+    @param:Json(name = "outline") val outline: List<AiSummarySection>? = null,
 )
 
 private data class AiSummarySection(
     @param:Json(name = "title") val title: String,
     @param:Json(name = "timestamp") val timestamp: Int,
-    @param:Json(name = "part_outline") val partOutline: List<AiSummaryPart>,
+    @param:Json(name = "part_outline") val partOutline: List<AiSummaryPart>? = null,
 )
 
 private data class AiSummaryPart(

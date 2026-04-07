@@ -291,6 +291,9 @@
     <string name="downloads_pause_all_empty">暂无可暂停任务</string>
     <string name="download_status_pending">排队中</string>
     <string name="download_status_running">下载中 %1$d%%</string>
+    <string name="download_detail_fetching_danmaku_segment">正在获取弹幕分段 %1$d/%2$d</string>
+    <string name="download_detail_converting_danmaku">正在转换弹幕</string>
+    <string name="download_detail_saving_file">正在保存文件</string>
     <string name="download_status_paused">已暂停 %1$d%%</string>
     <string name="download_status_success">已完成</string>
     <string name="download_status_missing">已完成（文件已丢失）</string>

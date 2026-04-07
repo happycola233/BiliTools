@@ -146,7 +146,11 @@ private fun resolveTaskProgressVisualState(item: DownloadItem): ProgressVisualSt
     return when (item.status) {
         DownloadStatus.Pending,
         DownloadStatus.Merging -> ProgressVisualState.WaveIndeterminate
-        DownloadStatus.Running -> ProgressVisualState.WaveDeterminate
+        DownloadStatus.Running -> if (item.progressIndeterminate) {
+            ProgressVisualState.WaveIndeterminate
+        } else {
+            ProgressVisualState.WaveDeterminate
+        }
         DownloadStatus.Paused -> ProgressVisualState.FlatDeterminate
         DownloadStatus.Failed,
         DownloadStatus.Success,
@@ -1668,7 +1672,9 @@ private class DownloadTaskAdapter(
 
         private fun bindDetailText(context: Context, item: DownloadItem) {
             binding.downloadDetail.text = buildDetailText(context, item)
-            val detailColor = if (item.status == DownloadStatus.Failed) {
+            val detailColor = if (item.status == DownloadStatus.Failed ||
+                item.status == DownloadStatus.Cancelled
+            ) {
                 MaterialColors.getColor(
                     binding.downloadDetail,
                     android.R.attr.colorError,
@@ -1714,7 +1720,14 @@ private class DownloadTaskAdapter(
         private fun buildProgressText(context: Context, item: DownloadItem): String? {
             val progress = DownloadProgressRules.normalizeTaskProgress(item.status, item.progress)
             return when (item.status) {
-                DownloadStatus.Running,
+                DownloadStatus.Running -> if (item.progressIndeterminate) {
+                    null
+                } else {
+                    context.getString(
+                        R.string.download_progress_percent,
+                        progress,
+                    )
+                }
                 DownloadStatus.Paused -> context.getString(
                     R.string.download_progress_percent,
                     progress,
@@ -1736,14 +1749,17 @@ private class DownloadTaskAdapter(
                     downloaded,
                     total,
                 )
-            } else {
+            } else if (item.downloadedBytes > 0) {
                 context.getString(
                     R.string.download_size_downloaded,
                     downloaded,
                 )
+            } else {
+                ""
             }
             val baseText = when (item.status) {
                 DownloadStatus.Running -> {
+                    val statusDetail = item.statusDetail?.takeIf { it.isNotBlank() }
                     val speedText = if (item.speedBytesPerSec > 0) {
                         context.getString(
                             R.string.download_speed_format,
@@ -1752,7 +1768,17 @@ private class DownloadTaskAdapter(
                     } else {
                          ""
                     }
-                    if (speedText.isNotBlank()) "$sizeText - $speedText" else sizeText
+                    when {
+                        statusDetail != null && sizeText.isNotBlank() && speedText.isNotBlank() ->
+                            "$statusDetail - $sizeText - $speedText"
+                        statusDetail != null && sizeText.isNotBlank() -> "$statusDetail - $sizeText"
+                        statusDetail != null && speedText.isNotBlank() -> "$statusDetail - $speedText"
+                        statusDetail != null -> statusDetail
+                        sizeText.isNotBlank() && speedText.isNotBlank() -> "$sizeText - $speedText"
+                        sizeText.isNotBlank() -> sizeText
+                        speedText.isNotBlank() -> speedText
+                        else -> context.getString(R.string.download_status_running, progress)
+                    }
                 }
                 DownloadStatus.Pending -> context.getString(R.string.download_status_pending)
                 DownloadStatus.Paused -> context.getString(R.string.download_status_paused, progress)
