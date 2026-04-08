@@ -71,7 +71,10 @@ class UpdateDownloadService : Service() {
 
         downloadJob = serviceScope.launch {
             try {
-                val targetFile = prepareTargetFile(request.versionName)
+                val targetFile = prepareTargetFile(
+                    versionName = request.versionName,
+                    assetFileName = request.assetFileName,
+                )
                 downloadApk(request, targetFile)
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 notificationManager.showReadyToInstall(
@@ -113,9 +116,15 @@ class UpdateDownloadService : Service() {
         super.onDestroy()
     }
 
-    private fun prepareTargetFile(versionName: String): File {
+    private fun prepareTargetFile(
+        versionName: String,
+        assetFileName: String,
+    ): File {
         val directory = updatePackageDirectory(this).apply { mkdirs() }
-        val targetFileName = updatePackageFileName(versionName)
+        val targetFileName = updatePackageFileName(
+            versionName = versionName,
+            assetName = assetFileName,
+        )
         directory.listFiles()
             ?.filter { it.isFile && it.name != targetFileName }
             ?.forEach { staleFile ->
@@ -272,6 +281,7 @@ class UpdateDownloadService : Service() {
         val releaseTitle = getStringExtra(EXTRA_RELEASE_TITLE)?.trim().orEmpty()
         val releasePageUrl = getStringExtra(EXTRA_RELEASE_URL)?.trim().orEmpty()
         val downloadUrl = getStringExtra(EXTRA_APK_DOWNLOAD_URL)?.trim().orEmpty()
+        val assetFileName = getStringExtra(EXTRA_APK_FILE_NAME)?.trim().orEmpty()
         if (versionName.isBlank() || releasePageUrl.isBlank() || downloadUrl.isBlank()) {
             return null
         }
@@ -281,6 +291,7 @@ class UpdateDownloadService : Service() {
             releaseTitle = releaseTitle,
             releasePageUrl = releasePageUrl,
             downloadUrl = downloadUrl,
+            assetFileName = assetFileName,
             assetSizeBytes = getLongExtra(EXTRA_APK_SIZE_BYTES, -1L),
         )
     }
@@ -291,6 +302,7 @@ class UpdateDownloadService : Service() {
         val releaseTitle: String,
         val releasePageUrl: String,
         val downloadUrl: String,
+        val assetFileName: String,
         val assetSizeBytes: Long,
     ) {
         val displayVersion: String
@@ -310,6 +322,7 @@ class UpdateDownloadService : Service() {
         const val EXTRA_RELEASE_TITLE = "extra_release_title"
         const val EXTRA_RELEASE_URL = "extra_release_url"
         const val EXTRA_APK_DOWNLOAD_URL = "extra_apk_download_url"
+        const val EXTRA_APK_FILE_NAME = "extra_apk_file_name"
         const val EXTRA_APK_SIZE_BYTES = "extra_apk_size_bytes"
 
         @Volatile

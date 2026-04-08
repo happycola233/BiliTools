@@ -9,7 +9,17 @@ internal const val UPDATE_DIRECTORY_NAME = "updates"
 
 internal fun updatePackageDirectory(context: Context): File = File(context.filesDir, UPDATE_DIRECTORY_NAME)
 
-internal fun updatePackageFileName(versionName: String): String {
+internal fun updatePackageFileName(
+    versionName: String,
+    assetName: String? = null,
+): String {
+    val safeAssetName = assetName
+        ?.takeIf { it.isNotBlank() }
+        ?.let(UpdateApkAssetSelector::sanitizeDownloadedPackageFileName)
+    if (!safeAssetName.isNullOrBlank()) {
+        return safeAssetName
+    }
+
     val safeVersion = versionName
         .replace(Regex("[^A-Za-z0-9._-]"), "_")
         .ifBlank { "latest" }
@@ -70,8 +80,19 @@ internal class UpdatePackageCleanupManager(context: Context) {
 
     private fun hasInstalledPackageArtifact(versionName: String): Boolean {
         if (versionName.isBlank()) return false
-        val expectedFile = File(updatePackageDirectory(appContext), updatePackageFileName(versionName))
-        return expectedFile.exists()
+        val normalizedVersion = versionName.trim()
+            .removePrefix("v")
+            .removePrefix("V")
+            .trim()
+        return updatePackageDirectory(appContext)
+            .listFiles()
+            ?.any { file ->
+                file.isFile &&
+                    file.name.endsWith(".apk", ignoreCase = true) &&
+                    UpdateApkAssetSelector.versionFromDownloadedPackageFileName(file.name) ==
+                    normalizedVersion
+            }
+            ?: false
     }
 
     companion object {

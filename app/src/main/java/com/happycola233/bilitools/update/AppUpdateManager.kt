@@ -40,6 +40,7 @@ class AppUpdateManager(context: Context) {
                 UpdateDownloadService.EXTRA_APK_DOWNLOAD_URL,
                 gitHubRouteManager.normalizeGitHubUrl(asset.downloadUrl),
             )
+            putExtra(UpdateDownloadService.EXTRA_APK_FILE_NAME, asset.name)
             putExtra(UpdateDownloadService.EXTRA_APK_SIZE_BYTES, asset.sizeBytes)
         }
 

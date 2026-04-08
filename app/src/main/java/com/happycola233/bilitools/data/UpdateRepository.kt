@@ -1,6 +1,7 @@
 package com.happycola233.bilitools.data
 
 import android.content.Context
+import android.os.Build
 import com.happycola233.bilitools.core.AppLog as Log
 import com.happycola233.bilitools.core.createHttpDiagnosticLoggingInterceptor
 import com.squareup.moshi.Json
@@ -8,6 +9,7 @@ import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import com.happycola233.bilitools.update.GitHubRouteManager
 import com.happycola233.bilitools.update.GitHubRoutePurpose
+import com.happycola233.bilitools.update.UpdateApkAssetSelector
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
@@ -128,30 +130,39 @@ class UpdateRepository(
                     if (tagName.isBlank() || htmlUrl.isBlank()) {
                         throw IOException("Invalid release response")
                     }
+                    val releaseAssets = parsed.assets
+                        .orEmpty()
+                        .mapNotNull { asset ->
+                            val assetName = asset.name?.trim().orEmpty()
+                            val downloadUrl = asset.browserDownloadUrl?.trim().orEmpty()
+                            if (assetName.isBlank() || downloadUrl.isBlank()) {
+                                return@mapNotNull null
+                            }
+                            ReleaseAssetInfo(
+                                name = assetName,
+                                downloadUrl = gitHubRouteManager.normalizeGitHubUrl(downloadUrl),
+                                sizeBytes = asset.size ?: -1L,
+                            )
+                        }
+                    val releaseVersionName = normalizeVersion(tagName)
 
                     val release = ReleaseInfo(
                         tagName = tagName,
-                        versionName = normalizeVersion(tagName),
+                        versionName = releaseVersionName,
                         title = parsed.name?.trim()?.takeIf { it.isNotBlank() },
                         bodyMarkdown = parsed.body.orEmpty(),
                         htmlUrl = htmlUrl,
-                        apkAsset = parsed.assets
-                            .orEmpty()
-                            .firstOrNull { asset ->
-                                asset.name?.trim().equals(APK_ASSET_NAME, ignoreCase = false) &&
-                                    !asset.browserDownloadUrl.isNullOrBlank()
-                            }
-                            ?.let { asset ->
-                                ReleaseAssetInfo(
-                                    name = asset.name!!.trim(),
-                                    downloadUrl = gitHubRouteManager.normalizeGitHubUrl(
-                                        asset.browserDownloadUrl!!.trim(),
-                                    ),
-                                    sizeBytes = asset.size ?: -1L,
-                                )
-                            },
+                        apkAsset = UpdateApkAssetSelector.selectBestAsset(
+                            releaseVersionName = releaseVersionName,
+                            assets = releaseAssets,
+                            supportedAbis = Build.SUPPORTED_ABIS.toList(),
+                        ),
                     )
                     gitHubRouteManager.markSuccess(GitHubRoutePurpose.ReleaseApi, route.routeId)
+                    Log.i(
+                        TAG,
+                        "[update] selected release asset=${release.apkAsset?.name ?: "none"}",
+                    )
                     Log.i(TAG, "[update] selected release API route=${route.routeId}")
                     return release
                 }
@@ -211,7 +222,6 @@ class UpdateRepository(
         private const val TAG = "UpdateRepository"
         private const val LATEST_RELEASE_API =
             "https://api.github.com/repos/happycola233/BiliTools/releases/latest"
-        private const val APK_ASSET_NAME = "app-release.apk"
     }
 }
 
