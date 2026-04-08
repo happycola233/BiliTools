@@ -7,6 +7,7 @@ import android.provider.DocumentsContract
 import androidx.appcompat.app.AppCompatDelegate
 import com.happycola233.bilitools.core.AudioQualities
 import com.happycola233.bilitools.core.DownloadNaming
+import com.happycola233.bilitools.notification.isLiveUpdateSupported
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -165,7 +166,7 @@ class SettingsRepository(context: Context) {
     fun shouldShowParseQuickAction(): Boolean = _settings.value.parseQuickActionEnabled
 
     fun shouldUseLiveActivityStyleNotification(): Boolean =
-        _settings.value.liveActivityStyleNotificationEnabled
+        _settings.value.liveActivityStyleNotificationEnabled && appContext.isLiveUpdateSupported()
 
     fun currentNamingSettings(): DownloadNamingSettings = _settings.value.naming
 

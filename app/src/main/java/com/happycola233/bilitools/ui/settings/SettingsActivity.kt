@@ -21,17 +21,20 @@ import androidx.compose.ui.platform.ViewCompositionStrategy
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.appContainer
 import com.happycola233.bilitools.data.UpdateCheckResult
+import com.happycola233.bilitools.notification.isLiveUpdateSupported
 import com.happycola233.bilitools.ui.AppViewModelFactory
 import com.happycola233.bilitools.ui.attachNavigationEventDispatcherOwner
 import com.happycola233.bilitools.ui.applySettingsThemeOverlays
 import com.happycola233.bilitools.ui.enableBiliEdgeToEdge
 import com.happycola233.bilitools.ui.update.UpdateDialog
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
 class SettingsActivity : AppCompatActivity() {
     private val viewModel: SettingsViewModel by viewModels {
         AppViewModelFactory(applicationContext.appContainer)
     }
+    private val liveUpdateSupported = MutableStateFlow(false)
 
     private val openFolderLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree(),
@@ -57,6 +60,7 @@ class SettingsActivity : AppCompatActivity() {
         applySettingsThemeOverlays()
         super.onCreate(savedInstanceState)
         viewModel.refreshIssueReportState()
+        liveUpdateSupported.value = applicationContext.isLiveUpdateSupported()
 
         val composeView = ComposeView(this).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
@@ -67,6 +71,7 @@ class SettingsActivity : AppCompatActivity() {
         composeView.setContent {
             val settings by viewModel.settings.collectAsState()
             val issueReportState by viewModel.issueReportState.collectAsState()
+            val isLiveUpdateSupported by liveUpdateSupported.collectAsState()
             val updateRepository = remember { applicationContext.appContainer.updateRepository }
             val scope = rememberCoroutineScope()
             val versionName = remember { normalizeVersionLabel(updateRepository.currentVersionName()) }
@@ -85,6 +90,7 @@ class SettingsActivity : AppCompatActivity() {
 
             BiliToolsSettingsContent(
                 settings = settings,
+                liveUpdateSupported = isLiveUpdateSupported,
                 issueReportState = issueReportState,
                 backStack = viewModel.backStack,
                 checkUpdateSummary = checkUpdateSummary,
@@ -233,6 +239,7 @@ class SettingsActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         viewModel.refreshIssueReportState()
+        liveUpdateSupported.value = applicationContext.isLiveUpdateSupported()
     }
 
     override fun finish() {

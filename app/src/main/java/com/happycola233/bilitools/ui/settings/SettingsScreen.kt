@@ -147,6 +147,7 @@ import kotlin.math.max
 @Composable
 fun BiliToolsSettingsContent(
     settings: AppSettings,
+    liveUpdateSupported: Boolean,
     issueReportState: IssueReportLogState,
     backStack: SnapshotStateList<SettingsDestination>,
     checkUpdateSummary: String,
@@ -213,6 +214,7 @@ fun BiliToolsSettingsContent(
                 entry<SettingsDestination.General> {
                     GeneralSettingsScreen(
                         settings = settings,
+                        liveUpdateSupported = liveUpdateSupported,
                         onParseQuickActionChange = onParseQuickActionChange,
                         onLiveActivityStyleNotificationChange = onLiveActivityStyleNotificationChange,
                         onNavigate = onNavigate,
@@ -447,12 +449,19 @@ private fun MainSettingsScreen(
 @Composable
 private fun GeneralSettingsScreen(
     settings: AppSettings,
+    liveUpdateSupported: Boolean,
     onParseQuickActionChange: (Boolean) -> Unit,
     onLiveActivityStyleNotificationChange: (Boolean) -> Unit,
     onNavigate: (SettingsDestination) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val liveUpdateChecked = liveUpdateSupported && settings.liveActivityStyleNotificationEnabled
+    val liveUpdateDescription = if (liveUpdateSupported) {
+        stringResource(R.string.settings_live_activity_style_notification_desc)
+    } else {
+        "当前系统不支持 Live Update 能力。"
+    }
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     SettingsScaffold(
         title = stringResource(R.string.settings_general_title),
@@ -503,10 +512,11 @@ private fun GeneralSettingsScreen(
             }
             item {
                 ExpressiveSwitchListItem(
-                    checked = settings.liveActivityStyleNotificationEnabled,
+                    checked = liveUpdateChecked,
                     iconRes = R.drawable.ic_dynamic_feed_24,
                     title = stringResource(R.string.settings_live_activity_style_notification),
-                    description = stringResource(R.string.settings_live_activity_style_notification_desc),
+                    description = liveUpdateDescription,
+                    enabled = liveUpdateSupported,
                     items = 3,
                     index = 2,
                     onCheckedChange = onLiveActivityStyleNotificationChange,
@@ -2399,6 +2409,7 @@ private fun ExpressiveSwitchListItem(
     @DrawableRes iconRes: Int,
     title: String,
     description: String,
+    enabled: Boolean = true,
     items: Int,
     index: Int,
     onCheckedChange: (Boolean) -> Unit,
@@ -2412,6 +2423,7 @@ private fun ExpressiveSwitchListItem(
             Switch(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
+                enabled = enabled,
                 thumbContent = {
                     Icon(
                         painter = painterResource(
@@ -2425,7 +2437,9 @@ private fun ExpressiveSwitchListItem(
             )
         },
         colors = SettingsExpressiveDefaults.listItemColors,
-        modifier = modifier.clip(SettingsExpressiveShapes.groupShape(index, items)),
+        modifier = modifier
+            .graphicsLayer { alpha = if (enabled) 1f else 0.48f }
+            .clip(SettingsExpressiveShapes.groupShape(index, items)),
     )
 }
 
