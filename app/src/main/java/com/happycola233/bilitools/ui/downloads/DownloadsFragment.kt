@@ -21,13 +21,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.widget.PopupMenu
-import androidx.core.text.HtmlCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.AppLog as Log
 import com.happycola233.bilitools.core.appContainer
@@ -60,18 +58,22 @@ class DownloadsFragment : Fragment() {
     }
     private val settingsRepository by lazy { requireContext().appContainer.settingsRepository }
 
-    private lateinit var adapter: DownloadsAdapter
     private var offsetListener: com.google.android.material.appbar.AppBarLayout.OnOffsetChangedListener? = null
-    private var latestGroups: List<DownloadGroup> = emptyList()
+    private var latestGroups by mutableStateOf<List<DownloadGroup>>(emptyList())
     private val selectedGroupIds = linkedSetOf<Long>()
     private var selectionMode = false
     private var composeSelectionMode by mutableStateOf(false)
+    private var composeSelectedGroupIds by mutableStateOf<Set<Long>>(emptySet())
+    private var composeExpandedGroupIds by mutableStateOf<Set<Long>>(emptySet())
+    private var composeCollapsedSections by mutableStateOf<Set<DownloadSectionType>>(emptySet())
+    private var composeSwipedGroupId by mutableStateOf<Long?>(null)
     private var composeEmptyStateVisible by mutableStateOf(false)
     private var composeBatchStatusText by mutableStateOf("")
     private var composeBatchSelectAllText by mutableStateOf("")
     private var composeBatchHintHtml by mutableStateOf("")
     private var composeBatchClearEnabled by mutableStateOf(false)
     private var composeBatchDeleteEnabled by mutableStateOf(false)
+    private var composeDialogState by mutableStateOf<DownloadsDialogState?>(null)
     private var composeControlsOffsetPx by mutableStateOf(0f)
     private var composeGlassDebugEnabled by mutableStateOf(false)
     private var composeGlassCornerRadiusDp by mutableStateOf(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_CORNER_RADIUS_DP)
@@ -100,49 +102,6 @@ class DownloadsFragment : Fragment() {
         }
         appBar?.addOnOffsetChangedListener(offsetListener)
 
-        adapter = DownloadsAdapter(
-            onPauseResume = { item ->
-                when (item.status) {
-                    DownloadStatus.Running -> viewModel.pause(item.id)
-                    DownloadStatus.Paused -> if (item.userPaused) {
-                        viewModel.resume(item.id)
-                    }
-                    else -> Unit
-                }
-            },
-            onRetry = { item ->
-                if (item.status == DownloadStatus.Failed) {
-                    viewModel.retry(item.id)
-                }
-            },
-            onDelete = { item ->
-                 val canDeleteFile = item.status == DownloadStatus.Success &&
-                     !item.outputMissing &&
-                     !item.localUri.isNullOrBlank()
-                 showDeleteConfirmation(
-                     title = getString(R.string.download_delete),
-                     message = getString(R.string.download_delete_confirm_task),
-                     showCheckbox = canDeleteFile,
-                     onConfirm = { deleteFile -> viewModel.deleteTask(item.id, deleteFile) }
-                 )
-            },
-            onTaskClick = { item -> showTaskActions(item) },
-            onGroupPause = { group -> viewModel.pauseGroup(group.id) },
-            onGroupResume = { group -> viewModel.resumeGroup(group.id) },
-            onGroupDelete = { group, onCancel -> 
-                 val canDeleteFile = group.tasks.any { it.status == DownloadStatus.Success && !it.outputMissing && !it.localUri.isNullOrBlank() }
-                 showDeleteConfirmation(
-                     title = getString(R.string.downloads_group_delete),
-                     message = getString(R.string.download_delete_confirm_group),
-                     showCheckbox = canDeleteFile,
-                     onConfirm = { deleteFile -> viewModel.deleteGroup(group.id, deleteFile) },
-                     onCancel = onCancel
-                 )
-            },
-            onLocationClick = { path -> copyLocation(path) },
-            onGroupSelectionToggle = { group -> toggleGroupSelection(group.id) },
-        )
-
         binding.downloadsCompose.setViewCompositionStrategy(
             ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed,
         )
@@ -150,15 +109,20 @@ class DownloadsFragment : Fragment() {
         binding.downloadsCompose.setContent {
             val colorScheme = rememberAndroidThemeColorScheme()
             MaterialExpressiveTheme(colorScheme = colorScheme) {
-                DownloadsGlassContent(
-                    adapter = adapter,
+                DownloadsScreenContent(
+                    groups = latestGroups,
                     selectionMode = composeSelectionMode,
+                    selectedGroupIds = composeSelectedGroupIds,
+                    expandedGroupIds = composeExpandedGroupIds,
+                    collapsedSections = composeCollapsedSections,
+                    swipedGroupId = composeSwipedGroupId,
                     emptyStateVisible = composeEmptyStateVisible,
                     batchStatusText = composeBatchStatusText,
                     batchSelectAllText = composeBatchSelectAllText,
                     batchHintHtml = composeBatchHintHtml,
                     batchClearEnabled = composeBatchClearEnabled,
                     batchDeleteEnabled = composeBatchDeleteEnabled,
+                    dialogState = composeDialogState,
                     controlsOffsetPx = composeControlsOffsetPx,
                     resumeAllCount = composeResumeAllCount,
                     pauseAllCount = composePauseAllCount,
@@ -178,6 +142,24 @@ class DownloadsFragment : Fragment() {
                     onSelectAll = { toggleSelectAll() },
                     onClearRecords = { confirmBatchDelete(deleteFile = false) },
                     onDeleteFiles = { confirmBatchDelete(deleteFile = true) },
+                    onDialogDismiss = { dismissDownloadsDialog() },
+                    onDialogConfirm = { deleteFile -> confirmDownloadsDialog(deleteFile) },
+                    onTaskActionSelected = { action -> performTaskAction(action) },
+                    onToggleSection = { toggleSection(it) },
+                    onToggleGroupExpanded = { toggleGroupExpanded(it) },
+                    onSwipedGroupChange = { composeSwipedGroupId = it },
+                    onGroupSelectionToggle = { toggleGroupSelection(it) },
+                    onGroupPause = { group -> viewModel.pauseGroup(group.id) },
+                    onGroupResume = { group -> viewModel.resumeGroup(group.id) },
+                    onGroupDelete = { group -> confirmGroupDelete(group) },
+                    onTaskPauseResume = { item -> handleTaskPauseResume(item) },
+                    onTaskRetry = { item ->
+                        if (item.status == DownloadStatus.Failed) {
+                            viewModel.retry(item.id)
+                        }
+                    },
+                    onTaskDelete = { item -> confirmTaskDelete(item) },
+                    onTaskClick = { item -> showTaskActions(item) },
                     onGlassCornerRadiusChange = { settingsRepository.setDownloadsGlassCornerRadiusDp(it) },
                     onGlassBlurRadiusChange = { settingsRepository.setDownloadsGlassBlurRadiusDp(it) },
                     onGlassRefractionHeightChange = { settingsRepository.setDownloadsGlassRefractionHeightDp(it) },
@@ -208,15 +190,29 @@ class DownloadsFragment : Fragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.groups.collect { list ->
                     latestGroups = list
+                    val currentIds = list.map { it.id }.toSet()
+                    val currentTaskIds = list
+                        .asSequence()
+                        .flatMap { it.tasks.asSequence() }
+                        .map { it.id }
+                        .toSet()
                     if (selectionMode) {
                         if (list.isEmpty()) {
                             selectedGroupIds.clear()
                             selectionMode = false
                         } else {
-                            selectedGroupIds.retainAll(list.map { it.id }.toSet())
+                            selectedGroupIds.retainAll(currentIds)
                         }
                     }
-                    adapter.submitFullList(buildSectionedList(list))
+                    composeExpandedGroupIds = composeExpandedGroupIds.intersect(currentIds)
+                    if (composeSwipedGroupId !in currentIds) {
+                        composeSwipedGroupId = null
+                    }
+                    composeDialogState = pruneDownloadsDialogState(
+                        dialogState = composeDialogState,
+                        currentGroupIds = currentIds,
+                        currentTaskIds = currentTaskIds,
+                    )
                     updateSelectionUi()
                     composeEmptyStateVisible = list.isEmpty()
                     val manageState = calculateGlobalManageState()
@@ -243,6 +239,63 @@ class DownloadsFragment : Fragment() {
     override fun onStart() {
         super.onStart()
         viewModel.refreshOutputAvailability()
+    }
+
+    private fun toggleSection(type: DownloadSectionType) {
+        if (selectionMode) return
+        composeCollapsedSections = composeCollapsedSections.toMutableSet().apply {
+            if (!add(type)) {
+                remove(type)
+            }
+        }
+    }
+
+    private fun toggleGroupExpanded(groupId: Long) {
+        if (selectionMode) {
+            toggleGroupSelection(groupId)
+            return
+        }
+        if (composeSwipedGroupId != null) {
+            composeSwipedGroupId = null
+            return
+        }
+        composeExpandedGroupIds = composeExpandedGroupIds.toMutableSet().apply {
+            if (!add(groupId)) {
+                remove(groupId)
+            }
+        }
+    }
+
+    private fun handleTaskPauseResume(item: DownloadItem) {
+        when (item.status) {
+            DownloadStatus.Running -> viewModel.pause(item.id)
+            DownloadStatus.Paused -> if (item.userPaused) {
+                viewModel.resume(item.id)
+            }
+            else -> Unit
+        }
+    }
+
+    private fun confirmTaskDelete(item: DownloadItem) {
+        val canDeleteFile = item.status == DownloadStatus.Success &&
+            !item.outputMissing &&
+            !item.localUri.isNullOrBlank()
+        composeDialogState = DownloadsDialogState.DeleteTask(
+            itemId = item.id,
+            canDeleteFile = canDeleteFile,
+        )
+    }
+
+    private fun confirmGroupDelete(group: DownloadGroup) {
+        val canDeleteFile = group.tasks.any {
+            it.status == DownloadStatus.Success &&
+                !it.outputMissing &&
+                !it.localUri.isNullOrBlank()
+        }
+        composeDialogState = DownloadsDialogState.DeleteGroup(
+            groupId = group.id,
+            canDeleteFile = canDeleteFile,
+        )
     }
 
     private fun buildSectionedList(groups: List<DownloadGroup>): List<DownloadsListItem> {
@@ -357,11 +410,15 @@ class DownloadsFragment : Fragment() {
     }
 
     private fun updateSelectionUi() {
-        if (!::adapter.isInitialized || _binding == null) return
-        adapter.updateSelectionState(selectionMode, selectedGroupIds)
         composeSelectionMode = selectionMode
+        composeSelectedGroupIds = selectedGroupIds.toSet()
         if (::backPressedCallback.isInitialized) {
             backPressedCallback.isEnabled = selectionMode
+        }
+
+        if (selectionMode) {
+            composeExpandedGroupIds = emptySet()
+            composeSwipedGroupId = null
         }
 
         val total = latestGroups.size
@@ -393,40 +450,67 @@ class DownloadsFragment : Fragment() {
             Toast.makeText(requireContext(), getString(R.string.downloads_multi_no_task), Toast.LENGTH_SHORT).show()
             return
         }
-        if (!deleteFile) {
-            MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.downloads_multi_confirm_clear_title)
-                .setMessage(
-                    asRichText(
-                        getString(
-                            R.string.downloads_multi_confirm_clear_message,
-                            selectedGroups.size,
-                        ),
-                    ),
-                )
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(R.string.download_delete) { _, _ ->
-                    performBatchDelete(deleteFile = false)
-                }
-                .show()
-            return
-        }
+        composeDialogState = DownloadsDialogState.BatchDelete(
+            groupIds = selectedGroups.mapTo(linkedSetOf()) { it.id },
+            deleteFile = deleteFile,
+        )
+    }
 
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.downloads_multi_confirm_delete_title)
-            .setMessage(
-                asRichText(
-                    getString(
-                        R.string.downloads_multi_confirm_delete_message,
-                        selectedGroups.size,
-                    ),
-                ),
-            )
-            .setNegativeButton(android.R.string.cancel, null)
-            .setPositiveButton(R.string.download_delete) { _, _ ->
-                performBatchDelete(deleteFile = true)
+    private fun pruneDownloadsDialogState(
+        dialogState: DownloadsDialogState?,
+        currentGroupIds: Set<Long>,
+        currentTaskIds: Set<Long>,
+    ): DownloadsDialogState? {
+        return when (dialogState) {
+            is DownloadsDialogState.DeleteTask -> dialogState.takeIf { it.itemId in currentTaskIds }
+            is DownloadsDialogState.DeleteGroup -> dialogState.takeIf { it.groupId in currentGroupIds }
+            is DownloadsDialogState.BatchDelete -> dialogState.takeIf { state ->
+                state.groupIds.any { it in currentGroupIds }
             }
-            .show()
+            is DownloadsDialogState.TaskActions -> dialogState.takeIf { it.itemId in currentTaskIds }
+            null -> null
+        }
+    }
+
+    private fun dismissDownloadsDialog() {
+        if (composeDialogState is DownloadsDialogState.DeleteTask ||
+            composeDialogState is DownloadsDialogState.DeleteGroup
+        ) {
+            composeSwipedGroupId = null
+        }
+        composeDialogState = null
+    }
+
+    private fun confirmDownloadsDialog(deleteFile: Boolean) {
+        when (val dialogState = composeDialogState) {
+            is DownloadsDialogState.DeleteTask -> {
+                composeSwipedGroupId = null
+                viewModel.deleteTask(
+                    dialogState.itemId,
+                    if (dialogState.canDeleteFile) deleteFile else true,
+                )
+            }
+
+            is DownloadsDialogState.DeleteGroup -> {
+                composeSwipedGroupId = null
+                viewModel.deleteGroup(
+                    dialogState.groupId,
+                    if (dialogState.canDeleteFile) deleteFile else true,
+                )
+            }
+
+            is DownloadsDialogState.BatchDelete -> {
+                performBatchDelete(
+                    targetIds = dialogState.groupIds,
+                    deleteFile = dialogState.deleteFile,
+                )
+            }
+
+            is DownloadsDialogState.TaskActions -> return
+
+            null -> return
+        }
+        composeDialogState = null
     }
 
     private fun hasInProgressTask(group: DownloadGroup): Boolean {
@@ -441,14 +525,10 @@ class DownloadsFragment : Fragment() {
         }
     }
 
-    private fun asRichText(text: String): CharSequence {
-        return HtmlCompat.fromHtml(text, HtmlCompat.FROM_HTML_MODE_LEGACY)
-    }
-
-    private fun performBatchDelete(deleteFile: Boolean) {
-        val targetIds = latestGroups
-            .map { it.id }
-            .filter { selectedGroupIds.contains(it) }
+    private fun performBatchDelete(
+        targetIds: Collection<Long>,
+        deleteFile: Boolean,
+    ) {
         if (targetIds.isEmpty()) {
             return
         }
@@ -463,14 +543,24 @@ class DownloadsFragment : Fragment() {
     }
 
     private fun showTaskActions(item: DownloadItem) {
+        if (!canShowTaskActionsDialog(item)) {
+            return
+        }
+        composeDialogState = DownloadsDialogState.TaskActions(
+            itemId = item.id,
+            title = item.fileName.ifBlank { item.title },
+        )
+    }
+
+    private fun canShowTaskActionsDialog(item: DownloadItem): Boolean {
         if (item.status == DownloadStatus.Success && item.outputMissing) {
             Log.w(
                 TAG,
                 "[ui-locate] block actions: success item marked missing, taskId=${item.id}, file=${item.fileName}, localUri=${item.localUri}",
             )
-            return
+            return false
         }
-        val uri = if (item.outputMissing) null else item.localUri?.let { Uri.parse(it) }
+        val uri = if (item.outputMissing) null else item.localUri?.let(Uri::parse)
         Log.d(
             TAG,
             "[ui-locate] show actions, taskId=${item.id}, file=${item.fileName}, status=${item.status}, outputMissing=${item.outputMissing}, localUri=${item.localUri}, parsedUri=$uri",
@@ -482,95 +572,75 @@ class DownloadsFragment : Fragment() {
             )
             viewModel.refreshOutputAvailability()
             showUnavailable()
-            return
+            return false
         }
-        val title = item.fileName.ifBlank { item.title }
-        val options = arrayOf(
-            getString(R.string.download_action_open),
-            getString(R.string.download_action_share),
-        )
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(title)
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> if (uri == null) {
-                        Log.w(
-                            TAG,
-                            "[ui-locate] open blocked: uri unavailable, taskId=${item.id}, file=${item.fileName}, outputMissing=${item.outputMissing}",
-                        )
-                        showUnavailable()
-                    } else {
-                        Log.d(
-                            TAG,
-                            "[ui-locate] open requested, taskId=${item.id}, file=${item.fileName}, uri=$uri",
-                        )
-                        openWith(uri, item.fileName)
-                    }
-                    1 -> if (uri == null) {
-                        Log.w(
-                            TAG,
-                            "[ui-locate] share blocked: uri unavailable, taskId=${item.id}, file=${item.fileName}, outputMissing=${item.outputMissing}",
-                        )
-                        showUnavailable()
-                    } else {
-                        Log.d(
-                            TAG,
-                            "[ui-locate] share requested, taskId=${item.id}, file=${item.fileName}, uri=$uri",
-                        )
-                        shareWith(uri, item.fileName)
-                    }
-                }
-            }
-            .show()
+        return true
     }
 
-    private fun showDeleteConfirmation(
-        title: String,
-        message: String,
-        showCheckbox: Boolean,
-        onConfirm: (Boolean) -> Unit,
-        onCancel: (() -> Unit)? = null,
-    ) {
-        val context = requireContext()
-        
-        var container: android.view.View? = null
-        var checkbox: com.google.android.material.checkbox.MaterialCheckBox? = null
-        
-        if (showCheckbox) {
-            checkbox = com.google.android.material.checkbox.MaterialCheckBox(context).apply {
-                text = getString(R.string.download_delete_with_file)
-                isChecked = true
-                val padding = (16 * resources.displayMetrics.density).toInt()
-                setPadding(padding, 0, padding, 0)
-            }
-            
-            val frame = android.widget.FrameLayout(context)
-            val params = android.widget.FrameLayout.LayoutParams(
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-            val margin = (24 * resources.displayMetrics.density).toInt()
-            params.marginStart = margin
-            params.marginEnd = margin
-            frame.addView(checkbox, params)
-            container = frame
+    private fun performTaskAction(action: DownloadsTaskAction) {
+        val dialogState = composeDialogState as? DownloadsDialogState.TaskActions ?: return
+        composeDialogState = null
+        val item = findDownloadItem(dialogState.itemId) ?: return
+        val uri = resolveTaskActionUri(item, action)
+        if (uri == null) {
+            showUnavailable()
+            return
         }
-
-        MaterialAlertDialogBuilder(context)
-            .setTitle(title)
-            .setMessage(message)
-            .setView(container)
-            .setNegativeButton(android.R.string.cancel) { _, _ -> onCancel?.invoke() }
-            .setOnCancelListener { onCancel?.invoke() }
-            .setPositiveButton(R.string.download_delete) { _, _ ->
-                val deleteFile = if (showCheckbox && checkbox != null) {
-                    checkbox.isChecked
-                } else {
-                    true
-                }
-                onConfirm(deleteFile)
+        when (action) {
+            DownloadsTaskAction.Open -> {
+                Log.d(
+                    TAG,
+                    "[ui-locate] open requested, taskId=${item.id}, file=${item.fileName}, uri=$uri",
+                )
+                openWith(uri, item.fileName)
             }
-            .show()
+
+            DownloadsTaskAction.Share -> {
+                Log.d(
+                    TAG,
+                    "[ui-locate] share requested, taskId=${item.id}, file=${item.fileName}, uri=$uri",
+                )
+                shareWith(uri, item.fileName)
+            }
+        }
+    }
+
+    private fun findDownloadItem(itemId: Long): DownloadItem? {
+        return latestGroups
+            .asSequence()
+            .flatMap { it.tasks.asSequence() }
+            .firstOrNull { it.id == itemId }
+    }
+
+    private fun resolveTaskActionUri(
+        item: DownloadItem,
+        action: DownloadsTaskAction,
+    ): Uri? {
+        val uri = if (item.outputMissing) null else item.localUri?.let(Uri::parse)
+        if (uri == null) {
+            val actionName = when (action) {
+                DownloadsTaskAction.Open -> "open"
+                DownloadsTaskAction.Share -> "share"
+            }
+            Log.w(
+                TAG,
+                "[ui-locate] $actionName blocked: uri unavailable, taskId=${item.id}, file=${item.fileName}, outputMissing=${item.outputMissing}",
+            )
+            return null
+        }
+        if (!isUriReadyForUserAction(uri)) {
+            val actionName = when (action) {
+                DownloadsTaskAction.Open -> "open"
+                DownloadsTaskAction.Share -> "share"
+            }
+            Log.w(
+                TAG,
+                "[ui-locate] $actionName blocked: uri not ready, taskId=${item.id}, file=${item.fileName}, uri=$uri",
+            )
+            viewModel.refreshOutputAvailability()
+            return null
+        }
+        return uri
     }
 
     private fun showClearMenu(anchor: View) {

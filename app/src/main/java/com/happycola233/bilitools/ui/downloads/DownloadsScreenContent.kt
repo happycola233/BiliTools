@@ -1,7 +1,13 @@
 package com.happycola233.bilitools.ui.downloads
 
-import android.widget.TextView
+import android.graphics.Typeface
+import android.text.SpannableStringBuilder
+import android.text.Spanned
 import android.text.TextPaint
+import android.text.style.ForegroundColorSpan
+import android.text.style.StyleSpan
+import android.text.style.UnderlineSpan
+import android.widget.TextView
 import androidx.annotation.AttrRes
 import androidx.annotation.ColorInt
 import androidx.compose.animation.AnimatedVisibility
@@ -16,15 +22,21 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.TextButton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -55,19 +67,22 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.text.HtmlCompat
-import android.text.SpannableStringBuilder
-import android.text.Spanned
 import android.text.style.MetricAffectingSpan
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import androidx.recyclerview.widget.SimpleItemAnimator
 import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.material3.Icon
@@ -75,6 +90,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleFloatingActionButton
 import com.google.android.material.color.MaterialColors
 import com.happycola233.bilitools.R
+import com.happycola233.bilitools.data.model.DownloadGroup
+import com.happycola233.bilitools.data.model.DownloadItem
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
@@ -85,17 +102,49 @@ import com.kyant.backdrop.highlight.Highlight
 import java.util.Locale
 import kotlin.math.sign
 
+sealed interface DownloadsDialogState {
+    data class DeleteTask(
+        val itemId: Long,
+        val canDeleteFile: Boolean,
+    ) : DownloadsDialogState
+
+    data class DeleteGroup(
+        val groupId: Long,
+        val canDeleteFile: Boolean,
+    ) : DownloadsDialogState
+
+    data class BatchDelete(
+        val groupIds: Set<Long>,
+        val deleteFile: Boolean,
+    ) : DownloadsDialogState
+
+    data class TaskActions(
+        val itemId: Long,
+        val title: String,
+    ) : DownloadsDialogState
+}
+
+enum class DownloadsTaskAction {
+    Open,
+    Share,
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun DownloadsGlassContent(
-    adapter: DownloadsAdapter,
+fun DownloadsScreenContent(
+    groups: List<DownloadGroup>,
     selectionMode: Boolean,
+    selectedGroupIds: Set<Long>,
+    expandedGroupIds: Set<Long>,
+    collapsedSections: Set<DownloadSectionType>,
+    swipedGroupId: Long?,
     emptyStateVisible: Boolean,
     batchStatusText: String,
     batchSelectAllText: String,
     batchHintHtml: String,
     batchClearEnabled: Boolean,
     batchDeleteEnabled: Boolean,
+    dialogState: DownloadsDialogState?,
     controlsOffsetPx: Float,
     resumeAllCount: Int,
     pauseAllCount: Int,
@@ -115,6 +164,20 @@ fun DownloadsGlassContent(
     onSelectAll: () -> Unit,
     onClearRecords: () -> Unit,
     onDeleteFiles: () -> Unit,
+    onDialogDismiss: () -> Unit,
+    onDialogConfirm: (Boolean) -> Unit,
+    onTaskActionSelected: (DownloadsTaskAction) -> Unit,
+    onToggleSection: (DownloadSectionType) -> Unit,
+    onToggleGroupExpanded: (Long) -> Unit,
+    onSwipedGroupChange: (Long?) -> Unit,
+    onGroupSelectionToggle: (Long) -> Unit,
+    onGroupPause: (DownloadGroup) -> Unit,
+    onGroupResume: (DownloadGroup) -> Unit,
+    onGroupDelete: (DownloadGroup) -> Unit,
+    onTaskPauseResume: (DownloadItem) -> Unit,
+    onTaskRetry: (DownloadItem) -> Unit,
+    onTaskDelete: (DownloadItem) -> Unit,
+    onTaskClick: (DownloadItem) -> Unit,
     onGlassCornerRadiusChange: (Float) -> Unit,
     onGlassBlurRadiusChange: (Float) -> Unit,
     onGlassRefractionHeightChange: (Float) -> Unit,
@@ -138,7 +201,6 @@ fun DownloadsGlassContent(
         targetValue = targetListBottomPaddingDp,
         animationSpec = motionScheme.defaultSpatialSpec(),
     )
-    val listBottomPaddingPx = with(density) { listBottomPaddingDp.roundToPx() }
     var debugExpanded by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize()) {
@@ -147,31 +209,26 @@ fun DownloadsGlassContent(
                 .fillMaxSize()
                 .layerBackdrop(backdrop),
         ) {
-            AndroidView(
+            DownloadsListContent(
+                groups = groups,
+                selectionMode = selectionMode,
+                selectedGroupIds = selectedGroupIds,
+                expandedGroupIds = expandedGroupIds,
+                collapsedSections = collapsedSections,
+                swipedGroupId = swipedGroupId,
+                listBottomPadding = PaddingValues(bottom = listBottomPaddingDp),
+                onToggleSection = onToggleSection,
+                onToggleGroupExpanded = onToggleGroupExpanded,
+                onSwipedGroupChange = onSwipedGroupChange,
+                onGroupSelectionToggle = onGroupSelectionToggle,
+                onGroupDelete = onGroupDelete,
+                onGroupPause = onGroupPause,
+                onGroupResume = onGroupResume,
+                onTaskPauseResume = onTaskPauseResume,
+                onTaskRetry = onTaskRetry,
+                onTaskDelete = onTaskDelete,
+                onTaskClick = onTaskClick,
                 modifier = Modifier.fillMaxSize(),
-                factory = { context ->
-                    RecyclerView(context).apply {
-                        layoutManager = LinearLayoutManager(context)
-                        this.adapter = adapter
-                        val decoration = StickyHeaderItemDecoration(adapter)
-                        addItemDecoration(decoration)
-                        addOnItemTouchListener(decoration)
-                        (itemAnimator as? SimpleItemAnimator)?.supportsChangeAnimations = false
-                        clipToPadding = false
-                        setPadding(paddingLeft, paddingTop, paddingRight, listBottomPaddingPx)
-                        addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
-                            v.isNestedScrollingEnabled = v.canScrollVertically(-1) || v.canScrollVertically(1)
-                        }
-                    }
-                },
-                update = { recyclerView ->
-                    recyclerView.setPadding(
-                        recyclerView.paddingLeft,
-                        recyclerView.paddingTop,
-                        recyclerView.paddingRight,
-                        listBottomPaddingPx,
-                    )
-                },
             )
         }
 
@@ -262,6 +319,17 @@ fun DownloadsGlassContent(
             )
         }
 
+        DownloadsDeleteDialog(
+            dialogState = dialogState,
+            onDismiss = onDialogDismiss,
+            onConfirm = onDialogConfirm,
+        )
+        DownloadsTaskActionsDialog(
+            dialogState = dialogState,
+            onDismiss = onDialogDismiss,
+            onActionSelected = onTaskActionSelected,
+        )
+
         if (glassDebugEnabled) {
             GlassDebugPanel(
                 modifier = Modifier
@@ -307,6 +375,173 @@ private fun DownloadsEmptyState(modifier: Modifier = Modifier) {
             text = stringResource(R.string.downloads_empty),
             modifier = Modifier.padding(top = 16.dp),
             style = TextStyle(color = textColor, fontSize = 17.sp),
+        )
+    }
+}
+
+@Composable
+private fun DownloadsDeleteDialog(
+    dialogState: DownloadsDialogState?,
+    onDismiss: () -> Unit,
+    onConfirm: (Boolean) -> Unit,
+) {
+    val state = when (dialogState) {
+        is DownloadsDialogState.DeleteTask,
+        is DownloadsDialogState.DeleteGroup,
+        is DownloadsDialogState.BatchDelete,
+        -> dialogState
+
+        is DownloadsDialogState.TaskActions,
+        null,
+        -> return
+    }
+    var deleteFileChecked by remember(state) { mutableStateOf(true) }
+    val title = when (state) {
+        is DownloadsDialogState.DeleteTask -> stringResource(R.string.download_delete)
+        is DownloadsDialogState.DeleteGroup -> stringResource(R.string.downloads_group_delete)
+        is DownloadsDialogState.BatchDelete -> stringResource(
+            if (state.deleteFile) {
+                R.string.downloads_multi_confirm_delete_title
+            } else {
+                R.string.downloads_multi_confirm_clear_title
+            },
+        )
+        is DownloadsDialogState.TaskActions -> return
+    }
+    val message = when (state) {
+        is DownloadsDialogState.DeleteTask -> AnnotatedString(
+            stringResource(R.string.download_delete_confirm_task),
+        )
+        is DownloadsDialogState.DeleteGroup -> AnnotatedString(
+            stringResource(R.string.download_delete_confirm_group),
+        )
+        is DownloadsDialogState.BatchDelete -> htmlToAnnotatedString(
+            stringResource(
+                if (state.deleteFile) {
+                    R.string.downloads_multi_confirm_delete_message
+                } else {
+                    R.string.downloads_multi_confirm_clear_message
+                },
+                state.groupIds.size,
+            ),
+        )
+        is DownloadsDialogState.TaskActions -> return
+    }
+    val showCheckbox = when (state) {
+        is DownloadsDialogState.DeleteTask -> state.canDeleteFile
+        is DownloadsDialogState.DeleteGroup -> state.canDeleteFile
+        is DownloadsDialogState.BatchDelete -> false
+        is DownloadsDialogState.TaskActions -> return
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(text = message)
+                if (showCheckbox) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { deleteFileChecked = !deleteFileChecked }
+                            .padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(
+                            checked = deleteFileChecked,
+                            onCheckedChange = { checked -> deleteFileChecked = checked },
+                            colors = CheckboxDefaults.colors(),
+                        )
+                        Text(
+                            text = stringResource(R.string.download_delete_with_file),
+                            modifier = Modifier.padding(start = 8.dp),
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val confirmDeleteFile = if (showCheckbox) deleteFileChecked else true
+                    onConfirm(confirmDeleteFile)
+                },
+            ) {
+                Text(text = stringResource(R.string.download_delete))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = stringResource(android.R.string.cancel))
+            }
+        },
+    )
+}
+
+@Composable
+private fun DownloadsTaskActionsDialog(
+    dialogState: DownloadsDialogState?,
+    onDismiss: () -> Unit,
+    onActionSelected: (DownloadsTaskAction) -> Unit,
+) {
+    val state = dialogState as? DownloadsDialogState.TaskActions ?: return
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = true),
+    ) {
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 0.dp,
+            shadowElevation = 16.dp,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(
+                modifier = Modifier.padding(top = 20.dp, bottom = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = state.title,
+                    style = MaterialTheme.typography.titleLarge,
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+                )
+                DownloadsTaskActionRow(
+                    text = stringResource(R.string.download_action_open),
+                    onClick = { onActionSelected(DownloadsTaskAction.Open) },
+                )
+                DownloadsTaskActionRow(
+                    text = stringResource(R.string.download_action_share),
+                    onClick = { onActionSelected(DownloadsTaskAction.Share) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DownloadsTaskActionRow(
+    text: String,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp)
+            .padding(vertical = 2.dp),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .clickable(onClick = onClick)
+                .padding(horizontal = 24.dp, vertical = 16.dp),
         )
     }
 }
@@ -841,6 +1076,51 @@ private class MediumBoldSpan : MetricAffectingSpan() {
     override fun updateMeasureState(textPaint: TextPaint) {
         textPaint.isFakeBoldText = true
     }
+}
+
+private fun htmlToAnnotatedString(rawHtml: String): AnnotatedString {
+    val spanned = HtmlCompat.fromHtml(rawHtml, HtmlCompat.FROM_HTML_MODE_LEGACY)
+    val builder = AnnotatedString.Builder(spanned.toString())
+    spanned.getSpans(0, spanned.length, Any::class.java).forEach { span ->
+        val start = spanned.getSpanStart(span)
+        val end = spanned.getSpanEnd(span)
+        if (start < 0 || end <= start) {
+            return@forEach
+        }
+        when (span) {
+            is StyleSpan -> {
+                val style = when (span.style) {
+                    Typeface.BOLD -> SpanStyle(fontWeight = FontWeight.Bold)
+                    Typeface.ITALIC -> SpanStyle(fontStyle = FontStyle.Italic)
+                    Typeface.BOLD_ITALIC -> SpanStyle(
+                        fontWeight = FontWeight.Bold,
+                        fontStyle = FontStyle.Italic,
+                    )
+                    else -> null
+                }
+                if (style != null) {
+                    builder.addStyle(style, start, end)
+                }
+            }
+
+            is UnderlineSpan -> {
+                builder.addStyle(
+                    SpanStyle(textDecoration = TextDecoration.Underline),
+                    start,
+                    end,
+                )
+            }
+
+            is ForegroundColorSpan -> {
+                builder.addStyle(
+                    SpanStyle(color = Color(span.foregroundColor)),
+                    start,
+                    end,
+                )
+            }
+        }
+    }
+    return builder.toAnnotatedString()
 }
 
 private fun formatFloat(value: Float): String {

@@ -90,7 +90,7 @@ internal class DownloadNotificationManager(
             null
         }
         val etaText = state.etaSeconds?.let { seconds ->
-            context.getString(R.string.download_eta_format, formatEta(seconds))
+            context.getString(R.string.download_eta_format, formatEtaSpaced(seconds))
         }
 
         val content = listOfNotNull(progressText, speedText, etaText).joinToString(" | ")
@@ -273,6 +273,18 @@ internal class DownloadNotificationManager(
             index++
         }
         return String.format(Locale.US, "%.1f %s", value, units[index])
+    }
+
+    private fun formatEtaSpaced(totalSeconds: Long): String {
+        val seconds = totalSeconds.coerceAtLeast(0L)
+        val hours = seconds / 3600
+        val minutes = (seconds % 3600) / 60
+        val remain = seconds % 60
+        return when {
+            hours > 0L -> String.format(Locale.US, "%d 小时 %02d 分", hours, minutes)
+            minutes > 0L -> String.format(Locale.US, "%d 分 %02d 秒", minutes, remain)
+            else -> String.format(Locale.US, "%d 秒", remain)
+        }
     }
 
     private fun formatEta(totalSeconds: Long): String {
