@@ -229,7 +229,7 @@ private fun MeOverviewScreen(
             onClick = onOpenFavorite,
         ),
         MeActionItem(
-            iconRes = R.drawable.ic_refresh_24,
+            iconRes = R.drawable.ic_watch_later_24,
             titleRes = R.string.login_entry_watch_later_title,
             summaryRes = if (isLoggedIn) {
                 R.string.login_entry_watch_later_desc
