@@ -54,6 +54,7 @@
     <string name="parse_title">视频解析</string>
     <string name="parse_hint">链接/AV/BV/SS/EP/AU/AM/SID/FID/CV/RL/UID</string>
     <string name="parse_helper">示例：BV1xx 或 https://www.bilibili.com/video/BV1xx</string>
+    <string name="parse_paste">粘贴</string>
     <string name="parse_action">解析</string>
     <string name="parse_clear">清空</string>
     <string name="parse_cover_desc">视频封面</string>
@@ -216,7 +217,7 @@
     <string name="downloads_multi_select_all">全选</string>
     <string name="downloads_multi_unselect_all">取消全选</string>
     <string name="downloads_multi_exit">退出</string>
-    <string name="downloads_multi_status">%1$d/%2$d 已选择</string>
+    <string name="downloads_multi_status">已选择：%1$d/%2$d</string>
     <string name="downloads_multi_clear_records">清除记录</string>
     <string name="downloads_multi_delete_files">删除文件</string>
     <string name="downloads_multi_no_task">暂无可操作任务</string>

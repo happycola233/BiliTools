@@ -357,6 +357,16 @@ private fun DownloadsSectionHeader(
         DownloadSectionType.Downloading -> stringResource(R.string.downloads_section_downloading)
         DownloadSectionType.Downloaded -> stringResource(R.string.downloads_section_downloaded)
     }
+    val iconRes = when (section.type) {
+        DownloadSectionType.Downloading -> R.drawable.ic_downloading_24
+        DownloadSectionType.Downloaded -> R.drawable.ic_download_done_24
+    }
+    val displayTitle = title.ifBlank {
+        when (section.type) {
+            DownloadSectionType.Downloading -> "正在下载"
+            DownloadSectionType.Downloaded -> "已下载"
+        }
+    }
     val rotation by animateFloatAsState(
         targetValue = if (section.collapsed) -90f else 0f,
         animationSpec = tween(durationMillis = GROUP_ARROW_DURATION_MILLIS),
@@ -379,15 +389,23 @@ private fun DownloadsSectionHeader(
                 )
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
-            Text(
-                text = title.ifBlank { when (section.type) {
-                    DownloadSectionType.Downloading -> "正在下载"
-                    DownloadSectionType.Downloaded -> "已下载"
-                } },
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    painter = painterResource(iconRes),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = displayTitle,
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                )
+            }
 
             Text(
                 text = buildSectionMetaLabelText(section),

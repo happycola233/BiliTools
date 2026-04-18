@@ -27,6 +27,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -128,6 +129,11 @@ enum class DownloadsTaskAction {
     Open,
     Share,
 }
+
+private val downloadsTaskActionsOuterHorizontalPadding = 12.dp
+private val downloadsTaskActionsContentHorizontalPadding = 24.dp
+private val downloadsTaskActionsIconSlotWidth = 24.dp
+private val downloadsTaskActionsIconTextSpacing = 12.dp
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -436,7 +442,13 @@ private fun DownloadsDeleteDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = title) },
+        title = {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(text = message)
@@ -468,8 +480,14 @@ private fun DownloadsDeleteDialog(
                     val confirmDeleteFile = if (showCheckbox) deleteFileChecked else true
                     onConfirm(confirmDeleteFile)
                 },
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error,
+                ),
             ) {
-                Text(text = stringResource(R.string.download_delete))
+                Text(
+                    text = stringResource(R.string.download_delete),
+                    fontWeight = FontWeight.Bold,
+                )
             }
         },
         dismissButton = {
@@ -499,21 +517,34 @@ private fun DownloadsTaskActionsDialog(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Column(
-                modifier = Modifier.padding(top = 20.dp, bottom = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
+                modifier = Modifier.padding(
+                    start = downloadsTaskActionsOuterHorizontalPadding,
+                    end = downloadsTaskActionsOuterHorizontalPadding,
+                    top = 20.dp,
+                    bottom = 12.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
                     text = state.title,
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 4,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+                    modifier = Modifier.padding(
+                        start = downloadsTaskActionsContentHorizontalPadding,
+                        end = downloadsTaskActionsContentHorizontalPadding,
+                        top = 12.dp,
+                        bottom = 8.dp,
+                    ),
                 )
                 DownloadsTaskActionRow(
+                    iconRes = R.drawable.ic_open_in_new_24,
                     text = stringResource(R.string.download_action_open),
                     onClick = { onActionSelected(DownloadsTaskAction.Open) },
                 )
                 DownloadsTaskActionRow(
+                    iconRes = R.drawable.ic_share_24,
                     text = stringResource(R.string.download_action_share),
                     onClick = { onActionSelected(DownloadsTaskAction.Share) },
                 )
@@ -524,25 +555,50 @@ private fun DownloadsTaskActionsDialog(
 
 @Composable
 private fun DownloadsTaskActionRow(
+    iconRes: Int,
     text: String,
     onClick: () -> Unit,
 ) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp)
             .padding(vertical = 2.dp),
     ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
                 .clickable(onClick = onClick)
-                .padding(horizontal = 24.dp, vertical = 16.dp),
-        )
+                .padding(
+                    start = downloadsTaskActionsContentHorizontalPadding,
+                    end = downloadsTaskActionsContentHorizontalPadding,
+                    top = 16.dp,
+                    bottom = 16.dp,
+                ),
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.width(downloadsTaskActionsIconSlotWidth),
+            ) {
+                Icon(
+                    painter = painterResource(iconRes),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .padding(start = downloadsTaskActionsIconTextSpacing)
+                    .weight(1f),
+            )
+        }
     }
 }
 
