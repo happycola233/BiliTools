@@ -267,7 +267,11 @@ private fun MeOverviewScreen(
         AlertDialog(
             onDismissRequest = { showLogoutConfirmDialog = false },
             title = {
-                Text(stringResource(R.string.login_logout_confirm_title))
+                Text(
+                    text = stringResource(R.string.login_logout_confirm_title),
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
             },
             text = {
                 Text(stringResource(R.string.login_logout_confirm_message))
@@ -278,6 +282,9 @@ private fun MeOverviewScreen(
                         showLogoutConfirmDialog = false
                         onLogout()
                     },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error,
+                    ),
                 ) {
                     Text(stringResource(R.string.login_logout))
                 }
