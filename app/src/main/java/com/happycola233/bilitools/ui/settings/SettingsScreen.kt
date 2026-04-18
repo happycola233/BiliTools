@@ -27,8 +27,10 @@ import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -53,6 +55,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -110,12 +113,14 @@ import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEachIndexed
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
@@ -1798,7 +1803,6 @@ private fun AboutSettingsScreen(
     if (showLicense) {
         LicenseBottomSheet(
             title = stringResource(R.string.settings_license_title),
-            subtitle = stringResource(R.string.settings_license_summary),
             licenseRawRes = R.raw.license_gpl3,
             onDismiss = { showLicense = false },
         )
@@ -2496,11 +2500,11 @@ private fun ClickableListItem(
 @Composable
 private fun LicenseBottomSheet(
     title: String,
-    subtitle: String,
     @RawRes licenseRawRes: Int,
     onDismiss: () -> Unit,
 ) {
     val licenseText = rememberRawTextResource(licenseRawRes)
+    val licenseHorizontalScrollState = rememberScrollState()
     ModalBottomSheet(onDismissRequest = onDismiss) {
         LazyColumn(
             modifier = Modifier.padding(horizontal = 16.dp),
@@ -2514,22 +2518,21 @@ private fun LicenseBottomSheet(
                     textAlign = TextAlign.Center,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 16.dp, bottom = 4.dp),
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .fillMaxWidth()
                         .padding(bottom = 16.dp),
                 )
             }
             item {
-                Text(
-                    text = licenseText,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+                SelectionContainer {
+                    Text(
+                        text = licenseText,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp,
+                        ),
+                        softWrap = false,
+                        modifier = Modifier.horizontalScroll(licenseHorizontalScrollState),
+                    )
+                }
             }
         }
     }
