@@ -61,6 +61,7 @@ data class HistoryUiState(
     val tabs: List<HistoryTab> = emptyList(),
     val selectedBusiness: String? = null,
     val page: Int = 1,
+    val totalPages: Int = 0,
     val total: Int = 0,
     val hasMore: Boolean = false,
     val items: List<HistoryItem> = emptyList(),
@@ -103,14 +104,21 @@ class HistoryViewModel(
     }
 
     fun goToPage(page: Int) {
-        val target = page.coerceAtLeast(1)
+        val maxPage = _state.value.totalPages.takeIf { it > 0 } ?: Int.MAX_VALUE
+        val target = page.coerceIn(1, maxPage)
         if (target == _state.value.page) return
         _state.update { it.copy(page = target, errorText = null) }
         loadHistory(refreshTabs = false, targetPage = target)
     }
 
     fun goToNextPage() {
-        if (!_state.value.hasMore) return
+        if (!_state.value.hasMore || (
+                _state.value.totalPages > 0 &&
+                    _state.value.page >= _state.value.totalPages
+            )
+        ) {
+            return
+        }
         goToPage(_state.value.page + 1)
     }
 
@@ -137,6 +145,7 @@ class HistoryViewModel(
                         tabs = emptyList(),
                         selectedBusiness = null,
                         page = 1,
+                        totalPages = 0,
                         total = 0,
                         hasMore = false,
                         items = emptyList(),
@@ -158,6 +167,7 @@ class HistoryViewModel(
                         tabs = emptyList(),
                         selectedBusiness = null,
                         page = 1,
+                        totalPages = 0,
                         total = 0,
                         hasMore = false,
                         items = emptyList(),
@@ -217,6 +227,7 @@ class HistoryViewModel(
                         tabs = tabs,
                         selectedBusiness = selectedBusiness,
                         page = result.page.coerceAtLeast(1),
+                        totalPages = result.totalPages,
                         total = result.total,
                         hasMore = result.hasMore,
                         items = result.list,
@@ -234,6 +245,7 @@ class HistoryViewModel(
                             tabs = emptyList(),
                             selectedBusiness = null,
                             page = 1,
+                            totalPages = 0,
                             total = 0,
                             hasMore = false,
                             items = emptyList(),

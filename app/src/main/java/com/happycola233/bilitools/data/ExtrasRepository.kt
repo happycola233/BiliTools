@@ -5,6 +5,7 @@ import com.happycola233.bilitools.core.BiliHttpException
 import com.happycola233.bilitools.core.DanmakuElem
 import com.happycola233.bilitools.core.DanmakuParser
 import com.happycola233.bilitools.core.WbiSigner
+import com.happycola233.bilitools.data.model.DEFAULT_HISTORY_PAGE_SIZE
 import com.happycola233.bilitools.data.model.HistoryCursorInfo
 import com.happycola233.bilitools.data.model.HistoryItem
 import com.happycola233.bilitools.data.model.HistorySearchParams
@@ -223,6 +224,7 @@ class ExtrasRepository(
             .toHttpUrl()
             .newBuilder()
             .addQueryParameter("pn", params.page.toString())
+            .addQueryParameter("ps", params.pageSize.toString())
             .addQueryParameter("keyword", params.keyword)
             .addQueryParameter("business", params.business)
             .addQueryParameter("add_time_start", params.addTimeStart.toString())
@@ -240,10 +242,22 @@ class ExtrasRepository(
             throw BiliHttpException(response.message ?: "History search failed", response.code)
         }
 
+        val page = data.page?.pn ?: params.page
+        val total = data.page?.total ?: 0
+        // Observed on 2026-04-19: x/web-interface/history/search ignores ps and still
+        // returns 20 items per page, while data.page only exposes pn and total.
+        val pageSize = params.pageSize.takeIf { it > 0 } ?: DEFAULT_HISTORY_PAGE_SIZE
+        val totalPages = if (total > 0) {
+            (total + pageSize - 1) / pageSize
+        } else {
+            0
+        }
+
         return HistorySearchResult(
             hasMore = data.hasMore ?: false,
-            total = data.page?.total ?: 0,
-            page = data.page?.pn ?: params.page,
+            total = total,
+            page = page,
+            totalPages = totalPages,
             list = data.list.orEmpty().mapNotNull { it.toModel() },
         )
     }

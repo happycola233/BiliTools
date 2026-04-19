@@ -385,7 +385,8 @@
     <string name="history_page_prev">上一页</string>
     <string name="history_page_next">下一页</string>
     <string name="history_page_status">第 %1$d 页</string>
-    <string name="history_page_status_with_total">第 %1$d 页 · 共 %2$d 条</string>
+    <string name="history_page_status_with_pages">第 %1$d 页 · 共 %2$d 页</string>
+    <string name="history_page_status_with_pages_and_total">第 %1$d 页 · 共 %2$d 页 · 共 %3$d 条</string>
     <string name="history_keyword">关键词</string>
     <string name="history_filter_apply">应用筛选</string>
     <string name="history_filter_reset">重置</string>

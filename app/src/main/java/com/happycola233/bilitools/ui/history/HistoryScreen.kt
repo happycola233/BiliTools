@@ -159,7 +159,8 @@ fun BiliToolsHistoryContent(
         }
 
         fun submitPageInput(clearFocusAfterSubmit: Boolean) {
-            val targetPage = pageInput.trim().toIntOrNull()?.coerceAtLeast(1)
+            val maxPage = state.totalPages.takeIf { it > 0 } ?: Int.MAX_VALUE
+            val targetPage = pageInput.trim().toIntOrNull()?.coerceIn(1, maxPage)
             if (targetPage != null) {
                 onGoToPage(targetPage)
             } else {
@@ -193,8 +194,9 @@ fun BiliToolsHistoryContent(
                                     Text(
                                         text = if (state.total > 0) {
                                             stringResource(
-                                                R.string.history_page_status_with_total,
+                                                R.string.history_page_status_with_pages_and_total,
                                                 state.page,
+                                                state.totalPages,
                                                 state.total,
                                             )
                                         } else {
@@ -270,7 +272,7 @@ fun BiliToolsHistoryContent(
 
                                     HistoryPagerCard(
                                         page = state.page,
-                                        total = state.total,
+                                        totalPages = state.totalPages,
                                         hasMore = state.hasMore,
                                         loading = state.loading,
                                         pageInput = pageInput,
@@ -596,7 +598,7 @@ private fun HistoryExpressiveLoadingIndicator(
 @Composable
 private fun HistoryPagerCard(
     page: Int,
-    total: Int,
+    totalPages: Int,
     hasMore: Boolean,
     loading: Boolean,
     pageInput: String,
@@ -608,8 +610,8 @@ private fun HistoryPagerCard(
     modifier: Modifier = Modifier,
 ) {
     val pagerButtonShapes = ButtonDefaults.shapesFor(38.dp)
-    val pageSummary = if (total > 0) {
-        stringResource(R.string.history_page_status_with_total, page, total)
+    val pageSummary = if (totalPages > 0) {
+        stringResource(R.string.history_page_status_with_pages, page, totalPages)
     } else {
         stringResource(R.string.history_page_status, page)
     }

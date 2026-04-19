@@ -36,6 +36,7 @@ data class HistoryCursorInfo(
 
 data class HistorySearchParams(
     val page: Int = 1,
+    val pageSize: Int = DEFAULT_HISTORY_PAGE_SIZE,
     val keyword: String = "",
     val business: String = "archive",
     val addTimeStart: Long = 0,
@@ -49,5 +50,8 @@ data class HistorySearchResult(
     val hasMore: Boolean,
     val total: Int,
     val page: Int,
+    val totalPages: Int,
     val list: List<HistoryItem>,
 )
+
+const val DEFAULT_HISTORY_PAGE_SIZE = 20
