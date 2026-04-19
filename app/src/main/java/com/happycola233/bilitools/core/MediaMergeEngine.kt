@@ -9,34 +9,45 @@ import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.suspendCancellableCoroutine
 
 object MediaMergeEngine {
+    internal fun buildMergeArguments(
+        videoFile: File,
+        audioFile: File,
+        outputFile: File,
+    ): List<String> {
+        val args = mutableListOf(
+            "-hide_banner",
+            "-nostats",
+            "-loglevel",
+            "warning",
+            "-y",
+            "-i",
+            videoFile.absolutePath,
+            "-i",
+            audioFile.absolutePath,
+            "-map",
+            "0:v:0",
+            "-map",
+            "1:a:0",
+            "-c",
+            "copy",
+            "-shortest",
+        )
+        if (outputFile.extension.equals("mp4", ignoreCase = true)) {
+            // Preserve Dolby Vision dvcC/dvvC boxes when remuxing into MP4.
+            args += listOf("-strict", "unofficial")
+            args += listOf("-movflags", "+faststart")
+        }
+        args += outputFile.absolutePath
+        return args
+    }
+
     suspend fun merge(
         videoFile: File,
         audioFile: File,
         outputFile: File,
     ) {
         suspendCancellableCoroutine<Unit> { continuation ->
-            val args = mutableListOf(
-                "-hide_banner",
-                "-nostats",
-                "-loglevel",
-                "warning",
-                "-y",
-                "-i",
-                videoFile.absolutePath,
-                "-i",
-                audioFile.absolutePath,
-                "-map",
-                "0:v:0",
-                "-map",
-                "1:a:0",
-                "-c",
-                "copy",
-                "-shortest",
-            )
-            if (outputFile.extension.equals("mp4", ignoreCase = true)) {
-                args += listOf("-movflags", "+faststart")
-            }
-            args += outputFile.absolutePath
+            val args = buildMergeArguments(videoFile, audioFile, outputFile)
 
             val session = FFmpegKit.executeWithArgumentsAsync(args.toTypedArray()) { completed ->
                 if (!continuation.isActive) return@executeWithArgumentsAsync
