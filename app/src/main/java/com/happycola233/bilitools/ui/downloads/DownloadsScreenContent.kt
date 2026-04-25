@@ -93,6 +93,7 @@ import com.google.android.material.color.MaterialColors
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.model.DownloadGroup
 import com.happycola233.bilitools.data.model.DownloadItem
+import com.happycola233.bilitools.ui.FloatingControlsDefaults
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
@@ -194,11 +195,11 @@ fun DownloadsScreenContent(
 ) {
     val backdrop = rememberLayerBackdrop()
     val density = LocalDensity.current
-    val controlsBottomPadding = 56.dp
+    val controlsBottomPadding = FloatingControlsDefaults.BottomPadding
     val panelBottomPadding = controlsBottomPadding + 8.dp
     val controlsOffsetDp = with(density) { controlsOffsetPx.toDp() }
     var panelHeightPx by remember { mutableStateOf(0) }
-    val baseBottomPaddingPx = with(density) { 88.dp.roundToPx() }
+    val baseBottomPaddingPx = with(density) { FloatingControlsDefaults.ListBottomPadding.roundToPx() }
     val extraBottomPaddingPx =
         if (selectionMode) panelHeightPx + with(density) { 20.dp.roundToPx() } else 0
     val targetListBottomPaddingDp = with(density) { (baseBottomPaddingPx + extraBottomPaddingPx).toDp() }
@@ -633,7 +634,7 @@ private fun DownloadsManageFab(
             }
         },
         modifier = modifier
-            .padding(bottom = (bottomPadding - 16.dp).coerceAtLeast(0.dp))
+            .padding(bottom = FloatingControlsDefaults.menuFabBottomPadding(bottomPadding))
             .offset(y = controlsOffset),
     ) {
         FloatingActionButtonMenuItem(

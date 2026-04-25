@@ -52,6 +52,7 @@
     <string name="login_captcha_title">请完成验证</string>
 
     <string name="parse_title">视频解析</string>
+    <string name="parse_input_card_title">解析资源</string>
     <string name="parse_hint">链接/AV/BV/SS/EP/AU/AM/SID/FID/CV/RL/UID</string>
     <string name="parse_helper">示例：BV1xx 或 https://www.bilibili.com/video/BV1xx</string>
     <string name="parse_paste">粘贴</string>
@@ -107,15 +108,14 @@
     <string name="parse_resolution_mode_highest">全部使用最高分辨率</string>
     <string name="parse_resolution_mode_lowest">全部使用最低分辨率</string>
     <string name="parse_resolution_mode_fixed">指定固定分辨率</string>
-    <string name="parse_resolution_multi_hint">指定固定分辨率时，若某条目不存在将自动回退到该条目的最高分辨率。</string>
+    <string name="parse_quality_multi_hint">指定固定分辨率或音频比特率时，若某条目不存在，将自动回退到该条目的最高可用值。</string>
     <string name="parse_bitrate_mode_label">音频比特率策略</string>
     <string name="parse_bitrate_mode_highest">全部使用最高音频比特率</string>
     <string name="parse_bitrate_mode_lowest">全部使用最低音频比特率</string>
     <string name="parse_bitrate_mode_fixed">指定固定比特率</string>
-    <string name="parse_bitrate_multi_hint">指定固定比特率时，若某条目不存在将自动回退到该条目的最高音频比特率。</string>
     <string name="output_audio_video">音视频</string>
-    <string name="output_video">视频</string>
-    <string name="output_audio">音频</string>
+    <string name="output_video">仅视频</string>
+    <string name="output_audio">仅音频</string>
     <string name="parse_resolution_label">分辨率</string>
     <string name="parse_codec_label">编码格式</string>
     <string name="parse_bitrate_label">音频比特率</string>
@@ -413,6 +413,7 @@
     <string name="history_filter_device_tv">TV</string>
     <string name="history_open_failed">无法打开链接</string>
     <string name="parse_warning_dash">DASH 将自动合并音视频为单文件</string>
+    <string name="parse_warning_stream_format_fallback">%1$s 当前不可用，已使用 %2$s</string>
 
     <string name="parse_collection_toggle">切换为合集模式</string>
     <string name="parse_collection_toggle_hint">切换后可批量在合集内选集下载，选集将自动下载全部分P。\n单分P按选集标题命名，多分P按分P标题命名。</string>

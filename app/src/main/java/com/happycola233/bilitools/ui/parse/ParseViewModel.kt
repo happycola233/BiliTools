@@ -180,7 +180,6 @@ data class ParseUiState(
     val danmakuHour: String = "",
     val imageOptions: List<ImageOption> = emptyList(),
     val selectedImageIds: Set<String> = emptySet(),
-    val streamInfo: String = "",
     val warning: String? = null,
     val collectionPreviewIndex: Int? = null,
     val collectionPreviewStat: MediaStat? = null,
@@ -212,6 +211,7 @@ class ParseViewModel(
     private val collectionStatCache = mutableMapOf<String, MediaStat>()
     private val itemStatCache = mutableMapOf<String, MediaStat>()
     private val itemDescriptionCache = mutableMapOf<String, String>()
+    private var streamLoadGeneration = 0L
 
     init {
         refreshLoginState()
@@ -271,7 +271,6 @@ class ParseViewModel(
                                 selectedAudioId = null,
                                 format = StreamFormat.Dash,
                                 outputType = OutputType.AudioVideo,
-                                streamInfo = "",
                                 warning = null,
                                 collectionPreviewIndex = null,
                                 collectionPreviewStat = null,
@@ -334,7 +333,6 @@ class ParseViewModel(
                     selectedResolutionId = null,
                     selectedCodec = null,
                     selectedAudioId = null,
-                    streamInfo = "",
                     warning = null,
                 ),
             )
@@ -378,7 +376,6 @@ class ParseViewModel(
                     selectedResolutionId = null,
                     selectedCodec = null,
                     selectedAudioId = null,
-                    streamInfo = "",
                     warning = null,
                 )
             } else {
@@ -525,7 +522,6 @@ class ParseViewModel(
                             selectedResolutionId = null,
                             selectedCodec = null,
                             selectedAudioId = null,
-                            streamInfo = "",
                             warning = null,
                             collectionPreviewIndex = null,
                             collectionPreviewStat = null,
@@ -591,7 +587,6 @@ class ParseViewModel(
                             selectedResolutionId = null,
                             selectedCodec = null,
                             selectedAudioId = null,
-                            streamInfo = "",
                             warning = null,
                             collectionPreviewIndex = null,
                             collectionPreviewStat = null,
@@ -646,7 +641,6 @@ class ParseViewModel(
                             selectedResolutionId = null,
                             selectedCodec = null,
                             selectedAudioId = null,
-                            streamInfo = "",
                             warning = null,
                             collectionPreviewIndex = null,
                             collectionPreviewStat = null,
@@ -673,6 +667,7 @@ class ParseViewModel(
             it.copy(
                 format = format,
                 outputType = nextOutput,
+                warning = null,
             )
         }
         loadStream()
@@ -683,13 +678,20 @@ class ParseViewModel(
     }
 
     fun setResolution(id: Int) {
-        _state.update {
-            it.copy(
-                resolutionMode = QualityMode.Fixed,
+        _state.update { current ->
+            val nextMode = QualityMode.Fixed
+            val nextCodecs = buildCodecOptionsForSelection(
+                current.videoStreams,
+                id,
+                nextMode,
+            )
+            current.copy(
+                resolutionMode = nextMode,
                 selectedResolutionId = id,
+                codecs = nextCodecs,
+                selectedCodec = pickCodec(current.selectedCodec, nextCodecs),
             )
         }
-        updateStreamInfo()
     }
 
     fun setResolutionMode(mode: QualityMode) {
@@ -697,18 +699,23 @@ class ParseViewModel(
             val selectedCount = current.selectedItemIndices.size
             val nextResolutions = resolveResolutionOptions(current.videoStreams, mode, selectedCount)
             val nextResolutionId = pickResolutionId(current.selectedResolutionId, nextResolutions, mode)
+            val nextCodecs = buildCodecOptionsForSelection(
+                current.videoStreams,
+                nextResolutionId,
+                mode,
+            )
             current.copy(
                 resolutionMode = mode,
                 resolutions = nextResolutions,
                 selectedResolutionId = nextResolutionId,
+                codecs = nextCodecs,
+                selectedCodec = pickCodec(current.selectedCodec, nextCodecs),
             )
         }
-        updateStreamInfo()
     }
 
     fun setCodec(codec: VideoCodec) {
         _state.update { it.copy(selectedCodec = codec) }
-        updateStreamInfo()
     }
 
     fun setAudioBitrate(id: Int) {
@@ -718,7 +725,6 @@ class ParseViewModel(
                 selectedAudioId = id,
             )
         }
-        updateStreamInfo()
     }
 
     fun setAudioBitrateMode(mode: QualityMode) {
@@ -732,7 +738,6 @@ class ParseViewModel(
                 selectedAudioId = nextAudioId,
             )
         }
-        updateStreamInfo()
     }
 
     fun setSubtitleEnabled(enabled: Boolean) {
@@ -786,6 +791,8 @@ class ParseViewModel(
     fun loadStream() {
         if (_state.value.mediaInfo == null) return
         val item = currentItem() ?: return
+        val requestedFormat = _state.value.format
+        val requestGeneration = ++streamLoadGeneration
         val itemIndex = _state.value.selectedItemIndex
         val info = _state.value.mediaInfo
         viewModelScope.launch {
@@ -806,14 +813,13 @@ class ParseViewModel(
                     info?.let { refreshExtras(it, resolvedItem) }
                 }
                 val playUrlInfo =
-                    mediaRepository.getPlayUrlInfo(resolvedItem, resolvedItem.type, _state.value.format)
+                    mediaRepository.getPlayUrlInfo(resolvedItem, resolvedItem.type, requestedFormat)
                 val selectedCount = _state.value.selectedItemIndices.size
                 val resolutions = resolveResolutionOptions(
                     playUrlInfo.video,
                     _state.value.resolutionMode,
                     selectedCount,
                 )
-                val codecs = buildCodecOptions(playUrlInfo.video)
                 val audio = resolveAudioOptions(
                     playUrlInfo.audio,
                     _state.value.audioBitrateMode,
@@ -833,18 +839,23 @@ class ParseViewModel(
                     resolutions,
                     resolutionMode,
                 )
-                val selectedCodec =
-                    _state.value.selectedCodec
-                        ?.takeIf { codec -> codecs.any { it.codec == codec } }
-                        ?: pickDefaultCodec(codecs)
+                val codecs = buildCodecOptionsForSelection(
+                    playUrlInfo.video,
+                    selectedResolutionId,
+                    resolutionMode,
+                )
+                val selectedCodec = pickCodec(_state.value.selectedCodec, codecs)
                 val audioBitrateMode = _state.value.audioBitrateMode
                 val selectedAudioId = pickAudioId(
                     _state.value.selectedAudioId,
                     audio,
                     audioBitrateMode,
                 )
-                _state.update {
-                    it.copy(
+                _state.update { current ->
+                    if (requestGeneration != streamLoadGeneration) {
+                        return@update current
+                    }
+                    current.copy(
                         streamLoading = false,
                         playUrlInfo = playUrlInfo,
                         videoStreams = playUrlInfo.video,
@@ -852,21 +863,18 @@ class ParseViewModel(
                         resolutions = resolutions,
                         codecs = codecs,
                         audioBitrates = audio,
-                        format = playUrlInfo.format,
                         outputType = safeOutputType,
                         selectedResolutionId = selectedResolutionId,
                         selectedCodec = selectedCodec,
                         selectedAudioId = selectedAudioId,
-                        warning = if (playUrlInfo.format == StreamFormat.Dash) {
-                            strings.get(R.string.parse_warning_dash)
-                        } else {
-                            null
-                        },
+                        warning = streamWarningFor(requestedFormat, playUrlInfo.format),
                     )
                 }
-                updateStreamInfo()
             }.onFailure { err ->
-                setStreamLoadingError(err)
+                if (err is CancellationException) throw err
+                if (requestGeneration == streamLoadGeneration) {
+                    setStreamLoadingError(err)
+                }
             }
         }
     }
@@ -2154,6 +2162,21 @@ class ParseViewModel(
         }
     }
 
+    private fun streamWarningFor(
+        requestedFormat: StreamFormat,
+        actualFormat: StreamFormat,
+    ): String? {
+        return when {
+            requestedFormat != actualFormat -> strings.get(
+                R.string.parse_warning_stream_format_fallback,
+                mapStreamFormatLabel(requestedFormat),
+                mapStreamFormatLabel(actualFormat),
+            )
+            actualFormat == StreamFormat.Dash -> strings.get(R.string.parse_warning_dash)
+            else -> null
+        }
+    }
+
     private fun mapOutputExtensionLabel(extension: String): String {
         return extension.trim().uppercase()
     }
@@ -2371,31 +2394,6 @@ class ParseViewModel(
             stat.share != null
     }
 
-    private fun updateStreamInfo() {
-        val state = _state.value
-        val selectedVideo = selectVideoStream(state)
-        val selectedAudio = selectAudioStream(state)
-        val videoLabel = selectedVideo?.let { stream ->
-            val resolution = mapResolutionLabel(stream)
-            val codec = stream.codec?.let { codecLabel(it) }
-                ?: strings.get(R.string.parse_codec_avc)
-            listOfNotNull(resolution, codec).joinToString(" / ")
-        }
-        val audioLabel = selectedAudio?.let { audio ->
-            mapAudioLabel(audio.id)
-        }
-        val info = buildString {
-            if (!videoLabel.isNullOrBlank()) {
-                append(videoLabel)
-            }
-            if (!audioLabel.isNullOrBlank()) {
-                if (isNotEmpty()) append(" / ")
-                append(audioLabel)
-            }
-        }
-        _state.update { it.copy(streamInfo = info) }
-    }
-
     private fun applyDefaultDownloadQuality(state: ParseUiState): ParseUiState {
         val quality = settingsRepository.currentDefaultDownloadQuality()
         return state.copy(
@@ -2434,13 +2432,20 @@ class ParseViewModel(
         val nextResolutions = resolveResolutionOptions(state.videoStreams, nextResolutionMode, selectedCount)
         val nextAudioOptions = resolveAudioOptions(state.audioStreams, nextAudioMode, selectedCount)
         val nextResolutionId = pickResolutionId(state.selectedResolutionId, nextResolutions, nextResolutionMode)
+        val nextCodecs = buildCodecOptionsForSelection(
+            state.videoStreams,
+            nextResolutionId,
+            nextResolutionMode,
+        )
         val nextAudioId = pickAudioId(state.selectedAudioId, nextAudioOptions, nextAudioMode)
         return state.copy(
             resolutionMode = nextResolutionMode,
             audioBitrateMode = nextAudioMode,
             resolutions = nextResolutions,
+            codecs = nextCodecs,
             audioBitrates = nextAudioOptions,
             selectedResolutionId = nextResolutionId,
+            selectedCodec = pickCodec(state.selectedCodec, nextCodecs),
             selectedAudioId = nextAudioId,
         )
     }
@@ -2621,6 +2626,28 @@ class ParseViewModel(
         return ordered.map { codec ->
             CodecOption(codec, codecLabel(codec))
         }
+    }
+
+    private fun buildCodecOptionsForSelection(
+        streams: List<VideoStream>,
+        resolutionId: Int?,
+        mode: QualityMode,
+    ): List<CodecOption> {
+        if (streams.isEmpty()) return emptyList()
+        val targetId = resolveResolutionId(streams, resolutionId, mode)
+        val candidates = targetId?.let { id ->
+            streams.filter { it.id == id }
+        }.orEmpty()
+        return buildCodecOptions(candidates.ifEmpty { streams })
+    }
+
+    private fun pickCodec(
+        currentCodec: VideoCodec?,
+        options: List<CodecOption>,
+    ): VideoCodec? {
+        return currentCodec
+            ?.takeIf { codec -> options.any { it.codec == codec } }
+            ?: pickDefaultCodec(options)
     }
 
     private fun buildAudioOptions(streams: List<AudioStream>): List<AudioOption> {

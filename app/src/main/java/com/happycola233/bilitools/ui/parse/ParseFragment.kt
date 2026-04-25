@@ -4,71 +4,49 @@ import android.Manifest
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.pm.PackageManager
-import android.graphics.Rect
-import android.os.Bundle
-import android.os.Build
-import android.view.ContextThemeWrapper
-import android.view.HapticFeedbackConstants
-import android.view.LayoutInflater
-import android.view.MotionEvent
-import android.view.View
-import android.view.ViewGroup
-import android.view.ViewConfiguration
-import android.view.ViewTreeObserver
-import android.view.inputmethod.EditorInfo
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
-import android.widget.ArrayAdapter
-import android.widget.ScrollView
-import android.widget.TextView
+import android.os.Build
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.material3.MotionScheme
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.content.ContextCompat
 import androidx.core.os.bundleOf
-import androidx.core.text.HtmlCompat
-import androidx.core.widget.addTextChangedListener
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.interpolator.view.animation.FastOutSlowInInterpolator
-import coil.load
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.appContainer
-import com.happycola233.bilitools.data.model.MediaInfo
-import com.happycola233.bilitools.data.model.MediaItem
-import com.happycola233.bilitools.data.model.MediaStat
-import com.happycola233.bilitools.data.model.OutputType
-import com.happycola233.bilitools.data.model.MediaTab
-import com.happycola233.bilitools.data.model.MediaType
-import com.happycola233.bilitools.data.model.StreamFormat
-import com.happycola233.bilitools.data.model.SubtitleInfo
-import com.happycola233.bilitools.databinding.DialogParseAiSummaryCopyBinding
-import com.happycola233.bilitools.databinding.DialogParseSubtitleCopyBinding
 import com.happycola233.bilitools.databinding.FragmentParseBinding
 import com.happycola233.bilitools.ui.AppViewModelFactory
 import com.happycola233.bilitools.ui.ExternalDownloadContract
 import com.happycola233.bilitools.ui.normalizeHttpUrl
-import com.google.android.material.chip.Chip
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.textfield.MaterialAutoCompleteTextView
-import com.google.android.material.textfield.TextInputLayout
-import com.google.android.material.R as MaterialR
+import com.happycola233.bilitools.ui.theme.rememberAndroidThemeColorScheme
 import kotlinx.coroutines.launch
-import kotlin.math.abs
-import kotlin.math.roundToInt
 
 /**
  * Parse and download UI used by both:
  * 1) Main app home page
  * 2) External dialog entry (when another app shares/opens a URL)
  *
- * External behavior is controlled by [externalMode].
+ * The Fragment intentionally owns platform side effects, while [ParseScreenContent]
+ * owns all visual state and interaction rendering.
  */
 class ParseFragment : Fragment() {
     private var _binding: FragmentParseBinding? = null
@@ -78,44 +56,21 @@ class ParseFragment : Fragment() {
         AppViewModelFactory(requireContext().appContainer)
     }
 
-    private var itemListAdapter: ParseItemAdapter? = null
-    private var sectionAdapter: ArrayAdapter<String>? = null
-    private var mediaTypeAdapter: ArrayAdapter<String>? = null
-    private var resolutionModeAdapter: ArrayAdapter<String>? = null
-    private var resolutionAdapter: ArrayAdapter<String>? = null
-    private var codecAdapter: ArrayAdapter<String>? = null
-    private var bitrateModeAdapter: ArrayAdapter<String>? = null
-    private var bitrateAdapter: ArrayAdapter<String>? = null
-    private var subtitleAdapter: ArrayAdapter<String>? = null
-
-    private var pendingScrollY: Int? = null
-    private var pendingListAnchorTop: Int? = null
-    private var anchorFixScheduled = false
-    private var quickActionEnabled = false
-    private var quickActionLoadEnabled = false
-    private var quickActionDownloadEnabled = false
-    private var latestState: ParseUiState? = null
-    private var quickActionScrollPending = false
-    private var offsetListener: com.google.android.material.appbar.AppBarLayout.OnOffsetChangedListener? = null
-    private var quickActionShown = false
-    private var currentPageIndex: Int = 1
-    private var sectionTabs: List<MediaTab> = emptyList()
-    private var mediaTypeOptions: List<Pair<MediaType?, String>> = emptyList()
-    private var resolutionModeOptions: List<Pair<QualityMode, String>> = emptyList()
-    private var resolutionOptions: List<QualityOption> = emptyList()
-    private var codecOptions: List<CodecOption> = emptyList()
-    private var bitrateModeOptions: List<Pair<QualityMode, String>> = emptyList()
-    private var audioOptions: List<AudioOption> = emptyList()
-    private var subtitleOptions = emptyList<SubtitleInfo>()
-    private var imageOptionIds: List<String> = emptyList()
-    private val imageChips = mutableMapOf<String, Chip>()
     private var pendingExternalUrl: String? = null
-    // True when hosted by ExternalDownloadEntryActivity (dialog-style external flow).
     private var externalMode = false
-    // External flow: close host after a download task is actually queued.
     private var closeAfterDownloadQueued = false
-    // External flow: auto-trigger "load stream info" after parse succeeds.
     private var autoLoadStreamPending = false
+    private var quickActionScrollPending = false
+    private var latestState: ParseUiState? = null
+    private var offsetListener: com.google.android.material.appbar.AppBarLayout.OnOffsetChangedListener? = null
+
+    private var inputText by mutableStateOf("")
+    private var quickActionEnabled by mutableStateOf(false)
+    private var controlsOffsetPx by mutableFloatStateOf(0f)
+    private var scrollToOptionsRequest by mutableIntStateOf(0)
+    private var subtitleCopyDialogEntries by mutableStateOf<List<SubtitleCopyEntry>?>(null)
+    private var aiSummaryCopyDialogEntries by mutableStateOf<List<AiSummaryCopyEntry>?>(null)
+
     private val requestNotificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (!granted) {
@@ -129,145 +84,9 @@ class ParseFragment : Fragment() {
             }
         }
 
-    private var suppressUi = false
-    private fun cacheScrollPosition() {
-        pendingScrollY = binding.parseScroll.scrollY
-    }
-
-    private fun preserveScrollAndFocus() {
-        cacheScrollPosition()
-        binding.parseScroll.requestFocus()
-    }
-
-    private fun cacheListAnchor() {
-        if (pendingListAnchorTop != null) return
-        val root = binding.parseScroll
-        val list = binding.pageList
-        if (!list.isLaidOut || !list.isShown) return
-        val rootRect = Rect()
-        val listRect = Rect()
-        if (!root.getGlobalVisibleRect(rootRect) || !list.getGlobalVisibleRect(listRect)) return
-        if (!Rect.intersects(rootRect, listRect)) return
-        val rootLoc = IntArray(2)
-        val listLoc = IntArray(2)
-        root.getLocationInWindow(rootLoc)
-        list.getLocationInWindow(listLoc)
-        pendingListAnchorTop = listLoc[1] - rootLoc[1]
-    }
-
-    private fun scheduleListAnchorFix(anchorTop: Int) {
-        if (anchorFixScheduled) return
-        val root = binding.parseScroll
-        val list = binding.pageList
-        anchorFixScheduled = true
-        root.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
-            override fun onPreDraw(): Boolean {
-                val observer = root.viewTreeObserver
-                if (observer.isAlive) {
-                    observer.removeOnPreDrawListener(this)
-                }
-                anchorFixScheduled = false
-                if (!list.isLaidOut) return true
-                val rootLoc = IntArray(2)
-                val listLoc = IntArray(2)
-                root.getLocationInWindow(rootLoc)
-                list.getLocationInWindow(listLoc)
-                val currentTop = listLoc[1] - rootLoc[1]
-                val delta = currentTop - anchorTop
-                if (delta != 0) {
-                    val content = root.getChildAt(0)?.height ?: 0
-                    val maxScroll = (content - root.height).coerceAtLeast(0)
-                    val nextScroll = (root.scrollY + delta).coerceIn(0, maxScroll)
-                    root.scrollTo(0, nextScroll)
-                }
-                return true
-            }
-        })
-    }
-
-    private fun scrollToOptionsCard() {
-        val scroll = binding.parseScroll
-        val target = binding.optionsCard
-        scroll.post {
-            if (!target.isShown) return@post
-            val rect = Rect()
-            target.getDrawingRect(rect)
-            scroll.offsetDescendantRectToMyCoords(target, rect)
-            scroll.smoothScrollTo(0, rect.top)
-        }
-    }
-
-    private fun updateQuickActionFab(
-        state: ParseUiState? = latestState,
-        enabled: Boolean = quickActionEnabled,
-    ) {
-        val fab = binding.parseQuickAction
-        val loadEnabled = quickActionLoadEnabled
-        val downloadEnabled = quickActionDownloadEnabled
-        val shouldShow = enabled &&
-            state?.mediaInfo != null &&
-            (loadEnabled || downloadEnabled)
-        if (!shouldShow) {
-            if (quickActionShown) {
-                animateQuickAction(false)
-                quickActionShown = false
-            }
-            return
-        }
-        if (!quickActionShown) {
-            animateQuickAction(true)
-            quickActionShown = true
-        }
-        val hasInfo = state.playUrlInfo != null
-        fab.setImageResource(
-            if (hasInfo) R.drawable.ic_save_alt_24 else R.drawable.ic_troubleshoot_24,
-        )
-        fab.contentDescription = getString(
-            if (hasInfo) R.string.parse_download else R.string.parse_load_stream,
-        )
-        fab.isEnabled = if (hasInfo) downloadEnabled else loadEnabled
-    }
-
-    private fun animateQuickAction(show: Boolean) {
-        val fab = binding.parseQuickAction
-        fab.animate().cancel()
-        if (show) {
-            fab.visibility = View.VISIBLE
-            if (fab.alpha < 1f || fab.scaleX < 1f || fab.scaleY < 1f) {
-                fab.alpha = fab.alpha.takeIf { it > 0f } ?: 0f
-                fab.scaleX = fab.scaleX.takeIf { it > 0f } ?: 0.9f
-                fab.scaleY = fab.scaleY.takeIf { it > 0f } ?: 0.9f
-            } else {
-                fab.alpha = 0f
-                fab.scaleX = 0.9f
-                fab.scaleY = 0.9f
-            }
-            fab.animate()
-                .alpha(1f)
-                .scaleX(1f)
-                .scaleY(1f)
-                .setDuration(180)
-                .setInterpolator(FastOutSlowInInterpolator())
-                .start()
-        } else if (fab.visibility == View.VISIBLE) {
-            fab.animate()
-                .alpha(0f)
-                .scaleX(0.9f)
-                .scaleY(0.9f)
-                .setDuration(150)
-                .setInterpolator(FastOutSlowInInterpolator())
-                .withEndAction {
-                    fab.visibility = View.GONE
-                }
-                .start()
-        }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Read host mode once; MainActivity passes false, external dialog host passes true.
         externalMode = arguments?.getBoolean(ARG_EXTERNAL_MODE, false) == true
-        // Shared URL from host activity enters through FragmentResult.
         parentFragmentManager.setFragmentResultListener(
             ExternalDownloadContract.RESULT_KEY,
             this,
@@ -289,905 +108,94 @@ class ParseFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        if (externalMode) {
-            // External dialog has no collapsing app bar; quick FAB is unnecessary/noisy here.
-            binding.parseQuickAction.visibility = View.GONE
-            binding.parseQuickAction.isEnabled = false
-            quickActionEnabled = false
-        } else {
+        if (!externalMode) {
             val appBar =
                 requireActivity().findViewById<com.google.android.material.appbar.AppBarLayout>(R.id.app_bar)
             offsetListener =
                 com.google.android.material.appbar.AppBarLayout.OnOffsetChangedListener { _, verticalOffset ->
-                    binding.parseQuickAction.translationY = -verticalOffset.toFloat()
+                    controlsOffsetPx = -verticalOffset.toFloat()
                 }
             appBar?.addOnOffsetChangedListener(offsetListener)
-            ViewCompat.setOnApplyWindowInsetsListener(binding.parseQuickAction) { v, windowInsets ->
-                val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-                v.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                    val navHeight = (56 * resources.displayMetrics.density).toInt()
-                    val spacing = 0
-                    bottomMargin = navHeight + insets.bottom + spacing
-                    rightMargin = (16 * resources.displayMetrics.density).toInt()
-                }
-                WindowInsetsCompat.CONSUMED
-            }
-        }
-        binding.parseScroll.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
-            v.isNestedScrollingEnabled = v.canScrollVertically(-1) || v.canScrollVertically(1)
-        }
-        binding.parseScroll.isFocusableInTouchMode = true
-        // Keep descendant focus behavior aligned with NestedScrollView defaults so
-        // the URL input can place the cursor and enter text-selection mode normally.
-        binding.parseScroll.descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
-        binding.parseAction.setOnClickListener {
-            binding.inputLink.clearFocus()
-            binding.mediaTypeDropdown.clearFocus()
-            binding.parseScroll.requestFocus()
-            hideKeyboard()
-            val input = binding.inputLink.text?.toString().orEmpty()
-            viewModel.parse(input)
-        }
-        binding.pasteAction.setOnClickListener {
-            val clipboard = requireContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
-            val text = clipboard?.primaryClip?.getItemAt(0)?.text
-            if (!text.isNullOrEmpty()) {
-                binding.inputLink.setText(text)
-            }
-        }
-        binding.inputLink.addTextChangedListener {
-            if (it.isNullOrEmpty()) {
-                viewModel.clear()
-            }
         }
 
-        binding.streamFormatHint.text = HtmlCompat.fromHtml(
-            getString(R.string.parse_stream_format_hint),
-            HtmlCompat.FROM_HTML_MODE_COMPACT,
+        binding.parseCompose.setViewCompositionStrategy(
+            ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed,
         )
-        binding.streamFormatHint.movementMethod = android.text.method.LinkMovementMethod.getInstance()
-
-        mediaTypeOptions = listOf(
-            null to getString(R.string.parse_media_type_auto),
-            MediaType.Video to getString(R.string.parse_media_type_video),
-            MediaType.Bangumi to getString(R.string.parse_media_type_bangumi),
-            MediaType.Lesson to getString(R.string.parse_media_type_lesson),
-            MediaType.Music to getString(R.string.parse_media_type_music),
-            MediaType.MusicList to getString(R.string.parse_media_type_music_list),
-            MediaType.WatchLater to getString(R.string.parse_media_type_watch_later),
-            MediaType.Favorite to getString(R.string.parse_media_type_favorite),
-            MediaType.Opus to getString(R.string.parse_media_type_opus),
-            MediaType.OpusList to getString(R.string.parse_media_type_opus_list),
-            MediaType.UserVideo to getString(R.string.parse_media_type_user_video),
-            MediaType.UserOpus to getString(R.string.parse_media_type_user_opus),
-            MediaType.UserAudio to getString(R.string.parse_media_type_user_audio),
-        )
-        mediaTypeAdapter = ArrayAdapter(
-            requireContext(),
-            android.R.layout.simple_dropdown_item_1line,
-            mediaTypeOptions.map { it.second },
-        )
-        binding.mediaTypeDropdown.setAdapter(mediaTypeAdapter)
-        binding.mediaTypeDropdown.setOnItemClickListener { _, _, position, _ ->
-            mediaTypeOptions.getOrNull(position)?.let { option ->
-                viewModel.setMediaType(option.first)
+        @OptIn(ExperimentalMaterial3ExpressiveApi::class)
+        binding.parseCompose.setContent {
+            val parseState by viewModel.state.collectAsState()
+            val colorScheme = rememberAndroidThemeColorScheme()
+            MaterialExpressiveTheme(
+                colorScheme = colorScheme,
+                motionScheme = MotionScheme.expressive(),
+            ) {
+                ParseScreenContent(
+                    state = parseState,
+                    inputText = inputText,
+                    quickActionEnabled = quickActionEnabled,
+                    controlsOffsetPx = controlsOffsetPx,
+                    scrollToOptionsRequest = scrollToOptionsRequest,
+                    externalMode = externalMode,
+                    subtitleCopyDialogEntries = subtitleCopyDialogEntries,
+                    aiSummaryCopyDialogEntries = aiSummaryCopyDialogEntries,
+                    onInputChange = { next ->
+                        inputText = next
+                        if (next.isEmpty()) {
+                            viewModel.clear()
+                        }
+                    },
+                    onPaste = ::pasteFromClipboard,
+                    onParse = { input -> viewModel.parse(input) },
+                    onMediaTypeChange = viewModel::setMediaType,
+                    onLoadStream = {
+                        quickActionScrollPending = false
+                        viewModel.loadStream()
+                    },
+                    onQuickLoadStream = {
+                        quickActionScrollPending = true
+                        viewModel.loadStream()
+                    },
+                    onDownload = ::onDownloadClicked,
+                    onSectionChange = viewModel::selectSection,
+                    onSelectAllItems = viewModel::selectAllItems,
+                    onClearSelectedItems = viewModel::clearSelectedItems,
+                    onLoadPrevPage = viewModel::loadPrevPage,
+                    onLoadNextPage = viewModel::loadNextPage,
+                    onLoadPage = viewModel::loadPage,
+                    onItemClick = viewModel::onItemRowClick,
+                    onItemSelectionChange = { index, _ -> viewModel.toggleItemSelection(index) },
+                    onFormatChange = viewModel::setFormat,
+                    onOutputTypeChange = viewModel::setOutputType,
+                    onCollectionModeChange = viewModel::setCollectionMode,
+                    onResolutionModeChange = viewModel::setResolutionMode,
+                    onResolutionChange = viewModel::setResolution,
+                    onCodecChange = viewModel::setCodec,
+                    onAudioBitrateModeChange = viewModel::setAudioBitrateMode,
+                    onAudioBitrateChange = viewModel::setAudioBitrate,
+                    onSubtitleEnabledChange = viewModel::setSubtitleEnabled,
+                    onSubtitleLanguageChange = viewModel::setSubtitleLanguage,
+                    onCopySubtitles = viewModel::copySubtitlesNow,
+                    onAiSummaryEnabledChange = viewModel::setAiSummaryEnabled,
+                    onCopyAiSummaries = viewModel::copyAiSummariesNow,
+                    onNfoCollectionEnabledChange = viewModel::setNfoCollectionEnabled,
+                    onNfoSingleEnabledChange = viewModel::setNfoSingleEnabled,
+                    onDanmakuLiveEnabledChange = viewModel::setDanmakuLiveEnabled,
+                    onDanmakuHistoryEnabledChange = viewModel::setDanmakuHistoryEnabled,
+                    onDanmakuDateChange = viewModel::setDanmakuDate,
+                    onDanmakuHourChange = viewModel::setDanmakuHour,
+                    onImageSelectionChange = viewModel::setImageSelection,
+                    onDismissSubtitleCopyDialog = { subtitleCopyDialogEntries = null },
+                    onDismissAiSummaryCopyDialog = { aiSummaryCopyDialogEntries = null },
+                    onCopyCurrentSubtitle = ::handleCopyCurrentSubtitle,
+                    onCopyAllSubtitles = ::handleCopyAllSubtitles,
+                    onCopyCurrentAiSummary = ::handleCopyCurrentAiSummary,
+                    onCopyAllAiSummaries = ::handleCopyAllAiSummaries,
+                )
             }
-        }
-        setupDropdown(binding.mediaTypeLayout, binding.mediaTypeDropdown)
-
-        binding.loadStream.setOnClickListener {
-            pendingScrollY = binding.parseScroll.scrollY
-            binding.inputLink.clearFocus()
-            binding.parseScroll.requestFocus()
-            hideKeyboard()
-            viewModel.loadStream()
-        }
-        binding.download.setOnClickListener {
-            cacheScrollPosition()
-            onDownloadClicked()
-        }
-        binding.parseQuickAction.setOnClickListener {
-            val state = latestState ?: return@setOnClickListener
-            if (state.playUrlInfo == null) {
-                quickActionScrollPending = true
-                viewModel.loadStream()
-            } else {
-                onDownloadClicked()
-            }
-        }
-
-        binding.sectionDropdown.setOnItemClickListener { _, _, position, _ ->
-            sectionTabs.getOrNull(position)?.let { tab ->
-                cacheScrollPosition()
-                viewModel.selectSection(tab.id)
-            }
-        }
-        setupDropdown(binding.sectionLayout, binding.sectionDropdown)
-
-        itemListAdapter = ParseItemAdapter(
-            onItemClick = { index ->
-                cacheListAnchor()
-                viewModel.onItemRowClick(index)
-            },
-            onItemCheckToggle = { index, _ ->
-                cacheListAnchor()
-                viewModel.toggleItemSelection(index)
-            },
-        )
-        binding.pageList.layoutManager = LinearLayoutManager(requireContext())
-        binding.pageList.adapter = itemListAdapter
-        binding.pageSelectAll.setOnClickListener {
-            cacheScrollPosition()
-            viewModel.selectAllItems()
-        }
-        binding.pageClearAll.setOnClickListener {
-            cacheScrollPosition()
-            viewModel.clearSelectedItems()
-        }
-        binding.pagePrev.setOnClickListener {
-            cacheScrollPosition()
-            viewModel.loadPrevPage()
-        }
-        binding.pageNext.setOnClickListener {
-            cacheScrollPosition()
-            viewModel.loadNextPage()
-        }
-        binding.pageIndexInput.setOnEditorActionListener { _, actionId, _ ->
-            if (actionId == EditorInfo.IME_ACTION_DONE) {
-                applyPageInput()
-                true
-            } else {
-                false
-            }
-        }
-        binding.pageIndexInput.setOnFocusChangeListener { _, hasFocus ->
-            if (!hasFocus) {
-                applyPageInput()
-            }
-        }
-
-        binding.formatGroup.setOnCheckedStateChangeListener { _, checkedIds ->
-            if (suppressUi) return@setOnCheckedStateChangeListener
-            val checkedId = checkedIds.firstOrNull() ?: View.NO_ID
-            preserveScrollAndFocus()
-            val format = when (checkedId) {
-                R.id.format_mp4 -> StreamFormat.Mp4
-                R.id.format_flv -> StreamFormat.Flv
-                else -> StreamFormat.Dash
-            }
-            viewModel.setFormat(format)
-        }
-
-        binding.outputGroup.setOnCheckedStateChangeListener { _, checkedIds ->
-            if (suppressUi) return@setOnCheckedStateChangeListener
-            val checkedId = checkedIds.firstOrNull() ?: View.NO_ID
-            preserveScrollAndFocus()
-            val output = when (checkedId) {
-                R.id.output_audio -> OutputType.AudioOnly
-                R.id.output_video -> OutputType.VideoOnly
-                R.id.output_av -> OutputType.AudioVideo
-                else -> null
-            }
-            viewModel.setOutputType(output)
-        }
-
-        binding.collectionToggle.setOnCheckedChangeListener { _, isChecked ->
-            if (!suppressUi) {
-                preserveScrollAndFocus()
-                viewModel.setCollectionMode(isChecked)
-            }
-        }
-
-        resolutionModeOptions = listOf(
-            QualityMode.Highest to getString(R.string.parse_resolution_mode_highest),
-            QualityMode.Lowest to getString(R.string.parse_resolution_mode_lowest),
-            QualityMode.Fixed to getString(R.string.parse_resolution_mode_fixed),
-        )
-        resolutionModeAdapter = ArrayAdapter(
-            requireContext(),
-            android.R.layout.simple_dropdown_item_1line,
-            resolutionModeOptions.map { it.second },
-        )
-        binding.resolutionModeDropdown.setAdapter(resolutionModeAdapter)
-        binding.resolutionModeDropdown.setOnItemClickListener { _, _, position, _ ->
-            resolutionModeOptions.getOrNull(position)?.let {
-                preserveScrollAndFocus()
-                viewModel.setResolutionMode(it.first)
-            }
-        }
-        setupDropdown(binding.resolutionModeLayout, binding.resolutionModeDropdown)
-
-        binding.resolutionDropdown.setOnItemClickListener { _, _, position, _ ->
-            resolutionOptions.getOrNull(position)?.let {
-                preserveScrollAndFocus()
-                viewModel.setResolution(it.id)
-            }
-        }
-        setupDropdown(binding.resolutionLayout, binding.resolutionDropdown)
-
-        binding.codecDropdown.setOnItemClickListener { _, _, position, _ ->
-            codecOptions.getOrNull(position)?.let {
-                preserveScrollAndFocus()
-                viewModel.setCodec(it.codec)
-            }
-        }
-        setupDropdown(binding.codecLayout, binding.codecDropdown)
-
-        bitrateModeOptions = listOf(
-            QualityMode.Highest to getString(R.string.parse_bitrate_mode_highest),
-            QualityMode.Lowest to getString(R.string.parse_bitrate_mode_lowest),
-            QualityMode.Fixed to getString(R.string.parse_bitrate_mode_fixed),
-        )
-        bitrateModeAdapter = ArrayAdapter(
-            requireContext(),
-            android.R.layout.simple_dropdown_item_1line,
-            bitrateModeOptions.map { it.second },
-        )
-        binding.bitrateModeDropdown.setAdapter(bitrateModeAdapter)
-        binding.bitrateModeDropdown.setOnItemClickListener { _, _, position, _ ->
-            bitrateModeOptions.getOrNull(position)?.let {
-                preserveScrollAndFocus()
-                viewModel.setAudioBitrateMode(it.first)
-            }
-        }
-        setupDropdown(binding.bitrateModeLayout, binding.bitrateModeDropdown)
-
-        binding.bitrateDropdown.setOnItemClickListener { _, _, position, _ ->
-            audioOptions.getOrNull(position)?.let {
-                preserveScrollAndFocus()
-                viewModel.setAudioBitrate(it.id)
-            }
-        }
-        setupDropdown(binding.bitrateLayout, binding.bitrateDropdown)
-
-        binding.subtitleDropdown.setOnItemClickListener { _, _, position, _ ->
-            subtitleOptions.getOrNull(position)?.let {
-                preserveScrollAndFocus()
-                viewModel.setSubtitleLanguage(it.lan)
-            }
-        }
-        setupDropdown(binding.subtitleLayout, binding.subtitleDropdown)
-
-        binding.subtitleToggle.setOnCheckedChangeListener { _, isChecked ->
-            if (!suppressUi) {
-                preserveScrollAndFocus()
-                viewModel.setSubtitleEnabled(isChecked)
-            }
-        }
-        binding.subtitleCopyNow.setOnClickListener {
-            preserveScrollAndFocus()
-            viewModel.copySubtitlesNow()
-        }
-        binding.aiSummaryCopyNow.setOnClickListener {
-            preserveScrollAndFocus()
-            viewModel.copyAiSummariesNow()
-        }
-        binding.aiSummaryToggle.setOnCheckedChangeListener { _, isChecked ->
-            if (!suppressUi) {
-                preserveScrollAndFocus()
-                viewModel.setAiSummaryEnabled(isChecked)
-            }
-        }
-        binding.nfoCollectionToggle.setOnCheckedChangeListener { _, isChecked ->
-            if (!suppressUi) {
-                preserveScrollAndFocus()
-                viewModel.setNfoCollectionEnabled(isChecked)
-            }
-        }
-        binding.nfoSingleToggle.setOnCheckedChangeListener { _, isChecked ->
-            if (!suppressUi) {
-                preserveScrollAndFocus()
-                viewModel.setNfoSingleEnabled(isChecked)
-            }
-        }
-        binding.danmakuLiveToggle.setOnCheckedChangeListener { _, isChecked ->
-            if (!suppressUi) {
-                preserveScrollAndFocus()
-                viewModel.setDanmakuLiveEnabled(isChecked)
-            }
-        }
-        binding.danmakuHistoryToggle.setOnCheckedChangeListener { _, isChecked ->
-            if (!suppressUi) {
-                preserveScrollAndFocus()
-                viewModel.setDanmakuHistoryEnabled(isChecked)
-            }
-        }
-        binding.danmakuDateInput.addTextChangedListener { text ->
-            if (!suppressUi) viewModel.setDanmakuDate(text?.toString().orEmpty())
-        }
-        binding.danmakuHourInput.addTextChangedListener { text ->
-            if (!suppressUi) viewModel.setDanmakuHour(text?.toString().orEmpty())
         }
 
         consumePendingExternalUrl()
-
-        val settingsRepository = requireContext().appContainer.settingsRepository
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch {
-                    viewModel.state.collect { state ->
-                        latestState = state
-                        suppressUi = true
-                    
-                    val isLoading = state.loading
-                    binding.parseActionLoading.visibility = if (isLoading) View.VISIBLE else View.GONE
-                    binding.parseAction.text = if (isLoading) "" else getString(R.string.parse_action)
-                    binding.parseAction.icon = if (isLoading) null else androidx.core.content.ContextCompat.getDrawable(requireContext(), R.drawable.ic_movie_filter_24)
-                    binding.parseAction.isClickable = !isLoading
-                    
-                    binding.parseErrorCard.visibility =
-                        if (state.error.isNullOrBlank()) View.GONE else View.VISIBLE
-                    binding.parseError.text = state.error.orEmpty()
-
-                    val info = state.mediaInfo
-                    val item = state.items.getOrNull(state.selectedItemIndex)
-
-                    mediaTypeOptions.firstOrNull { it.first == state.selectedMediaType }
-                        ?.let { binding.mediaTypeDropdown.setText(it.second, false) }
-
-                    if (info == null) {
-                        binding.videoCard.visibility = View.GONE
-                        binding.optionsCard.visibility = View.GONE
-                    } else {
-                        binding.videoCard.visibility = View.VISIBLE
-                        binding.optionsCard.visibility =
-                            if (state.playUrlInfo == null) View.GONE else View.VISIBLE
-                        val display = resolveVideoCardDisplay(state, info, item)
-                        val prevTitle = binding.title.text?.toString().orEmpty()
-                        val prevDesc = binding.desc.text?.toString().orEmpty()
-                        val prevStatVisible = binding.statScroll.visibility == View.VISIBLE
-                        val nextStatVisible = hasAnyStat(display.stat)
-                        if (
-                            pendingListAnchorTop == null &&
-                            (prevTitle != display.title ||
-                                prevDesc != display.description ||
-                                prevStatVisible != nextStatVisible)
-                        ) {
-                            cacheListAnchor()
-                        }
-                        binding.title.text = display.title
-                        binding.desc.text = display.description
-                        if (binding.cover.tag != display.coverUrl) {
-                            binding.cover.tag = display.coverUrl
-                            binding.cover.load(display.coverUrl)
-                        }
-                        bindStats(display.stat)
-                    }
-
-                    val hasSelection = state.selectedItemIndices.isNotEmpty()
-
-                    // Load Stream Button State
-                    val isStreamLoading = state.streamLoading
-                    binding.loadStreamLoading.visibility = if (isStreamLoading) View.VISIBLE else View.GONE
-                    binding.loadStream.text = if (isStreamLoading) "" else getString(R.string.parse_load_stream)
-                    binding.loadStream.icon = if (isStreamLoading) null else androidx.core.content.ContextCompat.getDrawable(requireContext(), R.drawable.ic_troubleshoot_24)
-                    // Disable if loading stream OR if conditions not met (info/item missing or global loading)
-                    val loadStreamEnabled =
-                        (info != null && item != null && !state.loading && !isStreamLoading && hasSelection)
-                    binding.loadStream.isEnabled = loadStreamEnabled
-                    quickActionLoadEnabled = loadStreamEnabled
-                    if (externalMode && autoLoadStreamPending) {
-                        // External URL flow:
-                        // parse(url) -> mediaInfo ready -> auto call loadStream() once.
-                        // This removes one manual click for the user.
-                        when {
-                            loadStreamEnabled && state.playUrlInfo == null -> {
-                                autoLoadStreamPending = false
-                                viewModel.loadStream()
-                            }
-                            // Stop auto-run when parse flow has ended with an error.
-                            !state.loading && !state.streamLoading && !state.error.isNullOrBlank() -> {
-                                autoLoadStreamPending = false
-                            }
-                        }
-                    }
-
-                    // Download Button State
-                    val isDownloadStarting = state.downloadStarting
-                    binding.downloadLoading.visibility = if (isDownloadStarting) View.VISIBLE else View.GONE
-                    binding.download.text = if (isDownloadStarting) "" else getString(R.string.parse_download)
-                    binding.download.icon = if (isDownloadStarting) null else androidx.core.content.ContextCompat.getDrawable(requireContext(), R.drawable.ic_save_alt_24)
-                    // Disable if downloading starting OR if conditions not met (playUrl missing or global loading)
-                    val streamReady = state.outputType == null || state.playUrlInfo != null
-                    val downloadEnabled = (!state.loading && !isDownloadStarting && hasSelection && streamReady)
-                    binding.download.isEnabled = downloadEnabled
-                    quickActionDownloadEnabled = downloadEnabled
-
-                    val sections = state.sections
-                    val inCollection = state.collectionMode
-                    val mediaType = info?.type
-                    val sectionLabelRes = when (mediaType) {
-                        MediaType.Favorite -> R.string.parse_section_label_favorite
-                        MediaType.Bangumi -> R.string.parse_section_label_bangumi
-                        else -> R.string.parse_section_label
-                    }
-                    val pageLabelRes = when (mediaType) {
-                        MediaType.Favorite -> R.string.parse_page_label_video
-                        MediaType.Bangumi,
-                        MediaType.Lesson,
-                        MediaType.WatchLater -> R.string.parse_page_label_episode
-                        else -> R.string.parse_page_label
-                    }
-                    binding.pageLabel.text = getString(if (inCollection) sectionLabelRes else pageLabelRes)
-                    binding.sectionLabel.text = getString(sectionLabelRes)
-                    if (sections == null || sections.tabs.isEmpty() || inCollection) {
-                        binding.sectionLabel.visibility = View.GONE
-                        binding.sectionLayout.visibility = View.GONE
-                        binding.sectionDropdown.setText("", false)
-                    } else {
-                        binding.sectionLabel.visibility = View.VISIBLE
-                        binding.sectionLayout.visibility = View.VISIBLE
-                        sectionTabs = sections.tabs
-                        val sectionLabels = sectionTabs.map { it.name }
-                        if (sectionAdapter == null) {
-                            sectionAdapter = ArrayAdapter(
-                                requireContext(),
-                                android.R.layout.simple_dropdown_item_1line,
-                                sectionLabels,
-                            )
-                            binding.sectionDropdown.setAdapter(sectionAdapter)
-                        } else {
-                            sectionAdapter?.clear()
-                            sectionAdapter?.addAll(sectionLabels)
-                            sectionAdapter?.notifyDataSetChanged()
-                        }
-                        val selectedSectionIndex =
-                            sectionTabs.indexOfFirst { it.id == state.selectedSectionId }
-                        if (selectedSectionIndex >= 0 && selectedSectionIndex < sectionLabels.size) {
-                            binding.sectionDropdown.setText(sectionLabels[selectedSectionIndex], false)
-                        }
-                    }
-
-                    val totalItems = state.items.size
-                    val selectedCount = state.selectedItemIndices.size
-                    val isMultiSelect = selectedCount > 1
-                    val allowAnyExtras = isMultiSelect
-                    val rowClickEnabled = when {
-                        info == null -> false
-                        info.type == MediaType.Video -> state.collectionMode && info.collection
-                        else -> true
-                    }
-                    itemListAdapter?.setRowClickEnabled(rowClickEnabled)
-                    val highlightIndex = if (rowClickEnabled) {
-                        state.collectionPreviewIndex ?: state.selectedItemIndex
-                    } else {
-                        -1
-                    }
-                    itemListAdapter?.submitList(state.items) {
-                        itemListAdapter?.updateSelection(state.selectedItemIndices, highlightIndex)
-                    }
-                    binding.pageSelectedCount.text = getString(
-                        R.string.parse_selected_count,
-                        selectedCount,
-                        totalItems,
-                    )
-                    val paged = info?.paged == true
-                    val showPageModule = totalItems > 1 || paged
-                    binding.pageActions.visibility = if (showPageModule) View.VISIBLE else View.GONE
-                    binding.pageList.visibility = if (showPageModule) View.VISIBLE else View.GONE
-                    binding.pageSelectAll.isEnabled = showPageModule && selectedCount < totalItems
-                    binding.pageClearAll.isEnabled = selectedCount > 0
-                    binding.pageNav.visibility = if (paged) View.VISIBLE else View.GONE
-                    if (paged) {
-                        currentPageIndex = state.pageIndex
-                        if (!binding.pageIndexInput.hasFocus()) {
-                            binding.pageIndexInput.setText(state.pageIndex.toString())
-                        }
-                    }
-                    binding.pageIndexLayout.isEnabled = paged && !state.loading
-                    binding.pagePrev.isEnabled = paged && state.pageIndex > 1 && !state.loading
-                    binding.pageNext.isEnabled = paged && !state.loading
-
-                    binding.formatGroup.check(
-                        when (state.format) {
-                            StreamFormat.Mp4 -> R.id.format_mp4
-                            StreamFormat.Flv -> R.id.format_flv
-                            StreamFormat.Dash -> R.id.format_dash
-                        },
-                    )
-
-                    when (state.outputType) {
-                        OutputType.AudioOnly -> binding.outputGroup.check(R.id.output_audio)
-                        OutputType.VideoOnly -> binding.outputGroup.check(R.id.output_video)
-                        OutputType.AudioVideo -> binding.outputGroup.check(R.id.output_av)
-                        null -> binding.outputGroup.clearCheck()
-                    }
-
-                    val formatEnabled = state.outputType != null
-                    binding.formatGroup.isEnabled = formatEnabled
-                    binding.formatDash.isEnabled = formatEnabled
-                    binding.formatMp4.isEnabled = formatEnabled
-                    binding.formatFlv.isEnabled = formatEnabled
-
-                    val hasVideo = state.videoStreams.isNotEmpty()
-                    val hasAudio = state.audioStreams.isNotEmpty()
-                    val isDash = state.format == StreamFormat.Dash
-                    val allowAv = if (isDash) hasVideo && hasAudio else hasVideo
-                    binding.outputVideo.isEnabled = isDash && hasVideo
-                    binding.outputAv.isEnabled = allowAv
-                    binding.outputAudio.isEnabled = isDash && hasAudio
-
-                    binding.resolutionModeLayout.visibility = if (isMultiSelect) View.VISIBLE else View.GONE
-                    binding.bitrateModeLayout.visibility = if (isMultiSelect) View.VISIBLE else View.GONE
-                    binding.resolutionMultiHint.visibility = if (isMultiSelect) View.VISIBLE else View.GONE
-                    binding.bitrateMultiHint.visibility = if (isMultiSelect) View.VISIBLE else View.GONE
-
-                    val resolutionModeLabel =
-                        resolutionModeOptions.firstOrNull { it.first == state.resolutionMode }?.second
-                    if (resolutionModeLabel != null) {
-                        binding.resolutionModeDropdown.setText(resolutionModeLabel, false)
-                    }
-                    val bitrateModeLabel =
-                        bitrateModeOptions.firstOrNull { it.first == state.audioBitrateMode }?.second
-                    if (bitrateModeLabel != null) {
-                        binding.bitrateModeDropdown.setText(bitrateModeLabel, false)
-                    }
-
-                    val resolutionModeEnabled = isMultiSelect && formatEnabled && hasVideo
-                    binding.resolutionModeLayout.isEnabled = resolutionModeEnabled
-                    binding.resolutionModeDropdown.isEnabled = resolutionModeEnabled
-                    val bitrateModeEnabled = isMultiSelect && formatEnabled && hasAudio
-                    binding.bitrateModeLayout.isEnabled = bitrateModeEnabled
-                    binding.bitrateModeDropdown.isEnabled = bitrateModeEnabled
-
-                    resolutionOptions = state.resolutions
-                    val resolutionLabels = resolutionOptions.map { it.label }
-                    if (resolutionAdapter == null) {
-                        resolutionAdapter = ArrayAdapter(
-                            requireContext(),
-                            android.R.layout.simple_dropdown_item_1line,
-                            resolutionLabels,
-                        )
-                        binding.resolutionDropdown.setAdapter(resolutionAdapter)
-                    } else {
-                        resolutionAdapter?.clear()
-                        resolutionAdapter?.addAll(resolutionLabels)
-                        resolutionAdapter?.notifyDataSetChanged()
-                    }
-                    val resolutionLabel = resolutionOptions.firstOrNull { it.id == state.selectedResolutionId }?.label
-                    if (resolutionLabel != null) {
-                        binding.resolutionDropdown.setText(resolutionLabel, false)
-                    }
-                    val resolutionEnabled =
-                        formatEnabled && hasVideo && (!isMultiSelect || state.resolutionMode == QualityMode.Fixed)
-                    binding.resolutionLayout.isEnabled = resolutionEnabled
-                    binding.resolutionDropdown.isEnabled = resolutionEnabled
-
-                    codecOptions = state.codecs
-                    val codecLabels = codecOptions.map { it.label }
-                    if (codecAdapter == null) {
-                        codecAdapter = ArrayAdapter(
-                            requireContext(),
-                            android.R.layout.simple_dropdown_item_1line,
-                            codecLabels,
-                        )
-                        binding.codecDropdown.setAdapter(codecAdapter)
-                    } else {
-                        codecAdapter?.clear()
-                        codecAdapter?.addAll(codecLabels)
-                        codecAdapter?.notifyDataSetChanged()
-                    }
-                    val codecLabel = codecOptions.firstOrNull { it.codec == state.selectedCodec }?.label
-                    if (codecLabel != null) {
-                        binding.codecDropdown.setText(codecLabel, false)
-                    }
-                    val codecEnabled = formatEnabled && hasVideo
-                    binding.codecLayout.isEnabled = codecEnabled
-                    binding.codecDropdown.isEnabled = codecEnabled
-
-                    audioOptions = state.audioBitrates
-                    val bitrateLabels = audioOptions.map { it.label }
-                    if (bitrateAdapter == null) {
-                        bitrateAdapter = ArrayAdapter(
-                            requireContext(),
-                            android.R.layout.simple_dropdown_item_1line,
-                            bitrateLabels,
-                        )
-                        binding.bitrateDropdown.setAdapter(bitrateAdapter)
-                    } else {
-                        bitrateAdapter?.clear()
-                        bitrateAdapter?.addAll(bitrateLabels)
-                        bitrateAdapter?.notifyDataSetChanged()
-                    }
-                    val bitrateLabel = audioOptions.firstOrNull { it.id == state.selectedAudioId }?.label
-                    if (bitrateLabel != null) {
-                        binding.bitrateDropdown.setText(bitrateLabel, false)
-                    }
-                    val bitrateEnabled =
-                        formatEnabled && hasAudio && (!isMultiSelect || state.audioBitrateMode == QualityMode.Fixed)
-                    binding.bitrateLayout.isEnabled = bitrateEnabled
-                    binding.bitrateDropdown.isEnabled = bitrateEnabled
-
-                    subtitleOptions = state.subtitleList
-                    val subtitleLabels = subtitleOptions.map { it.name }
-                    if (subtitleAdapter == null) {
-                        subtitleAdapter = ArrayAdapter(
-                            requireContext(),
-                            android.R.layout.simple_dropdown_item_1line,
-                            subtitleLabels,
-                        )
-                        binding.subtitleDropdown.setAdapter(subtitleAdapter)
-                    } else {
-                        subtitleAdapter?.clear()
-                        subtitleAdapter?.addAll(subtitleLabels)
-                        subtitleAdapter?.notifyDataSetChanged()
-                    }
-                    val subtitleLabel = subtitleOptions.firstOrNull { it.lan == state.selectedSubtitleLan }?.name
-                    if (subtitleLabel != null) {
-                        binding.subtitleDropdown.setText(subtitleLabel, false)
-                    }
-
-                    binding.subtitleToggle.isChecked = state.subtitleEnabled
-                    binding.subtitleToggle.isEnabled = state.subtitleList.isNotEmpty() || allowAnyExtras
-                    binding.subtitleLayout.isEnabled =
-                        state.subtitleEnabled && (state.subtitleList.isNotEmpty() || allowAnyExtras)
-                    binding.subtitleCopyLoading.visibility =
-                        if (state.subtitleCopying) View.VISIBLE else View.GONE
-                    binding.subtitleCopyNow.text =
-                        if (state.subtitleCopying) "" else getString(R.string.parse_copy_subtitle_now)
-                    binding.subtitleCopyNow.icon = if (state.subtitleCopying) {
-                        null
-                    } else {
-                        ContextCompat.getDrawable(requireContext(), R.drawable.ic_content_copy_24)
-                    }
-                    binding.subtitleCopyNow.isEnabled =
-                        hasSelection &&
-                            !state.loading &&
-                            !state.streamLoading &&
-                            !state.downloadStarting &&
-                            !state.subtitleCopying &&
-                            !state.aiSummaryCopying &&
-                            (state.subtitleList.isNotEmpty() || allowAnyExtras)
-
-                    binding.aiSummaryToggle.isChecked = state.aiSummaryEnabled
-                    binding.aiSummaryToggle.isEnabled = state.aiSummaryAvailable || allowAnyExtras
-                    binding.aiSummaryCopyLoading.visibility =
-                        if (state.aiSummaryCopying) View.VISIBLE else View.GONE
-                    binding.aiSummaryCopyNow.text =
-                        if (state.aiSummaryCopying) "" else getString(R.string.parse_copy_ai_summary_now)
-                    binding.aiSummaryCopyNow.icon = if (state.aiSummaryCopying) {
-                        null
-                    } else {
-                        ContextCompat.getDrawable(requireContext(), R.drawable.ic_content_copy_24)
-                    }
-                    binding.aiSummaryCopyNow.isEnabled =
-                        hasSelection &&
-                            !state.loading &&
-                            !state.streamLoading &&
-                            !state.downloadStarting &&
-                            !state.subtitleCopying &&
-                            !state.aiSummaryCopying &&
-                            (state.aiSummaryAvailable || allowAnyExtras)
-
-                    val collectionAvailable = info?.let { mediaInfo ->
-                        !mediaInfo.nfo.showTitle.isNullOrBlank() &&
-                            (mediaInfo.collection ||
-                                mediaInfo.type == MediaType.Bangumi ||
-                                mediaInfo.type == MediaType.Lesson)
-                    } == true
-                    val collectionModeAvailable = info?.type == MediaType.Video && info?.collection == true
-                    binding.collectionToggle.visibility =
-                        if (collectionModeAvailable) View.VISIBLE else View.GONE
-                    binding.collectionToggleHint.visibility =
-                        if (collectionModeAvailable) View.VISIBLE else View.GONE
-                    binding.collectionToggle.isEnabled = collectionModeAvailable && !state.loading
-                    binding.collectionToggle.isChecked = state.collectionMode
-
-                    binding.nfoCollectionToggle.isChecked = state.nfoCollectionEnabled
-                    binding.nfoSingleToggle.isChecked = state.nfoSingleEnabled
-                    binding.nfoCollectionToggle.isEnabled = collectionAvailable || allowAnyExtras
-
-                    binding.danmakuLiveToggle.isChecked = state.danmakuLiveEnabled
-                    binding.danmakuHistoryToggle.isChecked = state.danmakuHistoryEnabled
-                    binding.danmakuLiveToggle.isEnabled =
-                        (item?.aid != null && item.cid != null) || allowAnyExtras
-                    binding.danmakuHistoryToggle.isEnabled = (item?.cid != null) || allowAnyExtras
-                    binding.danmakuDateLayout.isEnabled = state.danmakuHistoryEnabled
-                    binding.danmakuHourLayout.isEnabled = state.danmakuHistoryEnabled
-                    if (!binding.danmakuDateInput.hasFocus()) {
-                        val currentDate = binding.danmakuDateInput.text?.toString().orEmpty()
-                        if (currentDate != state.danmakuDate) {
-                            binding.danmakuDateInput.setText(state.danmakuDate)
-                        }
-                    }
-                    if (!binding.danmakuHourInput.hasFocus()) {
-                        val currentHour = binding.danmakuHourInput.text?.toString().orEmpty()
-                        if (currentHour != state.danmakuHour) {
-                            binding.danmakuHourInput.setText(state.danmakuHour)
-                        }
-                    }
-
-                    val imageOptions = state.imageOptions
-                    val showImageOptions = imageOptions.isNotEmpty()
-                    binding.imageOptionsGroup.visibility = if (showImageOptions) View.VISIBLE else View.GONE
-                    if (showImageOptions) {
-                        val group = binding.imageOptionsGroup
-                        val optionIds = imageOptions.map { it.id }
-                        if (optionIds != imageOptionIds) {
-                            imageOptionIds = optionIds
-                            imageChips.clear()
-                            group.removeAllViews()
-                            imageOptions.forEach { option ->
-                                val chip = Chip(
-                                    ContextThemeWrapper(
-                                        requireContext(),
-                                        MaterialR.style.Widget_Material3_Chip_Filter,
-                                    ),
-                                )
-                                chip.text = option.label
-                                chip.isCheckable = true
-                                val outputTemplate = binding.outputAv
-                                chip.checkedIcon =
-                                    outputTemplate.checkedIcon?.constantState?.newDrawable()?.mutate()
-                                chip.setCheckedIconTint(outputTemplate.checkedIconTint)
-                                chip.setCheckedIconVisible(outputTemplate.isCheckedIconVisible)
-                                chip.isFocusable = false
-                                chip.isFocusableInTouchMode = false
-                                chip.isChecked = state.selectedImageIds.contains(option.id)
-                                chip.setOnCheckedChangeListener { _, isChecked ->
-                                    if (!suppressUi) {
-                                        preserveScrollAndFocus()
-                                        viewModel.setImageSelection(option.id, isChecked)
-                                    }
-                                }
-                                group.addView(chip)
-                                imageChips[option.id] = chip
-                            }
-                        }
-                        imageOptions.forEach { option ->
-                            val chip = imageChips[option.id] ?: return@forEach
-                            if (chip.text != option.label) {
-                                chip.text = option.label
-                            }
-                            val selected = state.selectedImageIds.contains(option.id)
-                            if (chip.isChecked != selected) {
-                                chip.isChecked = selected
-                            }
-                        }
-                    } else if (imageOptionIds.isNotEmpty()) {
-                        imageOptionIds = emptyList()
-                        imageChips.clear()
-                        binding.imageOptionsGroup.removeAllViews()
-                    }
-
-                    binding.streamInfo.text = state.streamInfo
-                    binding.loginHintCard.visibility =
-                        if (!state.isLoggedIn && info != null) View.VISIBLE else View.GONE
-
-                    state.notice?.let {
-                        Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
-                        viewModel.clearNotice()
-                    }
-                    if (externalMode && closeAfterDownloadQueued) {
-                        // External dialog should dismiss only after enqueue succeeds.
-                        // We use lastDownload != null as the enqueue completion signal.
-                        when {
-                            state.lastDownload != null -> {
-                                closeAfterDownloadQueued = false
-                                (activity as? ExternalDownloadHost)?.onExternalDownloadQueued()
-                            }
-                            // If enqueue failed and state settled with an error, keep dialog open.
-                            !state.downloadStarting && !state.error.isNullOrBlank() -> {
-                                closeAfterDownloadQueued = false
-                            }
-                        }
-                    }
-                    if (quickActionScrollPending && state.playUrlInfo != null) {
-                        quickActionScrollPending = false
-                        scrollToOptionsCard()
-                    }
-                    pendingListAnchorTop?.let { anchor ->
-                        scheduleListAnchorFix(anchor)
-                        if (!state.loading && !state.streamLoading && !state.downloadStarting) {
-                            pendingListAnchorTop = null
-                            pendingScrollY = null
-                        }
-                    } ?: pendingScrollY?.let { target ->
-                        binding.parseScroll.post {
-                            val content = binding.parseScroll.getChildAt(0)?.height ?: 0
-                            val maxScroll = (content - binding.parseScroll.height).coerceAtLeast(0)
-                            binding.parseScroll.scrollTo(0, target.coerceIn(0, maxScroll))
-                        }
-                        if (!state.loading && !state.streamLoading && !state.downloadStarting) {
-                            pendingScrollY = null
-                        }
-                    }
-                    updateQuickActionFab(state, quickActionEnabled)
-                    suppressUi = false
-                }
-                }
-                launch {
-                    viewModel.events.collect { event ->
-                        when (event) {
-                            is ParseEvent.CopySingleSubtitle -> {
-                                val content = event.entry.content
-                                if (!content.isNullOrBlank()) {
-                                    copyTextToClipboard(
-                                        getString(
-                                            R.string.parse_subtitle_copy_clip_label_single,
-                                            event.entry.title,
-                                        ),
-                                        content,
-                                    )
-                                    Toast.makeText(
-                                        requireContext(),
-                                        getString(R.string.parse_subtitle_copy_single_done),
-                                        Toast.LENGTH_SHORT,
-                                    ).show()
-                                } else {
-                                    Toast.makeText(
-                                        requireContext(),
-                                        event.entry.error ?: getString(R.string.parse_error_no_subtitle),
-                                        Toast.LENGTH_SHORT,
-                                    ).show()
-                                }
-                            }
-                            is ParseEvent.ShowSubtitleCopyDialog -> {
-                                showSubtitleCopyDialog(event.entries)
-                            }
-                            is ParseEvent.CopySingleAiSummary -> {
-                                val content = event.entry.content
-                                if (!content.isNullOrBlank()) {
-                                    copyTextToClipboard(
-                                        getString(
-                                            R.string.parse_ai_summary_copy_clip_label_single,
-                                            event.entry.title,
-                                        ),
-                                        content,
-                                    )
-                                    Toast.makeText(
-                                        requireContext(),
-                                        getString(R.string.parse_ai_summary_copy_single_done),
-                                        Toast.LENGTH_SHORT,
-                                    ).show()
-                                } else {
-                                    Toast.makeText(
-                                        requireContext(),
-                                        event.entry.error ?: getString(R.string.parse_error_no_ai),
-                                        Toast.LENGTH_SHORT,
-                                    ).show()
-                                }
-                            }
-                            is ParseEvent.ShowAiSummaryCopyDialog -> {
-                                showAiSummaryCopyDialog(event.entries)
-                            }
-                        }
-                    }
-                }
-                launch {
-                    settingsRepository.settings.collect { settings ->
-                        // Quick action FAB is intentionally disabled in external dialog mode.
-                        quickActionEnabled = !externalMode && settings.parseQuickActionEnabled
-                        updateQuickActionFab(latestState, quickActionEnabled)
-                    }
-                }
-            }
-        }
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        val appBar = requireActivity().findViewById<com.google.android.material.appbar.AppBarLayout>(R.id.app_bar)
-        offsetListener?.let { appBar?.removeOnOffsetChangedListener(it) }
-        offsetListener = null
-        _binding = null
-        itemListAdapter = null
-        sectionAdapter = null
-        mediaTypeAdapter = null
-        resolutionModeAdapter = null
-        resolutionAdapter = null
-        codecAdapter = null
-        bitrateModeAdapter = null
-        bitrateAdapter = null
-        subtitleAdapter = null
-        imageOptionIds = emptyList()
-        imageChips.clear()
-        latestState = null
-        quickActionScrollPending = false
-        quickActionShown = false
-        // Reset external flow transient flags with view lifecycle.
-        closeAfterDownloadQueued = false
-        autoLoadStreamPending = false
+        collectState()
     }
 
     override fun onStart() {
@@ -1195,120 +203,126 @@ class ParseFragment : Fragment() {
         viewModel.refreshLoginState()
     }
 
-    private fun setupDropdown(
-        layout: TextInputLayout,
-        dropdown: MaterialAutoCompleteTextView,
-    ) {
-        dropdown.threshold = 0
-        dropdown.showSoftInputOnFocus = false
-        // UX: tap field or end icon to toggle menu; tap again closes; drag should not open menu.
-        val touchSlop = ViewConfiguration.get(dropdown.context).scaledTouchSlop
-        fun createToggleTouchListener(): View.OnTouchListener {
-            var downX = 0f
-            var downY = 0f
-            var dragging = false
-            var wasShowing = false
-            return View.OnTouchListener { v, event ->
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN -> {
-                        downX = event.x
-                        downY = event.y
-                        dragging = false
-                        wasShowing = dropdown.isPopupShowing
-                        v.parent?.requestDisallowInterceptTouchEvent(true)
-                        true
+    override fun onDestroyView() {
+        super.onDestroyView()
+        val appBar = requireActivity().findViewById<com.google.android.material.appbar.AppBarLayout>(R.id.app_bar)
+        offsetListener?.let { appBar?.removeOnOffsetChangedListener(it) }
+        offsetListener = null
+        latestState = null
+        controlsOffsetPx = 0f
+        closeAfterDownloadQueued = false
+        autoLoadStreamPending = false
+        quickActionScrollPending = false
+        subtitleCopyDialogEntries = null
+        aiSummaryCopyDialogEntries = null
+        _binding = null
+    }
+
+    private fun collectState() {
+        val settingsRepository = requireContext().appContainer.settingsRepository
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.state.collect { state ->
+                        latestState = state
+                        handleStateSideEffects(state)
                     }
-                    MotionEvent.ACTION_MOVE -> {
-                        if (!dragging) {
-                            val dx = event.x - downX
-                            val dy = event.y - downY
-                            if (dx * dx + dy * dy > touchSlop * touchSlop) {
-                                dragging = true
-                                v.parent?.requestDisallowInterceptTouchEvent(false)
-                            }
-                        }
-                        !dragging
-                    }
-                    MotionEvent.ACTION_UP -> {
-                        v.parent?.requestDisallowInterceptTouchEvent(false)
-                        if (!dragging) {
-                            if (wasShowing) {
-                                dropdown.dismissDropDown()
-                            } else {
-                                val adapter = dropdown.adapter
-                                if (adapter != null && adapter.count > 0) {
-                                    // Reset any restored constraint so dropdown always shows full options.
-                                    if (adapter is android.widget.Filterable) {
-                                        adapter.filter.filter(null) { count ->
-                                            if (count > 0) {
-                                                dropdown.post {
-                                                    dropdown.requestFocus()
-                                                    dropdown.showDropDown()
-                                                }
-                                            }
-                                        }
-                                    } else {
-                                        dropdown.requestFocus()
-                                        dropdown.showDropDown()
-                                    }
+                }
+                launch {
+                    viewModel.events.collect { event ->
+                        when (event) {
+                            is ParseEvent.CopySingleSubtitle -> handleCopySingleSubtitle(event.entry)
+                            is ParseEvent.ShowSubtitleCopyDialog -> {
+                                if (event.entries.isNotEmpty()) {
+                                    aiSummaryCopyDialogEntries = null
+                                    subtitleCopyDialogEntries = event.entries
                                 }
                             }
-                            true
-                        } else {
-                            false
+                            is ParseEvent.CopySingleAiSummary -> handleCopySingleAiSummary(event.entry)
+                            is ParseEvent.ShowAiSummaryCopyDialog -> {
+                                if (event.entries.isNotEmpty()) {
+                                    subtitleCopyDialogEntries = null
+                                    aiSummaryCopyDialogEntries = event.entries
+                                }
+                            }
                         }
                     }
-                    MotionEvent.ACTION_CANCEL -> {
-                        v.parent?.requestDisallowInterceptTouchEvent(false)
-                        false
+                }
+                launch {
+                    settingsRepository.settings.collect { settings ->
+                        quickActionEnabled = !externalMode && settings.parseQuickActionEnabled
                     }
-                    else -> false
                 }
             }
         }
-        dropdown.setOnTouchListener(createToggleTouchListener())
-        layout.setOnTouchListener(createToggleTouchListener())
-        layout.findViewById<View>(MaterialR.id.text_input_end_icon)
-            ?.setOnTouchListener(createToggleTouchListener())
-        dropdown.setOnClickListener(null)
-        layout.setOnClickListener(null)
-        layout.setEndIconOnClickListener(null)
     }
 
-    private fun applyPageInput() {
-        val page = binding.pageIndexInput.text?.toString()?.toIntOrNull()
-        if (page != null && page != currentPageIndex) {
-            cacheScrollPosition()
-            viewModel.loadPage(page)
-        } else {
-            binding.pageIndexInput.setText(currentPageIndex.toString())
+    private fun handleStateSideEffects(state: ParseUiState) {
+        if (externalMode && autoLoadStreamPending) {
+            val loadEnabled = state.canLoadStream()
+            when {
+                loadEnabled && state.playUrlInfo == null -> {
+                    autoLoadStreamPending = false
+                    viewModel.loadStream()
+                }
+                !state.loading && !state.streamLoading && !state.error.isNullOrBlank() -> {
+                    autoLoadStreamPending = false
+                }
+            }
         }
-        binding.pageIndexInput.clearFocus()
-        hideKeyboard()
+
+        state.notice?.let {
+            Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
+            viewModel.clearNotice()
+        }
+
+        if (externalMode && closeAfterDownloadQueued) {
+            when {
+                state.lastDownload != null -> {
+                    closeAfterDownloadQueued = false
+                    (activity as? ExternalDownloadHost)?.onExternalDownloadQueued()
+                }
+                !state.downloadStarting && !state.error.isNullOrBlank() -> {
+                    closeAfterDownloadQueued = false
+                }
+            }
+        }
+
+        if (quickActionScrollPending && state.playUrlInfo != null) {
+            quickActionScrollPending = false
+            scrollToOptionsRequest += 1
+        }
     }
 
-    private fun hideKeyboard() {
-        val imm = requireContext().getSystemService(android.content.Context.INPUT_METHOD_SERVICE)
-            as? android.view.inputmethod.InputMethodManager
-        imm?.hideSoftInputFromWindow(binding.inputLink.windowToken, 0)
+    private fun ParseUiState.canLoadStream(): Boolean {
+        val item = items.getOrNull(selectedItemIndex)
+        return mediaInfo != null &&
+            item != null &&
+            selectedItemIndices.isNotEmpty() &&
+            !loading &&
+            !streamLoading
+    }
+
+    private fun pasteFromClipboard() {
+        val clipboard = requireContext().getSystemService(ClipboardManager::class.java) ?: return
+        val text = clipboard.primaryClip?.getItemAt(0)?.text?.toString()
+        if (!text.isNullOrEmpty()) {
+            inputText = text
+        }
     }
 
     private fun consumePendingExternalUrl() {
         val url = pendingExternalUrl ?: return
-        val binding = _binding ?: return
+        if (_binding == null) return
         pendingExternalUrl = null
-        // In external mode we chain parse -> auto loadStream.
         autoLoadStreamPending = externalMode
-
-        binding.inputLink.setText(url)
-        binding.inputLink.setSelection(url.length)
+        inputText = url
         viewModel.parse(url)
     }
 
     private fun onDownloadClicked() {
         fun startDownloadAction() {
             if (externalMode) {
-                // External flow closes host only after download is actually queued.
                 closeAfterDownloadQueued = true
             }
             viewModel.download()
@@ -1353,313 +367,129 @@ class ParseFragment : Fragment() {
         return !hasWifiLikeTransport && cm.isActiveNetworkMetered
     }
 
-    private fun copyTextToClipboard(label: String, content: String) {
-        val clipboard = requireContext().getSystemService(ClipboardManager::class.java) ?: return
-        clipboard.setPrimaryClip(ClipData.newPlainText(label, content))
-    }
-
-    private fun showSubtitleCopyDialog(entries: List<SubtitleCopyEntry>) {
-        if (entries.isEmpty()) return
-        val dialogBinding = DialogParseSubtitleCopyBinding.inflate(layoutInflater)
-        val labels = entries.map { entry ->
-            val subtitlePart = entry.subtitleName?.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()
-            val base = "${entry.title}$subtitlePart"
-            if (entry.content.isNullOrBlank()) {
-                getString(R.string.parse_subtitle_copy_item_unavailable, base)
-            } else {
-                base
-            }
-        }
-        var selectedIndex = entries.indexOfFirst { !it.content.isNullOrBlank() }.takeIf { it >= 0 } ?: 0
-
-        bindLongPressScrollbar(
-            scrollView = dialogBinding.subtitleCopyPreviewScroll,
-            trackView = dialogBinding.subtitleCopyDragTrack,
-            handleView = dialogBinding.subtitleCopyDragHandle,
-        )
-
-        fun bindEntry(index: Int) {
-            val entry = entries.getOrNull(index) ?: return
-            val hasContent = !entry.content.isNullOrBlank()
-            val subtitleName = entry.subtitleName?.takeIf { it.isNotBlank() }
-                ?: getString(R.string.parse_subtitle_label)
-            dialogBinding.subtitleCopyStatus.text = if (hasContent) {
-                getString(R.string.parse_subtitle_copy_status_ready, subtitleName)
-            } else {
-                entry.error ?: getString(R.string.parse_subtitle_copy_unavailable)
-            }
-            dialogBinding.subtitleCopyPreview.text = if (hasContent) {
-                entry.content
-            } else {
-                getString(R.string.parse_subtitle_copy_preview_empty)
-            }
-            dialogBinding.subtitleCopyCurrent.isEnabled = hasContent
-            dialogBinding.subtitleCopyPreviewScroll.scrollTo(0, 0)
-        }
-
-        dialogBinding.subtitleCopyCurrent.setOnClickListener {
-            val entry = entries.getOrNull(selectedIndex) ?: return@setOnClickListener
-            val content = entry.content
-            if (content.isNullOrBlank()) {
-                Toast.makeText(
-                    requireContext(),
-                    entry.error ?: getString(R.string.parse_subtitle_copy_unavailable),
-                    Toast.LENGTH_SHORT,
-                ).show()
-                return@setOnClickListener
-            }
+    private fun handleCopySingleSubtitle(entry: SubtitleCopyEntry) {
+        val content = entry.content
+        if (!content.isNullOrBlank()) {
             copyTextToClipboard(
                 getString(R.string.parse_subtitle_copy_clip_label_single, entry.title),
                 content,
             )
             Toast.makeText(
                 requireContext(),
-                getString(R.string.parse_subtitle_copy_current_done),
+                getString(R.string.parse_subtitle_copy_single_done),
+                Toast.LENGTH_SHORT,
+            ).show()
+        } else {
+            Toast.makeText(
+                requireContext(),
+                entry.error ?: getString(R.string.parse_error_no_subtitle),
                 Toast.LENGTH_SHORT,
             ).show()
         }
-
-        val dropdownAdapter = ArrayAdapter(
-            requireContext(),
-            android.R.layout.simple_dropdown_item_1line,
-            labels,
-        )
-        dialogBinding.subtitleCopyItemDropdown.setAdapter(dropdownAdapter)
-        dialogBinding.subtitleCopyItemDropdown.setOnItemClickListener { _, _, position, _ ->
-            selectedIndex = position
-            bindEntry(position)
-        }
-        dialogBinding.subtitleCopyItemDropdown.setText(labels[selectedIndex], false)
-        bindEntry(selectedIndex)
-
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.parse_subtitle_copy_dialog_title)
-            .setView(dialogBinding.root)
-            .setNegativeButton(android.R.string.cancel, null)
-            .setPositiveButton(R.string.parse_subtitle_copy_all) { _, _ ->
-                val merged = buildMergedSubtitleText(entries)
-                if (merged.isBlank()) {
-                    Toast.makeText(
-                        requireContext(),
-                        getString(R.string.parse_subtitle_copy_unavailable),
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                    return@setPositiveButton
-                }
-                copyTextToClipboard(getString(R.string.parse_subtitle_copy_clip_label_all), merged)
-                Toast.makeText(
-                    requireContext(),
-                    getString(R.string.parse_subtitle_copy_all_done),
-                    Toast.LENGTH_SHORT,
-                ).show()
-            }
-            .show()
     }
 
-    private fun showAiSummaryCopyDialog(entries: List<AiSummaryCopyEntry>) {
-        if (entries.isEmpty()) return
-        val dialogBinding = DialogParseAiSummaryCopyBinding.inflate(layoutInflater)
-        val labels = entries.map { entry ->
-            val base = entry.title
-            if (entry.content.isNullOrBlank()) {
-                getString(R.string.parse_ai_summary_copy_item_unavailable, base)
-            } else {
-                base
-            }
-        }
-        var selectedIndex = entries.indexOfFirst { !it.content.isNullOrBlank() }.takeIf { it >= 0 } ?: 0
-
-        bindLongPressScrollbar(
-            scrollView = dialogBinding.aiSummaryCopyPreviewScroll,
-            trackView = dialogBinding.aiSummaryCopyDragTrack,
-            handleView = dialogBinding.aiSummaryCopyDragHandle,
-        )
-
-        fun bindEntry(index: Int) {
-            val entry = entries.getOrNull(index) ?: return
-            val hasContent = !entry.content.isNullOrBlank()
-            dialogBinding.aiSummaryCopyStatus.text = if (hasContent) {
-                getString(R.string.parse_ai_summary_copy_status_ready)
-            } else {
-                entry.error ?: getString(R.string.parse_ai_summary_copy_unavailable)
-            }
-            dialogBinding.aiSummaryCopyPreview.text = if (hasContent) {
-                entry.content
-            } else {
-                getString(R.string.parse_ai_summary_copy_preview_empty)
-            }
-            dialogBinding.aiSummaryCopyCurrent.isEnabled = hasContent
-            dialogBinding.aiSummaryCopyPreviewScroll.scrollTo(0, 0)
-        }
-
-        dialogBinding.aiSummaryCopyCurrent.setOnClickListener {
-            val entry = entries.getOrNull(selectedIndex) ?: return@setOnClickListener
-            val content = entry.content
-            if (content.isNullOrBlank()) {
-                Toast.makeText(
-                    requireContext(),
-                    entry.error ?: getString(R.string.parse_ai_summary_copy_unavailable),
-                    Toast.LENGTH_SHORT,
-                ).show()
-                return@setOnClickListener
-            }
+    private fun handleCopySingleAiSummary(entry: AiSummaryCopyEntry) {
+        val content = entry.content
+        if (!content.isNullOrBlank()) {
             copyTextToClipboard(
                 getString(R.string.parse_ai_summary_copy_clip_label_single, entry.title),
                 content,
             )
             Toast.makeText(
                 requireContext(),
-                getString(R.string.parse_ai_summary_copy_current_done),
+                getString(R.string.parse_ai_summary_copy_single_done),
+                Toast.LENGTH_SHORT,
+            ).show()
+        } else {
+            Toast.makeText(
+                requireContext(),
+                entry.error ?: getString(R.string.parse_error_no_ai),
                 Toast.LENGTH_SHORT,
             ).show()
         }
-
-        val dropdownAdapter = ArrayAdapter(
-            requireContext(),
-            android.R.layout.simple_dropdown_item_1line,
-            labels,
-        )
-        dialogBinding.aiSummaryCopyItemDropdown.setAdapter(dropdownAdapter)
-        dialogBinding.aiSummaryCopyItemDropdown.setOnItemClickListener { _, _, position, _ ->
-            selectedIndex = position
-            bindEntry(position)
-        }
-        dialogBinding.aiSummaryCopyItemDropdown.setText(labels[selectedIndex], false)
-        bindEntry(selectedIndex)
-
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.parse_ai_summary_copy_dialog_title)
-            .setView(dialogBinding.root)
-            .setNegativeButton(android.R.string.cancel, null)
-            .setPositiveButton(R.string.parse_ai_summary_copy_all) { _, _ ->
-                val merged = buildMergedAiSummaryText(entries)
-                if (merged.isBlank()) {
-                    Toast.makeText(
-                        requireContext(),
-                        getString(R.string.parse_ai_summary_copy_unavailable),
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                    return@setPositiveButton
-                }
-                copyTextToClipboard(getString(R.string.parse_ai_summary_copy_clip_label_all), merged)
-                Toast.makeText(
-                    requireContext(),
-                    getString(R.string.parse_ai_summary_copy_all_done),
-                    Toast.LENGTH_SHORT,
-                ).show()
-            }
-            .show()
     }
 
-    private fun bindLongPressScrollbar(
-        scrollView: ScrollView,
-        trackView: View,
-        handleView: View,
-    ) {
-        val touchSlop = ViewConfiguration.get(scrollView.context).scaledTouchSlop
-        val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
-        val minHandleHeightPx = (52f * resources.displayMetrics.density).roundToInt()
-        var dragEnabled = false
-        var downRawY = 0f
-        var downHandleOffset = 0f
+    private fun copyTextToClipboard(label: String, content: String) {
+        val clipboard = requireContext().getSystemService(ClipboardManager::class.java) ?: return
+        clipboard.setPrimaryClip(ClipData.newPlainText(label, content))
+    }
 
-        fun updateHandle() {
-            val contentHeight = scrollView.getChildAt(0)?.height ?: 0
-            val viewportHeight = scrollView.height
-            val trackHeight = trackView.height
-            if (contentHeight <= viewportHeight || viewportHeight <= 0 || trackHeight <= 0) {
-                trackView.visibility = View.INVISIBLE
-                handleView.visibility = View.INVISIBLE
-                handleView.translationY = 0f
-                return
-            }
-
-            trackView.visibility = View.VISIBLE
-            handleView.visibility = View.VISIBLE
-            val targetHeight = ((viewportHeight.toFloat() / contentHeight.toFloat()) * trackHeight)
-                .roundToInt()
-                .coerceIn(minHandleHeightPx, trackHeight)
-            handleView.updateLayoutParams<ViewGroup.LayoutParams> {
-                if (height != targetHeight) {
-                    height = targetHeight
-                }
-            }
-
-            val maxScroll = (contentHeight - viewportHeight).coerceAtLeast(1)
-            val maxHandleOffset = (trackHeight - targetHeight).toFloat().coerceAtLeast(0f)
-            handleView.translationY = if (maxHandleOffset == 0f) {
-                0f
-            } else {
-                (scrollView.scrollY / maxScroll.toFloat()) * maxHandleOffset
-            }
+    private fun handleCopyCurrentSubtitle(entry: SubtitleCopyEntry) {
+        val content = entry.content
+        if (content.isNullOrBlank()) {
+            Toast.makeText(
+                requireContext(),
+                entry.error ?: getString(R.string.parse_subtitle_copy_unavailable),
+                Toast.LENGTH_SHORT,
+            ).show()
+            return
         }
+        copyTextToClipboard(
+            getString(R.string.parse_subtitle_copy_clip_label_single, entry.title),
+            content,
+        )
+        Toast.makeText(
+            requireContext(),
+            getString(R.string.parse_subtitle_copy_current_done),
+            Toast.LENGTH_SHORT,
+        ).show()
+    }
 
-        scrollView.setOnScrollChangeListener { _, _, _, _, _ ->
-            if (!dragEnabled) {
-                updateHandle()
-            }
+    private fun handleCopyAllSubtitles(entries: List<SubtitleCopyEntry>) {
+        val merged = buildMergedSubtitleText(entries)
+        if (merged.isBlank()) {
+            Toast.makeText(
+                requireContext(),
+                getString(R.string.parse_subtitle_copy_unavailable),
+                Toast.LENGTH_SHORT,
+            ).show()
+            return
         }
+        copyTextToClipboard(getString(R.string.parse_subtitle_copy_clip_label_all), merged)
+        Toast.makeText(
+            requireContext(),
+            getString(R.string.parse_subtitle_copy_all_done),
+            Toast.LENGTH_SHORT,
+        ).show()
+    }
 
-        trackView.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-            updateHandle()
+    private fun handleCopyCurrentAiSummary(entry: AiSummaryCopyEntry) {
+        val content = entry.content
+        if (content.isNullOrBlank()) {
+            Toast.makeText(
+                requireContext(),
+                entry.error ?: getString(R.string.parse_ai_summary_copy_unavailable),
+                Toast.LENGTH_SHORT,
+            ).show()
+            return
         }
-        scrollView.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-            updateHandle()
-        }
-        scrollView.getChildAt(0)?.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-            updateHandle()
-        }
-        scrollView.post { updateHandle() }
+        copyTextToClipboard(
+            getString(R.string.parse_ai_summary_copy_clip_label_single, entry.title),
+            content,
+        )
+        Toast.makeText(
+            requireContext(),
+            getString(R.string.parse_ai_summary_copy_current_done),
+            Toast.LENGTH_SHORT,
+        ).show()
+    }
 
-        val enableDrag = Runnable {
-            dragEnabled = true
-            handleView.isPressed = true
-            handleView.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-            handleView.parent?.requestDisallowInterceptTouchEvent(true)
+    private fun handleCopyAllAiSummaries(entries: List<AiSummaryCopyEntry>) {
+        val merged = buildMergedAiSummaryText(entries)
+        if (merged.isBlank()) {
+            Toast.makeText(
+                requireContext(),
+                getString(R.string.parse_ai_summary_copy_unavailable),
+                Toast.LENGTH_SHORT,
+            ).show()
+            return
         }
-
-        handleView.setOnTouchListener { v, event ->
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    if (handleView.visibility != View.VISIBLE) return@setOnTouchListener false
-                    downRawY = event.rawY
-                    downHandleOffset = handleView.translationY
-                    dragEnabled = false
-                    v.removeCallbacks(enableDrag)
-                    v.postDelayed(enableDrag, longPressTimeout)
-                    true
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    val deltaY = event.rawY - downRawY
-                    if (!dragEnabled && abs(deltaY) > touchSlop) {
-                        v.removeCallbacks(enableDrag)
-                    }
-                    if (!dragEnabled) {
-                        return@setOnTouchListener true
-                    }
-
-                    val maxHandleOffset =
-                        (trackView.height - handleView.height).toFloat().coerceAtLeast(0f)
-                    val nextOffset = (downHandleOffset + deltaY).coerceIn(0f, maxHandleOffset)
-                    handleView.translationY = nextOffset
-                    val contentHeight = scrollView.getChildAt(0)?.height ?: 0
-                    val maxScroll = (contentHeight - scrollView.height).coerceAtLeast(0)
-                    if (maxScroll > 0 && maxHandleOffset > 0f) {
-                        val targetScroll = ((nextOffset / maxHandleOffset) * maxScroll).roundToInt()
-                        scrollView.scrollTo(0, targetScroll)
-                    }
-                    true
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    v.removeCallbacks(enableDrag)
-                    dragEnabled = false
-                    handleView.isPressed = false
-                    handleView.parent?.requestDisallowInterceptTouchEvent(false)
-                    true
-                }
-                else -> false
-            }
-        }
+        copyTextToClipboard(getString(R.string.parse_ai_summary_copy_clip_label_all), merged)
+        Toast.makeText(
+            requireContext(),
+            getString(R.string.parse_ai_summary_copy_all_done),
+            Toast.LENGTH_SHORT,
+        ).show()
     }
 
     private fun buildMergedSubtitleText(entries: List<SubtitleCopyEntry>): String {
@@ -1677,192 +507,13 @@ class ParseFragment : Fragment() {
         }.joinToString("\n\n")
     }
 
-    private data class VideoCardDisplay(
-        val title: String,
-        val description: String,
-        val coverUrl: String,
-        val stat: MediaStat,
-    )
-
-    private fun resolveVideoCardDisplay(
-        state: ParseUiState,
-        info: MediaInfo,
-        selectedItem: MediaItem?,
-    ): VideoCardDisplay {
-        val isCollectionVideo = state.collectionMode && info.type == MediaType.Video && info.collection
-        val previewItem = if (isCollectionVideo) {
-            state.collectionPreviewIndex?.let { index -> state.items.getOrNull(index) }
-        } else {
-            null
-        }
-
-        if (previewItem != null) {
-            val title = previewItem.title.trim().ifBlank {
-                info.nfo.showTitle?.trim().orEmpty()
-            }
-            val description = previewItem.description.trim().ifBlank {
-                info.nfo.intro?.trim().orEmpty()
-            }
-            val coverUrl = previewItem.coverUrl.ifBlank {
-                info.nfo.thumbs.firstOrNull { it.id == "cover" }?.url
-                    ?: info.nfo.thumbs.firstOrNull { it.id == "ugc" }?.url
-                    ?: info.nfo.thumbs.firstOrNull()?.url
-                    ?: ""
-            }
-            val stat = state.collectionPreviewStat ?: info.nfo.stat
-            return VideoCardDisplay(
-                title = title,
-                description = description,
-                coverUrl = coverUrl,
-                stat = stat,
-            )
-        }
-
-        if (isCollectionVideo) {
-            val title = info.nfo.showTitle?.trim().ifNullOrBlank {
-                selectedItem?.title?.trim().orEmpty()
-            }
-            val description = info.nfo.intro?.trim().ifNullOrBlank {
-                selectedItem?.description?.trim().orEmpty()
-            }
-            val coverUrl = info.nfo.thumbs.firstOrNull { it.id == "ugc" }?.url
-                ?: info.nfo.thumbs.firstOrNull()?.url
-                ?: selectedItem?.coverUrl.orEmpty()
-            return VideoCardDisplay(
-                title = title,
-                description = description,
-                coverUrl = coverUrl,
-                stat = selectedItem?.stat ?: state.selectedItemStat ?: info.nfo.stat,
-            )
-        }
-
-        if (info.type == MediaType.Video) {
-            val title = resolveNonCollectionVideoTitle(state, info, selectedItem)
-            val description = selectedItem?.description?.trim().ifNullOrBlank {
-                info.nfo.intro?.trim().orEmpty()
-            }
-            val coverUrl = selectedItem?.coverUrl?.ifBlank { null }
-                ?: info.nfo.thumbs.firstOrNull()?.url
-                ?: ""
-            return VideoCardDisplay(
-                title = title,
-                description = description,
-                coverUrl = coverUrl,
-                stat = info.nfo.stat,
-            )
-        }
-
-        val title = selectedItem?.title?.trim().ifNullOrBlank {
-            info.nfo.showTitle?.trim().orEmpty()
-        }
-        val fallbackDescription = when (info.type) {
-            MediaType.Favorite,
-            MediaType.WatchLater,
-            -> ""
-            else -> info.nfo.intro?.trim().orEmpty()
-        }
-        val description = selectedItem?.description?.trim().ifNullOrBlank {
-            fallbackDescription
-        }
-        val coverUrl = selectedItem?.coverUrl?.ifBlank { null }
-            ?: info.nfo.thumbs.firstOrNull()?.url
-            ?: ""
-        val stat = when (info.type) {
-            MediaType.Favorite,
-            MediaType.WatchLater,
-            -> selectedItem?.stat ?: state.selectedItemStat ?: MediaStat()
-            else -> selectedItem?.stat ?: state.selectedItemStat ?: info.nfo.stat
-        }
-        return VideoCardDisplay(
-            title = title,
-            description = description,
-            coverUrl = coverUrl,
-            stat = stat,
-        )
-    }
-
-    private fun resolveNonCollectionVideoTitle(
-        state: ParseUiState,
-        info: MediaInfo,
-        selectedItem: MediaItem?,
-    ): String {
-        val sectionTitle = state.sections
-            ?.tabs
-            ?.firstOrNull { it.id == state.selectedSectionId }
-            ?.name
-            ?.trim()
-            .orEmpty()
-        if (sectionTitle.isNotBlank()) return sectionTitle
-
-        val baseTitle = info.nfo.showTitle?.trim().orEmpty()
-        if (!info.collection && baseTitle.isNotBlank()) return baseTitle
-
-        if (info.collection && state.items.size == 1) {
-            val singleTitle = selectedItem?.title?.trim().orEmpty()
-            if (singleTitle.isNotBlank()) return singleTitle
-        }
-
-        return if (baseTitle.isNotBlank()) {
-            baseTitle
-        } else {
-            selectedItem?.title?.trim().orEmpty()
-        }
-    }
-
-    private fun String?.ifNullOrBlank(fallback: () -> String): String {
-        return this?.takeIf { it.isNotBlank() } ?: fallback()
-    }
-
-    private fun hasAnyStat(stat: MediaStat): Boolean {
-        return listOf(
-            stat.play,
-            stat.danmaku,
-            stat.reply,
-            stat.like,
-            stat.coin,
-            stat.favorite,
-            stat.share,
-        ).any { it != null }
-    }
-
-    private fun bindStats(stat: MediaStat) {
-        val hasAny = hasAnyStat(stat)
-        binding.statScroll.visibility = if (hasAny) View.VISIBLE else View.GONE
-        updateStat(binding.statPlayItem, binding.statPlayText, stat.play)
-        updateStat(binding.statDanmakuItem, binding.statDanmakuText, stat.danmaku)
-        updateStat(binding.statReplyItem, binding.statReplyText, stat.reply)
-        updateStat(binding.statLikeItem, binding.statLikeText, stat.like)
-        updateStat(binding.statCoinItem, binding.statCoinText, stat.coin)
-        updateStat(binding.statFavoriteItem, binding.statFavoriteText, stat.favorite)
-        updateStat(binding.statShareItem, binding.statShareText, stat.share)
-    }
-
-    private fun updateStat(container: View, label: TextView, value: Long?) {
-        if (value == null) {
-            container.visibility = View.GONE
-            return
-        }
-        container.visibility = View.VISIBLE
-        label.text = formatStat(value)
-    }
-
-    private fun formatStat(value: Long): String {
-        return when {
-            value >= 100_000_000L -> String.format("%.1f亿", value / 100_000_000.0)
-            value >= 10_000L -> String.format("%.1f万", value / 10_000.0)
-            else -> value.toString()
-        }
-    }
-
     interface ExternalDownloadHost {
-        // Called when external flow can safely close dialog and return to caller app.
         fun onExternalDownloadQueued()
     }
 
     companion object {
         private const val ARG_EXTERNAL_MODE = "arg_external_mode"
 
-        // Single entry to build fragment so host mode is explicit and easy to grep.
         fun newInstance(externalMode: Boolean = false): ParseFragment {
             return ParseFragment().apply {
                 arguments = bundleOf(ARG_EXTERNAL_MODE to externalMode)
@@ -1870,4 +521,3 @@ class ParseFragment : Fragment() {
         }
     }
 }
-

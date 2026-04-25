@@ -1444,7 +1444,7 @@ class MediaRepository(
         val acceptQuality = data.acceptQuality ?: emptyList()
         val acceptDescription = data.acceptDescription ?: emptyList()
 
-        if (data.dash != null) {
+        if (format == StreamFormat.Dash && data.dash != null) {
             val dash = data.dash
             val video = dash.video?.mapNotNull { it.toVideoStream(StreamFormat.Dash) } ?: emptyList()
             val audio = buildList {
@@ -1463,7 +1463,7 @@ class MediaRepository(
 
         val durls = data.durls ?: emptyList()
         if (durls.isNotEmpty()) {
-            val resolvedFormat = StreamFormat.Mp4
+            val resolvedFormat = resolveLegacyStreamFormat(data, format)
             val video = durls.mapNotNull { it.toVideoStream(resolvedFormat) }
             return PlayUrlInfo(
                 format = resolvedFormat,
@@ -1476,11 +1476,7 @@ class MediaRepository(
 
         val durlList = data.durl ?: emptyList()
         if (durlList.isNotEmpty()) {
-            val resolvedFormat = if (data.acceptFormat?.contains("flv") == true) {
-                StreamFormat.Flv
-            } else {
-                StreamFormat.Mp4
-            }
+            val resolvedFormat = resolveLegacyStreamFormat(data, format)
             val video = if (acceptQuality.isNotEmpty()) {
                 acceptQuality.mapNotNull { qn ->
                     val info = if (data.quality == qn) {
@@ -1507,7 +1503,64 @@ class MediaRepository(
                 acceptDescription = acceptDescription,
             )
         }
+        if (data.dash != null) {
+            val dash = data.dash
+            val video = dash.video?.mapNotNull { it.toVideoStream(StreamFormat.Dash) } ?: emptyList()
+            val audio = buildList {
+                addAll(dash.audio?.mapNotNull { it.toAudioStream() }.orEmpty())
+                dash.dolby?.audio?.firstOrNull()?.toAudioStream()?.let { add(it) }
+                dash.flac?.audio?.toAudioStream()?.let { add(it) }
+            }
+            return PlayUrlInfo(
+                format = StreamFormat.Dash,
+                video = video,
+                audio = audio,
+                acceptQuality = acceptQuality,
+                acceptDescription = acceptDescription,
+            )
+        }
         throw BiliHttpException("No playable stream", -1)
+    }
+
+    private fun resolveLegacyStreamFormat(
+        data: PlayUrlData,
+        requestedFormat: StreamFormat,
+    ): StreamFormat {
+        parseResponseFormat(data.format)?.let { return it }
+        val accepted = parseAcceptFormats(data.acceptFormat)
+        return when {
+            requestedFormat == StreamFormat.Flv && StreamFormat.Flv in accepted -> StreamFormat.Flv
+            requestedFormat == StreamFormat.Mp4 && StreamFormat.Mp4 in accepted -> StreamFormat.Mp4
+            StreamFormat.Mp4 in accepted && StreamFormat.Flv !in accepted -> StreamFormat.Mp4
+            StreamFormat.Flv in accepted && StreamFormat.Mp4 !in accepted -> StreamFormat.Flv
+            requestedFormat != StreamFormat.Dash -> requestedFormat
+            else -> StreamFormat.Mp4
+        }
+    }
+
+    private fun parseResponseFormat(format: String?): StreamFormat? {
+        val normalized = format?.trim()?.lowercase().orEmpty()
+        return when {
+            normalized.isBlank() -> null
+            "flv" in normalized -> StreamFormat.Flv
+            "mp4" in normalized -> StreamFormat.Mp4
+            else -> null
+        }
+    }
+
+    private fun parseAcceptFormats(acceptFormat: String?): Set<StreamFormat> {
+        if (acceptFormat.isNullOrBlank()) return emptySet()
+        return buildSet {
+            acceptFormat
+                .split(',')
+                .map { it.trim().lowercase() }
+                .forEach { token ->
+                    when {
+                        "mp4" in token -> add(StreamFormat.Mp4)
+                        "flv" in token -> add(StreamFormat.Flv)
+                    }
+                }
+        }
     }
 
     private fun resolvePlayUrlData(
@@ -2417,6 +2470,7 @@ private data class PlayUrlVideoInfoResult(
 
 private data class PlayUrlData(
     @Json(name = "quality") val quality: Int?,
+    @Json(name = "format") val format: String?,
     @Json(name = "accept_quality") val acceptQuality: List<Int>?,
     @Json(name = "accept_description") val acceptDescription: List<String>?,
     @Json(name = "accept_format") val acceptFormat: String?,
