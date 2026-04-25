@@ -16,6 +16,9 @@ class BiliToolsApp : Application(), Application.ActivityLifecycleCallbacks {
     private var startedActivityCount: Int = 0
     private var previousUncaughtExceptionHandler: Thread.UncaughtExceptionHandler? = null
 
+    internal val visibleActivityCount: Int
+        get() = startedActivityCount
+
     val isAppInForeground: Boolean
         get() = startedActivityCount > 0
 

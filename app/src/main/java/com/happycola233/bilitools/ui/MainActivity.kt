@@ -14,6 +14,7 @@ import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
+import com.happycola233.bilitools.BiliToolsApp
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.appContainer
 import com.happycola233.bilitools.data.UpdateCheckResult
@@ -28,6 +29,9 @@ import kotlinx.coroutines.launch
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var appliedThemeSnapshot: ThemeSettingsSnapshot
+    private var pendingThemeRecreate = false
+    private var themeRecreateScheduled = false
+    private val pendingThemeRecreateRunnable = Runnable { runPendingThemeRecreate() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
@@ -110,12 +114,13 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        recreateIfThemeSettingsChanged()
+        updatePendingThemeRecreate()
     }
 
     override fun onResume() {
         super.onResume()
         requestInsetsRefresh()
+        schedulePendingThemeRecreateIfNeeded()
     }
 
     override fun onMultiWindowModeChanged(
@@ -152,15 +157,54 @@ class MainActivity : AppCompatActivity() {
         sourceIntent?.removeExtra(ExternalDownloadContract.EXTRA_URL)
     }
 
-    private fun recreateIfThemeSettingsChanged() {
-        val currentSnapshot = applicationContext.currentThemeSettingsSnapshot(
-            resources.configuration.uiMode,
-        )
-        if (currentSnapshot != appliedThemeSnapshot) {
-            recreate()
+    private fun updatePendingThemeRecreate() {
+        val currentSnapshot = currentThemeSettingsSnapshot()
+        if (currentSnapshot == appliedThemeSnapshot) {
+            appliedThemeSnapshot = currentSnapshot
+            pendingThemeRecreate = false
+        } else {
+            pendingThemeRecreate = true
+        }
+    }
+
+    private fun schedulePendingThemeRecreateIfNeeded(delayMillis: Long = 0L) {
+        if (!pendingThemeRecreate || themeRecreateScheduled || !::binding.isInitialized) return
+        themeRecreateScheduled = true
+        binding.root.postDelayed(pendingThemeRecreateRunnable, delayMillis)
+    }
+
+    private fun runPendingThemeRecreate() {
+        themeRecreateScheduled = false
+        updatePendingThemeRecreate()
+        if (!pendingThemeRecreate || isFinishing || isDestroyed) return
+
+        // SettingsActivity remains started while its finish animation reveals this
+        // window. Keep the old page alive until no other activity is visible.
+        if (applicationHasAnotherVisibleActivity()) {
+            schedulePendingThemeRecreateIfNeeded(THEME_RECREATE_RETRY_DELAY_MILLIS)
             return
         }
-        appliedThemeSnapshot = currentSnapshot
+
+        themeRecreateScheduled = true
+        binding.root.postOnAnimation {
+            themeRecreateScheduled = false
+            updatePendingThemeRecreate()
+            if (!pendingThemeRecreate || isFinishing || isDestroyed) return@postOnAnimation
+            if (applicationHasAnotherVisibleActivity()) {
+                schedulePendingThemeRecreateIfNeeded(THEME_RECREATE_RETRY_DELAY_MILLIS)
+                return@postOnAnimation
+            }
+            recreate()
+        }
+    }
+
+    private fun currentThemeSettingsSnapshot(): ThemeSettingsSnapshot {
+        return applicationContext.currentThemeSettingsSnapshot(resources.configuration.uiMode)
+    }
+
+    private fun applicationHasAnotherVisibleActivity(): Boolean {
+        val app = application as? BiliToolsApp ?: return false
+        return app.visibleActivityCount > 1
     }
 
     private fun requestInsetsRefresh() {
@@ -219,6 +263,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_OPEN_DOWNLOADS = "extra_open_downloads"
+        private const val THEME_RECREATE_RETRY_DELAY_MILLIS = 48L
         private val TOP_BAR_INSET_TYPES =
             WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.displayCutout()
         private val BOTTOM_BAR_INSET_TYPES =
