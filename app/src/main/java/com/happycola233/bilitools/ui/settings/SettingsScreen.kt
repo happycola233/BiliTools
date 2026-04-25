@@ -98,6 +98,7 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -2363,19 +2364,27 @@ private fun ColorSchemePickerListItem(
             ),
         )
 
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 48.dp),
+        Box(
             modifier = Modifier
+                .fillMaxWidth()
                 .background(SettingsExpressiveDefaults.listItemColors.containerColor)
                 .padding(bottom = 8.dp),
         ) {
-            items(options) { option ->
-                ColorPickerButton(
-                    color = option.seedColor,
-                    isSelected = option.themeColor == color,
-                    modifier = Modifier.padding(4.dp),
-                    onClick = { onColorChange(option.themeColor) },
-                )
+            LazyRow(
+                contentPadding = PaddingValues(end = 48.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 56.dp)
+                    .clipToBounds(),
+            ) {
+                items(options) { option ->
+                    ColorPickerButton(
+                        color = option.seedColor,
+                        isSelected = option.themeColor == color,
+                        modifier = Modifier.padding(4.dp),
+                        onClick = { onColorChange(option.themeColor) },
+                    )
+                }
             }
         }
     }
