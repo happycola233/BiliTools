@@ -227,7 +227,6 @@ class IssueReportRepository(
             "hideDownloadedVideosInSystemAlbum",
             settings.hideDownloadedVideosInSystemAlbum.toString(),
         )
-        appendKeyValue("parseQuickActionEnabled", settings.parseQuickActionEnabled.toString())
         appendKeyValue("downloadsGlassDebugEnabled", settings.downloadsGlassDebugEnabled.toString())
         appendKeyValue(
             "downloadsGlassCornerRadiusDp",

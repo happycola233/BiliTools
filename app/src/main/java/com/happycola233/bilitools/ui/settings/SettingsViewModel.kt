@@ -90,10 +90,6 @@ class SettingsViewModel(
         settingsRepository.setHideDownloadedVideosInSystemAlbum(enabled)
     }
 
-    fun setParseQuickActionEnabled(enabled: Boolean) {
-        settingsRepository.setParseQuickActionEnabled(enabled)
-    }
-
     fun setDownloadsGlassDebugEnabled(enabled: Boolean) {
         settingsRepository.setDownloadsGlassDebugEnabled(enabled)
     }

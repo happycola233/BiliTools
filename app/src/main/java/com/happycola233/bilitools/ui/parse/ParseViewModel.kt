@@ -44,6 +44,8 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
@@ -77,6 +79,16 @@ data class ImageOption(
 private data class ItemPresentationDetail(
     val stat: MediaStat?,
     val description: String?,
+)
+
+private data class StreamRequestKey(
+    val mediaId: String,
+    val mediaType: MediaType,
+    val selectedSectionId: Long?,
+    val pageIndex: Int,
+    val collectionMode: Boolean,
+    val selectedItemIndex: Int,
+    val format: StreamFormat,
 )
 
 private data class DownloadTargets(
@@ -212,9 +224,28 @@ class ParseViewModel(
     private val itemStatCache = mutableMapOf<String, MediaStat>()
     private val itemDescriptionCache = mutableMapOf<String, String>()
     private var streamLoadGeneration = 0L
+    private var loadedStreamKey: StreamRequestKey? = null
+    private var loadingStreamKey: StreamRequestKey? = null
+    private var failedStreamKey: StreamRequestKey? = null
 
     init {
         refreshLoginState()
+        viewModelScope.launch {
+            _state
+                .map { it.autoStreamRequestKeyOrNull() }
+                .distinctUntilChanged()
+                .collect { requestKey ->
+                    if (requestKey == null) return@collect
+                    if (
+                        requestKey == loadedStreamKey ||
+                        requestKey == loadingStreamKey ||
+                        requestKey == failedStreamKey
+                    ) {
+                        return@collect
+                    }
+                    loadStream()
+                }
+        }
     }
 
     fun refreshLoginState() {
@@ -230,7 +261,8 @@ class ParseViewModel(
 
     fun parse(input: String) {
         viewModelScope.launch {
-            _state.update { it.copy(loading = true, error = null, notice = null) }
+            resetStreamLoadTracking()
+            _state.update { it.copy(loading = true, streamLoading = false, error = null, notice = null) }
             offsetMap.clear()
             collectionStatCache.clear()
             itemStatCache.clear()
@@ -294,6 +326,7 @@ class ParseViewModel(
 
     fun clear() {
         val selectedType = _state.value.selectedMediaType
+        resetStreamLoadTracking()
         offsetMap.clear()
         collectionStatCache.clear()
         itemStatCache.clear()
@@ -324,16 +357,7 @@ class ParseViewModel(
                     selectedItemIndex = index,
                     selectedItemIndices = selectedItems,
                     selectedItemStat = item.stat,
-                    playUrlInfo = null,
-                    videoStreams = emptyList(),
-                    audioStreams = emptyList(),
-                    resolutions = emptyList(),
-                    codecs = emptyList(),
-                    audioBitrates = emptyList(),
-                    selectedResolutionId = null,
-                    selectedCodec = null,
-                    selectedAudioId = null,
-                    warning = null,
+                    warning = streamWarningForPendingSelectionChange(it),
                 ),
             )
         }
@@ -367,16 +391,7 @@ class ParseViewModel(
                     selectedItemIndices = selected,
                     selectedItemIndex = nextCurrent,
                     selectedItemStat = nextItem?.stat,
-                    playUrlInfo = null,
-                    videoStreams = emptyList(),
-                    audioStreams = emptyList(),
-                    resolutions = emptyList(),
-                    codecs = emptyList(),
-                    audioBitrates = emptyList(),
-                    selectedResolutionId = null,
-                    selectedCodec = null,
-                    selectedAudioId = null,
-                    warning = null,
+                    warning = streamWarningForPendingSelectionChange(it),
                 )
             } else {
                 it.copy(
@@ -479,7 +494,8 @@ class ParseViewModel(
             null
         }
         viewModelScope.launch {
-            _state.update { it.copy(loading = true, error = null, notice = null) }
+            resetStreamLoadTracking()
+            _state.update { it.copy(loading = true, streamLoading = false, error = null, notice = null) }
             runCatching {
                 val updated = mediaRepository.getMediaInfo(
                     info.id,
@@ -555,7 +571,8 @@ class ParseViewModel(
     fun selectSection(sectionId: Long) {
         val info = _state.value.mediaInfo ?: return
         viewModelScope.launch {
-            _state.update { it.copy(loading = true, error = null, notice = null) }
+            resetStreamLoadTracking()
+            _state.update { it.copy(loading = true, streamLoading = false, error = null, notice = null) }
             runCatching {
                 val updated = mediaRepository.getMediaInfo(
                     info.id,
@@ -608,7 +625,8 @@ class ParseViewModel(
         if (_state.value.collectionMode == enabled) return
         val target = _state.value.selectedSectionId
         viewModelScope.launch {
-            _state.update { it.copy(loading = true, error = null, notice = null) }
+            resetStreamLoadTracking()
+            _state.update { it.copy(loading = true, streamLoading = false, error = null, notice = null) }
             runCatching {
                 val updated = mediaRepository.getMediaInfo(
                     info.id,
@@ -667,10 +685,9 @@ class ParseViewModel(
             it.copy(
                 format = format,
                 outputType = nextOutput,
-                warning = null,
+                warning = optimisticStreamWarningFor(format),
             )
         }
-        loadStream()
     }
 
     fun setOutputType(type: OutputType?) {
@@ -788,9 +805,13 @@ class ParseViewModel(
         }
     }
 
-    fun loadStream() {
+    private fun loadStream() {
         if (_state.value.mediaInfo == null) return
         val item = currentItem() ?: return
+        val requestKey = _state.value.streamRequestKeyOrNull() ?: return
+        if (loadingStreamKey == requestKey) return
+        loadingStreamKey = requestKey
+        failedStreamKey = null
         val requestedFormat = _state.value.format
         val requestGeneration = ++streamLoadGeneration
         val itemIndex = _state.value.selectedItemIndex
@@ -852,9 +873,11 @@ class ParseViewModel(
                     audioBitrateMode,
                 )
                 _state.update { current ->
-                    if (requestGeneration != streamLoadGeneration) {
+                    if (requestGeneration != streamLoadGeneration || loadingStreamKey != requestKey) {
                         return@update current
                     }
+                    loadedStreamKey = requestKey
+                    loadingStreamKey = null
                     current.copy(
                         streamLoading = false,
                         playUrlInfo = playUrlInfo,
@@ -873,6 +896,8 @@ class ParseViewModel(
             }.onFailure { err ->
                 if (err is CancellationException) throw err
                 if (requestGeneration == streamLoadGeneration) {
+                    failedStreamKey = requestKey
+                    loadingStreamKey = null
                     setStreamLoadingError(err)
                 }
             }
@@ -2177,6 +2202,17 @@ class ParseViewModel(
         }
     }
 
+    private fun optimisticStreamWarningFor(format: StreamFormat): String? {
+        return when (format) {
+            StreamFormat.Dash -> strings.get(R.string.parse_warning_dash)
+            else -> null
+        }
+    }
+
+    private fun streamWarningForPendingSelectionChange(state: ParseUiState): String? {
+        return state.warning ?: optimisticStreamWarningFor(state.format)
+    }
+
     private fun mapOutputExtensionLabel(extension: String): String {
         return extension.trim().uppercase()
     }
@@ -2452,6 +2488,34 @@ class ParseViewModel(
 
     private fun currentItem(state: ParseUiState = _state.value): MediaItem? {
         return state.items.getOrNull(state.selectedItemIndex)
+    }
+
+    private fun ParseUiState.autoStreamRequestKeyOrNull(): StreamRequestKey? {
+        if (loading || mediaInfo == null || outputType == null || selectedItemIndices.isEmpty()) {
+            return null
+        }
+        return streamRequestKeyOrNull()
+    }
+
+    private fun ParseUiState.streamRequestKeyOrNull(): StreamRequestKey? {
+        val info = mediaInfo ?: return null
+        if (selectedItemIndex !in items.indices) return null
+        return StreamRequestKey(
+            mediaId = info.id,
+            mediaType = info.type,
+            selectedSectionId = selectedSectionId,
+            pageIndex = pageIndex,
+            collectionMode = collectionMode,
+            selectedItemIndex = selectedItemIndex,
+            format = format,
+        )
+    }
+
+    private fun resetStreamLoadTracking() {
+        streamLoadGeneration += 1
+        loadedStreamKey = null
+        loadingStreamKey = null
+        failedStreamKey = null
     }
 
     private fun selectVideoStream(state: ParseUiState): VideoStream? {

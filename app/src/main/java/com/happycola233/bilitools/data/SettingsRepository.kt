@@ -44,7 +44,6 @@ data class AppSettings(
     val downloadRootRelativePath: String = SettingsRepository.DEFAULT_DOWNLOAD_ROOT,
     val confirmCellularDownload: Boolean = true,
     val hideDownloadedVideosInSystemAlbum: Boolean = false,
-    val parseQuickActionEnabled: Boolean = true,
     val downloadsGlassDebugEnabled: Boolean = false,
     val downloadsGlassCornerRadiusDp: Float = SettingsRepository.DEFAULT_DOWNLOADS_GLASS_CORNER_RADIUS_DP,
     val downloadsGlassBlurRadiusDp: Float = SettingsRepository.DEFAULT_DOWNLOADS_GLASS_BLUR_RADIUS_DP,
@@ -163,8 +162,6 @@ class SettingsRepository(context: Context) {
     fun shouldHideDownloadedVideosInSystemAlbum(): Boolean =
         _settings.value.hideDownloadedVideosInSystemAlbum
 
-    fun shouldShowParseQuickAction(): Boolean = _settings.value.parseQuickActionEnabled
-
     fun shouldUseLiveActivityStyleNotification(): Boolean =
         _settings.value.liveActivityStyleNotificationEnabled && appContext.isLiveUpdateSupported()
 
@@ -238,13 +235,6 @@ class SettingsRepository(context: Context) {
         val updated = current.copy(hideDownloadedVideosInSystemAlbum = enabled)
         _settings.value = updated
         scheduleDownloadGalleryVisibilitySync(updated, forceRefresh = true)
-    }
-
-    fun setParseQuickActionEnabled(enabled: Boolean) {
-        val current = _settings.value
-        if (current.parseQuickActionEnabled == enabled) return
-        prefs.edit().putBoolean(KEY_PARSE_QUICK_ACTION, enabled).apply()
-        _settings.value = current.copy(parseQuickActionEnabled = enabled)
     }
 
     fun setDownloadsGlassDebugEnabled(enabled: Boolean) {
@@ -481,7 +471,6 @@ class SettingsRepository(context: Context) {
                 KEY_HIDE_DOWNLOADED_VIDEOS_IN_SYSTEM_ALBUM,
                 false,
             ),
-            parseQuickActionEnabled = prefs.getBoolean(KEY_PARSE_QUICK_ACTION, true),
             downloadsGlassDebugEnabled = prefs.getBoolean(
                 KEY_DOWNLOADS_GLASS_DEBUG_ENABLED,
                 false,
@@ -741,7 +730,6 @@ class SettingsRepository(context: Context) {
         private const val KEY_CONFIRM_CELLULAR_DOWNLOAD = "confirm_cellular_download"
         private const val KEY_HIDE_DOWNLOADED_VIDEOS_IN_SYSTEM_ALBUM =
             "hide_downloaded_videos_in_system_album"
-        private const val KEY_PARSE_QUICK_ACTION = "parse_quick_action"
         private const val KEY_DOWNLOADS_GLASS_DEBUG_ENABLED = "downloads_glass_debug_enabled"
         private const val KEY_DOWNLOADS_GLASS_CORNER_RADIUS_DP = "downloads_glass_corner_radius_dp"
         private const val KEY_DOWNLOADS_GLASS_BLUR_RADIUS_DP = "downloads_glass_blur_radius_dp"

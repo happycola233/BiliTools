@@ -89,7 +89,6 @@
     <string name="parse_section_label_favorite">选择收藏夹</string>
     <string name="parse_section_label_bangumi">选择版本</string>
 
-    <string name="parse_load_stream">加载信息</string>
     <string name="parse_download">下载</string>
     <string name="parse_stream_hint">默认下载 MP4 直链，DASH 自动合并音视频</string>
     <string name="parse_login_limited">登录可解锁更多更高清的下载参数</string>
@@ -446,7 +445,7 @@
     <string name="settings_general_title">通用</string>
     <string name="settings_download_title">下载</string>
     <string name="settings_appearance_title">外观</string>
-    <string name="settings_general_summary">默认下载质量、解析页快捷按钮、实时活动通知</string>
+    <string name="settings_general_summary">默认下载质量、实时活动通知</string>
     <string name="settings_download_summary">下载位置、元数据、弹幕、移动网络、系统相册</string>
     <string name="settings_appearance_summary">主题、配色、纯黑主题、液态玻璃</string>
     <string name="settings_about_summary">版本、更新、日志导出、开源协议、免责声明</string>
@@ -459,9 +458,6 @@
     <string name="settings_confirm_cellular_desc">使用移动网络时，点击下载会先弹出确认提示。</string>
     <string name="settings_hide_download_video_in_system_album">在系统相册隐藏下载的视频</string>
     <string name="settings_hide_download_video_in_system_album_desc">在下载目录创建 .nomedia 文件，阻止系统相册索引该目录；部分系统下若仍未生效，可手动刷新缓存：先打开相册，再到文件管理中把下载目录改名；再切回到相册，稍等片刻，再到文件管理将目录名改回。</string>
-    <string name="settings_parse_section">解析</string>
-    <string name="settings_parse_quick_action">解析页快捷悬浮按钮</string>
-    <string name="settings_parse_quick_action_desc">快速实现“加载信息”和“下载”操作。</string>
     <string name="settings_live_activity_style_notification">启用 Live Update 通知支持</string>
     <string name="settings_live_activity_style_notification_desc">下载进行中时启用 Live Update 风格通知；关闭后回退为普通进度通知。</string>
     <string name="settings_default_download_quality">默认下载质量</string>

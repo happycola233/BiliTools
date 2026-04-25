@@ -6,13 +6,17 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -124,6 +128,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -188,6 +193,8 @@ private val copyDialogPreviewScrollbarTrackWidthActive = 6.dp
 private val copyDialogPreviewScrollbarThumbWidth = 4.dp
 private val copyDialogPreviewScrollbarThumbWidthActive = 9.dp
 private val copyDialogPreviewScrollbarMinThumbHeight = 52.dp
+private const val optionsVisibilityAnimationDurationMillis = 180
+private const val optionsValueAnimationDurationMillis = 120
 
 private object ParseTextStyles {
     val cardTitle: TextStyle
@@ -275,9 +282,7 @@ private object ParseTextStyles {
 fun ParseScreenContent(
     state: ParseUiState,
     inputText: String,
-    quickActionEnabled: Boolean,
     controlsOffsetPx: Float,
-    scrollToOptionsRequest: Int,
     externalMode: Boolean,
     subtitleCopyDialogEntries: List<SubtitleCopyEntry>?,
     aiSummaryCopyDialogEntries: List<AiSummaryCopyEntry>?,
@@ -285,8 +290,6 @@ fun ParseScreenContent(
     onPaste: () -> Unit,
     onParse: (String) -> Unit,
     onMediaTypeChange: (MediaType?) -> Unit,
-    onLoadStream: () -> Unit,
-    onQuickLoadStream: () -> Unit,
     onDownload: () -> Unit,
     onSectionChange: (Long) -> Unit,
     onSelectAllItems: () -> Unit,
@@ -323,35 +326,20 @@ fun ParseScreenContent(
     onCopyCurrentAiSummary: (AiSummaryCopyEntry) -> Unit,
     onCopyAllAiSummaries: (List<AiSummaryCopyEntry>) -> Unit,
 ) {
-    val listState = rememberLazyListState()
     val nestedScrollInterop = rememberNestedScrollInteropConnection()
     val info = state.mediaInfo
     val item = state.items.getOrNull(state.selectedItemIndex)
     val totalItems = state.items.size
     val showPageModule = totalItems > 1 || info?.paged == true
     val showOptions = info != null && state.playUrlInfo != null
-    val optionsIndex = calculateOptionsIndex(state, hasInfo = info != null)
-
-    LaunchedEffect(scrollToOptionsRequest, showOptions, optionsIndex) {
-        if (scrollToOptionsRequest > 0 && showOptions) {
-            listState.animateScrollToItem(optionsIndex)
-        }
-    }
 
     val hasSelection = state.selectedItemIndices.isNotEmpty()
-    val loadStreamEnabled = info != null &&
-        item != null &&
-        !state.loading &&
-        !state.streamLoading &&
-        hasSelection
     val streamReady = state.outputType == null || state.playUrlInfo != null
     val downloadEnabled = !state.loading &&
         !state.downloadStarting &&
         hasSelection &&
         streamReady
-    val quickActionVisible = quickActionEnabled &&
-        info != null &&
-        (loadStreamEnabled || downloadEnabled)
+    val quickActionVisible = info != null && hasSelection
 
     Box(
         modifier = Modifier
@@ -362,12 +350,11 @@ fun ParseScreenContent(
             modifier = Modifier
                 .fillMaxSize()
                 .nestedScroll(nestedScrollInterop),
-            state = listState,
             contentPadding = PaddingValues(
                 start = screenHorizontalPadding,
                 top = 12.dp,
                 end = screenHorizontalPadding,
-                bottom = if (externalMode) 24.dp else 96.dp,
+                bottom = if (!externalMode || info != null) 96.dp else 24.dp,
             ),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
@@ -418,15 +405,6 @@ fun ParseScreenContent(
                                 onItemSelectionChange = onItemSelectionChange,
                             )
                         }
-                        SectionDivider()
-                        PrimaryActionRow(
-                            loadStreamEnabled = loadStreamEnabled,
-                            streamLoading = state.streamLoading,
-                            downloadEnabled = downloadEnabled,
-                            downloadStarting = state.downloadStarting,
-                            onLoadStream = onLoadStream,
-                            onDownload = onDownload,
-                        )
                     }
                 }
 
@@ -478,10 +456,8 @@ fun ParseScreenContent(
             exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()),
         ) {
             QuickActionFab(
-                hasStreamInfo = state.playUrlInfo != null,
-                enabled = if (state.playUrlInfo == null) loadStreamEnabled else downloadEnabled,
+                enabled = downloadEnabled,
                 controlsOffsetPx = controlsOffsetPx,
-                onLoadStream = onQuickLoadStream,
                 onDownload = onDownload,
             )
         }
@@ -2135,39 +2111,6 @@ private fun PageItemRow(
     }
 }
 
-@Composable
-private fun PrimaryActionRow(
-    loadStreamEnabled: Boolean,
-    streamLoading: Boolean,
-    downloadEnabled: Boolean,
-    downloadStarting: Boolean,
-    onLoadStream: () -> Unit,
-    onDownload: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        ExpressiveActionButton(
-            text = stringResource(R.string.parse_load_stream),
-            iconRes = R.drawable.ic_troubleshoot_24,
-            loading = streamLoading,
-            enabled = loadStreamEnabled,
-            onClick = onLoadStream,
-            modifier = Modifier.weight(1f),
-        )
-        ExpressiveActionButton(
-            text = stringResource(R.string.parse_download),
-            iconRes = R.drawable.ic_save_alt_24,
-            loading = downloadStarting,
-            enabled = downloadEnabled,
-            tonal = true,
-            onClick = onDownload,
-            modifier = Modifier.weight(1f),
-        )
-    }
-}
-
 @OptIn(
     ExperimentalMaterial3ExpressiveApi::class,
     ExperimentalLayoutApi::class,
@@ -2220,7 +2163,6 @@ private fun ParseOptionsCard(
     val codecEnabled = formatEnabled && hasVideo
     val copyEnabledBase = state.selectedItemIndices.isNotEmpty() &&
         !state.loading &&
-        !state.streamLoading &&
         !state.downloadStarting &&
         !state.subtitleCopying &&
         !state.aiSummaryCopying
@@ -2245,10 +2187,11 @@ private fun ParseOptionsCard(
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
     ) {
         Column(
-            modifier = Modifier.padding(
-                horizontal = optionsCardHorizontalPadding,
-                vertical = optionsCardVerticalPadding,
-            ),
+            modifier = Modifier
+                .padding(
+                    horizontal = optionsCardHorizontalPadding,
+                    vertical = optionsCardVerticalPadding,
+                ),
         ) {
             Text(
                 text = stringResource(R.string.parse_section_options),
@@ -2275,75 +2218,26 @@ private fun ParseOptionsCard(
                 OptionsSection(title = stringResource(R.string.parse_stream_format)) {
                     ConnectedFormatButtons(
                         selected = state.format,
-                        enabled = formatEnabled && !state.streamLoading,
+                        enabled = formatEnabled,
                         onFormatChange = onFormatChange,
                     )
                     StreamFormatHint()
                 }
 
-                if (isMultiSelect) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        CompactSelectionField(
-                            label = stringResource(R.string.parse_resolution_mode_label),
-                            value = resolutionModeOptions().first { it.value == state.resolutionMode }.label,
-                            enabled = resolutionModeEnabled,
-                            options = resolutionModeOptions(),
-                            onOptionSelected = { onResolutionModeChange(it.value) },
-                            modifier = Modifier.weight(1f),
-                        )
-                        CompactSelectionField(
-                            label = stringResource(R.string.parse_bitrate_mode_label),
-                            value = bitrateModeOptions().first { it.value == state.audioBitrateMode }.label,
-                            enabled = bitrateModeEnabled,
-                            options = bitrateModeOptions(),
-                            onOptionSelected = { onAudioBitrateModeChange(it.value) },
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    CompactSelectionField(
-                        label = stringResource(R.string.parse_resolution_label),
-                        value = state.resolutions.firstOrNull { it.id == state.selectedResolutionId }?.label.orEmpty(),
-                        enabled = resolutionEnabled,
-                        options = state.resolutions.map { DropdownOption(it.label, it) },
-                        onOptionSelected = { onResolutionChange(it.value.id) },
-                        modifier = Modifier.weight(1f),
-                    )
-                    CompactSelectionField(
-                        label = stringResource(R.string.parse_codec_label),
-                        value = state.codecs.firstOrNull { it.codec == state.selectedCodec }?.label.orEmpty(),
-                        enabled = codecEnabled,
-                        options = state.codecs.map { DropdownOption(it.label, it) },
-                        onOptionSelected = { onCodecChange(it.value.codec) },
-                        modifier = Modifier.weight(1f),
-                    )
-                    CompactSelectionField(
-                        label = stringResource(R.string.parse_bitrate_label),
-                        value = state.audioBitrates.firstOrNull { it.id == state.selectedAudioId }?.label.orEmpty(),
-                        enabled = bitrateEnabled,
-                        options = state.audioBitrates.map { DropdownOption(it.label, it) },
-                        onOptionSelected = { onAudioBitrateChange(it.value.id) },
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                if (isMultiSelect) {
-                    HelperText(text = stringResource(R.string.parse_quality_multi_hint))
-                }
-                state.warning?.takeIf { it.isNotBlank() }?.let { warning ->
-                    MessageCard(
-                        message = warning,
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    )
-                }
+                QualityControls(
+                    state = state,
+                    isMultiSelect = isMultiSelect,
+                    resolutionModeEnabled = resolutionModeEnabled,
+                    bitrateModeEnabled = bitrateModeEnabled,
+                    resolutionEnabled = resolutionEnabled,
+                    codecEnabled = codecEnabled,
+                    bitrateEnabled = bitrateEnabled,
+                    onResolutionModeChange = onResolutionModeChange,
+                    onAudioBitrateModeChange = onAudioBitrateModeChange,
+                    onResolutionChange = onResolutionChange,
+                    onCodecChange = onCodecChange,
+                    onAudioBitrateChange = onAudioBitrateChange,
+                )
 
                 SectionDivider()
                 OptionsSection(title = stringResource(R.string.parse_misc_label)) {
@@ -2492,6 +2386,136 @@ private fun ParseOptionsCard(
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun QualityControls(
+    state: ParseUiState,
+    isMultiSelect: Boolean,
+    resolutionModeEnabled: Boolean,
+    bitrateModeEnabled: Boolean,
+    resolutionEnabled: Boolean,
+    codecEnabled: Boolean,
+    bitrateEnabled: Boolean,
+    onResolutionModeChange: (QualityMode) -> Unit,
+    onAudioBitrateModeChange: (QualityMode) -> Unit,
+    onResolutionChange: (Int) -> Unit,
+    onCodecChange: (VideoCodec) -> Unit,
+    onAudioBitrateChange: (Int) -> Unit,
+) {
+    val resolutionModes = resolutionModeOptions()
+    val bitrateModes = bitrateModeOptions()
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        AnimatedOptionsVisibility(visible = isMultiSelect) {
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    CompactSelectionField(
+                        label = stringResource(R.string.parse_resolution_mode_label),
+                        value = resolutionModes.first { it.value == state.resolutionMode }.label,
+                        enabled = resolutionModeEnabled,
+                        options = resolutionModes,
+                        onOptionSelected = { onResolutionModeChange(it.value) },
+                        modifier = Modifier.weight(1f),
+                    )
+                    CompactSelectionField(
+                        label = stringResource(R.string.parse_bitrate_mode_label),
+                        value = bitrateModes.first { it.value == state.audioBitrateMode }.label,
+                        enabled = bitrateModeEnabled,
+                        options = bitrateModes,
+                        onOptionSelected = { onAudioBitrateModeChange(it.value) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            CompactSelectionField(
+                label = stringResource(R.string.parse_resolution_label),
+                value = state.resolutions.firstOrNull { it.id == state.selectedResolutionId }?.label.orEmpty(),
+                enabled = resolutionEnabled,
+                options = state.resolutions.map { DropdownOption(it.label, it) },
+                onOptionSelected = { onResolutionChange(it.value.id) },
+                modifier = Modifier.weight(1f),
+            )
+            CompactSelectionField(
+                label = stringResource(R.string.parse_codec_label),
+                value = state.codecs.firstOrNull { it.codec == state.selectedCodec }?.label.orEmpty(),
+                enabled = codecEnabled,
+                options = state.codecs.map { DropdownOption(it.label, it) },
+                onOptionSelected = { onCodecChange(it.value.codec) },
+                modifier = Modifier.weight(1f),
+            )
+            CompactSelectionField(
+                label = stringResource(R.string.parse_bitrate_label),
+                value = state.audioBitrates.firstOrNull { it.id == state.selectedAudioId }?.label.orEmpty(),
+                enabled = bitrateEnabled,
+                options = state.audioBitrates.map { DropdownOption(it.label, it) },
+                onOptionSelected = { onAudioBitrateChange(it.value.id) },
+                modifier = Modifier.weight(1f),
+            )
+        }
+
+        AnimatedOptionsVisibility(visible = isMultiSelect) {
+            Column {
+                Spacer(Modifier.height(8.dp))
+                HelperText(text = stringResource(R.string.parse_quality_multi_hint))
+            }
+        }
+
+        AnimatedOptionsVisibility(visible = !state.warning.isNullOrBlank()) {
+            Column {
+                Spacer(Modifier.height(8.dp))
+                MessageCard(
+                    message = state.warning.orEmpty(),
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun AnimatedOptionsVisibility(
+    visible: Boolean,
+    content: @Composable () -> Unit,
+) {
+    val sizeSpec = tween<IntSize>(
+        durationMillis = optionsVisibilityAnimationDurationMillis,
+        easing = FastOutSlowInEasing,
+    )
+    val fadeSpec = tween<Float>(
+        durationMillis = optionsVisibilityAnimationDurationMillis,
+        easing = FastOutSlowInEasing,
+    )
+    AnimatedVisibility(
+        visible = visible,
+        enter =
+            fadeIn(animationSpec = fadeSpec) +
+                expandVertically(
+                    expandFrom = Alignment.Top,
+                    animationSpec = sizeSpec,
+                ),
+        exit =
+            fadeOut(animationSpec = fadeSpec) +
+                shrinkVertically(
+                    shrinkTowards = Alignment.Top,
+                    animationSpec = sizeSpec,
+                ),
+    ) {
+        content()
     }
 }
 
@@ -2730,10 +2754,8 @@ private fun ExpressiveActionButton(
 
 @Composable
 private fun QuickActionFab(
-    hasStreamInfo: Boolean,
     enabled: Boolean,
     controlsOffsetPx: Float,
-    onLoadStream: () -> Unit,
     onDownload: () -> Unit,
 ) {
     val density = LocalDensity.current
@@ -2747,11 +2769,7 @@ private fun QuickActionFab(
     FloatingActionButton(
         onClick = {
             if (!enabled) return@FloatingActionButton
-            if (hasStreamInfo) {
-                onDownload()
-            } else {
-                onLoadStream()
-            }
+            onDownload()
         },
         modifier = Modifier
             .padding(
@@ -2769,12 +2787,8 @@ private fun QuickActionFab(
         interactionSource = interactionSource,
     ) {
         Icon(
-            painter = painterResource(
-                if (hasStreamInfo) R.drawable.ic_save_alt_24 else R.drawable.ic_troubleshoot_24,
-            ),
-            contentDescription = stringResource(
-                if (hasStreamInfo) R.string.parse_download else R.string.parse_load_stream,
-            ),
+            painter = painterResource(R.drawable.ic_save_alt_24),
+            contentDescription = stringResource(R.string.parse_download),
             modifier = Modifier.graphicsLayer(alpha = if (enabled) 1f else 0.42f),
         )
     }
@@ -2866,6 +2880,10 @@ private fun <T> CompactSelectionField(
         },
         animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
     )
+    val valueTransitionSpec = tween<Float>(
+        durationMillis = optionsValueAnimationDurationMillis,
+        easing = FastOutSlowInEasing,
+    )
 
     ExposedDropdownMenuBox(
         expanded = expanded,
@@ -2899,13 +2917,24 @@ private fun <T> CompactSelectionField(
                         overflow = TextOverflow.Ellipsis,
                         style = ParseTextStyles.controlLabel,
                     )
-                    Text(
-                        text = value,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = ParseTextStyles.controlValue,
-                    )
+                    AnimatedContent(
+                        targetState = value,
+                        modifier = Modifier.fillMaxWidth(),
+                        transitionSpec = {
+                            fadeIn(animationSpec = valueTransitionSpec) togetherWith
+                                fadeOut(animationSpec = valueTransitionSpec)
+                        },
+                        label = "CompactSelectionFieldValue",
+                    ) { animatedValue ->
+                        Text(
+                            text = animatedValue,
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = ParseTextStyles.controlValue,
+                        )
+                    }
                 }
                 Icon(
                     painter = painterResource(R.drawable.ic_expand_more_24),
@@ -3201,22 +3230,6 @@ private fun bitrateModeOptions(): List<DropdownOption<QualityMode>> {
         DropdownOption(stringResource(R.string.parse_bitrate_mode_lowest), QualityMode.Lowest),
         DropdownOption(stringResource(R.string.parse_bitrate_mode_fixed), QualityMode.Fixed),
     )
-}
-
-private fun calculateOptionsIndex(
-    state: ParseUiState,
-    hasInfo: Boolean,
-): Int {
-    var index = 1
-    if (!state.error.isNullOrBlank()) {
-        index += 1
-    }
-    if (!hasInfo) return index
-    index += 1
-    if (!state.isLoggedIn) {
-        index += 1
-    }
-    return index
 }
 
 private fun resolveHighlightedIndex(state: ParseUiState, info: MediaInfo): Int {

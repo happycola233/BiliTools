@@ -167,7 +167,6 @@ class SettingsActivity : AppCompatActivity() {
                         viewModel.setThemeColor(color)
                     }
                 },
-                onParseQuickActionChange = viewModel::setParseQuickActionEnabled,
                 onLiveActivityStyleNotificationChange = viewModel::setLiveActivityStyleNotificationEnabled,
                 onDefaultDownloadQualityChange = viewModel::setDefaultDownloadQuality,
                 onAddMetadataChange = viewModel::setAddMetadata,

@@ -19,7 +19,6 @@ import androidx.compose.material3.MotionScheme
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ViewCompositionStrategy
@@ -59,15 +58,10 @@ class ParseFragment : Fragment() {
     private var pendingExternalUrl: String? = null
     private var externalMode = false
     private var closeAfterDownloadQueued = false
-    private var autoLoadStreamPending = false
-    private var quickActionScrollPending = false
-    private var latestState: ParseUiState? = null
     private var offsetListener: com.google.android.material.appbar.AppBarLayout.OnOffsetChangedListener? = null
 
     private var inputText by mutableStateOf("")
-    private var quickActionEnabled by mutableStateOf(false)
     private var controlsOffsetPx by mutableFloatStateOf(0f)
-    private var scrollToOptionsRequest by mutableIntStateOf(0)
     private var subtitleCopyDialogEntries by mutableStateOf<List<SubtitleCopyEntry>?>(null)
     private var aiSummaryCopyDialogEntries by mutableStateOf<List<AiSummaryCopyEntry>?>(null)
 
@@ -132,9 +126,7 @@ class ParseFragment : Fragment() {
                 ParseScreenContent(
                     state = parseState,
                     inputText = inputText,
-                    quickActionEnabled = quickActionEnabled,
                     controlsOffsetPx = controlsOffsetPx,
-                    scrollToOptionsRequest = scrollToOptionsRequest,
                     externalMode = externalMode,
                     subtitleCopyDialogEntries = subtitleCopyDialogEntries,
                     aiSummaryCopyDialogEntries = aiSummaryCopyDialogEntries,
@@ -147,14 +139,6 @@ class ParseFragment : Fragment() {
                     onPaste = ::pasteFromClipboard,
                     onParse = { input -> viewModel.parse(input) },
                     onMediaTypeChange = viewModel::setMediaType,
-                    onLoadStream = {
-                        quickActionScrollPending = false
-                        viewModel.loadStream()
-                    },
-                    onQuickLoadStream = {
-                        quickActionScrollPending = true
-                        viewModel.loadStream()
-                    },
                     onDownload = ::onDownloadClicked,
                     onSectionChange = viewModel::selectSection,
                     onSelectAllItems = viewModel::selectAllItems,
@@ -208,23 +192,18 @@ class ParseFragment : Fragment() {
         val appBar = requireActivity().findViewById<com.google.android.material.appbar.AppBarLayout>(R.id.app_bar)
         offsetListener?.let { appBar?.removeOnOffsetChangedListener(it) }
         offsetListener = null
-        latestState = null
         controlsOffsetPx = 0f
         closeAfterDownloadQueued = false
-        autoLoadStreamPending = false
-        quickActionScrollPending = false
         subtitleCopyDialogEntries = null
         aiSummaryCopyDialogEntries = null
         _binding = null
     }
 
     private fun collectState() {
-        val settingsRepository = requireContext().appContainer.settingsRepository
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
                     viewModel.state.collect { state ->
-                        latestState = state
                         handleStateSideEffects(state)
                     }
                 }
@@ -248,29 +227,11 @@ class ParseFragment : Fragment() {
                         }
                     }
                 }
-                launch {
-                    settingsRepository.settings.collect { settings ->
-                        quickActionEnabled = !externalMode && settings.parseQuickActionEnabled
-                    }
-                }
             }
         }
     }
 
     private fun handleStateSideEffects(state: ParseUiState) {
-        if (externalMode && autoLoadStreamPending) {
-            val loadEnabled = state.canLoadStream()
-            when {
-                loadEnabled && state.playUrlInfo == null -> {
-                    autoLoadStreamPending = false
-                    viewModel.loadStream()
-                }
-                !state.loading && !state.streamLoading && !state.error.isNullOrBlank() -> {
-                    autoLoadStreamPending = false
-                }
-            }
-        }
-
         state.notice?.let {
             Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
             viewModel.clearNotice()
@@ -287,20 +248,6 @@ class ParseFragment : Fragment() {
                 }
             }
         }
-
-        if (quickActionScrollPending && state.playUrlInfo != null) {
-            quickActionScrollPending = false
-            scrollToOptionsRequest += 1
-        }
-    }
-
-    private fun ParseUiState.canLoadStream(): Boolean {
-        val item = items.getOrNull(selectedItemIndex)
-        return mediaInfo != null &&
-            item != null &&
-            selectedItemIndices.isNotEmpty() &&
-            !loading &&
-            !streamLoading
     }
 
     private fun pasteFromClipboard() {
@@ -315,7 +262,6 @@ class ParseFragment : Fragment() {
         val url = pendingExternalUrl ?: return
         if (_binding == null) return
         pendingExternalUrl = null
-        autoLoadStreamPending = externalMode
         inputText = url
         viewModel.parse(url)
     }

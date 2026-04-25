@@ -168,7 +168,6 @@ fun BiliToolsSettingsContent(
     onOpenDownloadLocationPicker: (String) -> Unit,
     onThemeModeChange: (AppThemeMode) -> Unit,
     onThemeColorChange: (AppThemeColor) -> Unit,
-    onParseQuickActionChange: (Boolean) -> Unit,
     onLiveActivityStyleNotificationChange: (Boolean) -> Unit,
     onDefaultDownloadQualityChange: (DefaultDownloadQualitySettings) -> Unit,
     onAddMetadataChange: (Boolean) -> Unit,
@@ -221,7 +220,6 @@ fun BiliToolsSettingsContent(
                     GeneralSettingsScreen(
                         settings = settings,
                         liveUpdateSupported = liveUpdateSupported,
-                        onParseQuickActionChange = onParseQuickActionChange,
                         onLiveActivityStyleNotificationChange = onLiveActivityStyleNotificationChange,
                         onNavigate = onNavigate,
                         onBack = onNavigateBack,
@@ -456,7 +454,6 @@ private fun MainSettingsScreen(
 private fun GeneralSettingsScreen(
     settings: AppSettings,
     liveUpdateSupported: Boolean,
-    onParseQuickActionChange: (Boolean) -> Unit,
     onLiveActivityStyleNotificationChange: (Boolean) -> Unit,
     onNavigate: (SettingsDestination) -> Unit,
     onBack: () -> Unit,
@@ -486,7 +483,7 @@ private fun GeneralSettingsScreen(
             item { Spacer(Modifier.height(14.dp)) }
             item {
                 ClickableListItem(
-                    items = 3,
+                    items = 2,
                     index = 0,
                     leadingContent = { SettingsItemIcon(R.drawable.ic_high_quality_24) },
                     headlineContent = {
@@ -507,24 +504,13 @@ private fun GeneralSettingsScreen(
             }
             item {
                 ExpressiveSwitchListItem(
-                    checked = settings.parseQuickActionEnabled,
-                    iconRes = R.drawable.ic_switch_access_shortcut_24,
-                    title = stringResource(R.string.settings_parse_quick_action),
-                    description = stringResource(R.string.settings_parse_quick_action_desc),
-                    items = 3,
-                    index = 1,
-                    onCheckedChange = onParseQuickActionChange,
-                )
-            }
-            item {
-                ExpressiveSwitchListItem(
                     checked = liveUpdateChecked,
                     iconRes = R.drawable.ic_dynamic_feed_24,
                     title = stringResource(R.string.settings_live_activity_style_notification),
                     description = liveUpdateDescription,
                     enabled = liveUpdateSupported,
-                    items = 3,
-                    index = 2,
+                    items = 2,
+                    index = 1,
                     onCheckedChange = onLiveActivityStyleNotificationChange,
                 )
             }
