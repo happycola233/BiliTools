@@ -9,6 +9,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -53,6 +54,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -101,6 +103,7 @@ import com.happycola233.bilitools.data.model.DownloadTaskType
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -128,6 +131,7 @@ private const val GROUP_FADE_IN_DURATION_MILLIS = 180
 private const val GROUP_FADE_OUT_DURATION_MILLIS = 140
 private const val GROUP_EXPAND_DURATION_MILLIS = 220
 private const val GROUP_ARROW_DURATION_MILLIS = 220
+private const val GROUP_PLACEMENT_RESUME_DELAY_MILLIS = GROUP_EXPAND_DURATION_MILLIS + 32
 private val downloadsGroupPlacementSpec =
     spring<IntOffset>(
         dampingRatio = Spring.DampingRatioNoBouncy,
@@ -251,6 +255,16 @@ internal fun DownloadsListContent(
     val sections = remember(groups, collapsedSections) {
         buildDownloadsSections(groups, collapsedSections)
     }
+    val visibleExpandedGroupIds = remember(selectionMode, expandedGroupIds) {
+        if (selectionMode) emptySet() else expandedGroupIds.toSet()
+    }
+    val currentGroupIds = remember(groups) {
+        groups.asSequence().map { it.id }.toSet()
+    }
+    val groupPlacementSpec = rememberDownloadsGroupPlacementSpec(
+        visibleExpandedGroupIds = visibleExpandedGroupIds,
+        currentGroupIds = currentGroupIds,
+    )
 
     LazyColumn(
         state = listState,
@@ -278,7 +292,7 @@ internal fun DownloadsListContent(
                         visible = !section.collapsed,
                         modifier = Modifier.animateItem(
                             fadeInSpec = tween(durationMillis = GROUP_FADE_IN_DURATION_MILLIS, easing = FastOutSlowInEasing),
-                            placementSpec = downloadsGroupPlacementSpec,
+                            placementSpec = groupPlacementSpec,
                             fadeOutSpec = tween(durationMillis = GROUP_FADE_OUT_DURATION_MILLIS, easing = FastOutSlowInEasing),
                         ),
                         enter =
@@ -337,13 +351,49 @@ internal fun DownloadsListContent(
                         onTaskClick = onTaskClick,
                         modifier = Modifier.animateItem(
                             fadeInSpec = tween(durationMillis = GROUP_FADE_IN_DURATION_MILLIS, easing = FastOutSlowInEasing),
-                            placementSpec = downloadsGroupPlacementSpec,
+                            placementSpec = groupPlacementSpec,
                             fadeOutSpec = tween(durationMillis = GROUP_FADE_OUT_DURATION_MILLIS, easing = FastOutSlowInEasing),
                         ),
                     )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun rememberDownloadsGroupPlacementSpec(
+    visibleExpandedGroupIds: Set<Long>,
+    currentGroupIds: Set<Long>,
+): FiniteAnimationSpec<IntOffset>? {
+    var suppressPlacementAnimation by remember { mutableStateOf(false) }
+    val previousVisibleExpandedGroupIds = remember { arrayOf(visibleExpandedGroupIds.toSet()) }
+    val visibleExpandedGroupsChanged = previousVisibleExpandedGroupIds[0] != visibleExpandedGroupIds
+    val collapsedVisibleGroup = previousVisibleExpandedGroupIds[0].any { id ->
+        id !in visibleExpandedGroupIds && id in currentGroupIds
+    }
+    val expandedVisibleGroup = visibleExpandedGroupIds.any { id ->
+        id !in previousVisibleExpandedGroupIds[0] && id in currentGroupIds
+    }
+    val hasVisibleGroupHeightChange =
+        visibleExpandedGroupsChanged && (collapsedVisibleGroup || expandedVisibleGroup)
+
+    SideEffect {
+        previousVisibleExpandedGroupIds[0] = visibleExpandedGroupIds.toSet()
+    }
+
+    LaunchedEffect(visibleExpandedGroupIds) {
+        if (!hasVisibleGroupHeightChange) return@LaunchedEffect
+        suppressPlacementAnimation = true
+        delay(GROUP_PLACEMENT_RESUME_DELAY_MILLIS.toLong())
+        suppressPlacementAnimation = false
+    }
+
+    // During a group height animation, placement animation chases every layout frame and lags.
+    return if (hasVisibleGroupHeightChange || suppressPlacementAnimation) {
+        null
+    } else {
+        downloadsGroupPlacementSpec
     }
 }
 
