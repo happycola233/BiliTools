@@ -44,6 +44,7 @@
                 app:navigationContentDescription="@string/download_cancel"
                 app:navigationIcon="@drawable/ic_arrow_back_24"
                 app:title="@string/parse_section_options"
+                app:titleTextAppearance="@style/TextAppearance.BiliTools.External.ToolbarTitle"
                 app:titleTextColor="?attr/colorOnSurface" />
 
             <androidx.fragment.app.FragmentContainerView
