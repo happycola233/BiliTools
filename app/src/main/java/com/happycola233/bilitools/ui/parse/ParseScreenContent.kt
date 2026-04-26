@@ -108,6 +108,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.node.DelegatableNode
 import androidx.compose.ui.platform.LocalContext
@@ -137,6 +138,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.text.HtmlCompat
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.model.MediaInfo
 import com.happycola233.bilitools.data.model.MediaItem
@@ -147,6 +149,7 @@ import com.happycola233.bilitools.data.model.StreamFormat
 import com.happycola233.bilitools.data.model.VideoCodec
 import com.happycola233.bilitools.ui.FloatingControlsDefaults
 import com.happycola233.bilitools.ui.TopErrorMessageHost
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private val screenHorizontalPadding = 16.dp
@@ -196,6 +199,9 @@ private val copyDialogPreviewScrollbarThumbWidthActive = 9.dp
 private val copyDialogPreviewScrollbarMinThumbHeight = 52.dp
 private const val optionsVisibilityAnimationDurationMillis = 180
 private const val optionsValueAnimationDurationMillis = 120
+private const val parseContentAnimationDurationMillis = 220
+private const val coverFadeAnimationDurationMillis = 240
+private const val coverLayerSettleDelayMillis = 60L
 
 private object ParseTextStyles {
     val cardTitle: TextStyle
@@ -333,11 +339,13 @@ fun ParseScreenContent(
     val item = state.items.getOrNull(state.selectedItemIndex)
     val totalItems = state.items.size
     val showPageModule = totalItems > 1 || info?.paged == true
-    val showOptions = info != null && state.playUrlInfo != null
+    val showOptions = info != null && state.selectedItemIndices.isNotEmpty()
 
     val hasSelection = state.selectedItemIndices.isNotEmpty()
     val streamReady = state.outputType == null || state.playUrlInfo != null
     val downloadEnabled = !state.loading &&
+        !state.collectionModeLoading &&
+        !state.streamLoading &&
         !state.downloadStarting &&
         hasSelection &&
         streamReady
@@ -1228,6 +1236,14 @@ private fun ParseResultCard(
     contentBelowSectionControls: @Composable ColumnScope.() -> Unit,
 ) {
     val display = resolveVideoCardDisplay(state, info, selectedItem)
+    val contentSizeSpec = tween<IntSize>(
+        durationMillis = parseContentAnimationDurationMillis,
+        easing = FastOutSlowInEasing,
+    )
+    val contentFadeSpec = tween<Float>(
+        durationMillis = parseContentAnimationDurationMillis,
+        easing = FastOutSlowInEasing,
+    )
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(cardCornerRadius),
@@ -1236,27 +1252,45 @@ private fun ParseResultCard(
         ),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
     ) {
-        Column {
+        Column(
+            modifier = Modifier.animateContentSize(animationSpec = contentSizeSpec),
+        ) {
             CoverImage(display.coverUrl)
             Column(
                 modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Text(
-                    text = display.title.ifBlank { stringResource(R.string.parse_section_result) },
-                    style = ParseTextStyles.mediaTitle,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                if (display.description.isNotBlank()) {
-                    Text(
-                        text = display.description,
-                        style = ParseTextStyles.mediaDescription,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                AnimatedContent(
+                    targetState = display,
+                    transitionSpec = {
+                        fadeIn(animationSpec = contentFadeSpec) togetherWith
+                            fadeOut(animationSpec = contentFadeSpec)
+                    },
+                    label = "ParseResultCardDisplay",
+                ) { animatedDisplay ->
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Text(
+                            text = animatedDisplay.title.ifBlank {
+                                stringResource(R.string.parse_section_result)
+                            },
+                            style = ParseTextStyles.mediaTitle,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        if (animatedDisplay.description.isNotBlank()) {
+                            Text(
+                                text = animatedDisplay.description,
+                                style = ParseTextStyles.mediaDescription,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 3,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        StatRow(animatedDisplay.stat)
+                    }
                 }
-                StatRow(display.stat)
                 SectionControls(
                     state = state,
                     info = info,
@@ -1271,6 +1305,49 @@ private fun ParseResultCard(
 
 @Composable
 private fun CoverImage(coverUrl: String) {
+    val context = LocalContext.current
+    val targetCoverUrl = coverUrl.trim()
+    var displayedCoverUrl by remember { mutableStateOf("") }
+    var incomingCoverUrl by remember { mutableStateOf<String?>(null) }
+    var incomingReady by remember { mutableStateOf(false) }
+    val incomingAlpha by animateFloatAsState(
+        targetValue = if (incomingReady) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = coverFadeAnimationDurationMillis,
+            easing = FastOutSlowInEasing,
+        ),
+    )
+
+    LaunchedEffect(targetCoverUrl) {
+        if (targetCoverUrl.isBlank()) {
+            incomingCoverUrl = null
+            incomingReady = false
+            displayedCoverUrl = ""
+        } else if (targetCoverUrl != displayedCoverUrl) {
+            incomingCoverUrl = targetCoverUrl
+            incomingReady = false
+        }
+    }
+
+    LaunchedEffect(incomingCoverUrl, incomingReady) {
+        val readyCoverUrl = incomingCoverUrl ?: return@LaunchedEffect
+        if (!incomingReady) return@LaunchedEffect
+        delay(coverFadeAnimationDurationMillis.toLong())
+        displayedCoverUrl = readyCoverUrl
+        delay(coverLayerSettleDelayMillis)
+        if (incomingCoverUrl == readyCoverUrl) {
+            incomingCoverUrl = null
+            incomingReady = false
+        }
+    }
+
+    fun imageRequest(url: String): ImageRequest {
+        return ImageRequest.Builder(context)
+            .data(url)
+            .crossfade(false)
+            .build()
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -1278,12 +1355,12 @@ private fun CoverImage(coverUrl: String) {
             .background(MaterialTheme.colorScheme.surfaceContainerHighest),
         contentAlignment = Alignment.Center,
     ) {
-        if (coverUrl.isNotBlank()) {
+        if (displayedCoverUrl.isNotBlank()) {
             AsyncImage(
-                model = coverUrl,
+                model = imageRequest(displayedCoverUrl),
                 contentDescription = stringResource(R.string.parse_cover_desc),
                 modifier = Modifier.fillMaxSize(),
-                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                contentScale = ContentScale.Crop,
             )
         } else {
             Image(
@@ -1291,6 +1368,25 @@ private fun CoverImage(coverUrl: String) {
                 contentDescription = null,
                 colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant),
                 modifier = Modifier.size(40.dp),
+            )
+        }
+        incomingCoverUrl?.let { pendingUrl ->
+            AsyncImage(
+                model = imageRequest(pendingUrl),
+                contentDescription = stringResource(R.string.parse_cover_desc),
+                onSuccess = { incomingReady = true },
+                onError = {
+                    if (displayedCoverUrl.isBlank()) {
+                        incomingCoverUrl = null
+                    } else if (incomingCoverUrl == pendingUrl) {
+                        incomingCoverUrl = null
+                    }
+                    incomingReady = false
+                },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(alpha = incomingAlpha),
+                contentScale = ContentScale.Crop,
             )
         }
     }
@@ -1347,56 +1443,63 @@ private fun SectionControls(
 ) {
     val sections = state.sections
     val showSections = sections != null && sections.tabs.isNotEmpty() && !state.collectionMode
+    val controlsEnabled = !state.loading && !state.collectionModeLoading
     val sectionLabel = when (info.type) {
         MediaType.Favorite -> stringResource(R.string.parse_section_label_favorite)
         MediaType.Bangumi -> stringResource(R.string.parse_section_label_bangumi)
         else -> stringResource(R.string.parse_section_label)
     }
-    if (showSections) {
-        DropdownField(
-            label = sectionLabel,
-            value = sections?.tabs
-                ?.firstOrNull { it.id == state.selectedSectionId }
-                ?.name
-                .orEmpty(),
-            enabled = !state.loading,
-            options = sections?.tabs.orEmpty().map { DropdownOption(it.name, it) },
-            onOptionSelected = { option -> onSectionChange(option.value.id) },
-        )
-    }
-
     val collectionModeAvailable = info.type == MediaType.Video && info.collection
-    if (collectionModeAvailable) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 64.dp)
-                .padding(vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        if (showSections) {
+            DropdownField(
+                label = sectionLabel,
+                value = sections?.tabs
+                    ?.firstOrNull { it.id == state.selectedSectionId }
+                    ?.name
+                    .orEmpty(),
+                enabled = controlsEnabled,
+                options = sections?.tabs.orEmpty().map { DropdownOption(it.name, it) },
+                onOptionSelected = { option -> onSectionChange(option.value.id) },
+            )
+        }
+
+        if (collectionModeAvailable) {
+            Row(
                 modifier = Modifier
-                    .weight(1f)
-                    .padding(end = 12.dp),
+                    .fillMaxWidth()
+                    .heightIn(min = 64.dp)
+                    .padding(vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = stringResource(R.string.parse_collection_toggle),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    style = ParseTextStyles.sectionLabel,
-                )
-                Text(
-                    text = stringResource(R.string.parse_collection_toggle_hint),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = ParseTextStyles.supporting,
-                    modifier = Modifier.padding(top = 2.dp),
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 12.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.parse_collection_toggle),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        style = ParseTextStyles.sectionLabel,
+                    )
+                    Text(
+                        text = stringResource(R.string.parse_collection_toggle_hint),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = ParseTextStyles.supporting,
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                }
+                Switch(
+                    checked = state.collectionMode,
+                    onCheckedChange = onCollectionModeChange,
+                    enabled = controlsEnabled,
+                    modifier = Modifier.padding(end = 2.dp),
                 )
             }
-            Switch(
-                checked = state.collectionMode,
-                onCheckedChange = onCollectionModeChange,
-                enabled = !state.loading,
-                modifier = Modifier.padding(end = 2.dp),
-            )
         }
     }
 }
@@ -1446,9 +1549,19 @@ private fun PageSelectionList(
     onItemClick: (Int) -> Unit,
     onItemSelectionChange: (Int, Boolean) -> Unit,
 ) {
+    val interactionEnabled = !state.loading && !state.collectionModeLoading
+    val listAlpha by animateFloatAsState(
+        targetValue = if (state.collectionModeLoading) 0.48f else 1f,
+        animationSpec = tween(
+            durationMillis = parseContentAnimationDurationMillis,
+            easing = FastOutSlowInEasing,
+        ),
+    )
     if (state.items.size <= pageSelectionNaturalItemLimit) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer(alpha = listAlpha),
             verticalArrangement = Arrangement.spacedBy(pageSelectionItemSpacing),
         ) {
             state.items.forEachIndexed { index, mediaItem ->
@@ -1457,6 +1570,7 @@ private fun PageSelectionList(
                     info = info,
                     index = index,
                     mediaItem = mediaItem,
+                    interactionEnabled = interactionEnabled,
                     onItemClick = onItemClick,
                     onItemSelectionChange = onItemSelectionChange,
                 )
@@ -1477,7 +1591,8 @@ private fun PageSelectionList(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(pageSelectionListMaxHeight),
+            .height(pageSelectionListMaxHeight)
+            .graphicsLayer(alpha = listAlpha),
     ) {
         LazyColumn(
             modifier = Modifier
@@ -1497,6 +1612,7 @@ private fun PageSelectionList(
                     info = info,
                     index = index,
                     mediaItem = mediaItem,
+                    interactionEnabled = interactionEnabled,
                     onItemClick = onItemClick,
                     onItemSelectionChange = onItemSelectionChange,
                 )
@@ -1737,6 +1853,7 @@ private fun PageSelectionRow(
     info: MediaInfo,
     index: Int,
     mediaItem: MediaItem,
+    interactionEnabled: Boolean,
     onItemClick: (Int) -> Unit,
     onItemSelectionChange: (Int, Boolean) -> Unit,
 ) {
@@ -1745,7 +1862,8 @@ private fun PageSelectionRow(
         index = index,
         checked = index in state.selectedItemIndices,
         highlighted = index == resolveHighlightedIndex(state, info),
-        rowClickEnabled = isRowClickEnabled(state, info),
+        rowClickEnabled = interactionEnabled && isRowClickEnabled(state, info),
+        selectionEnabled = interactionEnabled,
         onRowClick = { onItemClick(index) },
         onCheckedChange = { checked -> onItemSelectionChange(index, checked) },
     )
@@ -1868,6 +1986,7 @@ private fun PageSelectionHeader(
     onLoadNextPage: () -> Unit,
     onLoadPage: (Int) -> Unit,
 ) {
+    val controlsEnabled = !state.loading && !state.collectionModeLoading
     val label = if (state.collectionMode) {
         when (info.type) {
             MediaType.Favorite -> stringResource(R.string.parse_section_label_favorite)
@@ -1915,19 +2034,19 @@ private fun PageSelectionHeader(
             PageSelectionHeaderAction(
                 text = stringResource(R.string.parse_select_all),
                 onClick = onSelectAllItems,
-                enabled = selectedCount < totalItems,
+                enabled = controlsEnabled && selectedCount < totalItems,
             )
             PageSelectionHeaderAction(
                 text = stringResource(R.string.parse_clear_all),
                 onClick = onClearSelectedItems,
-                enabled = selectedCount > 0,
+                enabled = controlsEnabled && selectedCount > 0,
             )
         }
 
         if (info.paged) {
             PageNavigator(
                 pageIndex = state.pageIndex,
-                loading = state.loading,
+                loading = !controlsEnabled,
                 onLoadPrevPage = onLoadPrevPage,
                 onLoadNextPage = onLoadNextPage,
                 onLoadPage = onLoadPage,
@@ -2043,6 +2162,7 @@ private fun PageItemRow(
     checked: Boolean,
     highlighted: Boolean,
     rowClickEnabled: Boolean,
+    selectionEnabled: Boolean,
     onRowClick: () -> Unit,
     onCheckedChange: (Boolean) -> Unit,
 ) {
@@ -2091,7 +2211,11 @@ private fun PageItemRow(
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Checkbox(checked = checked, onCheckedChange = onCheckedChange)
+            Checkbox(
+                checked = checked,
+                enabled = selectionEnabled,
+                onCheckedChange = onCheckedChange,
+            )
             Text(
                 text = (index + 1).toString(),
                 modifier = Modifier.width(36.dp),
@@ -2145,7 +2269,9 @@ private fun ParseOptionsCard(
     val selectedCount = state.selectedItemIndices.size
     val isMultiSelect = selectedCount > 1
     val allowAnyExtras = isMultiSelect
-    val formatEnabled = state.outputType != null
+    val controlsEnabled = !state.loading && !state.collectionModeLoading
+    val streamControlsEnabled = controlsEnabled && !state.streamLoading
+    val formatEnabled = state.outputType != null && streamControlsEnabled
     val hasVideo = state.videoStreams.isNotEmpty()
     val hasAudio = state.audioStreams.isNotEmpty()
     val activeFormat = if (state.streamLoading) {
@@ -2163,7 +2289,8 @@ private fun ParseOptionsCard(
         formatEnabled && hasAudio && (!isMultiSelect || state.audioBitrateMode == QualityMode.Fixed)
     val codecEnabled = formatEnabled && hasVideo
     val copyEnabledBase = state.selectedItemIndices.isNotEmpty() &&
-        !state.loading &&
+        controlsEnabled &&
+        !state.streamLoading &&
         !state.downloadStarting &&
         !state.subtitleCopying &&
         !state.aiSummaryCopying
@@ -2177,7 +2304,12 @@ private fun ParseOptionsCard(
         ?.name
         .orEmpty()
     val subtitleLanguageEnabled = state.subtitleEnabled &&
+        controlsEnabled &&
         (state.subtitleList.isNotEmpty() || allowAnyExtras)
+    val sizeSpec = tween<IntSize>(
+        durationMillis = parseContentAnimationDurationMillis,
+        easing = FastOutSlowInEasing,
+    )
 
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
@@ -2192,7 +2324,8 @@ private fun ParseOptionsCard(
                 .padding(
                     horizontal = optionsCardHorizontalPadding,
                     vertical = optionsCardVerticalPadding,
-                ),
+                )
+                .animateContentSize(animationSpec = sizeSpec),
         ) {
             Text(
                 text = stringResource(R.string.parse_section_options),
@@ -2209,9 +2342,9 @@ private fun ParseOptionsCard(
                 OptionsSection(title = stringResource(R.string.parse_output_type)) {
                     ConnectedOutputButtons(
                         selected = state.outputType,
-                        audioVideoEnabled = allowAv,
-                        videoEnabled = isDash && hasVideo,
-                        audioEnabled = isDash && hasAudio,
+                        audioVideoEnabled = streamControlsEnabled && allowAv,
+                        videoEnabled = streamControlsEnabled && isDash && hasVideo,
+                        audioEnabled = streamControlsEnabled && isDash && hasAudio,
                         onOutputTypeChange = onOutputTypeChange,
                     )
                 }
@@ -2250,7 +2383,7 @@ private fun ParseOptionsCard(
                         CheckOption(
                             text = stringResource(R.string.parse_subtitle_label),
                             checked = state.subtitleEnabled,
-                            enabled = state.subtitleList.isNotEmpty() || allowAnyExtras,
+                            enabled = controlsEnabled && (state.subtitleList.isNotEmpty() || allowAnyExtras),
                             onCheckedChange = onSubtitleEnabledChange,
                             minHeight = compactSelectionHeight,
                             modifier = Modifier.weight(0.9f),
@@ -2266,7 +2399,7 @@ private fun ParseOptionsCard(
                         CheckOption(
                             text = stringResource(R.string.parse_ai_summary_label),
                             checked = state.aiSummaryEnabled,
-                            enabled = state.aiSummaryAvailable || allowAnyExtras,
+                            enabled = controlsEnabled && (state.aiSummaryAvailable || allowAnyExtras),
                             onCheckedChange = onAiSummaryEnabledChange,
                             minHeight = compactSelectionHeight,
                             modifier = Modifier.weight(0.9f),
@@ -2303,14 +2436,14 @@ private fun ParseOptionsCard(
                         CheckOption(
                             text = stringResource(R.string.parse_nfo_collection),
                             checked = state.nfoCollectionEnabled,
-                            enabled = collectionAvailable || allowAnyExtras,
+                            enabled = controlsEnabled && (collectionAvailable || allowAnyExtras),
                             onCheckedChange = onNfoCollectionEnabledChange,
                             modifier = Modifier.weight(1f),
                         )
                         CheckOption(
                             text = stringResource(R.string.parse_nfo_single),
                             checked = state.nfoSingleEnabled,
-                            enabled = info.list.isNotEmpty() || allowAnyExtras,
+                            enabled = controlsEnabled && (info.list.isNotEmpty() || allowAnyExtras),
                             onCheckedChange = onNfoSingleEnabledChange,
                             modifier = Modifier.weight(1f),
                         )
@@ -2323,14 +2456,14 @@ private fun ParseOptionsCard(
                         CheckOption(
                             text = stringResource(R.string.parse_danmaku_live),
                             checked = state.danmakuLiveEnabled,
-                            enabled = danmakuLiveEnabled,
+                            enabled = controlsEnabled && danmakuLiveEnabled,
                             onCheckedChange = onDanmakuLiveEnabledChange,
                             modifier = Modifier.weight(1f),
                         )
                         CheckOption(
                             text = stringResource(R.string.parse_danmaku_history),
                             checked = state.danmakuHistoryEnabled,
-                            enabled = danmakuHistoryEnabled,
+                            enabled = controlsEnabled && danmakuHistoryEnabled,
                             onCheckedChange = onDanmakuHistoryEnabledChange,
                             modifier = Modifier.weight(1f),
                         )
@@ -2344,7 +2477,7 @@ private fun ParseOptionsCard(
                             onValueChange = onDanmakuDateChange,
                             modifier = Modifier.weight(1f),
                             label = { Text(stringResource(R.string.parse_danmaku_date)) },
-                            enabled = state.danmakuHistoryEnabled,
+                            enabled = controlsEnabled && state.danmakuHistoryEnabled,
                             singleLine = true,
                             shape = RoundedCornerShape(controlCornerRadius),
                         )
@@ -2355,7 +2488,7 @@ private fun ParseOptionsCard(
                             },
                             modifier = Modifier.weight(1f),
                             label = { Text(stringResource(R.string.parse_danmaku_hour)) },
-                            enabled = state.danmakuHistoryEnabled,
+                            enabled = controlsEnabled && state.danmakuHistoryEnabled,
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             shape = RoundedCornerShape(controlCornerRadius),
@@ -2379,6 +2512,7 @@ private fun ParseOptionsCard(
                                             option.id !in state.selectedImageIds,
                                         )
                                     },
+                                    enabled = controlsEnabled,
                                     text = option.label,
                                 )
                             }
@@ -3003,6 +3137,7 @@ private fun MessageCard(
 private fun ExpressiveFilterChip(
     text: String,
     selected: Boolean,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -3017,7 +3152,7 @@ private fun ExpressiveFilterChip(
         selectedProgress,
     )
     val contentColor = lerp(
-        chipColors.onSurfaceVariant,
+        chipColors.onSurfaceVariant.copy(alpha = if (enabled) 1f else 0.48f),
         chipColors.onPrimaryContainer,
         selectedProgress,
     )
@@ -3043,6 +3178,7 @@ private fun ExpressiveFilterChip(
         modifier = Modifier
             .height(imageOptionChipHeight)
             .clickable(
+                enabled = enabled,
                 interactionSource = interactionSource,
                 indication = null,
                 role = Role.Checkbox,

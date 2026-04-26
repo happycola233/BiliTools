@@ -152,6 +152,7 @@ sealed class ParseEvent {
 data class ParseUiState(
     val loading: Boolean = false,
     val streamLoading: Boolean = false,
+    val collectionModeLoading: Boolean = false,
     val downloadStarting: Boolean = false,
     val subtitleCopying: Boolean = false,
     val aiSummaryCopying: Boolean = false,
@@ -262,7 +263,15 @@ class ParseViewModel(
     fun parse(input: String) {
         viewModelScope.launch {
             resetStreamLoadTracking()
-            _state.update { it.copy(loading = true, streamLoading = false, error = null, notice = null) }
+            _state.update {
+                it.copy(
+                    loading = true,
+                    streamLoading = false,
+                    collectionModeLoading = false,
+                    error = null,
+                    notice = null,
+                )
+            }
             offsetMap.clear()
             collectionStatCache.clear()
             itemStatCache.clear()
@@ -307,6 +316,7 @@ class ParseViewModel(
                                 collectionPreviewIndex = null,
                                 collectionPreviewStat = null,
                                 selectedItemStat = info.list.getOrNull(defaultIndex)?.stat,
+                                streamLoading = info.list.isNotEmpty(),
                                 isLoggedIn = authRepository.isLoggedIn(),
                             ),
                         ),
@@ -499,7 +509,15 @@ class ParseViewModel(
         }
         viewModelScope.launch {
             resetStreamLoadTracking()
-            _state.update { it.copy(loading = true, streamLoading = false, error = null, notice = null) }
+            _state.update {
+                it.copy(
+                    loading = true,
+                    streamLoading = false,
+                    collectionModeLoading = false,
+                    error = null,
+                    notice = null,
+                )
+            }
             runCatching {
                 val updated = mediaRepository.getMediaInfo(
                     info.id,
@@ -546,6 +564,7 @@ class ParseViewModel(
                             collectionPreviewIndex = null,
                             collectionPreviewStat = null,
                             selectedItemStat = updated.list.getOrNull(defaultIndex)?.stat,
+                            streamLoading = updated.list.isNotEmpty() && it.outputType != null,
                         ),
                     )
                 }
@@ -576,7 +595,15 @@ class ParseViewModel(
         val info = _state.value.mediaInfo ?: return
         viewModelScope.launch {
             resetStreamLoadTracking()
-            _state.update { it.copy(loading = true, streamLoading = false, error = null, notice = null) }
+            _state.update {
+                it.copy(
+                    loading = true,
+                    streamLoading = false,
+                    collectionModeLoading = false,
+                    error = null,
+                    notice = null,
+                )
+            }
             runCatching {
                 val updated = mediaRepository.getMediaInfo(
                     info.id,
@@ -612,6 +639,7 @@ class ParseViewModel(
                             collectionPreviewIndex = null,
                             collectionPreviewStat = null,
                             selectedItemStat = updated.list.getOrNull(defaultIndex)?.stat,
+                            streamLoading = updated.list.isNotEmpty() && it.outputType != null,
                         ),
                     )
                 }
@@ -625,12 +653,22 @@ class ParseViewModel(
     }
 
     fun setCollectionMode(enabled: Boolean) {
-        val info = _state.value.mediaInfo ?: return
-        if (_state.value.collectionMode == enabled) return
-        val target = _state.value.selectedSectionId
+        val snapshot = _state.value
+        val info = snapshot.mediaInfo ?: return
+        if (snapshot.collectionMode == enabled || snapshot.collectionModeLoading) return
+        val previousMode = snapshot.collectionMode
+        val target = snapshot.selectedSectionId
         viewModelScope.launch {
             resetStreamLoadTracking()
-            _state.update { it.copy(loading = true, streamLoading = false, error = null, notice = null) }
+            _state.update {
+                it.copy(
+                    collectionMode = enabled,
+                    collectionModeLoading = true,
+                    streamLoading = false,
+                    error = null,
+                    notice = null,
+                )
+            }
             runCatching {
                 val updated = mediaRepository.getMediaInfo(
                     info.id,
@@ -653,6 +691,7 @@ class ParseViewModel(
                             sections = updated.sections,
                             selectedSectionId = updated.sections?.target,
                             collectionMode = enabled,
+                            collectionModeLoading = false,
                             pageIndex = 1,
                             playUrlInfo = null,
                             videoStreams = emptyList(),
@@ -667,6 +706,7 @@ class ParseViewModel(
                             collectionPreviewIndex = null,
                             collectionPreviewStat = null,
                             selectedItemStat = updated.list.getOrNull(defaultIndex)?.stat,
+                            streamLoading = updated.list.isNotEmpty() && it.outputType != null,
                         ),
                     )
                 }
@@ -674,7 +714,15 @@ class ParseViewModel(
                     refreshExtras(updated, item)
                 }
             }.onFailure { err ->
-                setLoadingError(err)
+                _state.update {
+                    it.copy(
+                        collectionMode = previousMode,
+                        collectionModeLoading = false,
+                        streamLoading = false,
+                        error = mapError(err),
+                        isLoggedIn = authRepository.isLoggedIn(),
+                    )
+                }
             }
         }
     }
@@ -2489,7 +2537,13 @@ class ParseViewModel(
     }
 
     private fun ParseUiState.autoStreamRequestKeyOrNull(): StreamRequestKey? {
-        if (loading || mediaInfo == null || outputType == null || selectedItemIndices.isEmpty()) {
+        if (
+            loading ||
+            collectionModeLoading ||
+            mediaInfo == null ||
+            outputType == null ||
+            selectedItemIndices.isEmpty()
+        ) {
             return null
         }
         return streamRequestKeyOrNull()
@@ -3214,6 +3268,7 @@ class ParseViewModel(
         _state.update {
             it.copy(
                 loading = false,
+                collectionModeLoading = false,
                 error = mapError(err),
                 isLoggedIn = authRepository.isLoggedIn(),
             )
