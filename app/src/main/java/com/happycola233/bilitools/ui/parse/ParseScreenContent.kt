@@ -3080,7 +3080,7 @@ private fun ExpressiveFilterChip(
                 color = contentColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                style = ParseTextStyles.buttonLabel,
+                style = ParseTextStyles.buttonLabel.copy(fontWeight = FontWeight.Normal),
             )
         }
     }
