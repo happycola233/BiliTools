@@ -83,7 +83,7 @@
                     android:background="?attr/colorSurfaceVariant"
                     android:scaleType="centerCrop"
                     app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Small"
-                    tools:src="@drawable/ic_launcher_background" />
+                    tools:background="@drawable/bg_download_group_cover_placeholder" />
 
                 <!-- Text Info -->
                 <LinearLayout

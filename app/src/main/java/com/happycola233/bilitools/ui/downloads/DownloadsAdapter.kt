@@ -778,7 +778,7 @@ class DownloadsAdapter(
             val coverUrl = group.coverUrl?.trim().orEmpty()
             if (coverUrl.isBlank()) {
                 binding.groupCover.setImageDrawable(null)
-                binding.groupCover.setBackgroundResource(R.drawable.ic_launcher_background)
+                binding.groupCover.setBackgroundResource(R.drawable.bg_download_group_cover_placeholder)
             } else {
                 binding.groupCover.load(coverUrl) {
                     allowHardware(false)

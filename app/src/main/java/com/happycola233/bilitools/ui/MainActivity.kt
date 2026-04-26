@@ -34,7 +34,15 @@ class MainActivity : AppCompatActivity() {
     private val pendingThemeRecreateRunnable = Runnable { runPendingThemeRecreate() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
+        val splashScreen = installSplashScreen()
+        if (savedInstanceState == null) {
+            splashScreen.setOnExitAnimationListener { splashScreenView ->
+                MainLaunchSplashAnimator.play(
+                    splashScreenView = splashScreenView,
+                    contentView = if (::binding.isInitialized) binding.root else null,
+                )
+            }
+        }
         enableBiliEdgeToEdge()
         appliedThemeSnapshot = applySettingsThemeOverlays()
         super.onCreate(savedInstanceState)

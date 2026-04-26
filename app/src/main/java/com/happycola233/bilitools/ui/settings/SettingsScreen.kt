@@ -15,6 +15,9 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
@@ -101,12 +104,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.Placeholder
@@ -142,12 +148,15 @@ import com.happycola233.bilitools.data.DownloadQualityMode
 import com.happycola233.bilitools.data.IssueReportLogState
 import com.happycola233.bilitools.data.SettingsRepository
 import com.happycola233.bilitools.data.TopLevelFolderMode
+import com.happycola233.bilitools.ui.BiliTvLaunchMotion
 import com.happycola233.bilitools.ui.theme.BiliToolsSettingsTheme
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.max
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -1564,7 +1573,7 @@ private fun AboutSettingsScreen(
     var showLicense by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
-    val appIconPainter = painterResource(R.drawable.about_bilitools_icon)
+    val appIconPainter = painterResource(R.drawable.bilitools_app_icon)
     val iconBackgroundRotation by rememberInfiniteTransition(
         label = "aboutIconBackgroundRotation",
     ).animateFloat(
@@ -1625,26 +1634,10 @@ private fun AboutSettingsScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(16.dp),
                     ) {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .size(64.dp),
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .graphicsLayer { rotationZ = iconBackgroundRotation }
-                                    .background(
-                                        color = Color.White,
-                                        shape = MaterialShapes.Cookie9Sided.toShape(),
-                                    ),
-                            )
-                            Image(
-                                painter = appIconPainter,
-                                contentDescription = null,
-                                modifier = Modifier.size(46.dp),
-                            )
-                        }
+                        AnimatedAboutAppIcon(
+                            painter = appIconPainter,
+                            backgroundRotation = iconBackgroundRotation,
+                        )
                         Spacer(Modifier.width(16.dp))
                         Column {
                             Text(
@@ -1794,6 +1787,156 @@ private fun AboutSettingsScreen(
             onDismiss = { showLicense = false },
         )
     }
+}
+
+@Composable
+private fun AnimatedAboutAppIcon(
+    painter: Painter,
+    backgroundRotation: Float,
+    modifier: Modifier = Modifier,
+) {
+    val density = LocalDensity.current
+    val appName = stringResource(R.string.app_name)
+    val interactionSource = remember { MutableInteractionSource() }
+    var hopRequest by remember { mutableStateOf(0) }
+    val iconHopState = remember { AboutIconHopState() }
+
+    LaunchedEffect(hopRequest) {
+        if (hopRequest == 0) return@LaunchedEffect
+
+        iconHopState.snapTo(aboutIconRestTarget)
+        iconHopState.animateTo(
+            target = aboutIconSquashTarget,
+            durationMillis = BiliTvLaunchMotion.SQUASH_DURATION_MILLIS,
+            easing = aboutIconStandardEasing,
+        )
+        iconHopState.animateTo(
+            target = aboutIconJumpTarget,
+            durationMillis = BiliTvLaunchMotion.JUMP_DURATION_MILLIS,
+            easing = aboutIconEmphasizedEasing,
+        )
+        iconHopState.animateTo(
+            target = aboutIconRestTarget,
+            durationMillis = BiliTvLaunchMotion.SETTLE_DURATION_MILLIS,
+            easing = aboutIconSettleEasing,
+        )
+    }
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .size(64.dp)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClickLabel = appName,
+                role = Role.Button,
+            ) {
+                hopRequest += 1
+            }
+            .semantics { contentDescription = appName },
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { rotationZ = backgroundRotation }
+                .background(
+                    color = Color.White,
+                    shape = MaterialShapes.Cookie9Sided.toShape(),
+                ),
+        )
+        Image(
+            painter = painter,
+            contentDescription = null,
+            modifier = Modifier
+                .size(46.dp)
+                .graphicsLayer {
+                    translationY = with(density) {
+                        iconHopState.translationYDp.value.dp.toPx()
+                    }
+                    scaleX = iconHopState.scaleX.value
+                    scaleY = iconHopState.scaleY.value
+                    rotationZ = iconHopState.rotationDegrees.value
+                },
+        )
+    }
+}
+
+private class AboutIconHopState {
+    val translationYDp = Animatable(0f)
+    val scaleX = Animatable(1f)
+    val scaleY = Animatable(1f)
+    val rotationDegrees = Animatable(0f)
+
+    suspend fun snapTo(target: AboutIconHopTarget) {
+        translationYDp.snapTo(target.translationYDp)
+        scaleX.snapTo(target.scaleX)
+        scaleY.snapTo(target.scaleY)
+        rotationDegrees.snapTo(target.rotationDegrees)
+    }
+
+    suspend fun animateTo(
+        target: AboutIconHopTarget,
+        durationMillis: Int,
+        easing: Easing,
+    ) {
+        val animationSpec = tween<Float>(
+            durationMillis = durationMillis,
+            easing = easing,
+        )
+        coroutineScope {
+            launch { translationYDp.animateTo(target.translationYDp, animationSpec) }
+            launch { scaleX.animateTo(target.scaleX, animationSpec) }
+            launch { scaleY.animateTo(target.scaleY, animationSpec) }
+            launch { rotationDegrees.animateTo(target.rotationDegrees, animationSpec) }
+        }
+    }
+}
+
+private data class AboutIconHopTarget(
+    val translationYDp: Float,
+    val scaleX: Float,
+    val scaleY: Float,
+    val rotationDegrees: Float,
+)
+
+private val aboutIconRestTarget = AboutIconHopTarget(
+    translationYDp = 0f,
+    scaleX = 1f,
+    scaleY = 1f,
+    rotationDegrees = 0f,
+)
+
+private val aboutIconSquashTarget = AboutIconHopTarget(
+    translationYDp = BiliTvLaunchMotion.ICON_SQUASH_OFFSET_DP,
+    scaleX = BiliTvLaunchMotion.ICON_SQUASH_SCALE_X,
+    scaleY = BiliTvLaunchMotion.ICON_SQUASH_SCALE_Y,
+    rotationDegrees = BiliTvLaunchMotion.ICON_SQUASH_ROTATION_DEGREES,
+)
+
+private val aboutIconJumpTarget = AboutIconHopTarget(
+    translationYDp = BiliTvLaunchMotion.ICON_JUMP_OFFSET_DP,
+    scaleX = BiliTvLaunchMotion.ICON_JUMP_SCALE_X,
+    scaleY = BiliTvLaunchMotion.ICON_JUMP_SCALE_Y,
+    rotationDegrees = BiliTvLaunchMotion.ICON_JUMP_ROTATION_DEGREES,
+)
+
+private val aboutIconStandardEasing = CubicBezierEasing(
+    BiliTvLaunchMotion.STANDARD_EASE_X1,
+    BiliTvLaunchMotion.STANDARD_EASE_Y1,
+    BiliTvLaunchMotion.STANDARD_EASE_X2,
+    BiliTvLaunchMotion.STANDARD_EASE_Y2,
+)
+
+private val aboutIconEmphasizedEasing = CubicBezierEasing(
+    BiliTvLaunchMotion.EMPHASIZED_EASE_X1,
+    BiliTvLaunchMotion.EMPHASIZED_EASE_Y1,
+    BiliTvLaunchMotion.EMPHASIZED_EASE_X2,
+    BiliTvLaunchMotion.EMPHASIZED_EASE_Y2,
+)
+
+private val aboutIconSettleEasing = Easing { fraction ->
+    BiliTvLaunchMotion.settleOvershoot(fraction)
 }
 
 @Composable
