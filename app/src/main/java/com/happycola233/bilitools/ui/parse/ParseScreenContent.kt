@@ -1362,13 +1362,6 @@ private fun CoverImage(coverUrl: String) {
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
             )
-        } else {
-            Image(
-                painter = painterResource(R.drawable.ic_hide_image_24),
-                contentDescription = null,
-                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant),
-                modifier = Modifier.size(40.dp),
-            )
         }
         incomingCoverUrl?.let { pendingUrl ->
             AsyncImage(
@@ -2386,6 +2379,7 @@ private fun ParseOptionsCard(
                             enabled = controlsEnabled && (state.subtitleList.isNotEmpty() || allowAnyExtras),
                             onCheckedChange = onSubtitleEnabledChange,
                             minHeight = compactSelectionHeight,
+                            textStartPadding = 0.dp,
                             modifier = Modifier.weight(0.9f),
                         )
                         CompactSelectionField(
@@ -2402,6 +2396,7 @@ private fun ParseOptionsCard(
                             enabled = controlsEnabled && (state.aiSummaryAvailable || allowAnyExtras),
                             onCheckedChange = onAiSummaryEnabledChange,
                             minHeight = compactSelectionHeight,
+                            textStartPadding = 0.dp,
                             modifier = Modifier.weight(0.9f),
                         )
                     }
@@ -3256,6 +3251,7 @@ private fun CheckOption(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     minHeight: Dp = checkOptionMinHeight,
+    textStartPadding: Dp = 4.dp,
 ) {
     Row(
         modifier = modifier
@@ -3274,7 +3270,7 @@ private fun CheckOption(
             text = text,
             modifier = Modifier
                 .weight(1f)
-                .padding(start = 4.dp),
+                .padding(start = textStartPadding),
             color = if (enabled) {
                 MaterialTheme.colorScheme.onSurface
             } else {
