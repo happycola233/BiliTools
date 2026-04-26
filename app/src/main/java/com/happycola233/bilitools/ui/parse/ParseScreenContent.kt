@@ -146,6 +146,7 @@ import com.happycola233.bilitools.data.model.OutputType
 import com.happycola233.bilitools.data.model.StreamFormat
 import com.happycola233.bilitools.data.model.VideoCodec
 import com.happycola233.bilitools.ui.FloatingControlsDefaults
+import com.happycola233.bilitools.ui.TopErrorMessageHost
 import kotlinx.coroutines.launch
 
 private val screenHorizontalPadding = 16.dp
@@ -325,6 +326,7 @@ fun ParseScreenContent(
     onCopyAllSubtitles: (List<SubtitleCopyEntry>) -> Unit,
     onCopyCurrentAiSummary: (AiSummaryCopyEntry) -> Unit,
     onCopyAllAiSummaries: (List<AiSummaryCopyEntry>) -> Unit,
+    onDismissError: () -> Unit,
 ) {
     val nestedScrollInterop = rememberNestedScrollInteropConnection()
     val info = state.mediaInfo
@@ -368,16 +370,6 @@ fun ParseScreenContent(
                     onParse = onParse,
                     onMediaTypeChange = onMediaTypeChange,
                 )
-            }
-
-            if (!state.error.isNullOrBlank()) {
-                item(key = "error") {
-                    MessageCard(
-                        message = state.error.orEmpty(),
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                    )
-                }
             }
 
             if (info != null) {
@@ -461,6 +453,15 @@ fun ParseScreenContent(
                 onDownload = onDownload,
             )
         }
+
+        TopErrorMessageHost(
+            message = state.error,
+            onDismiss = onDismissError,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(horizontal = 8.dp)
+                .padding(top = 4.dp),
+        )
 
         subtitleCopyDialogEntries?.let { entries ->
             SubtitleCopyPreviewDialog(

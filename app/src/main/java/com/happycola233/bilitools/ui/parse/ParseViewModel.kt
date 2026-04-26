@@ -343,6 +343,10 @@ class ParseViewModel(
         _state.update { it.copy(notice = null) }
     }
 
+    fun clearError() {
+        _state.update { it.copy(error = null) }
+    }
+
     fun selectItem(index: Int, ensureSelected: Boolean = true) {
         val info = _state.value.mediaInfo ?: return
         val item = _state.value.items.getOrNull(index) ?: return
@@ -1539,7 +1543,6 @@ class ParseViewModel(
                     it.copy(
                         subtitleCopying = false,
                         error = message,
-                        notice = message,
                     )
                 }
                 return@launch
@@ -1551,7 +1554,6 @@ class ParseViewModel(
                     it.copy(
                         subtitleCopying = false,
                         error = message,
-                        notice = message,
                     )
                 }
                 return@launch
@@ -1564,7 +1566,6 @@ class ParseViewModel(
                     _state.update {
                         it.copy(
                             error = message,
-                            notice = message,
                         )
                     }
                     return@launch
@@ -1603,7 +1604,6 @@ class ParseViewModel(
                     it.copy(
                         aiSummaryCopying = false,
                         error = message,
-                        notice = message,
                     )
                 }
                 return@launch
@@ -1615,7 +1615,6 @@ class ParseViewModel(
                     it.copy(
                         aiSummaryCopying = false,
                         error = message,
-                        notice = message,
                     )
                 }
                 return@launch
@@ -1628,7 +1627,6 @@ class ParseViewModel(
                     _state.update {
                         it.copy(
                             error = message,
-                            notice = message,
                         )
                     }
                     return@launch

@@ -151,6 +151,10 @@ class LoginViewModel(
         }
     }
 
+    fun clearError() {
+        _state.update { it.copy(errorText = null) }
+    }
+
     fun ensureCountries() {
         if (_state.value.countries.isEmpty()) {
             loadCountries()

@@ -94,6 +94,7 @@ import coil.load
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.AppSettings
 import com.happycola233.bilitools.data.model.UserInfo
+import com.happycola233.bilitools.ui.TopErrorMessageHost
 import com.happycola233.bilitools.ui.login.LoginTab
 import com.happycola233.bilitools.ui.login.LoginUiState
 import com.happycola233.bilitools.ui.theme.BiliToolsSettingsTheme
@@ -166,6 +167,7 @@ fun BiliToolsLoginContent(
     onRequestSmsCode: (Int, String) -> Unit,
     onLoginWithSms: (Int, String, String) -> Unit,
     onSetCountryId: (Int) -> Unit,
+    onDismissError: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BiliToolsSettingsTheme(settings = settings) {
@@ -179,6 +181,7 @@ fun BiliToolsLoginContent(
             onRequestSmsCode = onRequestSmsCode,
             onLoginWithSms = onLoginWithSms,
             onSetCountryId = onSetCountryId,
+            onDismissError = onDismissError,
             modifier = modifier,
         )
     }
@@ -378,6 +381,7 @@ private fun LoginSubscreen(
     onRequestSmsCode: (Int, String) -> Unit,
     onLoginWithSms: (Int, String, String) -> Unit,
     onSetCountryId: (Int) -> Unit,
+    onDismissError: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var account by rememberSaveable { mutableStateOf("") }
@@ -442,11 +446,17 @@ private fun LoginSubscreen(
                     onSetCountryId = onSetCountryId,
                 )
             }
-            if (!state.errorText.isNullOrBlank()) {
-                item { Spacer(Modifier.height(12.dp)) }
-                item { ErrorCard(state.errorText.orEmpty()) }
-            }
         }
+
+        TopErrorMessageHost(
+            message = state.errorText,
+            onDismiss = onDismissError,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .safeDrawingPadding()
+                .padding(horizontal = 8.dp)
+                .padding(top = 4.dp),
+        )
     }
 }
 
@@ -963,36 +973,6 @@ private fun LoginPanelSubtitle(
         textAlign = TextAlign.Center,
         modifier = modifier.padding(bottom = 8.dp),
     )
-}
-
-@Composable
-private fun ErrorCard(
-    message: String,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        color = MaterialTheme.colorScheme.errorContainer,
-        shape = MaterialTheme.shapes.large,
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.padding(14.dp),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_info_24),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onErrorContainer,
-            )
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                modifier = Modifier.weight(1f),
-            )
-        }
-    }
 }
 
 @Composable

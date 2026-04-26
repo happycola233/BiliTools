@@ -892,7 +892,7 @@ private fun TopLevelFolderModeListItem(
             ),
             TopLevelFolderModeOption(
                 mode = TopLevelFolderMode.Disabled,
-                iconRes = R.drawable.ic_close_24,
+                iconRes = R.drawable.ic_close_rounded_24,
                 labelRes = R.string.settings_naming_top_level_folder_mode_disabled,
             ),
         )
@@ -2306,7 +2306,7 @@ private fun ColorSchemePickerListItem(
                         thumbContent = {
                             Icon(
                                 painter = painterResource(
-                                    if (checked) R.drawable.ic_check_24 else R.drawable.ic_close_24,
+                                    if (checked) R.drawable.ic_check_rounded_24 else R.drawable.ic_close_rounded_24,
                                 ),
                                 contentDescription = null,
                                 modifier = Modifier.size(SwitchDefaults.IconSize),
@@ -2426,7 +2426,7 @@ private fun ExpressiveSwitchListItem(
                 thumbContent = {
                     Icon(
                         painter = painterResource(
-                            if (checked) R.drawable.ic_check_24 else R.drawable.ic_close_24,
+                            if (checked) R.drawable.ic_check_rounded_24 else R.drawable.ic_close_rounded_24,
                         ),
                         contentDescription = null,
                         modifier = Modifier.size(SwitchDefaults.IconSize),

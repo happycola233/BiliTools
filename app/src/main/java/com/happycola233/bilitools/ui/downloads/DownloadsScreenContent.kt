@@ -626,7 +626,11 @@ private fun DownloadsManageFab(
                 checked = expanded,
                 onCheckedChange = { expanded = it },
             ) {
-                val imageVector = if (checkedProgress > 0.5f) R.drawable.ic_close_24 else R.drawable.ic_menu_24
+                val imageVector = if (checkedProgress > 0.5f) {
+                    R.drawable.ic_close_rounded_24
+                } else {
+                    R.drawable.ic_menu_24
+                }
                 Icon(
                     painter = painterResource(imageVector),
                     contentDescription = stringResource(R.string.downloads_actions_menu),
@@ -659,7 +663,7 @@ private fun DownloadsManageFab(
         )
         FloatingActionButtonMenuItem(
             onClick = { expanded = false; onBatchManage() },
-            icon = { Icon(painter = painterResource(R.drawable.ic_checklist_24), contentDescription = null) },
+            icon = { Icon(painter = painterResource(R.drawable.ic_checklist_rounded_24), contentDescription = null) },
             text = { Text(text = stringResource(R.string.downloads_multi_manage)) },
         )
     }

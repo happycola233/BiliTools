@@ -3,6 +3,8 @@
     <string name="nav_parse">解析</string>
     <string name="nav_downloads">下载</string>
     <string name="nav_me">我</string>
+    <string name="common_copy_message">复制消息</string>
+    <string name="common_dismiss_message">关闭消息</string>
 
     <string name="login_title">登录</string>
     <string name="login_qr_desc">登录二维码</string>

@@ -59,6 +59,7 @@ class LoginActivity : AppCompatActivity() {
                 onRequestSmsCode = viewModel::requestSmsCode,
                 onLoginWithSms = viewModel::loginWithSms,
                 onSetCountryId = viewModel::setCountryId,
+                onDismissError = viewModel::clearError,
             )
         }
 

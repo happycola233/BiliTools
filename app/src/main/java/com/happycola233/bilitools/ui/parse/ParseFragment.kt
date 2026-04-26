@@ -174,6 +174,7 @@ class ParseFragment : Fragment() {
                     onCopyAllSubtitles = ::handleCopyAllSubtitles,
                     onCopyCurrentAiSummary = ::handleCopyCurrentAiSummary,
                     onCopyAllAiSummaries = ::handleCopyAllAiSummaries,
+                    onDismissError = viewModel::clearError,
                 )
             }
         }
