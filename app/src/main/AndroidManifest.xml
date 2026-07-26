@@ -63,6 +63,11 @@
             android:theme="@style/Theme.BiliTools" />
 
         <activity
+            android:name=".ui.parse.StreamFormatGuideActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BiliTools" />
+
+        <activity
             android:name=".ui.settings.SettingsActivity"
             android:exported="false"
             android:theme="@style/Theme.BiliTools" />

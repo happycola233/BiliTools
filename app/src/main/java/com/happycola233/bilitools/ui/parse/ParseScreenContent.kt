@@ -1,7 +1,6 @@
 package com.happycola233.bilitools.ui.parse
 
-import android.text.method.LinkMovementMethod
-import android.widget.TextView
+import android.content.Intent
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -121,22 +120,26 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.core.text.HtmlCompat
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.happycola233.bilitools.R
@@ -3286,24 +3289,38 @@ private fun CheckOption(
 @Composable
 private fun StreamFormatHint() {
     val context = LocalContext.current
-    val textColor = MaterialTheme.colorScheme.onSurfaceVariant.toArgbCompat()
-    val linkColor = MaterialTheme.colorScheme.primary.toArgbCompat()
-    AndroidView(
+    val linkColor = MaterialTheme.colorScheme.primary
+    val hintPrefix = stringResource(R.string.parse_stream_format_hint_prefix)
+    val guideTitle = stringResource(R.string.stream_format_guide_title)
+    val hintSuffix = stringResource(R.string.parse_stream_format_hint_suffix)
+    val hintText = buildAnnotatedString {
+        append(hintPrefix)
+        withLink(
+            LinkAnnotation.Clickable(
+                tag = "stream-format-guide",
+                styles = TextLinkStyles(
+                    style = SpanStyle(
+                        color = linkColor,
+                        textDecoration = TextDecoration.Underline,
+                    ),
+                ),
+                linkInteractionListener = {
+                    context.startActivity(
+                        Intent(context, StreamFormatGuideActivity::class.java),
+                    )
+                },
+            ),
+        ) {
+            append(guideTitle)
+        }
+        append(hintSuffix)
+    }
+
+    Text(
+        text = hintText,
         modifier = Modifier.fillMaxWidth(),
-        factory = {
-            TextView(it).apply {
-                movementMethod = LinkMovementMethod.getInstance()
-                textSize = 13f
-            }
-        },
-        update = { textView ->
-            textView.text = HtmlCompat.fromHtml(
-                context.getString(R.string.parse_stream_format_hint),
-                HtmlCompat.FROM_HTML_MODE_COMPACT,
-            )
-            textView.setTextColor(textColor)
-            textView.setLinkTextColor(linkColor)
-        },
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = ParseTextStyles.supporting,
     )
 }
 
@@ -3525,13 +3542,4 @@ private fun formatStat(value: Long): String {
 
 private fun Modifier.semanticsRoleRadio(): Modifier {
     return semantics { role = Role.RadioButton }
-}
-
-private fun Color.toArgbCompat(): Int {
-    return android.graphics.Color.argb(
-        (alpha * 255).toInt(),
-        (red * 255).toInt(),
-        (green * 255).toInt(),
-        (blue * 255).toInt(),
-    )
 }

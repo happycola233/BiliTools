@@ -100,7 +100,8 @@
     <string name="parse_error_invalid_input">请输入有效链接/AV/BV/SS/EP/AU/AM/SID/FID/CV/RL/UID</string>
     <string name="parse_error_failed">解析失败，请稍后重试</string>
     <string name="parse_stream_format">流媒体格式</string>
-    <string name="parse_stream_format_hint"><![CDATA[请勿随意修改。若确实需要更改，请先阅读：<a href="https://bilitools.btjawa.top/guide/stream.html">关于 DASH / FLV / MP4</a>，并确保你了解自己正在做什么]]></string>
+    <string name="parse_stream_format_hint_prefix">请勿随意修改。若确实需要更改，请先阅读：</string>
+    <string name="parse_stream_format_hint_suffix">，并确保你了解自己正在做什么</string>
     <string name="format_dash">DASH 格式</string>
     <string name="format_mp4">MP4 格式</string>
     <string name="format_flv">FLV 格式</string>

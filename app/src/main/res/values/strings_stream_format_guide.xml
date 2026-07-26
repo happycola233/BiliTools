@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="stream_format_guide_title">关于 DASH / MP4 / FLV</string>
+    <string name="stream_format_guide_subtitle">流媒体格式选择指南</string>
+    <string name="stream_format_guide_intro">哔哩哔哩历史上采用过三种流媒体串流方案。2018 年引入 DASH 后沿用至今，MP4 与 FLV 仅在少数场景下还会出现。</string>
+
+    <string name="stream_format_guide_dash_status">推荐</string>
+    <string name="stream_format_guide_dash_notice">哔哩哔哩目前采用的串流格式，音视频质量最好，下载速度也最快。</string>
+    <string name="stream_format_guide_dash_default">在大多数情况下保持该格式即可。若不了解其他格式，不要修改下载参数中的“流媒体格式”。</string>
+    <string name="stream_format_guide_dash_body">音频与视频会被切片后单独下发，因此拿到的分别是无声视频和无画面音频。</string>
+    <string name="stream_format_guide_dash_merge">若要得到单个音视频文件，必须经 FFmpeg 混流，也就是应用内名为“音视频”的任务。</string>
+
+    <string name="stream_format_guide_mp4_status">谨慎选择</string>
+    <string name="stream_format_guide_mp4_notice">不要因为后缀看起来是 MP4 就选它，下载速度通常更慢，质量也不如 DASH。</string>
+    <string name="stream_format_guide_mp4_body">该方案直接下发 MP4 格式媒体，视频自带音频，无需混流。</string>
+    <string name="stream_format_guide_mp4_exception">目前基本已不再使用，主要例外是试看资源，例如需要付费的番剧、影视或课程。这类资源通常只能取到 MP4，且画质与音质大多欠佳。</string>
+
+    <string name="stream_format_guide_flv_status">基本退役</string>
+    <string name="stream_format_guide_flv_notice">早年采用的 FLV 分段格式，现已基本完全退役。</string>
+    <string name="stream_format_guide_flv_body">保留该选项仅用于兼容与存档，部分旧资源可能仍可下载，不建议作为日常选择。</string>
+
+    <string name="stream_format_guide_footer">拿不准就保持默认的 DASH 格式。</string>
+</resources>
