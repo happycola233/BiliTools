@@ -192,6 +192,7 @@ class SettingsActivity : AppCompatActivity() {
                         viewModel.setDarkModePureBlack(enabled)
                     }
                 },
+                onLaunchSplashAnimationChange = viewModel::setLaunchSplashAnimationEnabled,
                 onGlassDebugChange = viewModel::setDownloadsGlassDebugEnabled,
                 onIssueReportLoggingChange = viewModel::setIssueReportDetailedLoggingEnabled,
                 onExportIssueReport = {

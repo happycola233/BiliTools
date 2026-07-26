@@ -40,6 +40,7 @@ data class AppSettings(
     val themeMode: AppThemeMode = AppThemeMode.System,
     val themeColor: AppThemeColor = AppThemeColor.Dynamic,
     val darkModePureBlack: Boolean = false,
+    val launchSplashAnimationEnabled: Boolean = true,
     val liveActivityStyleNotificationEnabled: Boolean = true,
     val downloadRootRelativePath: String = SettingsRepository.DEFAULT_DOWNLOAD_ROOT,
     val confirmCellularDownload: Boolean = true,
@@ -212,6 +213,13 @@ class SettingsRepository(context: Context) {
         if (current.darkModePureBlack == enabled) return
         prefs.edit().putBoolean(KEY_DARK_MODE_PURE_BLACK, enabled).apply()
         _settings.value = current.copy(darkModePureBlack = enabled)
+    }
+
+    fun setLaunchSplashAnimationEnabled(enabled: Boolean) {
+        val current = _settings.value
+        if (current.launchSplashAnimationEnabled == enabled) return
+        prefs.edit().putBoolean(KEY_LAUNCH_SPLASH_ANIMATION_ENABLED, enabled).apply()
+        _settings.value = current.copy(launchSplashAnimationEnabled = enabled)
     }
 
     fun setLiveActivityStyleNotificationEnabled(enabled: Boolean) {
@@ -459,6 +467,10 @@ class SettingsRepository(context: Context) {
                 prefs.getString(KEY_THEME_COLOR, AppThemeColor.Dynamic.value),
             ),
             darkModePureBlack = prefs.getBoolean(KEY_DARK_MODE_PURE_BLACK, false),
+            launchSplashAnimationEnabled = prefs.getBoolean(
+                KEY_LAUNCH_SPLASH_ANIMATION_ENABLED,
+                true,
+            ),
             liveActivityStyleNotificationEnabled = prefs.getBoolean(
                 KEY_LIVE_ACTIVITY_STYLE_NOTIFICATION_ENABLED,
                 true,
@@ -724,6 +736,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_THEME_COLOR = "theme_color"
         private const val KEY_DARK_MODE_PURE_BLACK = "dark_mode_pure_black"
+        private const val KEY_LAUNCH_SPLASH_ANIMATION_ENABLED = "launch_splash_animation_enabled"
         private const val KEY_LIVE_ACTIVITY_STYLE_NOTIFICATION_ENABLED =
             "live_activity_style_notification_enabled"
         private const val KEY_DOWNLOAD_ROOT_RELATIVE_PATH = "download_root_relative_path"

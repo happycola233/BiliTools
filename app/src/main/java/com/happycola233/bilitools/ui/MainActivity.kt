@@ -4,12 +4,16 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Bundle
+import android.util.TypedValue
+import android.view.View
+import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.os.bundleOf
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.ViewCompat
 import androidx.core.view.ViewGroupCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.doOnPreDraw
 import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.adapter.FragmentStateAdapter
@@ -32,15 +36,23 @@ class MainActivity : AppCompatActivity() {
     private var pendingThemeRecreate = false
     private var themeRecreateScheduled = false
     private val pendingThemeRecreateRunnable = Runnable { runPendingThemeRecreate() }
+    private var launchFlashGuard: View? = null
+    private val launchFlashGuardTimeoutRunnable = Runnable { removeLaunchFlashGuard() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // 启动页背景色必须在 installSplashScreen() 把主题切到 postSplashScreenTheme 之前读取
+        val splashBackgroundColor = resolveSplashScreenBackgroundColor()
         val splashScreen = installSplashScreen()
-        if (savedInstanceState == null) {
+        val playLaunchSplashAnimation = savedInstanceState == null &&
+            applicationContext.appContainer.settingsRepository
+                .currentSettings().launchSplashAnimationEnabled
+        if (playLaunchSplashAnimation) {
             splashScreen.setOnExitAnimationListener { splashScreenView ->
                 MainLaunchSplashAnimator.play(
                     splashScreenView = splashScreenView,
                     contentView = if (::binding.isInitialized) binding.root else null,
                 )
+                releaseLaunchFlashGuardAfterSplashDrawn()
             }
         }
         enableBiliEdgeToEdge()
@@ -66,6 +78,9 @@ class MainActivity : AppCompatActivity() {
         }
         ViewGroupCompat.installCompatInsetsDispatch(binding.root)
         setContentView(binding.root)
+        if (playLaunchSplashAnimation) {
+            installLaunchFlashGuard(splashBackgroundColor)
+        }
         requestInsetsRefresh()
 
         val pagerAdapter = MainPagerAdapter(this)
@@ -105,7 +120,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         // Disable long click toast on bottom navigation items
-        val menuView = binding.bottomNav.getChildAt(0) as? android.view.ViewGroup
+        val menuView = binding.bottomNav.getChildAt(0) as? ViewGroup
         menuView?.let {
             for (i in 0 until it.childCount) {
                 it.getChildAt(i).setOnLongClickListener { true }
@@ -163,6 +178,71 @@ class MainActivity : AppCompatActivity() {
             bundleOf(ExternalDownloadContract.RESULT_URL to url),
         )
         sourceIntent?.removeExtra(ExternalDownloadContract.EXTRA_URL)
+    }
+
+    /**
+     * 读取启动页主题（Theme.BiliTools.Splash）声明的 windowSplashScreenBackground。
+     * 该属性只存在于启动页主题上，installSplashScreen() 切换主题后便无法再解析。
+     */
+    private fun resolveSplashScreenBackgroundColor(): Int? {
+        val typedValue = TypedValue()
+        val resolved = theme.resolveAttribute(
+            androidx.core.splashscreen.R.attr.windowSplashScreenBackground,
+            typedValue,
+            true,
+        )
+        if (!resolved) return null
+        return if (
+            typedValue.type in TypedValue.TYPE_FIRST_COLOR_INT..TypedValue.TYPE_LAST_COLOR_INT
+        ) {
+            typedValue.data
+        } else {
+            null
+        }
+    }
+
+    /**
+     * 防闪帧遮罩：Android 12+ 上注册 setOnExitAnimationListener 后，系统启动窗口移除与
+     * SplashScreenView 移交到应用窗口之间存在一帧竞态，启动越快（release 冷启动）越容易
+     * 在小电视动画中间闪出一帧首页。在内容之上、SplashScreenView 之下垫一层与启动页背景
+     * 同色的遮罩，让竞态帧显示的仍是启动页背景而不是首页内容。
+     */
+    private fun installLaunchFlashGuard(backgroundColor: Int?) {
+        if (backgroundColor == null) return
+        val guard = View(this).apply {
+            setBackgroundColor(backgroundColor)
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        }
+        findViewById<ViewGroup>(android.R.id.content).addView(
+            guard,
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT,
+        )
+        launchFlashGuard = guard
+        // 兜底：没有系统启动窗口的场景（如进程内重新启动 MainActivity）退场回调不会触发，
+        // 首帧绘制后限时移除遮罩，避免其永久盖住页面
+        guard.doOnPreDraw {
+            guard.postDelayed(
+                launchFlashGuardTimeoutRunnable,
+                LAUNCH_FLASH_GUARD_TIMEOUT_MILLIS,
+            )
+        }
+    }
+
+    /** 退场回调已拿到 SplashScreenView，等两帧确保其绘制到应用窗口、盖住内容后再撤掉遮罩。 */
+    private fun releaseLaunchFlashGuardAfterSplashDrawn() {
+        if (launchFlashGuard == null) return
+        val decorView = window.decorView
+        decorView.postOnAnimation {
+            decorView.postOnAnimation { removeLaunchFlashGuard() }
+        }
+    }
+
+    private fun removeLaunchFlashGuard() {
+        val guard = launchFlashGuard ?: return
+        launchFlashGuard = null
+        guard.removeCallbacks(launchFlashGuardTimeoutRunnable)
+        (guard.parent as? ViewGroup)?.removeView(guard)
     }
 
     private fun updatePendingThemeRecreate() {
@@ -272,6 +352,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_OPEN_DOWNLOADS = "extra_open_downloads"
         private const val THEME_RECREATE_RETRY_DELAY_MILLIS = 48L
+        private const val LAUNCH_FLASH_GUARD_TIMEOUT_MILLIS = 400L
         private val TOP_BAR_INSET_TYPES =
             WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.displayCutout()
         private val BOTTOM_BAR_INSET_TYPES =

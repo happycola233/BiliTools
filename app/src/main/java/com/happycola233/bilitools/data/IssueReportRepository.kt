@@ -222,6 +222,10 @@ class IssueReportRepository(
         appendKeyValue("themeMode", settings.themeMode.value)
         appendKeyValue("themeColor", settings.themeColor.value)
         appendKeyValue("darkModePureBlack", settings.darkModePureBlack.toString())
+        appendKeyValue(
+            "launchSplashAnimationEnabled",
+            settings.launchSplashAnimationEnabled.toString(),
+        )
         appendKeyValue("confirmCellularDownload", settings.confirmCellularDownload.toString())
         appendKeyValue(
             "hideDownloadedVideosInSystemAlbum",

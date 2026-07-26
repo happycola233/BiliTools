@@ -78,6 +78,10 @@ class SettingsViewModel(
         settingsRepository.setDarkModePureBlack(enabled)
     }
 
+    fun setLaunchSplashAnimationEnabled(enabled: Boolean) {
+        settingsRepository.setLaunchSplashAnimationEnabled(enabled)
+    }
+
     fun setLiveActivityStyleNotificationEnabled(enabled: Boolean) {
         settingsRepository.setLiveActivityStyleNotificationEnabled(enabled)
     }
