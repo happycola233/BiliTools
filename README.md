@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./.github/images/BiliTools_icon_rounded.png" width="120" alt="BiliTools Logo" />
+  <img src="./docs/assets/BiliTools_icon_rounded.png" width="120" alt="BiliTools Logo" />
   <h1>BiliTools for Android 📺</h1>
   <p><strong>一款运行在 Android 平台上的强大、清爽、开源的哔哩哔哩（Bilibili）视频解析与下载工具，让你畅享纯粹的下载体验！✨</strong></p>
   
@@ -21,9 +21,9 @@
   
 | **🏠 首页（解析展示）** | **📥 首页（下载与导出）** | **⬇️ 下载管理页** |
 |:---:|:---:|:---:|
-| <img src="./.github/images/主页（解析）.jpg" width="250" alt="首页解析"> | <img src="./.github/images/主页（下载与导出）.jpg" width="250" alt="首页面板"> | <img src="./.github/images/下载页.jpg" width="250" alt="下载页"> |
+| <img src="./docs/assets/主页（解析）.jpg" width="250" alt="首页解析"> | <img src="./docs/assets/主页（下载与导出）.jpg" width="250" alt="首页面板"> | <img src="./docs/assets/下载页.jpg" width="250" alt="下载页"> |
 | **👤 个人中心页** | **⚙️ 全局设置页** | **🎨 设置（个性化外观）** |
-| <img src="./.github/images/我页.jpg" width="250" alt="个人页"> | <img src="./.github/images/设置页.jpg" width="250" alt="设置页"> | <img src="./.github/images/设置页（外观）.jpg" width="250" alt="主题外观"> |
+| <img src="./docs/assets/我页.jpg" width="250" alt="个人页"> | <img src="./docs/assets/设置页.jpg" width="250" alt="设置页"> | <img src="./docs/assets/设置页（外观）.jpg" width="250" alt="主题外观"> |
 
 </div>
 
