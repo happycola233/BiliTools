@@ -37,4 +37,4 @@ google-services.json
 Thumbs.db
 
 # Development files
-DevFile/
+.devfiles/
