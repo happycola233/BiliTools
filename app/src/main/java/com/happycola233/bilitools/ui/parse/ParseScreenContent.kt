@@ -3384,7 +3384,7 @@ private fun bitrateModeOptions(): List<DropdownOption<QualityMode>> {
 
 private fun resolveHighlightedIndex(state: ParseUiState, info: MediaInfo): Int {
     return if (isRowClickEnabled(state, info)) {
-        state.collectionPreviewIndex ?: state.selectedItemIndex
+        state.previewItemIndex ?: state.selectedItemIndex
     } else {
         -1
     }
@@ -3424,13 +3424,9 @@ private fun resolveVideoCardDisplay(
     selectedItem: MediaItem?,
 ): VideoCardDisplay {
     val isCollectionVideo = state.collectionMode && info.type == MediaType.Video && info.collection
-    val previewItem = if (isCollectionVideo) {
-        state.collectionPreviewIndex?.let { index -> state.items.getOrNull(index) }
-    } else {
-        null
-    }
+    val previewItem = state.previewItemIndex?.let { index -> state.items.getOrNull(index) }
 
-    if (previewItem != null) {
+    if (isCollectionVideo && previewItem != null) {
         val title = previewItem.title.trim().ifBlank {
             info.nfo.showTitle?.trim().orEmpty()
         }
@@ -3443,7 +3439,7 @@ private fun resolveVideoCardDisplay(
                 ?: info.nfo.thumbs.firstOrNull()?.url
                 ?: ""
         }
-        val stat = state.collectionPreviewStat ?: info.nfo.stat
+        val stat = previewItem.stat ?: info.nfo.stat
         return VideoCardDisplay(title, description, coverUrl, stat)
     }
 
@@ -3476,7 +3472,9 @@ private fun resolveVideoCardDisplay(
         return VideoCardDisplay(title, description, coverUrl, info.nfo.stat)
     }
 
-    val title = selectedItem?.title?.trim().ifNullOrBlank {
+    // 非合集的列表类型（收藏夹、稍后再看、番剧等）：行点击预览的条目优先于当前项展示
+    val displayItem = previewItem ?: selectedItem
+    val title = displayItem?.title?.trim().ifNullOrBlank {
         info.nfo.showTitle?.trim().orEmpty()
     }
     val fallbackDescription = when (info.type) {
@@ -3485,17 +3483,19 @@ private fun resolveVideoCardDisplay(
         -> ""
         else -> info.nfo.intro?.trim().orEmpty()
     }
-    val description = selectedItem?.description?.trim().ifNullOrBlank {
+    val description = displayItem?.description?.trim().ifNullOrBlank {
         fallbackDescription
     }
-    val coverUrl = selectedItem?.coverUrl?.ifBlank { null }
+    val coverUrl = displayItem?.coverUrl?.ifBlank { null }
         ?: info.nfo.thumbs.firstOrNull()?.url
         ?: ""
+    // selectedItemStat 只描述当前项，预览其他条目时不能拿来兜底
+    val fallbackStat = if (previewItem == null) state.selectedItemStat else null
     val stat = when (info.type) {
         MediaType.Favorite,
         MediaType.WatchLater,
-        -> selectedItem?.stat ?: state.selectedItemStat ?: MediaStat()
-        else -> selectedItem?.stat ?: state.selectedItemStat ?: info.nfo.stat
+        -> displayItem?.stat ?: fallbackStat ?: MediaStat()
+        else -> displayItem?.stat ?: fallbackStat ?: info.nfo.stat
     }
     return VideoCardDisplay(title, description, coverUrl, stat)
 }

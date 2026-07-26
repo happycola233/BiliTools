@@ -194,8 +194,8 @@ data class ParseUiState(
     val imageOptions: List<ImageOption> = emptyList(),
     val selectedImageIds: Set<String> = emptySet(),
     val warning: String? = null,
-    val collectionPreviewIndex: Int? = null,
-    val collectionPreviewStat: MediaStat? = null,
+    // 行点击预览的条目索引：仅驱动信息卡片展示，不参与下载与导出参数的决策
+    val previewItemIndex: Int? = null,
     val selectedItemStat: MediaStat? = null,
     val lastDownload: DownloadItem? = null,
     val isLoggedIn: Boolean = false,
@@ -221,7 +221,6 @@ class ParseViewModel(
     private val fullResolutionIds = listOf(127, 126, 125, 120, 116, 112, 80, 64, 32, 16, 6)
     private val fullAudioIds = AudioQualities.allIds
     private val offsetMap = mutableMapOf<Int, String>()
-    private val collectionStatCache = mutableMapOf<String, MediaStat>()
     private val itemStatCache = mutableMapOf<String, MediaStat>()
     private val itemDescriptionCache = mutableMapOf<String, String>()
     private var streamLoadGeneration = 0L
@@ -273,7 +272,6 @@ class ParseViewModel(
                 )
             }
             offsetMap.clear()
-            collectionStatCache.clear()
             itemStatCache.clear()
             itemDescriptionCache.clear()
             runCatching {
@@ -313,8 +311,7 @@ class ParseViewModel(
                                 format = StreamFormat.Dash,
                                 outputType = OutputType.AudioVideo,
                                 warning = null,
-                                collectionPreviewIndex = null,
-                                collectionPreviewStat = null,
+                                previewItemIndex = null,
                                 selectedItemStat = info.list.getOrNull(defaultIndex)?.stat,
                                 streamLoading = info.list.isNotEmpty(),
                                 isLoggedIn = authRepository.isLoggedIn(),
@@ -338,7 +335,6 @@ class ParseViewModel(
         val selectedType = _state.value.selectedMediaType
         resetStreamLoadTracking()
         offsetMap.clear()
-        collectionStatCache.clear()
         itemStatCache.clear()
         itemDescriptionCache.clear()
         _state.value = applyDefaultDownloadQuality(
@@ -355,29 +351,6 @@ class ParseViewModel(
 
     fun clearError() {
         _state.update { it.copy(error = null) }
-    }
-
-    fun selectItem(index: Int, ensureSelected: Boolean = true) {
-        val info = _state.value.mediaInfo ?: return
-        val item = _state.value.items.getOrNull(index) ?: return
-        val selectedItems = _state.value.selectedItemIndices.toMutableList()
-        if (ensureSelected && !selectedItems.contains(index)) {
-            selectedItems.add(index)
-            selectedItems.sort()
-        }
-        _state.update {
-            normalizeQualityModes(
-                it.copy(
-                    selectedItemIndex = index,
-                    selectedItemIndices = selectedItems,
-                    selectedItemStat = item.stat,
-                    warning = streamWarningForPendingSelectionChange(it),
-                ),
-            )
-        }
-        viewModelScope.launch {
-            refreshExtras(info, item)
-        }
     }
 
     fun toggleItemSelection(index: Int) {
@@ -423,46 +396,16 @@ class ParseViewModel(
         }
     }
 
-    fun previewCollectionItem(index: Int) {
-        val snapshot = _state.value
-        val info = snapshot.mediaInfo ?: return
-        if (!snapshot.collectionMode || info.type != MediaType.Video || !info.collection) return
-        val item = snapshot.items.getOrNull(index) ?: return
-        val bvid = item.bvid?.trim().orEmpty()
-        val cached = if (bvid.isNotBlank()) collectionStatCache[bvid] else null
-        _state.update {
-            it.copy(
-                collectionPreviewIndex = index,
-                collectionPreviewStat = cached,
-            )
-        }
-        if (cached != null || bvid.isBlank()) return
-
-        viewModelScope.launch(Dispatchers.IO) {
-            val stat = runCatching {
-                mediaRepository.getMediaInfo(bvid, MediaType.Video).nfo.stat
-            }.getOrNull() ?: return@launch
-
-            collectionStatCache[bvid] = stat
-            _state.update { current ->
-                val previewIndex = current.collectionPreviewIndex ?: return@update current
-                val previewBvid = current.items.getOrNull(previewIndex)?.bvid?.trim().orEmpty()
-                if (previewBvid != bvid) return@update current
-                current.copy(collectionPreviewStat = stat)
-            }
-        }
-    }
-
+    // 行点击一律只做“预览”：仅切换信息卡片的展示内容，不移动当前项、不触发取流，
+    // 下载与导出参数始终只由勾选集合决定（各列表类型与合集模式行为保持一致）。
     fun onItemRowClick(index: Int) {
         val snapshot = _state.value
         val info = snapshot.mediaInfo ?: return
-        if (info.type == MediaType.Video) {
-            if (snapshot.collectionMode && info.collection) {
-                previewCollectionItem(index)
-            }
-            return
-        }
-        selectItem(index, ensureSelected = false)
+        val rowClickable = info.type != MediaType.Video || (snapshot.collectionMode && info.collection)
+        if (!rowClickable) return
+        val item = snapshot.items.getOrNull(index) ?: return
+        _state.update { it.copy(previewItemIndex = index) }
+        refreshItemPresentation(info, item, index, fromPreview = true)
     }
 
     fun selectAllItems() {
@@ -561,8 +504,7 @@ class ParseViewModel(
                             selectedCodec = null,
                             selectedAudioId = null,
                             warning = null,
-                            collectionPreviewIndex = null,
-                            collectionPreviewStat = null,
+                            previewItemIndex = null,
                             selectedItemStat = updated.list.getOrNull(defaultIndex)?.stat,
                             streamLoading = updated.list.isNotEmpty() && it.outputType != null,
                         ),
@@ -636,8 +578,7 @@ class ParseViewModel(
                             selectedCodec = null,
                             selectedAudioId = null,
                             warning = null,
-                            collectionPreviewIndex = null,
-                            collectionPreviewStat = null,
+                            previewItemIndex = null,
                             selectedItemStat = updated.list.getOrNull(defaultIndex)?.stat,
                             streamLoading = updated.list.isNotEmpty() && it.outputType != null,
                         ),
@@ -703,8 +644,7 @@ class ParseViewModel(
                             selectedCodec = null,
                             selectedAudioId = null,
                             warning = null,
-                            collectionPreviewIndex = null,
-                            collectionPreviewStat = null,
+                            previewItemIndex = null,
                             selectedItemStat = updated.list.getOrNull(defaultIndex)?.stat,
                             streamLoading = updated.list.isNotEmpty() && it.outputType != null,
                         ),
@@ -2338,20 +2278,25 @@ class ParseViewModel(
                 selectedImageIds = selectedImageIds,
             )
         }
-        refreshSelectedItemPresentation(info, item)
+        refreshItemPresentation(info, item, _state.value.selectedItemIndex, fromPreview = false)
     }
 
-    private fun refreshSelectedItemPresentation(info: MediaInfo, item: MediaItem) {
+    private fun refreshItemPresentation(
+        info: MediaInfo,
+        item: MediaItem,
+        index: Int,
+        fromPreview: Boolean,
+    ) {
         val itemKey = itemCacheKey(item)
         val cachedStat = itemKey?.let { itemStatCache[it] } ?: item.stat
         val cachedDescription = itemKey?.let { itemDescriptionCache[it] }
         val itemDescription = item.description.trim()
 
         if (cachedStat != null || !cachedDescription.isNullOrBlank()) {
-            applySelectedItemPresentation(itemKey, cachedStat, cachedDescription)
+            applyItemPresentation(index, itemKey, cachedStat, cachedDescription)
         }
 
-        if (!shouldFetchPresentationDetail(info, item) || itemKey == null) return
+        if (!shouldFetchPresentationDetail(info, item, fromPreview) || itemKey == null) return
         val needStat = shouldFetchPresentationStatDetail(info, cachedStat)
         val needDescription =
             info.type == MediaType.Favorite &&
@@ -2367,7 +2312,7 @@ class ParseViewModel(
             ) ?: return@launch
             detail.stat?.let { itemStatCache[itemKey] = it }
             detail.description?.takeIf { it.isNotBlank() }?.let { itemDescriptionCache[itemKey] = it }
-            applySelectedItemPresentation(itemKey, detail.stat, detail.description)
+            applyItemPresentation(index, itemKey, detail.stat, detail.description)
         }
     }
 
@@ -2391,22 +2336,23 @@ class ParseViewModel(
         return ItemPresentationDetail(stat = stat, description = description)
     }
 
-    private fun applySelectedItemPresentation(
+    private fun applyItemPresentation(
+        index: Int,
         itemKey: String?,
         stat: MediaStat?,
         description: String?,
     ) {
         _state.update { current ->
-            val currentIndex = current.selectedItemIndex
-            val currentItem = current.items.getOrNull(currentIndex) ?: return@update current
-            if (itemKey != null && itemCacheKey(currentItem) != itemKey) {
+            // 列表可能已因翻页/切换分区被替换，仅在目标条目未变时才应用补拉结果
+            val item = current.items.getOrNull(index) ?: return@update current
+            if (itemKey != null && itemCacheKey(item) != itemKey) {
                 return@update current
             }
 
             var changed = false
-            var updatedItem = currentItem
+            var updatedItem = item
 
-            if (!description.isNullOrBlank() && description != currentItem.description) {
+            if (!description.isNullOrBlank() && description != item.description) {
                 updatedItem = updatedItem.copy(description = description)
                 changed = true
             }
@@ -2419,13 +2365,18 @@ class ParseViewModel(
 
             val updatedItems = if (changed) {
                 current.items.toMutableList().also { list ->
-                    list[currentIndex] = updatedItem
+                    list[index] = updatedItem
                 }
             } else {
                 current.items
             }
 
-            val nextSelectedItemStat = resolvedStat ?: current.selectedItemStat
+            // 仅当补拉的是当前项时才同步 selectedItemStat，预览其他条目不影响当前项
+            val nextSelectedItemStat = if (index == current.selectedItemIndex) {
+                resolvedStat ?: current.selectedItemStat
+            } else {
+                current.selectedItemStat
+            }
             if (!changed && nextSelectedItemStat == current.selectedItemStat) {
                 return@update current
             }
@@ -2437,8 +2388,15 @@ class ParseViewModel(
         }
     }
 
-    private fun shouldFetchPresentationDetail(info: MediaInfo, item: MediaItem): Boolean {
+    private fun shouldFetchPresentationDetail(
+        info: MediaInfo,
+        item: MediaItem,
+        fromPreview: Boolean,
+    ): Boolean {
         return when (info.type) {
+            // 合集列表接口不返回选集的 stat，仅在用户点击预览时补拉该视频详情，
+            // 避免解析合集时为默认选集额外多发一次请求
+            MediaType.Video -> fromPreview && info.collection && item.bvid?.isNotBlank() == true
             MediaType.Favorite -> item.type == MediaType.Video && item.bvid?.isNotBlank() == true
             MediaType.WatchLater -> item.type == MediaType.Video &&
                 (item.bvid?.isNotBlank() == true || item.aid != null)
@@ -2449,7 +2407,10 @@ class ParseViewModel(
     private fun shouldFetchPresentationStatDetail(info: MediaInfo, stat: MediaStat?): Boolean {
         if (stat == null) return true
         return when (info.type) {
-            MediaType.Favorite -> stat.reply == null ||
+            // 合集选集与收藏夹的列表接口都不含评论/点赞/投币/分享，缺失时补拉完整详情
+            MediaType.Video,
+            MediaType.Favorite,
+            -> stat.reply == null ||
                 stat.like == null ||
                 stat.coin == null ||
                 stat.share == null
