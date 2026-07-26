@@ -421,8 +421,10 @@ fun ParseScreenContent(
                     }
                 }
 
-                if (showOptions) {
-                    item(key = "options") {
+                // 常驻该 item 并用折叠动画显隐：若随勾选状态直接增删 item，取消全部勾选时
+                // 列表内容高度会瞬间变小，滚动位置被立即钳制，视口会突然跳回上方。
+                item(key = "options") {
+                    AnimatedOptionsVisibility(visible = showOptions) {
                         ParseOptionsCard(
                             state = state,
                             info = info,
