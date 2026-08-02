@@ -98,6 +98,7 @@ import com.happycola233.bilitools.data.model.DownloadMediaParams
 import com.happycola233.bilitools.data.model.DownloadProgressRules
 import com.happycola233.bilitools.data.model.DownloadStatus
 import com.happycola233.bilitools.data.model.DownloadTaskType
+import com.happycola233.bilitools.ui.haptics.HapticThresholdGate
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -520,6 +521,8 @@ private fun DownloadsGroupCard(
     var dragOffsetX by remember(group.id) { mutableFloatStateOf(0f) }
     var dragging by remember(group.id) { mutableStateOf(false) }
     val interactionSource = remember(group.id) { MutableInteractionSource() }
+    val swipeSnapGate = remember(group.id) { HapticThresholdGate() }
+    val swipeDismissGate = remember(group.id) { HapticThresholdGate() }
     val groupContainerColor by animateColorAsState(
         targetValue = if (selected) {
             MaterialTheme.colorScheme.primaryContainer
@@ -633,6 +636,8 @@ private fun DownloadsGroupCard(
                             onSwipedGroupChange(null)
                         }
                         dragOffsetX = offsetX.value
+                        swipeSnapGate.reset(dragOffsetX <= -(swipeTargetPx / 2f))
+                        swipeDismissGate.reset(dragOffsetX <= -dismissThresholdPx)
                         dragging = true
                     },
                     onHorizontalDrag = { change, dragAmount ->
@@ -641,6 +646,12 @@ private fun DownloadsGroupCard(
                         dragOffsetX = target
                         scope.launch {
                             offsetX.snapTo(target)
+                        }
+                        swipeSnapGate.update(target <= -(swipeTargetPx / 2f)) {
+                            haptics.thresholdActivate()
+                        }
+                        swipeDismissGate.update(target <= -dismissThresholdPx) {
+                            haptics.thresholdActivate()
                         }
                     },
                     onDragEnd = {
@@ -683,7 +694,7 @@ private fun DownloadsGroupCard(
                     color = errorColor,
                     shape = RoundedCornerShape(20.dp),
                     onClick = {
-                        haptics.confirm()
+                        haptics.tap()
                         onDelete()
                     },
                     modifier = Modifier
@@ -734,6 +745,7 @@ private fun DownloadsGroupCard(
                             onToggleSelection()
                         }
                     },
+                    hapticFeedbackEnabled = false,
                 ),
         ) {
             Column {
@@ -1058,7 +1070,7 @@ private fun DownloadTaskRow(
 
             IconButton(
                 onClick = {
-                    haptics.confirm()
+                    haptics.tap()
                     onDelete()
                 },
                 modifier = Modifier.size(40.dp),

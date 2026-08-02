@@ -1092,7 +1092,7 @@ private fun BatchActionButton(
             .clip(RoundedCornerShape(18.dp))
             .background(resolvedContainerColor)
             .clickable(enabled = enabled) {
-                haptics.confirm()
+                haptics.tap()
                 onClick()
             },
         contentAlignment = Alignment.Center,

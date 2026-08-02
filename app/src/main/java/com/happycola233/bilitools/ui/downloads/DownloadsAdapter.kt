@@ -563,8 +563,8 @@ class DownloadsAdapter(
                         movedBeyondTouchSlop = false
                         longPressTriggered = false
                         touchActiveGroupId = group.id
-                        swipeSnapGate.reset()
-                        swipeDismissGate.reset()
+                        swipeSnapGate.reset(initialTranslationX < -snapThreshold)
+                        swipeDismissGate.reset(initialTranslationX < -dismissThreshold)
                         // Close other if different
                         if (adapter.swipedGroupId != null && adapter.swipedGroupId != group.id) {
                             adapter.closeSwipedItem()
@@ -608,7 +608,7 @@ class DownloadsAdapter(
                                 v.performAppHaptic(HapticEffect.ThresholdActivate)
                             }
                             swipeDismissGate.update(targetX < -dismissThreshold) {
-                                v.performAppHaptic(HapticEffect.Confirm)
+                                v.performAppHaptic(HapticEffect.ThresholdActivate)
                             }
                         }
                         true

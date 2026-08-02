@@ -188,16 +188,24 @@ class HapticTicker(private val minIntervalMillis: Long = DEFAULT_MIN_INTERVAL_MI
  */
 @Stable
 class HapticThresholdGate {
-    private var activated = false
+    private var wasPassed = false
+    private var activatedDuringGesture = false
 
     fun update(passed: Boolean, onActivate: () -> Unit) {
-        if (passed == activated) return
-        activated = passed
-        if (passed) onActivate()
+        val crossedThreshold = !wasPassed && passed
+        wasPassed = passed
+        if (!crossedThreshold || activatedDuringGesture) return
+        activatedDuringGesture = true
+        onActivate()
     }
 
-    fun reset() {
-        activated = false
+    /**
+     * 开始新手势，并以上报的初始位置建立基准。若手势从阈值外开始，则视为本次手势已经激活，
+     * 避免用户从已展开状态向回拖动时，在第一次 MOVE 事件中产生伪造的「跨越」反馈。
+     */
+    fun reset(passed: Boolean = false) {
+        wasPassed = passed
+        activatedDuringGesture = passed
     }
 }
 
