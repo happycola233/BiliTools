@@ -17,8 +17,8 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
-val appReleaseVersionCode = 11
-val appReleaseVersionName = "2.4"
+val appReleaseVersionCode = 12
+val appReleaseVersionName = "2.5"
 val releaseAbiSplits = listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
 
 abstract class RenameReleaseApksTask : DefaultTask() {
