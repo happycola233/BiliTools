@@ -100,6 +100,7 @@ import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.AppSettings
 import com.happycola233.bilitools.data.model.HistoryItem
 import com.happycola233.bilitools.data.model.HistoryTab
+import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import com.happycola233.bilitools.ui.theme.BiliToolsSettingsTheme
 import java.time.Instant
 import java.time.LocalDate
@@ -386,6 +387,7 @@ private fun HistoryBusinessTabs(
     selectedBusiness: String?,
     onSelectBusiness: (String) -> Unit,
 ) {
+    val haptics = rememberAppHaptics()
     val selectedIndex = tabs.indexOfFirst { it.type == selectedBusiness }.coerceAtLeast(0)
 
     if (tabs.size <= 4) {
@@ -397,7 +399,10 @@ private fun HistoryBusinessTabs(
             tabs.forEach { tab ->
                 Tab(
                     selected = tab.type == selectedBusiness,
-                    onClick = { onSelectBusiness(tab.type) },
+                    onClick = {
+                        haptics.select()
+                        onSelectBusiness(tab.type)
+                    },
                     text = {
                         Text(
                             text = tab.name,
@@ -417,7 +422,10 @@ private fun HistoryBusinessTabs(
             tabs.forEach { tab ->
                 Tab(
                     selected = tab.type == selectedBusiness,
-                    onClick = { onSelectBusiness(tab.type) },
+                    onClick = {
+                        haptics.select()
+                        onSelectBusiness(tab.type)
+                    },
                     text = {
                         Text(
                             text = tab.name,
@@ -609,6 +617,7 @@ private fun HistoryPagerCard(
     onNext: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val haptics = rememberAppHaptics()
     val pagerButtonShapes = ButtonDefaults.shapesFor(38.dp)
     val pageSummary = if (totalPages > 0) {
         stringResource(R.string.history_page_status_with_pages, page, totalPages)
@@ -629,7 +638,10 @@ private fun HistoryPagerCard(
                 .padding(horizontal = 12.dp, vertical = 10.dp),
         ) {
             TextButton(
-                onClick = onPrev,
+                onClick = {
+                    haptics.tap()
+                    onPrev()
+                },
                 enabled = page > 1 && !loading,
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                 modifier = Modifier.height(38.dp),
@@ -687,7 +699,10 @@ private fun HistoryPagerCard(
             )
 
             TextButton(
-                onClick = onNext,
+                onClick = {
+                    haptics.tap()
+                    onNext()
+                },
                 enabled = hasMore && !loading,
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                 modifier = Modifier.height(38.dp),
@@ -707,6 +722,7 @@ private fun HistoryItemCard(
     showDivider: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val haptics = rememberAppHaptics()
     val displayTitle = item.title.ifBlank {
         item.longTitle?.takeIf { it.isNotBlank() } ?: item.bvid.orEmpty()
     }
@@ -803,7 +819,10 @@ private fun HistoryItemCard(
                                 Modifier.clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null,
-                                    onClick = onOpenAuthor,
+                                    onClick = {
+                                        haptics.tap()
+                                        onOpenAuthor()
+                                    },
                                 )
                             } else {
                                 Modifier
@@ -864,7 +883,10 @@ private fun HistoryItemCard(
 
             if (canJumpDownload) {
                 IconButton(
-                    onClick = onDownload,
+                    onClick = {
+                        haptics.confirm()
+                        onDownload()
+                    },
                     modifier = Modifier
                         .size(32.dp)
                         .align(Alignment.CenterVertically),

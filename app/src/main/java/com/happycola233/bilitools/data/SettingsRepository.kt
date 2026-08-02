@@ -41,6 +41,7 @@ data class AppSettings(
     val themeColor: AppThemeColor = AppThemeColor.Dynamic,
     val darkModePureBlack: Boolean = false,
     val launchSplashAnimationEnabled: Boolean = true,
+    val hapticFeedbackLevel: HapticFeedbackLevel = HapticFeedbackLevel.Full,
     val liveActivityStyleNotificationEnabled: Boolean = true,
     val downloadRootRelativePath: String = SettingsRepository.DEFAULT_DOWNLOAD_ROOT,
     val confirmCellularDownload: Boolean = true,
@@ -82,6 +83,23 @@ enum class DefaultDownloadVideoCodec(val value: String) {
     companion object {
         fun fromValue(value: String?): DefaultDownloadVideoCodec {
             return entries.firstOrNull { it.value == value } ?: Avc
+        }
+    }
+}
+
+/**
+ * 触感反馈强度档位。个人偏好差异较大，只做布尔开关容易让用户直接全关，
+ * 因此「轻量」档保留长按、阈值、成功/失败这类信息量高的反馈，点击与勾选等高频反馈仅「完整」档开启。
+ */
+enum class HapticFeedbackLevel(val value: String) {
+    Off("off"),
+    Light("light"),
+    Full("full"),
+    ;
+
+    companion object {
+        fun fromValue(value: String?): HapticFeedbackLevel {
+            return entries.firstOrNull { it.value == value } ?: Full
         }
     }
 }
@@ -220,6 +238,13 @@ class SettingsRepository(context: Context) {
         if (current.launchSplashAnimationEnabled == enabled) return
         prefs.edit().putBoolean(KEY_LAUNCH_SPLASH_ANIMATION_ENABLED, enabled).apply()
         _settings.value = current.copy(launchSplashAnimationEnabled = enabled)
+    }
+
+    fun setHapticFeedbackLevel(level: HapticFeedbackLevel) {
+        val current = _settings.value
+        if (current.hapticFeedbackLevel == level) return
+        prefs.edit().putString(KEY_HAPTIC_FEEDBACK_LEVEL, level.value).apply()
+        _settings.value = current.copy(hapticFeedbackLevel = level)
     }
 
     fun setLiveActivityStyleNotificationEnabled(enabled: Boolean) {
@@ -470,6 +495,9 @@ class SettingsRepository(context: Context) {
             launchSplashAnimationEnabled = prefs.getBoolean(
                 KEY_LAUNCH_SPLASH_ANIMATION_ENABLED,
                 true,
+            ),
+            hapticFeedbackLevel = HapticFeedbackLevel.fromValue(
+                prefs.getString(KEY_HAPTIC_FEEDBACK_LEVEL, HapticFeedbackLevel.Full.value),
             ),
             liveActivityStyleNotificationEnabled = prefs.getBoolean(
                 KEY_LIVE_ACTIVITY_STYLE_NOTIFICATION_ENABLED,
@@ -737,6 +765,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_THEME_COLOR = "theme_color"
         private const val KEY_DARK_MODE_PURE_BLACK = "dark_mode_pure_black"
         private const val KEY_LAUNCH_SPLASH_ANIMATION_ENABLED = "launch_splash_animation_enabled"
+        private const val KEY_HAPTIC_FEEDBACK_LEVEL = "haptic_feedback_level"
         private const val KEY_LIVE_ACTIVITY_STYLE_NOTIFICATION_ENABLED =
             "live_activity_style_notification_enabled"
         private const val KEY_DOWNLOAD_ROOT_RELATIVE_PATH = "download_root_relative_path"

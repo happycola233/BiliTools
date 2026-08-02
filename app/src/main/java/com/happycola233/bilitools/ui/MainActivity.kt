@@ -24,6 +24,8 @@ import com.happycola233.bilitools.core.appContainer
 import com.happycola233.bilitools.data.UpdateCheckResult
 import com.happycola233.bilitools.databinding.ActivityMainBinding
 import com.happycola233.bilitools.ui.downloads.DownloadsFragment
+import com.happycola233.bilitools.ui.haptics.HapticEffect
+import com.happycola233.bilitools.ui.haptics.performAppHaptic
 import com.happycola233.bilitools.ui.me.MeFragment
 import com.happycola233.bilitools.ui.parse.ParseFragment
 import com.happycola233.bilitools.ui.update.UpdateDialog
@@ -111,10 +113,16 @@ class MainActivity : AppCompatActivity() {
         })
 
         binding.bottomNav.setOnItemSelectedListener { item ->
-            when (item.itemId) {
-                R.id.parseFragment -> binding.viewPager.setCurrentItem(0, false)
-                R.id.downloadsFragment -> binding.viewPager.setCurrentItem(1, false)
-                R.id.meFragment -> binding.viewPager.setCurrentItem(2, false)
+            val targetPosition = when (item.itemId) {
+                R.id.parseFragment -> 0
+                R.id.downloadsFragment -> 1
+                R.id.meFragment -> 2
+                else -> return@setOnItemSelectedListener true
+            }
+            // 重复点击当前 Tab 不算切换，不给反馈。
+            if (binding.viewPager.currentItem != targetPosition) {
+                binding.bottomNav.performAppHaptic(HapticEffect.Select)
+                binding.viewPager.setCurrentItem(targetPosition, false)
             }
             true
         }

@@ -68,12 +68,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
 import androidx.compose.ui.res.painterResource
@@ -100,6 +98,7 @@ import com.happycola233.bilitools.data.model.DownloadMediaParams
 import com.happycola233.bilitools.data.model.DownloadProgressRules
 import com.happycola233.bilitools.data.model.DownloadStatus
 import com.happycola233.bilitools.data.model.DownloadTaskType
+import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -403,6 +402,7 @@ private fun DownloadsSectionHeader(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
+    val haptics = rememberAppHaptics()
     val title = when (section.type) {
         DownloadSectionType.Downloading -> stringResource(R.string.downloads_section_downloading)
         DownloadSectionType.Downloaded -> stringResource(R.string.downloads_section_downloaded)
@@ -435,7 +435,10 @@ private fun DownloadsSectionHeader(
                     enabled = enabled,
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
-                    onClick = onClick,
+                    onClick = {
+                        haptics.tap()
+                        onClick()
+                    },
                 )
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
@@ -503,7 +506,7 @@ private fun DownloadsGroupCard(
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
-    val haptics = LocalHapticFeedback.current
+    val haptics = rememberAppHaptics()
     val errorColor = downloadsThemeColor("colorError", MaterialTheme.colorScheme.error)
     val onErrorColor = downloadsThemeColor("colorOnError", MaterialTheme.colorScheme.onError)
     val coverPlaceholderColor = downloadsThemeColor(
@@ -680,6 +683,7 @@ private fun DownloadsGroupCard(
                     color = errorColor,
                     shape = RoundedCornerShape(20.dp),
                     onClick = {
+                        haptics.confirm()
                         onDelete()
                     },
                     modifier = Modifier
@@ -712,14 +716,21 @@ private fun DownloadsGroupCard(
                     indication = null,
                     onClick = {
                         when {
-                            selectionMode -> onToggleSelection()
+                            selectionMode -> {
+                                haptics.toggle(!selected)
+                                onToggleSelection()
+                            }
+
                             anyGroupSwiped -> onSwipedGroupChange(null)
-                            else -> onToggleExpanded()
+                            else -> {
+                                haptics.tap()
+                                onToggleExpanded()
+                            }
                         }
                     },
                     onLongClick = {
                         if (!selectionMode) {
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            haptics.longPress()
                             onToggleSelection()
                         }
                     },
@@ -738,7 +749,10 @@ private fun DownloadsGroupCard(
                     AnimatedVisibility(visible = selectionMode) {
                         Checkbox(
                             checked = selected,
-                            onCheckedChange = { onToggleSelection() },
+                            onCheckedChange = { next ->
+                                haptics.toggle(next)
+                                onToggleSelection()
+                            },
                             colors = CheckboxDefaults.colors(
                                 checkedColor = MaterialTheme.colorScheme.primary,
                                 uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -890,6 +904,7 @@ private fun DownloadsGroupCard(
 
                                 FilledTonalButton(
                                     onClick = {
+                                        haptics.tap()
                                         if (groupActionState.hasActiveDownloads) {
                                             onPauseGroup()
                                         } else {
@@ -947,6 +962,7 @@ private fun DownloadTaskRow(
     onClick: () -> Unit,
 ) {
     val context = LocalContext.current
+    val haptics = rememberAppHaptics()
     val errorColor = downloadsThemeColor("colorError", MaterialTheme.colorScheme.error)
     val managed = isManagedTask(item)
     val isMissing = item.status == DownloadStatus.Success && item.outputMissing
@@ -977,7 +993,10 @@ private fun DownloadTaskRow(
                 enabled = !isMissing,
                 interactionSource = remember(item.id) { MutableInteractionSource() },
                 indication = null,
-                onClick = onClick,
+                onClick = {
+                    haptics.tap()
+                    onClick()
+                },
             )
             .padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 12.dp),
     ) {
@@ -1014,6 +1033,7 @@ private fun DownloadTaskRow(
             if (actionType != null) {
                 IconButton(
                     onClick = {
+                        haptics.tap()
                         when (actionType) {
                             TaskAction.Pause,
                             TaskAction.Resume -> onPauseResume()
@@ -1037,7 +1057,10 @@ private fun DownloadTaskRow(
             }
 
             IconButton(
-                onClick = onDelete,
+                onClick = {
+                    haptics.confirm()
+                    onDelete()
+                },
                 modifier = Modifier.size(40.dp),
             ) {
                 Icon(

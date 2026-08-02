@@ -7,7 +7,6 @@ import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.text.SpannableStringBuilder
 import android.text.style.ForegroundColorSpan
-import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -33,6 +32,9 @@ import com.happycola233.bilitools.data.model.DownloadTaskType
 import com.happycola233.bilitools.databinding.ItemDownloadBinding
 import com.happycola233.bilitools.databinding.ItemDownloadGroupBinding
 import com.happycola233.bilitools.databinding.ItemDownloadsSectionBinding
+import com.happycola233.bilitools.ui.haptics.HapticEffect
+import com.happycola233.bilitools.ui.haptics.HapticThresholdGate
+import com.happycola233.bilitools.ui.haptics.performAppHaptic
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -509,6 +511,9 @@ class DownloadsAdapter(
         private var touchActiveGroupId: Long? = null
         private var longPressTriggered = false
         private var longPressRunnable: Runnable? = null
+        // 侧滑吸附/删除阈值各自只在「跨越」瞬间反馈一次，手指在阈值附近来回拖不会反复震。
+        private val swipeSnapGate = HapticThresholdGate()
+        private val swipeDismissGate = HapticThresholdGate()
         private var expandCollapseAnimator: ValueAnimator? = null
         private var checkboxWidthAnimator: ValueAnimator? = null
         private var checkboxAnimationTargetVisible: Boolean? = null
@@ -558,6 +563,8 @@ class DownloadsAdapter(
                         movedBeyondTouchSlop = false
                         longPressTriggered = false
                         touchActiveGroupId = group.id
+                        swipeSnapGate.reset()
+                        swipeDismissGate.reset()
                         // Close other if different
                         if (adapter.swipedGroupId != null && adapter.swipedGroupId != group.id) {
                             adapter.closeSwipedItem()
@@ -597,6 +604,12 @@ class DownloadsAdapter(
                             if (targetX > 0) targetX = 0f // Cannot drag right past 0
                             
                             v.translationX = targetX
+                            swipeSnapGate.update(targetX < -snapThreshold) {
+                                v.performAppHaptic(HapticEffect.ThresholdActivate)
+                            }
+                            swipeDismissGate.update(targetX < -dismissThreshold) {
+                                v.performAppHaptic(HapticEffect.Confirm)
+                            }
                         }
                         true
                     }
@@ -643,6 +656,7 @@ class DownloadsAdapter(
                             if (event.actionMasked == android.view.MotionEvent.ACTION_UP &&
                                 !movedBeyondTouchSlop
                             ) {
+                                v.performAppHaptic(HapticEffect.Tap)
                                 if (adapter.swipedGroupId == group.id) {
                                     // If open, close
                                     adapter.closeSwipedItem()
@@ -669,7 +683,7 @@ class DownloadsAdapter(
                 if (touchActiveGroupId != group.id) return@Runnable
                 if (isSwiping || movedBeyondTouchSlop) return@Runnable
                 longPressTriggered = true
-                binding.cardView.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                binding.cardView.performAppHaptic(HapticEffect.LongPress)
                 adapter.onGroupSelectionToggle(group)
             }
             longPressRunnable = runnable
@@ -812,7 +826,7 @@ class DownloadsAdapter(
             binding.groupPauseResume.setOnLongClickListener {
                 if (adapter.selectionMode) return@setOnLongClickListener false
                 val latest = latestGroup(group)
-                binding.cardView.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                binding.cardView.performAppHaptic(HapticEffect.LongPress)
                 adapter.onGroupSelectionToggle(latest)
                 true
             }

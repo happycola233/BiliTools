@@ -7,6 +7,7 @@ import androidx.navigation3.runtime.NavKey
 import com.happycola233.bilitools.data.AppThemeColor
 import com.happycola233.bilitools.data.AppThemeMode
 import com.happycola233.bilitools.data.DefaultDownloadQualitySettings
+import com.happycola233.bilitools.data.HapticFeedbackLevel
 import com.happycola233.bilitools.data.IssueReportRepository
 import com.happycola233.bilitools.data.SettingsRepository
 import com.happycola233.bilitools.data.TopLevelFolderMode
@@ -80,6 +81,10 @@ class SettingsViewModel(
 
     fun setLaunchSplashAnimationEnabled(enabled: Boolean) {
         settingsRepository.setLaunchSplashAnimationEnabled(enabled)
+    }
+
+    fun setHapticFeedbackLevel(level: HapticFeedbackLevel) {
+        settingsRepository.setHapticFeedbackLevel(level)
     }
 
     fun setLiveActivityStyleNotificationEnabled(enabled: Boolean) {

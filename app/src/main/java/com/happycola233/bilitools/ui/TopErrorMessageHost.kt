@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.happycola233.bilitools.R
+import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -80,11 +81,14 @@ fun TopErrorMessageHost(
         with(density) { ErrorMessageDragDismissThreshold.toPx() }
     }
     val motionScheme = MaterialTheme.motionScheme
+    val haptics = rememberAppHaptics()
 
     LaunchedEffect(message) {
         val nextMessage = message?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
         dragOffsetY.snapTo(0f)
         displayMessage = nextMessage
+        // 以 message 为 key，同一条错误重复渲染不会重复反馈。
+        haptics.reject()
         delay(ErrorMessageAutoDismissMillis)
         currentOnDismiss()
     }
@@ -108,6 +112,7 @@ fun TopErrorMessageHost(
                         },
                         onDragEnd = {
                             if (dragOffsetY.value <= -dragDismissThresholdPx) {
+                                haptics.thresholdActivate()
                                 currentOnDismiss()
                             } else {
                                 launch { dragOffsetY.animateTo(0f) }

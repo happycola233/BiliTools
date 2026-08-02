@@ -102,7 +102,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -113,7 +112,6 @@ import androidx.compose.ui.node.DelegatableNode
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -152,6 +150,8 @@ import com.happycola233.bilitools.data.model.StreamFormat
 import com.happycola233.bilitools.data.model.VideoCodec
 import com.happycola233.bilitools.ui.FloatingControlsDefaults
 import com.happycola233.bilitools.ui.TopErrorMessageHost
+import com.happycola233.bilitools.ui.haptics.HapticTicker
+import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -200,6 +200,9 @@ private val copyDialogPreviewScrollbarTrackWidthActive = 6.dp
 private val copyDialogPreviewScrollbarThumbWidth = 4.dp
 private val copyDialogPreviewScrollbarThumbWidthActive = 9.dp
 private val copyDialogPreviewScrollbarMinThumbHeight = 52.dp
+
+/** 复制预览是纯文本滚动，没有天然的离散档位，这里用固定滚动距离作为触感节拍。 */
+private val copyDialogPreviewScrollbarTickStep = 56.dp
 private const val optionsVisibilityAnimationDurationMillis = 180
 private const val optionsValueAnimationDurationMillis = 120
 private const val parseContentAnimationDurationMillis = 220
@@ -915,9 +918,11 @@ private fun CopyPreviewScrollbar(
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
-    val hapticFeedback = LocalHapticFeedback.current
+    val hapticFeedback = rememberAppHaptics()
+    val dragTicker = remember { HapticTicker() }
     val coroutineScope = rememberCoroutineScope()
     val minThumbHeightPx = with(density) { copyDialogPreviewScrollbarMinThumbHeight.toPx() }
+    val tickStepPx = with(density) { copyDialogPreviewScrollbarTickStep.toPx() }
     var trackHeightPx by remember { mutableStateOf(0) }
     var dragActive by remember { mutableStateOf(false) }
     val metrics = calculateCopyPreviewScrollbarMetrics(
@@ -981,11 +986,17 @@ private fun CopyPreviewScrollbar(
                         )
                         if (currentMetrics.scrollable) {
                             dragActive = true
-                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                            hapticFeedback.longPress()
                         }
                     },
-                    onDragEnd = { dragActive = false },
-                    onDragCancel = { dragActive = false },
+                    onDragEnd = {
+                        dragActive = false
+                        dragTicker.reset()
+                    },
+                    onDragCancel = {
+                        dragActive = false
+                        dragTicker.reset()
+                    },
                     onDrag = { change, dragAmount ->
                         val currentMetrics = calculateCopyPreviewScrollbarMetrics(
                             scrollValuePx = scrollState.value,
@@ -999,6 +1010,9 @@ private fun CopyPreviewScrollbar(
                                 (currentMetrics.maxScrollPx / currentMetrics.maxThumbOffsetPx)
                             coroutineScope.launch {
                                 scrollState.scrollBy(scrollDelta)
+                            }
+                            dragTicker.onStep((scrollState.value / tickStepPx).toInt()) {
+                                hapticFeedback.tick()
                             }
                         }
                     },
@@ -1630,7 +1644,8 @@ private fun PageSelectionScrollbar(
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
-    val hapticFeedback = LocalHapticFeedback.current
+    val hapticFeedback = rememberAppHaptics()
+    val dragTicker = remember { HapticTicker() }
     val coroutineScope = rememberCoroutineScope()
     val minThumbHeightPx = with(density) { pageSelectionScrollbarMinThumbHeight.toPx() }
     var trackHeightPx by remember { mutableStateOf(0) }
@@ -1703,11 +1718,17 @@ private fun PageSelectionScrollbar(
                         )
                         if (currentMetrics.scrollable) {
                             dragActive = true
-                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                            hapticFeedback.longPress()
                         }
                     },
-                    onDragEnd = { dragActive = false },
-                    onDragCancel = { dragActive = false },
+                    onDragEnd = {
+                        dragActive = false
+                        dragTicker.reset()
+                    },
+                    onDragCancel = {
+                        dragActive = false
+                        dragTicker.reset()
+                    },
                     onDrag = { change, dragAmount ->
                         val currentMetrics = calculatePageSelectionScrollbarMetrics(
                             layoutInfo = listState.layoutInfo,
@@ -1720,6 +1741,11 @@ private fun PageSelectionScrollbar(
                                 (currentMetrics.maxScrollPx / currentMetrics.maxThumbOffsetPx)
                             coroutineScope.launch {
                                 listState.scrollBy(scrollDelta)
+                            }
+                            // 滚动是在协程里异步执行的，这里读到的是上一帧的位置，
+                            // 作为「跨过一个条目」的节拍已经足够精确。
+                            dragTicker.onStep(listState.firstVisibleItemIndex) {
+                                hapticFeedback.tick()
                             }
                         }
                     },
@@ -2059,6 +2085,7 @@ private fun PageSelectionHeaderAction(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
+    val haptics = rememberAppHaptics()
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val containerColor by animateColorAsState(
@@ -2088,7 +2115,11 @@ private fun PageSelectionHeaderAction(
                 interactionSource = interactionSource,
                 indication = null,
                 role = Role.Button,
-                onClick = onClick,
+                onClick = {
+                    // 批量勾选/清空只在动作发生时震一次，不随被影响的条目数重复触发。
+                    haptics.tap()
+                    onClick()
+                },
             )
             .padding(horizontal = 8.dp),
         contentAlignment = Alignment.Center,
@@ -2111,6 +2142,7 @@ private fun PageNavigator(
     onLoadNextPage: () -> Unit,
     onLoadPage: (Int) -> Unit,
 ) {
+    val haptics = rememberAppHaptics()
     var pageText by rememberSaveable { mutableStateOf(pageIndex.toString()) }
     LaunchedEffect(pageIndex) {
         pageText = pageIndex.toString()
@@ -2121,7 +2153,10 @@ private fun PageNavigator(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         TextButton(
-            onClick = onLoadPrevPage,
+            onClick = {
+                haptics.tap()
+                onLoadPrevPage()
+            },
             enabled = pageIndex > 1 && !loading,
         ) {
             Text(stringResource(R.string.parse_page_prev))
@@ -2139,13 +2174,19 @@ private fun PageNavigator(
             ),
             keyboardActions = KeyboardActions(
                 onDone = {
-                    pageText.toIntOrNull()?.let(onLoadPage)
+                    pageText.toIntOrNull()?.let { page ->
+                        haptics.confirm()
+                        onLoadPage(page)
+                    }
                 },
             ),
             shape = RoundedCornerShape(controlCornerRadius),
         )
         TextButton(
-            onClick = onLoadNextPage,
+            onClick = {
+                haptics.tap()
+                onLoadNextPage()
+            },
             enabled = !loading,
         ) {
             Text(stringResource(R.string.parse_page_next))
@@ -2164,6 +2205,7 @@ private fun PageItemRow(
     onRowClick: () -> Unit,
     onCheckedChange: (Boolean) -> Unit,
 ) {
+    val haptics = rememberAppHaptics()
     val rowShape = RoundedCornerShape(16.dp)
     val targetContainerColor by animateColorAsState(
         targetValue = if (checked) {
@@ -2198,7 +2240,10 @@ private fun PageItemRow(
             .fillMaxWidth()
             .heightIn(min = 64.dp)
             .clip(rowShape)
-            .clickable(enabled = rowClickEnabled, onClick = onRowClick),
+            .clickable(enabled = rowClickEnabled) {
+                haptics.tap()
+                onRowClick()
+            },
         color = targetContainerColor,
         shape = rowShape,
         border = if (highlighted) BorderStroke(1.dp, targetBorderColor) else null,
@@ -2212,7 +2257,10 @@ private fun PageItemRow(
             Checkbox(
                 checked = checked,
                 enabled = selectionEnabled,
-                onCheckedChange = onCheckedChange,
+                onCheckedChange = { next ->
+                    haptics.toggle(next)
+                    onCheckedChange(next)
+                },
             )
             Text(
                 text = (index + 1).toString(),
@@ -2733,6 +2781,7 @@ private fun <T> ConnectedToggleRow(
     selectionRequired: Boolean,
     onSelected: (T?) -> Unit,
 ) {
+    val haptics = rememberAppHaptics()
     ButtonGroup(
         modifier = Modifier.fillMaxWidth(),
         expandedRatio = 0.16f,
@@ -2744,8 +2793,15 @@ private fun <T> ConnectedToggleRow(
                 checked = selected == option.value,
                 onCheckedChange = { checked ->
                     when {
-                        checked -> onSelected(option.value)
-                        !selectionRequired && selected == option.value -> onSelected(null)
+                        checked -> {
+                            haptics.select()
+                            onSelected(option.value)
+                        }
+
+                        !selectionRequired && selected == option.value -> {
+                            haptics.select()
+                            onSelected(null)
+                        }
                     }
                 },
                 enabled = option.enabled,
@@ -2793,6 +2849,7 @@ private fun ExpressiveActionButton(
     tonal: Boolean = false,
     height: Dp = 48.dp,
 ) {
+    val haptics = rememberAppHaptics()
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val corner by animateDpAsState(
@@ -2824,6 +2881,11 @@ private fun ExpressiveActionButton(
         MaterialTheme.colorScheme.onPrimary
     }
 
+    val clickWithHaptics: () -> Unit = {
+        haptics.confirm()
+        onClick()
+    }
+
     val content: @Composable () -> Unit = {
         if (loading) {
             LoadingIndicator(
@@ -2848,7 +2910,7 @@ private fun ExpressiveActionButton(
 
     if (tonal) {
         FilledTonalButton(
-            onClick = onClick,
+            onClick = clickWithHaptics,
             enabled = enabled && !loading,
             modifier = buttonModifier,
             shape = RoundedCornerShape(corner),
@@ -2867,7 +2929,7 @@ private fun ExpressiveActionButton(
         }
     } else {
         Button(
-            onClick = onClick,
+            onClick = clickWithHaptics,
             enabled = enabled && !loading,
             modifier = buttonModifier,
             shape = RoundedCornerShape(corner),
@@ -2893,6 +2955,7 @@ private fun QuickActionFab(
     controlsOffsetPx: Float,
     onDownload: () -> Unit,
 ) {
+    val haptics = rememberAppHaptics()
     val density = LocalDensity.current
     val offsetDp = with(density) { controlsOffsetPx.toDp() }
     val interactionSource = remember { MutableInteractionSource() }
@@ -2904,6 +2967,7 @@ private fun QuickActionFab(
     FloatingActionButton(
         onClick = {
             if (!enabled) return@FloatingActionButton
+            haptics.confirm()
             onDownload()
         },
         modifier = Modifier
@@ -2939,6 +3003,7 @@ private fun <T> DropdownField(
     onOptionSelected: (DropdownOption<T>) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val haptics = rememberAppHaptics()
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(
         expanded = expanded,
@@ -2976,6 +3041,7 @@ private fun <T> DropdownField(
                     text = { Text(option.label, style = ParseTextStyles.body) },
                     onClick = {
                         expanded = false
+                        haptics.select()
                         onOptionSelected(option)
                     },
                 )
@@ -2994,6 +3060,7 @@ private fun <T> CompactSelectionField(
     onOptionSelected: (DropdownOption<T>) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val haptics = rememberAppHaptics()
     var expanded by remember { mutableStateOf(false) }
     val contentAlpha by animateFloatAsState(
         targetValue = if (enabled) 1f else 0.42f,
@@ -3095,6 +3162,7 @@ private fun <T> CompactSelectionField(
                     },
                     onClick = {
                         expanded = false
+                        haptics.select()
                         onOptionSelected(option)
                     },
                 )
@@ -3140,6 +3208,7 @@ private fun ExpressiveFilterChip(
     enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
+    val haptics = rememberAppHaptics()
     val interactionSource = remember { MutableInteractionSource() }
     val selectedProgress by animateFloatAsState(
         targetValue = if (selected) 1f else 0f,
@@ -3182,7 +3251,10 @@ private fun ExpressiveFilterChip(
                 interactionSource = interactionSource,
                 indication = null,
                 role = Role.Checkbox,
-                onClick = onClick,
+                onClick = {
+                    haptics.select()
+                    onClick()
+                },
             ),
         shape = RoundedCornerShape(8.dp),
         color = containerColor,
@@ -3258,17 +3330,22 @@ private fun CheckOption(
     minHeight: Dp = checkOptionMinHeight,
     textStartPadding: Dp = 4.dp,
 ) {
+    val haptics = rememberAppHaptics()
+    val toggle: (Boolean) -> Unit = { next ->
+        haptics.toggle(next)
+        onCheckedChange(next)
+    }
     Row(
         modifier = modifier
             .heightIn(min = minHeight)
             .clip(RoundedCornerShape(16.dp))
-            .clickable(enabled = enabled) { onCheckedChange(!checked) }
+            .clickable(enabled = enabled) { toggle(!checked) }
             .padding(end = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Checkbox(
             checked = checked,
-            onCheckedChange = onCheckedChange,
+            onCheckedChange = toggle,
             enabled = enabled,
         )
         Text(

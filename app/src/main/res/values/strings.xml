@@ -496,6 +496,11 @@
     <string name="settings_black_theme_desc">在深色模式下使用 AMOLED 纯黑背景。</string>
     <string name="settings_launch_splash_animation">启动动画</string>
     <string name="settings_launch_splash_animation_desc">启动时播放小电视弹跳动画；关闭后将直接进入首页。</string>
+    <string name="settings_haptic_feedback">触感反馈</string>
+    <string name="settings_haptic_feedback_desc">交互时的震动反馈强度。轻量档仅保留长按、滑动吸附与操作成败提示；完整档额外包含点击、勾选与拖动步进。系统「触感反馈」总开关关闭时本设置不生效。</string>
+    <string name="settings_haptic_feedback_off">关闭</string>
+    <string name="settings_haptic_feedback_light">轻量</string>
+    <string name="settings_haptic_feedback_full">完整</string>
     <string name="settings_dynamic_color_title">动态取色</string>
     <string name="settings_dynamic_color_desc">在支持的设备上使用系统动态配色。</string>
     <string name="settings_color_scheme_title">配色方案</string>

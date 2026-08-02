@@ -145,10 +145,12 @@ import com.happycola233.bilitools.data.AppThemeMode
 import com.happycola233.bilitools.data.DefaultDownloadQualitySettings
 import com.happycola233.bilitools.data.DefaultDownloadVideoCodec
 import com.happycola233.bilitools.data.DownloadQualityMode
+import com.happycola233.bilitools.data.HapticFeedbackLevel
 import com.happycola233.bilitools.data.IssueReportLogState
 import com.happycola233.bilitools.data.SettingsRepository
 import com.happycola233.bilitools.data.TopLevelFolderMode
 import com.happycola233.bilitools.ui.BiliTvLaunchMotion
+import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import com.happycola233.bilitools.ui.theme.BiliToolsSettingsTheme
 import java.time.Instant
 import java.time.ZoneId
@@ -192,6 +194,7 @@ fun BiliToolsSettingsContent(
     onRestoreNamingDefaults: () -> Unit,
     onBlackThemeChange: (Boolean) -> Unit,
     onLaunchSplashAnimationChange: (Boolean) -> Unit,
+    onHapticFeedbackLevelChange: (HapticFeedbackLevel) -> Unit,
     onGlassDebugChange: (Boolean) -> Unit,
     onIssueReportLoggingChange: (Boolean) -> Unit,
     onExportIssueReport: () -> Unit,
@@ -231,6 +234,7 @@ fun BiliToolsSettingsContent(
                         settings = settings,
                         liveUpdateSupported = liveUpdateSupported,
                         onLiveActivityStyleNotificationChange = onLiveActivityStyleNotificationChange,
+                        onHapticFeedbackLevelChange = onHapticFeedbackLevelChange,
                         onNavigate = onNavigate,
                         onBack = onNavigateBack,
                         modifier = modifier,
@@ -466,6 +470,7 @@ private fun GeneralSettingsScreen(
     settings: AppSettings,
     liveUpdateSupported: Boolean,
     onLiveActivityStyleNotificationChange: (Boolean) -> Unit,
+    onHapticFeedbackLevelChange: (HapticFeedbackLevel) -> Unit,
     onNavigate: (SettingsDestination) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -494,7 +499,7 @@ private fun GeneralSettingsScreen(
             item { Spacer(Modifier.height(14.dp)) }
             item {
                 ClickableListItem(
-                    items = 2,
+                    items = 3,
                     index = 0,
                     leadingContent = { SettingsItemIcon(R.drawable.ic_high_quality_24) },
                     headlineContent = {
@@ -520,9 +525,17 @@ private fun GeneralSettingsScreen(
                     title = stringResource(R.string.settings_live_activity_style_notification),
                     description = liveUpdateDescription,
                     enabled = liveUpdateSupported,
-                    items = 2,
+                    items = 3,
                     index = 1,
                     onCheckedChange = onLiveActivityStyleNotificationChange,
+                )
+            }
+            item {
+                HapticFeedbackPickerListItem(
+                    level = settings.hapticFeedbackLevel,
+                    items = 3,
+                    index = 2,
+                    onLevelChange = onHapticFeedbackLevelChange,
                 )
             }
             item { Spacer(Modifier.height(12.dp)) }
@@ -2416,6 +2429,70 @@ private fun ThemePickerListItem(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun HapticFeedbackPickerListItem(
+    level: HapticFeedbackLevel,
+    items: Int,
+    index: Int,
+    onLevelChange: (HapticFeedbackLevel) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val haptics = rememberAppHaptics()
+    val options = remember {
+        listOf(
+            HapticFeedbackLevel.Off to R.string.settings_haptic_feedback_off,
+            HapticFeedbackLevel.Light to R.string.settings_haptic_feedback_light,
+            HapticFeedbackLevel.Full to R.string.settings_haptic_feedback_full,
+        )
+    }
+
+    Column(
+        modifier = modifier.clip(SettingsExpressiveShapes.groupShape(index, items)),
+    ) {
+        ListItem(
+            leadingContent = { SettingsItemIcon(R.drawable.ic_mobile_vibrate_24) },
+            headlineContent = {
+                SettingsItemTitle(stringResource(R.string.settings_haptic_feedback))
+            },
+            supportingContent = { Text(stringResource(R.string.settings_haptic_feedback_desc)) },
+            colors = SettingsExpressiveDefaults.listItemColors,
+        )
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+            modifier = Modifier
+                .background(SettingsExpressiveDefaults.listItemColors.containerColor)
+                .padding(start = 52.dp, end = 16.dp, bottom = 8.dp),
+        ) {
+            options.fastForEachIndexed { optionIndex, (option, labelRes) ->
+                ToggleButton(
+                    checked = option == level,
+                    onCheckedChange = {
+                        onLevelChange(option)
+                        // 先落库再触发，让用户立刻感受到新档位的实际手感；Confirm 在轻量与完整档都启用。
+                        haptics.confirm()
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics { role = Role.RadioButton },
+                    shapes = when (optionIndex) {
+                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                        options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                    },
+                ) {
+                    Text(
+                        text = stringResource(labelRes),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun ColorSchemePickerListItem(
     color: AppThemeColor,
@@ -2572,6 +2649,7 @@ private fun ExpressiveSwitchListItem(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val haptics = rememberAppHaptics()
     ListItem(
         leadingContent = { SettingsItemIcon(iconRes) },
         headlineContent = { SettingsItemTitle(title) },
@@ -2579,7 +2657,10 @@ private fun ExpressiveSwitchListItem(
         trailingContent = {
             Switch(
                 checked = checked,
-                onCheckedChange = onCheckedChange,
+                onCheckedChange = { next ->
+                    haptics.toggle(next)
+                    onCheckedChange(next)
+                },
                 enabled = enabled,
                 thumbContent = {
                     Icon(
@@ -2613,6 +2694,7 @@ private fun ClickableListItem(
     colors: ListItemColors = SettingsExpressiveDefaults.listItemColors,
     onClick: () -> Unit,
 ) {
+    val haptics = rememberAppHaptics()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val top by animateDpAsState(
@@ -2644,7 +2726,10 @@ private fun ClickableListItem(
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
-                onClick = onClick,
+                onClick = {
+                    haptics.tap()
+                    onClick()
+                },
             ),
     )
 }

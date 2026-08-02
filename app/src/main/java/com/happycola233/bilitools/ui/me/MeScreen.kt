@@ -97,6 +97,7 @@ import com.happycola233.bilitools.data.model.UserInfo
 import com.happycola233.bilitools.ui.TopErrorMessageHost
 import com.happycola233.bilitools.ui.login.LoginTab
 import com.happycola233.bilitools.ui.login.LoginUiState
+import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import com.happycola233.bilitools.ui.theme.BiliToolsSettingsTheme
 import java.util.Locale
 import kotlin.math.abs
@@ -200,6 +201,7 @@ private fun MeOverviewScreen(
 ) {
     val isLoggedIn = loginState.isLoggedIn
     var showLogoutConfirmDialog by rememberSaveable { mutableStateOf(false) }
+    val haptics = rememberAppHaptics()
 
     LaunchedEffect(isLoggedIn) {
         if (!isLoggedIn) {
@@ -282,6 +284,7 @@ private fun MeOverviewScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
+                        haptics.confirm()
                         showLogoutConfirmDialog = false
                         onLogout()
                     },
@@ -1369,6 +1372,7 @@ private fun MeClickableListItem(
     trailingContent: (@Composable () -> Unit)? = null,
     onClick: () -> Unit,
 ) {
+    val haptics = rememberAppHaptics()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val top by animateDpAsState(
@@ -1416,7 +1420,10 @@ private fun MeClickableListItem(
                 enabled = enabled,
                 interactionSource = interactionSource,
                 indication = null,
-                onClick = onClick,
+                onClick = {
+                    haptics.tap()
+                    onClick()
+                },
             ),
     )
 }

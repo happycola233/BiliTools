@@ -94,6 +94,7 @@ import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.model.DownloadGroup
 import com.happycola233.bilitools.data.model.DownloadItem
 import com.happycola233.bilitools.ui.FloatingControlsDefaults
+import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
@@ -402,6 +403,7 @@ private fun DownloadsDeleteDialog(
         null,
         -> return
     }
+    val haptics = rememberAppHaptics()
     var deleteFileChecked by remember(state) { mutableStateOf(true) }
     val title = when (state) {
         is DownloadsDialogState.DeleteTask -> stringResource(R.string.download_delete)
@@ -478,6 +480,7 @@ private fun DownloadsDeleteDialog(
         confirmButton = {
             TextButton(
                 onClick = {
+                    haptics.confirm()
                     val confirmDeleteFile = if (showCheckbox) deleteFileChecked else true
                     onConfirm(confirmDeleteFile)
                 },
@@ -560,6 +563,7 @@ private fun DownloadsTaskActionRow(
     text: String,
     onClick: () -> Unit,
 ) {
+    val haptics = rememberAppHaptics()
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -570,7 +574,10 @@ private fun DownloadsTaskActionRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
-                .clickable(onClick = onClick)
+                .clickable {
+                    haptics.tap()
+                    onClick()
+                }
                 .padding(
                     start = downloadsTaskActionsContentHorizontalPadding,
                     end = downloadsTaskActionsContentHorizontalPadding,
@@ -617,6 +624,7 @@ private fun DownloadsManageFab(
     onClearCompleted: () -> Unit,
     onClearAll: () -> Unit,
 ) {
+    val haptics = rememberAppHaptics()
     var expanded by remember { mutableStateOf(false) }
 
     FloatingActionButtonMenu(
@@ -624,7 +632,10 @@ private fun DownloadsManageFab(
         button = {
             ToggleFloatingActionButton(
                 checked = expanded,
-                onCheckedChange = { expanded = it },
+                onCheckedChange = { next ->
+                    haptics.toggle(next)
+                    expanded = next
+                },
             ) {
                 val imageVector = if (checkedProgress > 0.5f) {
                     R.drawable.ic_close_rounded_24
@@ -642,27 +653,27 @@ private fun DownloadsManageFab(
             .offset(y = controlsOffset),
     ) {
         FloatingActionButtonMenuItem(
-            onClick = { expanded = false; onClearAll() },
+            onClick = { expanded = false; haptics.confirm(); onClearAll() },
             icon = { Icon(painter = painterResource(R.drawable.ic_delete_24), contentDescription = null) },
             text = { Text(text = stringResource(R.string.downloads_clear_all)) },
         )
         FloatingActionButtonMenuItem(
-            onClick = { expanded = false; onClearCompleted() },
+            onClick = { expanded = false; haptics.confirm(); onClearCompleted() },
             icon = { Icon(painter = painterResource(R.drawable.ic_delete_sweep_24), contentDescription = null) },
             text = { Text(text = stringResource(R.string.downloads_clear_completed)) },
         )
         FloatingActionButtonMenuItem(
-            onClick = { expanded = false; onPauseAll() },
+            onClick = { expanded = false; haptics.confirm(); onPauseAll() },
             icon = { Icon(painter = painterResource(R.drawable.ic_pause_24), contentDescription = null) },
             text = { Text(text = stringResource(R.string.downloads_pause_all_with_count, pauseAllCount)) },
         )
         FloatingActionButtonMenuItem(
-            onClick = { expanded = false; onResumeAll() },
+            onClick = { expanded = false; haptics.confirm(); onResumeAll() },
             icon = { Icon(painter = painterResource(R.drawable.ic_play_arrow_24), contentDescription = null) },
             text = { Text(text = stringResource(R.string.downloads_resume_all_with_count, resumeAllCount)) },
         )
         FloatingActionButtonMenuItem(
-            onClick = { expanded = false; onBatchManage() },
+            onClick = { expanded = false; haptics.confirm(); onBatchManage() },
             icon = { Icon(painter = painterResource(R.drawable.ic_checklist_rounded_24), contentDescription = null) },
             text = { Text(text = stringResource(R.string.downloads_multi_manage)) },
         )
@@ -1032,11 +1043,15 @@ private fun BatchTextAction(
     color: Color,
     onClick: () -> Unit,
 ) {
+    val haptics = rememberAppHaptics()
     Box(
         modifier = Modifier
             .padding(start = 4.dp)
             .clip(RoundedCornerShape(10.dp))
-            .clickable(onClick = onClick)
+            .clickable {
+                haptics.tap()
+                onClick()
+            }
             .padding(horizontal = 8.dp, vertical = 6.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -1062,6 +1077,7 @@ private fun BatchActionButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val haptics = rememberAppHaptics()
     val resolvedContainerColor by animateColorAsState(
         targetValue = if (enabled) containerColor else containerColor.copy(alpha = 0.88f),
         animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
@@ -1075,7 +1091,10 @@ private fun BatchActionButton(
         modifier = modifier
             .clip(RoundedCornerShape(18.dp))
             .background(resolvedContainerColor)
-            .clickable(enabled = enabled, onClick = onClick),
+            .clickable(enabled = enabled) {
+                haptics.confirm()
+                onClick()
+            },
         contentAlignment = Alignment.Center,
     ) {
         Row(

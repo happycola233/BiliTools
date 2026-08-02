@@ -226,6 +226,7 @@ class IssueReportRepository(
             "launchSplashAnimationEnabled",
             settings.launchSplashAnimationEnabled.toString(),
         )
+        appendKeyValue("hapticFeedbackLevel", settings.hapticFeedbackLevel.value)
         appendKeyValue("confirmCellularDownload", settings.confirmCellularDownload.toString())
         appendKeyValue(
             "hideDownloadedVideosInSystemAlbum",
