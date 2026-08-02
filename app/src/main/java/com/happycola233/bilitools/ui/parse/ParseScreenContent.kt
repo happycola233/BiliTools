@@ -188,8 +188,6 @@ private val copyDialogCornerRadius = 32.dp
 private val copyDialogHorizontalMargin = 28.dp
 private val copyDialogContentPadding = 24.dp
 private val copyDialogMaxHeight = 720.dp
-private val copyDialogHeaderIconSize = 42.dp
-private val copyDialogHeaderIconCornerRadius = 16.dp
 private val copyDialogSectionSpacing = 16.dp
 private val copyDialogPreviewHeight = 340.dp
 private val copyDialogPreviewMinHeight = 220.dp
@@ -509,11 +507,10 @@ private fun SubtitleCopyPreviewDialog(
     val context = LocalContext.current
     CopyPreviewDialog(
         title = stringResource(R.string.parse_subtitle_copy_dialog_title),
-        hint = stringResource(R.string.parse_subtitle_copy_dialog_hint),
+        subtitle = stringResource(R.string.parse_subtitle_copy_dialog_subtitle),
         itemLabel = stringResource(R.string.parse_subtitle_copy_item_label),
         currentActionText = stringResource(R.string.parse_subtitle_copy_current),
         allActionText = stringResource(R.string.parse_subtitle_copy_all),
-        headerIconRes = R.drawable.ic_checklist_24,
         entries = entries,
         previewUsesMonospace = true,
         hasContent = { entry -> !entry.content.isNullOrBlank() },
@@ -559,11 +556,10 @@ private fun AiSummaryCopyPreviewDialog(
     val context = LocalContext.current
     CopyPreviewDialog(
         title = stringResource(R.string.parse_ai_summary_copy_dialog_title),
-        hint = stringResource(R.string.parse_ai_summary_copy_dialog_hint),
+        subtitle = stringResource(R.string.parse_ai_summary_copy_dialog_subtitle),
         itemLabel = stringResource(R.string.parse_ai_summary_copy_item_label),
         currentActionText = stringResource(R.string.parse_ai_summary_copy_current),
         allActionText = stringResource(R.string.parse_ai_summary_copy_all),
-        headerIconRes = R.drawable.ic_wand_shine_24,
         entries = entries,
         previewUsesMonospace = false,
         hasContent = { entry -> !entry.content.isNullOrBlank() },
@@ -595,11 +591,10 @@ private fun AiSummaryCopyPreviewDialog(
 @Composable
 private fun <T> CopyPreviewDialog(
     title: String,
-    hint: String,
+    subtitle: String,
     itemLabel: String,
     currentActionText: String,
     allActionText: String,
-    headerIconRes: Int,
     entries: List<T>,
     previewUsesMonospace: Boolean,
     hasContent: (T) -> Boolean,
@@ -670,8 +665,7 @@ private fun <T> CopyPreviewDialog(
                 ) {
                     CopyDialogHeader(
                         title = title,
-                        hint = hint,
-                        iconRes = headerIconRes,
+                        subtitle = subtitle,
                     )
                     CompactSelectionField(
                         label = itemLabel,
@@ -742,44 +736,23 @@ private fun <T> CopyPreviewDialog(
 @Composable
 private fun CopyDialogHeader(
     title: String,
-    hint: String,
-    iconRes: Int,
+    subtitle: String,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Surface(
-                modifier = Modifier.size(copyDialogHeaderIconSize),
-                shape = RoundedCornerShape(copyDialogHeaderIconCornerRadius),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        painter = painterResource(iconRes),
-                        contentDescription = null,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
-            }
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-        }
         Text(
-            text = hint,
-            style = ParseTextStyles.body,
+            text = title,
+            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Text(
+            text = subtitle,
+            style = ParseTextStyles.supporting,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }

@@ -126,7 +126,7 @@
     <string name="parse_subtitle_language">字幕语言</string>
     <string name="parse_copy_subtitle_now">复制字幕</string>
     <string name="parse_subtitle_copy_dialog_title">字幕预览与复制</string>
-    <string name="parse_subtitle_copy_dialog_hint">可切换条目预览字幕，支持复制当前或复制全部。</string>
+    <string name="parse_subtitle_copy_dialog_subtitle">可切换条目预览字幕，支持复制当前或复制全部。</string>
     <string name="parse_subtitle_copy_item_label">条目</string>
     <string name="parse_subtitle_copy_current">复制当前条目</string>
     <string name="parse_subtitle_copy_all">复制全部</string>
@@ -141,7 +141,7 @@
     <string name="parse_subtitle_copy_all_done">已复制全部字幕</string>
     <string name="parse_copy_ai_summary_now">复制AI总结</string>
     <string name="parse_ai_summary_copy_dialog_title">AI总结预览与复制</string>
-    <string name="parse_ai_summary_copy_dialog_hint">可切换条目预览AI总结，支持复制当前或复制全部。</string>
+    <string name="parse_ai_summary_copy_dialog_subtitle">可切换条目预览AI总结，支持复制当前或复制全部。</string>
     <string name="parse_ai_summary_copy_item_label">条目</string>
     <string name="parse_ai_summary_copy_current">复制当前条目</string>
     <string name="parse_ai_summary_copy_all">复制全部</string>
