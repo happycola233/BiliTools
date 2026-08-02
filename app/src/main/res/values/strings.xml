@@ -274,7 +274,6 @@
     <string name="downloads_group_delete">删除该组</string>
     <string name="downloads_group_location_action">查看保存位置</string>
     <string name="downloads_group_cover_desc">视频封面</string>
-    <string name="downloads_group_created">创建于：%1$s</string>
     <string name="downloads_group_location">保存到：%1$s</string>
     <string name="downloads_group_actions_summary_count">共 %1$d 项</string>
     <string name="downloads_group_actions_summary_size">共 %1$d 项 · %2$s</string>
@@ -304,7 +303,6 @@
     <string name="download_status_cancelled">已取消</string>
     <string name="download_pause">暂停</string>
     <string name="download_resume">继续</string>
-    <string name="download_retry">重试</string>
     <string name="download_cancel">取消</string>
     <string name="download_delete">删除</string>
     <string name="download_delete_with_file">同时删除已下载的文件</string>
@@ -437,7 +435,6 @@
     <string name="parse_error_no_danmaku">未找到可用弹幕</string>
     <string name="parse_error_no_cover">未找到可用封面</string>
     <string name="parse_notice_no_more">没有更多内容</string>
-    <string name="download_params">参数：%1$s</string>
     <string name="delete">删除</string>
     <string name="download_error_unsafe_exit">程序意外退出，文件可能损坏，请重新下载</string>
 

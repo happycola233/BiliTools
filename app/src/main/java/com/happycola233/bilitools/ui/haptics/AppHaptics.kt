@@ -225,7 +225,7 @@ fun rememberAppHaptics(): AppHaptics {
 }
 
 /**
- * View 体系（RecyclerView Adapter、BottomNavigationView 等）的触感入口，与 Compose 侧共用同一套语义与降级。
+ * View 体系（如 BottomNavigationView）的触感入口，与 Compose 侧共用同一套语义与降级。
  */
 fun View.performAppHaptic(effect: HapticEffect) {
     val level = context.applicationContext.appContainer.settingsRepository
