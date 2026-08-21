@@ -4,8 +4,10 @@ import android.view.View
 import android.view.ViewTreeObserver
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -19,6 +21,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
@@ -54,6 +57,9 @@ fun MainLiquidBottomBar(
     selectedTabIndex: () -> Int,
     onTabSelected: (index: Int) -> Unit,
     backgroundView: View,
+    glassStyle: LiquidGlassStyle,
+    surfaceAlpha: Float,
+    widthFraction: Float,
     modifier: Modifier = Modifier,
 ) {
     val contentVersion = remember { mutableIntStateOf(0) }
@@ -95,19 +101,24 @@ fun MainLiquidBottomBar(
         // 采样层锚点：与整个浮层同尺寸，保证坐标系与 Activity 内容区对齐
         Box(Modifier.fillMaxSize().layerBackdrop(backdrop))
 
+        // 表层与下载页批量管理玻璃面板同配方：纯白/纯黑叠加，玻璃质感由折射与高光呈现
+        val isLightTheme = !isSystemInDarkTheme()
         LiquidBottomTabs(
             selectedTabIndex = selectedTabIndex,
             onTabSelected = onTabSelected,
             backdrop = backdrop,
             tabsCount = MainLiquidTabs.size,
             accentColor = MaterialTheme.colorScheme.primary,
-            containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.4f),
+            containerColor = (if (isLightTheme) Color.White else Color.Black)
+                .copy(alpha = surfaceAlpha.coerceIn(0f, 1f)),
+            glassStyle = glassStyle,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 8.dp)
-                .widthIn(max = 440.dp),
+                .widthIn(max = 440.dp)
+                .fillMaxWidth(widthFraction.coerceIn(0.5f, 1f)),
         ) {
             val contentColor = MaterialTheme.colorScheme.onSurfaceVariant
             MainLiquidTabs.forEachIndexed { index, tab ->

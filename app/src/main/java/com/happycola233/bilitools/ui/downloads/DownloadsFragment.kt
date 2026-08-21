@@ -82,6 +82,11 @@ class DownloadsFragment : Fragment() {
     private var composeGlassRefractionAmountFrac by mutableStateOf(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_REFRACTION_AMOUNT_FRAC)
     private var composeGlassSurfaceAlpha by mutableStateOf(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_SURFACE_ALPHA)
     private var composeGlassChromaticAberration by mutableStateOf(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_CHROMATIC_ABERRATION)
+    private var composeBarGlassBlurRadiusDp by mutableStateOf(SettingsRepository.DEFAULT_LIQUID_BAR_GLASS_BLUR_RADIUS_DP)
+    private var composeBarGlassRefractionHeightDp by mutableStateOf(SettingsRepository.DEFAULT_LIQUID_BAR_GLASS_REFRACTION_HEIGHT_DP)
+    private var composeBarGlassRefractionAmountFrac by mutableStateOf(SettingsRepository.DEFAULT_LIQUID_BAR_GLASS_REFRACTION_AMOUNT_FRAC)
+    private var composeBarGlassSurfaceAlpha by mutableStateOf(SettingsRepository.DEFAULT_LIQUID_BAR_GLASS_SURFACE_ALPHA)
+    private var composeBarGlassChromaticAberration by mutableStateOf(SettingsRepository.DEFAULT_LIQUID_BAR_GLASS_CHROMATIC_ABERRATION)
     private var composeResumeAllCount by mutableStateOf(0)
     private var composePauseAllCount by mutableStateOf(0)
     private lateinit var backPressedCallback: OnBackPressedCallback
@@ -133,6 +138,11 @@ class DownloadsFragment : Fragment() {
                     glassRefractionAmountFrac = composeGlassRefractionAmountFrac,
                     glassChromaticAberration = composeGlassChromaticAberration,
                     glassSurfaceAlpha = composeGlassSurfaceAlpha,
+                    barGlassBlurRadiusDp = composeBarGlassBlurRadiusDp,
+                    barGlassRefractionHeightDp = composeBarGlassRefractionHeightDp,
+                    barGlassRefractionAmountFrac = composeBarGlassRefractionAmountFrac,
+                    barGlassChromaticAberration = composeBarGlassChromaticAberration,
+                    barGlassSurfaceAlpha = composeBarGlassSurfaceAlpha,
                     onBatchManage = { enterSelectionMode() },
                     onResumeAll = { performResumeAll() },
                     onPauseAll = { performPauseAll() },
@@ -173,6 +183,18 @@ class DownloadsFragment : Fragment() {
                         settingsRepository.setDownloadsGlassRefractionAmountFrac(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_REFRACTION_AMOUNT_FRAC)
                         settingsRepository.setDownloadsGlassSurfaceAlpha(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_SURFACE_ALPHA)
                         settingsRepository.setDownloadsGlassChromaticAberration(SettingsRepository.DEFAULT_DOWNLOADS_GLASS_CHROMATIC_ABERRATION)
+                    },
+                    onBarGlassBlurRadiusChange = { settingsRepository.setLiquidBarGlassBlurRadiusDp(it) },
+                    onBarGlassRefractionHeightChange = { settingsRepository.setLiquidBarGlassRefractionHeightDp(it) },
+                    onBarGlassRefractionAmountChange = { settingsRepository.setLiquidBarGlassRefractionAmountFrac(it) },
+                    onBarGlassChromaticAberrationChange = { settingsRepository.setLiquidBarGlassChromaticAberration(it) },
+                    onBarGlassSurfaceAlphaChange = { settingsRepository.setLiquidBarGlassSurfaceAlpha(it) },
+                    onBarGlassReset = {
+                        settingsRepository.setLiquidBarGlassBlurRadiusDp(SettingsRepository.DEFAULT_LIQUID_BAR_GLASS_BLUR_RADIUS_DP)
+                        settingsRepository.setLiquidBarGlassRefractionHeightDp(SettingsRepository.DEFAULT_LIQUID_BAR_GLASS_REFRACTION_HEIGHT_DP)
+                        settingsRepository.setLiquidBarGlassRefractionAmountFrac(SettingsRepository.DEFAULT_LIQUID_BAR_GLASS_REFRACTION_AMOUNT_FRAC)
+                        settingsRepository.setLiquidBarGlassSurfaceAlpha(SettingsRepository.DEFAULT_LIQUID_BAR_GLASS_SURFACE_ALPHA)
+                        settingsRepository.setLiquidBarGlassChromaticAberration(SettingsRepository.DEFAULT_LIQUID_BAR_GLASS_CHROMATIC_ABERRATION)
                     },
                 )
             }
@@ -231,6 +253,11 @@ class DownloadsFragment : Fragment() {
                     composeGlassRefractionAmountFrac = settings.downloadsGlassRefractionAmountFrac
                     composeGlassSurfaceAlpha = settings.downloadsGlassSurfaceAlpha
                     composeGlassChromaticAberration = settings.downloadsGlassChromaticAberration
+                    composeBarGlassBlurRadiusDp = settings.liquidBarGlassBlurRadiusDp
+                    composeBarGlassRefractionHeightDp = settings.liquidBarGlassRefractionHeightDp
+                    composeBarGlassRefractionAmountFrac = settings.liquidBarGlassRefractionAmountFrac
+                    composeBarGlassSurfaceAlpha = settings.liquidBarGlassSurfaceAlpha
+                    composeBarGlassChromaticAberration = settings.liquidBarGlassChromaticAberration
                 }
             }
         }

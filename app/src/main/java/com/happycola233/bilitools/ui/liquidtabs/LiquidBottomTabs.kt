@@ -30,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -60,8 +61,8 @@ import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.colorControls
 import com.kyant.backdrop.effects.lens
-import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.InnerShadow
 import com.kyant.backdrop.shadow.Shadow
@@ -73,6 +74,14 @@ import kotlinx.coroutines.launch
 
 internal val LocalLiquidBottomTabScale = staticCompositionLocalOf { { 1f } }
 
+/** 底栏玻璃可调参数（由设置持久化，可在下载页调试面板实时调节）。 */
+data class LiquidGlassStyle(
+    val blurRadiusDp: Float,
+    val refractionHeightDp: Float,
+    val refractionAmountFrac: Float,
+    val chromaticAberration: Boolean,
+)
+
 @Composable
 internal fun LiquidBottomTabs(
     selectedTabIndex: () -> Int,
@@ -81,10 +90,17 @@ internal fun LiquidBottomTabs(
     tabsCount: Int,
     accentColor: Color,
     containerColor: Color,
+    glassStyle: LiquidGlassStyle,
     modifier: Modifier = Modifier,
     content: @Composable RowScope.() -> Unit,
 ) {
     val isLightTheme = !isSystemInDarkTheme()
+
+    // 与下载页批量管理玻璃面板同一配方（亮度/饱和度调节 + 深度折射 + 色散 + 边缘高光），保证全局玻璃质感一致
+    val luminance = if (isLightTheme) 0.58f else 0.42f
+    val l = (luminance * 2f - 1f).let { sign(it) * it * it }
+    val glassBrightness = if (l > 0f) lerp(0.1f, 0.5f, l) else lerp(0.1f, -0.2f, -l)
+    val glassContrast = if (l > 0f) lerp(1f, 0f, l) else 1f
 
     val tabsBackdrop = rememberLayerBackdrop()
 
@@ -109,10 +125,14 @@ internal fun LiquidBottomTabs(
 
         val isLtr = LocalLayoutDirection.current == LayoutDirection.Ltr
         val animationScope = rememberCoroutineScope()
-        var currentIndex by remember(selectedTabIndex) {
-            mutableIntStateOf(selectedTabIndex())
-        }
-        val dampedDragAnimation = remember(animationScope) {
+        // 外层重组可能每次传入新的 lambda 实例，这里用 rememberUpdatedState 保持最新引用，
+        // 状态与协程不能以 lambda 身份作 remember key，否则会订阅到已废弃的状态对象，
+        // 表现为点击切页后气泡不再跟随
+        val currentSelectedTabIndex by rememberUpdatedState(selectedTabIndex)
+        val currentOnTabSelected by rememberUpdatedState(onTabSelected)
+        var currentIndex by remember { mutableIntStateOf(selectedTabIndex()) }
+        // tabWidth 会随底栏宽度设置变化，作为 key 重建动画对象以刷新闭包内捕获的值
+        val dampedDragAnimation = remember(animationScope, tabWidth) {
             DampedDragAnimation(
                 animationScope = animationScope,
                 initialValue = selectedTabIndex().toFloat(),
@@ -143,8 +163,8 @@ internal fun LiquidBottomTabs(
                 },
             )
         }
-        LaunchedEffect(selectedTabIndex) {
-            snapshotFlow { selectedTabIndex() }
+        LaunchedEffect(Unit) {
+            snapshotFlow { currentSelectedTabIndex() }
                 .collectLatest { index ->
                     currentIndex = index
                 }
@@ -154,11 +174,11 @@ internal fun LiquidBottomTabs(
                 .drop(1)
                 .collectLatest { index ->
                     dampedDragAnimation.animateToValue(index.toFloat())
-                    onTabSelected(index)
+                    currentOnTabSelected(index)
                 }
         }
 
-        val interactiveHighlight = remember(animationScope) {
+        val interactiveHighlight = remember(dampedDragAnimation) {
             InteractiveHighlight(
                 animationScope = animationScope,
                 position = { size, _ ->
@@ -181,10 +201,20 @@ internal fun LiquidBottomTabs(
                     backdrop = backdrop,
                     shape = { CircleShape },
                     effects = {
-                        vibrancy()
-                        blur(8f.dp.toPx())
-                        lens(24f.dp.toPx(), 24f.dp.toPx())
+                        colorControls(
+                            brightness = glassBrightness,
+                            contrast = glassContrast,
+                            saturation = 1.5f,
+                        )
+                        blur(glassStyle.blurRadiusDp.dp.toPx())
+                        lens(
+                            glassStyle.refractionHeightDp.dp.toPx(),
+                            size.minDimension * glassStyle.refractionAmountFrac.fastCoerceIn(0f, 1f),
+                            depthEffect = true,
+                            chromaticAberration = glassStyle.chromaticAberration,
+                        )
                     },
+                    highlight = { Highlight.Plain },
                     layerBlock = {
                         val progress = dampedDragAnimation.pressProgress
                         val scale = lerp(1f, 1f + 16f.dp.toPx() / size.width, progress)
@@ -220,11 +250,18 @@ internal fun LiquidBottomTabs(
                         shape = { CircleShape },
                         effects = {
                             val progress = dampedDragAnimation.pressProgress
-                            vibrancy()
-                            blur(8f.dp.toPx())
+                            colorControls(
+                                brightness = glassBrightness,
+                                contrast = glassContrast,
+                                saturation = 1.5f,
+                            )
+                            blur(glassStyle.blurRadiusDp.dp.toPx())
                             lens(
-                                24f.dp.toPx() * progress,
-                                24f.dp.toPx() * progress,
+                                glassStyle.refractionHeightDp.dp.toPx() * progress,
+                                size.minDimension *
+                                    glassStyle.refractionAmountFrac.fastCoerceIn(0f, 1f) * progress,
+                                depthEffect = true,
+                                chromaticAberration = glassStyle.chromaticAberration,
                             )
                         },
                         highlight = {

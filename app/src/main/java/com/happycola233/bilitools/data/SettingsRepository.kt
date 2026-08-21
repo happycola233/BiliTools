@@ -42,6 +42,12 @@ data class AppSettings(
     val darkModePureBlack: Boolean = false,
     val launchSplashAnimationEnabled: Boolean = true,
     val liquidBottomTabsEnabled: Boolean = true,
+    val liquidBarWidthFraction: Float = SettingsRepository.DEFAULT_LIQUID_BAR_WIDTH_FRACTION,
+    val liquidBarGlassBlurRadiusDp: Float = SettingsRepository.DEFAULT_LIQUID_BAR_GLASS_BLUR_RADIUS_DP,
+    val liquidBarGlassRefractionHeightDp: Float = SettingsRepository.DEFAULT_LIQUID_BAR_GLASS_REFRACTION_HEIGHT_DP,
+    val liquidBarGlassRefractionAmountFrac: Float = SettingsRepository.DEFAULT_LIQUID_BAR_GLASS_REFRACTION_AMOUNT_FRAC,
+    val liquidBarGlassSurfaceAlpha: Float = SettingsRepository.DEFAULT_LIQUID_BAR_GLASS_SURFACE_ALPHA,
+    val liquidBarGlassChromaticAberration: Boolean = SettingsRepository.DEFAULT_LIQUID_BAR_GLASS_CHROMATIC_ABERRATION,
     val hapticFeedbackLevel: HapticFeedbackLevel = HapticFeedbackLevel.Full,
     val liveActivityStyleNotificationEnabled: Boolean = true,
     val downloadRootRelativePath: String = SettingsRepository.DEFAULT_DOWNLOAD_ROOT,
@@ -246,6 +252,53 @@ class SettingsRepository(context: Context) {
         if (current.liquidBottomTabsEnabled == enabled) return
         prefs.edit().putBoolean(KEY_LIQUID_BOTTOM_TABS_ENABLED, enabled).apply()
         _settings.value = current.copy(liquidBottomTabsEnabled = enabled)
+    }
+
+    fun setLiquidBarWidthFraction(value: Float) {
+        val normalized = value.coerceIn(MIN_LIQUID_BAR_WIDTH_FRACTION, 1f)
+        val current = _settings.value
+        if (current.liquidBarWidthFraction == normalized) return
+        prefs.edit().putFloat(KEY_LIQUID_BAR_WIDTH_FRACTION, normalized).apply()
+        _settings.value = current.copy(liquidBarWidthFraction = normalized)
+    }
+
+    fun setLiquidBarGlassBlurRadiusDp(value: Float) {
+        val normalized = value.coerceIn(0f, 48f)
+        val current = _settings.value
+        if (current.liquidBarGlassBlurRadiusDp == normalized) return
+        prefs.edit().putFloat(KEY_LIQUID_BAR_GLASS_BLUR_RADIUS_DP, normalized).apply()
+        _settings.value = current.copy(liquidBarGlassBlurRadiusDp = normalized)
+    }
+
+    fun setLiquidBarGlassRefractionHeightDp(value: Float) {
+        val normalized = value.coerceIn(0f, 72f)
+        val current = _settings.value
+        if (current.liquidBarGlassRefractionHeightDp == normalized) return
+        prefs.edit().putFloat(KEY_LIQUID_BAR_GLASS_REFRACTION_HEIGHT_DP, normalized).apply()
+        _settings.value = current.copy(liquidBarGlassRefractionHeightDp = normalized)
+    }
+
+    fun setLiquidBarGlassRefractionAmountFrac(value: Float) {
+        val normalized = value.coerceIn(0f, 1f)
+        val current = _settings.value
+        if (current.liquidBarGlassRefractionAmountFrac == normalized) return
+        prefs.edit().putFloat(KEY_LIQUID_BAR_GLASS_REFRACTION_AMOUNT_FRAC, normalized).apply()
+        _settings.value = current.copy(liquidBarGlassRefractionAmountFrac = normalized)
+    }
+
+    fun setLiquidBarGlassSurfaceAlpha(value: Float) {
+        val normalized = value.coerceIn(0f, 1f)
+        val current = _settings.value
+        if (current.liquidBarGlassSurfaceAlpha == normalized) return
+        prefs.edit().putFloat(KEY_LIQUID_BAR_GLASS_SURFACE_ALPHA, normalized).apply()
+        _settings.value = current.copy(liquidBarGlassSurfaceAlpha = normalized)
+    }
+
+    fun setLiquidBarGlassChromaticAberration(enabled: Boolean) {
+        val current = _settings.value
+        if (current.liquidBarGlassChromaticAberration == enabled) return
+        prefs.edit().putBoolean(KEY_LIQUID_BAR_GLASS_CHROMATIC_ABERRATION, enabled).apply()
+        _settings.value = current.copy(liquidBarGlassChromaticAberration = enabled)
     }
 
     fun setHapticFeedbackLevel(level: HapticFeedbackLevel) {
@@ -508,6 +561,30 @@ class SettingsRepository(context: Context) {
                 KEY_LIQUID_BOTTOM_TABS_ENABLED,
                 true,
             ),
+            liquidBarWidthFraction = prefs.getFloat(
+                KEY_LIQUID_BAR_WIDTH_FRACTION,
+                DEFAULT_LIQUID_BAR_WIDTH_FRACTION,
+            ),
+            liquidBarGlassBlurRadiusDp = prefs.getFloat(
+                KEY_LIQUID_BAR_GLASS_BLUR_RADIUS_DP,
+                DEFAULT_LIQUID_BAR_GLASS_BLUR_RADIUS_DP,
+            ),
+            liquidBarGlassRefractionHeightDp = prefs.getFloat(
+                KEY_LIQUID_BAR_GLASS_REFRACTION_HEIGHT_DP,
+                DEFAULT_LIQUID_BAR_GLASS_REFRACTION_HEIGHT_DP,
+            ),
+            liquidBarGlassRefractionAmountFrac = prefs.getFloat(
+                KEY_LIQUID_BAR_GLASS_REFRACTION_AMOUNT_FRAC,
+                DEFAULT_LIQUID_BAR_GLASS_REFRACTION_AMOUNT_FRAC,
+            ),
+            liquidBarGlassSurfaceAlpha = prefs.getFloat(
+                KEY_LIQUID_BAR_GLASS_SURFACE_ALPHA,
+                DEFAULT_LIQUID_BAR_GLASS_SURFACE_ALPHA,
+            ),
+            liquidBarGlassChromaticAberration = prefs.getBoolean(
+                KEY_LIQUID_BAR_GLASS_CHROMATIC_ABERRATION,
+                DEFAULT_LIQUID_BAR_GLASS_CHROMATIC_ABERRATION,
+            ),
             hapticFeedbackLevel = HapticFeedbackLevel.fromValue(
                 prefs.getString(KEY_HAPTIC_FEEDBACK_LEVEL, HapticFeedbackLevel.Full.value),
             ),
@@ -757,6 +834,13 @@ class SettingsRepository(context: Context) {
     companion object {
         // Keep this a true compile-time constant for default values.
         const val DEFAULT_DOWNLOAD_ROOT = "Download/BiliTools"
+        const val DEFAULT_LIQUID_BAR_WIDTH_FRACTION = 0.8f
+        const val MIN_LIQUID_BAR_WIDTH_FRACTION = 0.6f
+        const val DEFAULT_LIQUID_BAR_GLASS_BLUR_RADIUS_DP = 6f
+        const val DEFAULT_LIQUID_BAR_GLASS_REFRACTION_HEIGHT_DP = 6f
+        const val DEFAULT_LIQUID_BAR_GLASS_REFRACTION_AMOUNT_FRAC = 0.75f
+        const val DEFAULT_LIQUID_BAR_GLASS_SURFACE_ALPHA = 0.55f
+        const val DEFAULT_LIQUID_BAR_GLASS_CHROMATIC_ABERRATION = true
         const val DEFAULT_DOWNLOADS_GLASS_CORNER_RADIUS_DP = 22f
         const val DEFAULT_DOWNLOADS_GLASS_BLUR_RADIUS_DP = 6f
         const val DEFAULT_DOWNLOADS_GLASS_REFRACTION_HEIGHT_DP = 12f
@@ -778,6 +862,15 @@ class SettingsRepository(context: Context) {
         private const val KEY_DARK_MODE_PURE_BLACK = "dark_mode_pure_black"
         private const val KEY_LAUNCH_SPLASH_ANIMATION_ENABLED = "launch_splash_animation_enabled"
         private const val KEY_LIQUID_BOTTOM_TABS_ENABLED = "liquid_bottom_tabs_enabled"
+        private const val KEY_LIQUID_BAR_WIDTH_FRACTION = "liquid_bar_width_fraction"
+        private const val KEY_LIQUID_BAR_GLASS_BLUR_RADIUS_DP = "liquid_bar_glass_blur_radius_dp"
+        private const val KEY_LIQUID_BAR_GLASS_REFRACTION_HEIGHT_DP =
+            "liquid_bar_glass_refraction_height_dp"
+        private const val KEY_LIQUID_BAR_GLASS_REFRACTION_AMOUNT_FRAC =
+            "liquid_bar_glass_refraction_amount_frac"
+        private const val KEY_LIQUID_BAR_GLASS_SURFACE_ALPHA = "liquid_bar_glass_surface_alpha"
+        private const val KEY_LIQUID_BAR_GLASS_CHROMATIC_ABERRATION =
+            "liquid_bar_glass_chromatic_aberration"
         private const val KEY_HAPTIC_FEEDBACK_LEVEL = "haptic_feedback_level"
         private const val KEY_LIVE_ACTIVITY_STYLE_NOTIFICATION_ENABLED =
             "live_activity_style_notification_enabled"

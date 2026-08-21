@@ -80,6 +80,8 @@ import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchColors
@@ -93,8 +95,10 @@ import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
@@ -102,6 +106,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
@@ -156,7 +162,9 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.abs
 import kotlin.math.max
+import kotlin.math.roundToInt
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
@@ -195,6 +203,7 @@ fun BiliToolsSettingsContent(
     onBlackThemeChange: (Boolean) -> Unit,
     onLaunchSplashAnimationChange: (Boolean) -> Unit,
     onLiquidBottomTabsChange: (Boolean) -> Unit,
+    onLiquidBarWidthChange: (Float) -> Unit,
     onHapticFeedbackLevelChange: (HapticFeedbackLevel) -> Unit,
     onGlassDebugChange: (Boolean) -> Unit,
     onIssueReportLoggingChange: (Boolean) -> Unit,
@@ -287,6 +296,7 @@ fun BiliToolsSettingsContent(
                         onBlackThemeChange = onBlackThemeChange,
                         onLaunchSplashAnimationChange = onLaunchSplashAnimationChange,
                         onLiquidBottomTabsChange = onLiquidBottomTabsChange,
+                        onLiquidBarWidthChange = onLiquidBarWidthChange,
                         onGlassDebugChange = onGlassDebugChange,
                         onBack = onNavigateBack,
                         modifier = modifier,
@@ -661,6 +671,7 @@ private fun AppearanceSettingsScreen(
     onBlackThemeChange: (Boolean) -> Unit,
     onLaunchSplashAnimationChange: (Boolean) -> Unit,
     onLiquidBottomTabsChange: (Boolean) -> Unit,
+    onLiquidBarWidthChange: (Float) -> Unit,
     onGlassDebugChange: (Boolean) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -685,7 +696,7 @@ private fun AppearanceSettingsScreen(
             item {
                 ThemePickerListItem(
                     mode = settings.themeMode,
-                    items = 6,
+                    items = 4,
                     index = 0,
                     onThemeChange = onThemeModeChange,
                 )
@@ -694,7 +705,7 @@ private fun AppearanceSettingsScreen(
             item {
                 ColorSchemePickerListItem(
                     color = settings.themeColor,
-                    items = 6,
+                    items = 4,
                     index = 1,
                     onColorChange = onThemeColorChange,
                 )
@@ -706,21 +717,9 @@ private fun AppearanceSettingsScreen(
                     iconRes = R.drawable.ic_contrast_24,
                     title = stringResource(R.string.settings_black_theme_title),
                     description = stringResource(R.string.settings_black_theme_desc),
-                    items = 6,
+                    items = 4,
                     index = 2,
                     onCheckedChange = onBlackThemeChange,
-                )
-            }
-
-            item {
-                ExpressiveSwitchListItem(
-                    checked = settings.liquidBottomTabsEnabled,
-                    iconRes = R.drawable.ic_bottom_navigation_24,
-                    title = stringResource(R.string.settings_liquid_bottom_tabs),
-                    description = stringResource(R.string.settings_liquid_bottom_tabs_desc),
-                    items = 6,
-                    index = 3,
-                    onCheckedChange = onLiquidBottomTabsChange,
                 )
             }
 
@@ -730,10 +729,46 @@ private fun AppearanceSettingsScreen(
                     iconRes = R.drawable.ic_animation_24,
                     title = stringResource(R.string.settings_launch_splash_animation),
                     description = stringResource(R.string.settings_launch_splash_animation_desc),
-                    items = 6,
-                    index = 4,
+                    items = 4,
+                    index = 3,
                     onCheckedChange = onLaunchSplashAnimationChange,
                 )
+            }
+
+            item { Spacer(Modifier.height(12.dp)) }
+
+            // 液态玻璃相关设置独立一组；开启液态底栏时追加「底栏宽度」滑条项
+            val liquidBarWidthVisible = settings.liquidBottomTabsEnabled
+            val liquidGroupItems = if (liquidBarWidthVisible) 3 else 2
+
+            item {
+                ExpressiveSwitchListItem(
+                    checked = settings.liquidBottomTabsEnabled,
+                    iconRes = R.drawable.ic_bottom_navigation_24,
+                    title = stringResource(R.string.settings_liquid_bottom_tabs),
+                    description = stringResource(R.string.settings_liquid_bottom_tabs_desc),
+                    items = liquidGroupItems,
+                    index = 0,
+                    onCheckedChange = onLiquidBottomTabsChange,
+                )
+            }
+
+            if (liquidBarWidthVisible) {
+                item {
+                    ExpressiveSliderListItem(
+                        value = settings.liquidBarWidthFraction,
+                        valueRange =
+                            SettingsRepository.MIN_LIQUID_BAR_WIDTH_FRACTION..1f,
+                        steps = 7,
+                        iconRes = R.drawable.ic_width_24,
+                        title = stringResource(R.string.settings_liquid_bar_width),
+                        description = stringResource(R.string.settings_liquid_bar_width_desc),
+                        valueLabel = "${(settings.liquidBarWidthFraction * 100).roundToInt()}%",
+                        items = liquidGroupItems,
+                        index = 1,
+                        onValueChange = onLiquidBarWidthChange,
+                    )
+                }
             }
 
             item {
@@ -742,8 +777,8 @@ private fun AppearanceSettingsScreen(
                     iconRes = R.drawable.ic_blur_on_24,
                     title = stringResource(R.string.settings_downloads_glass_debug),
                     description = stringResource(R.string.settings_downloads_glass_debug_desc),
-                    items = 6,
-                    index = 5,
+                    items = liquidGroupItems,
+                    index = if (liquidBarWidthVisible) 2 else 1,
                     onCheckedChange = onGlassDebugChange,
                 )
             }
@@ -2651,6 +2686,111 @@ private fun ColorPickerButton(
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
+@Composable
+private fun ExpressiveSliderListItem(
+    value: Float,
+    valueRange: ClosedFloatingPointRange<Float>,
+    steps: Int,
+    @DrawableRes iconRes: Int,
+    title: String,
+    description: String,
+    valueLabel: String,
+    items: Int,
+    index: Int,
+    onValueChange: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val haptics = rememberAppHaptics()
+    val scope = rememberCoroutineScope()
+    // 分档 Slider（steps > 0）拖动时滑块逐格吸附、无过渡动画，观感生硬。
+    // 改为滑块连续跟手，仅数值上报吸附到档位（过档给 tick 触感），松手后滑块弹性回吸到最近档位。
+    val position = remember { Animatable(value) }
+    var dragging by remember { mutableStateOf(false) }
+    var lastNotified by remember { mutableFloatStateOf(value) }
+    val stepSize = (valueRange.endInclusive - valueRange.start) / (steps + 1)
+    fun snapToStep(raw: Float): Float =
+        (valueRange.start + ((raw - valueRange.start) / stepSize).roundToInt() * stepSize)
+            .coerceIn(valueRange.start, valueRange.endInclusive)
+
+    val snapSpec = MaterialTheme.motionScheme.fastSpatialSpec<Float>()
+    LaunchedEffect(value) {
+        // 非拖动中被外部改值（如恢复默认）时，同步滑块位置
+        if (!dragging && position.value != value) {
+            lastNotified = value
+            position.animateTo(value, snapSpec)
+        }
+    }
+
+    ListItem(
+        leadingContent = { SettingsItemIcon(iconRes) },
+        headlineContent = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                SettingsItemTitle(title, modifier = Modifier.weight(1f))
+                Text(
+                    text = valueLabel,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        },
+        supportingContent = {
+            val sliderColors = SliderDefaults.colors()
+            Column {
+                Text(description)
+                Slider(
+                    value = position.value,
+                    onValueChange = { raw ->
+                        dragging = true
+                        scope.launch { position.snapTo(raw) }
+                        val snapped = snapToStep(raw)
+                        if (snapped != lastNotified) {
+                            lastNotified = snapped
+                            haptics.tick()
+                            onValueChange(snapped)
+                        }
+                    },
+                    valueRange = valueRange,
+                    onValueChangeFinished = {
+                        dragging = false
+                        scope.launch { position.animateTo(snapToStep(position.value), snapSpec) }
+                    },
+                    track = { sliderState ->
+                        // Slider 未设 steps（为保证滑块连续跟手），组件自身不画档位刻度；
+                        // 这里去掉轨道末端的停止指示点，并自绘各档位圆点（滑块附近的点隐去）
+                        SliderDefaults.Track(
+                            sliderState = sliderState,
+                            drawStopIndicator = null,
+                            modifier = Modifier.drawWithContent {
+                                drawContent()
+                                val range = valueRange.endInclusive - valueRange.start
+                                val thumbX = size.width *
+                                    ((sliderState.value - valueRange.start) / range).coerceIn(0f, 1f)
+                                val clearance = 10.dp.toPx()
+                                for (i in 1..steps) {
+                                    val x = size.width * i / (steps + 1)
+                                    if (abs(x - thumbX) < clearance) continue
+                                    drawCircle(
+                                        color = if (x < thumbX) {
+                                            sliderColors.activeTickColor
+                                        } else {
+                                            sliderColors.inactiveTickColor
+                                        },
+                                        radius = 2.dp.toPx(),
+                                        center = Offset(x, center.y),
+                                    )
+                                }
+                            },
+                        )
+                    },
+                )
+            }
+        },
+        colors = SettingsExpressiveDefaults.listItemColors,
+        modifier = modifier.clip(SettingsExpressiveShapes.groupShape(index, items)),
+    )
 }
 
 @Composable

@@ -10,6 +10,8 @@ import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.os.bundleOf
@@ -33,6 +35,7 @@ import com.happycola233.bilitools.databinding.ActivityMainBinding
 import com.happycola233.bilitools.ui.downloads.DownloadsFragment
 import com.happycola233.bilitools.ui.haptics.HapticEffect
 import com.happycola233.bilitools.ui.haptics.performAppHaptic
+import com.happycola233.bilitools.ui.liquidtabs.LiquidGlassStyle
 import com.happycola233.bilitools.ui.liquidtabs.MainLiquidBottomBar
 import com.happycola233.bilitools.ui.me.MeFragment
 import com.happycola233.bilitools.ui.parse.ParseFragment
@@ -103,24 +106,7 @@ class MainActivity : AppCompatActivity() {
 
         binding.viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
-                val menuId = when (position) {
-                    0 -> R.id.parseFragment
-                    1 -> R.id.downloadsFragment
-                    2 -> R.id.meFragment
-                    else -> R.id.parseFragment
-                }
-                binding.bottomNav.menu.findItem(menuId).isChecked = true
-                liquidTabIndex.intValue = position
-
-                // Update title
-                binding.collapsingToolbar.title = when (position) {
-                    0 -> getString(R.string.app_name)
-                    1 -> getString(R.string.nav_downloads)
-                    2 -> getString(R.string.nav_me)
-                    else -> getString(R.string.app_name)
-                }
-
-                updateTopBarColor(position)
+                syncMainTabUi(position)
             }
         })
 
@@ -210,10 +196,41 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun selectMainTab(position: Int) {
-        // 重复点击当前 Tab 不算切换，不给反馈。
-        if (binding.viewPager.currentItem == position) return
+        // 重复点击当前 Tab 不算切换，不给反馈；但若气泡与真实页面失步，点击时校正回来
+        if (binding.viewPager.currentItem == position) {
+            liquidTabIndex.intValue = position
+            return
+        }
         binding.root.performAppHaptic(HapticEffect.Select)
         binding.viewPager.setCurrentItem(position, false)
+    }
+
+    /** 同步底栏选中态（Material 底栏与液态气泡）、标题与顶栏配色到指定页面。 */
+    private fun syncMainTabUi(position: Int) {
+        val menuId = when (position) {
+            0 -> R.id.parseFragment
+            1 -> R.id.downloadsFragment
+            2 -> R.id.meFragment
+            else -> R.id.parseFragment
+        }
+        binding.bottomNav.menu.findItem(menuId).isChecked = true
+        liquidTabIndex.intValue = position
+
+        binding.collapsingToolbar.title = when (position) {
+            0 -> getString(R.string.app_name)
+            1 -> getString(R.string.nav_downloads)
+            2 -> getString(R.string.nav_me)
+            else -> getString(R.string.app_name)
+        }
+
+        updateTopBarColor(position)
+    }
+
+    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+        super.onRestoreInstanceState(savedInstanceState)
+        // ViewPager2 恢复页面位置时不会回调 onPageSelected（如切换深浅色主题触发的 recreate），
+        // 此处手动同步，避免液态气泡/标题停留在初始页
+        syncMainTabUi(binding.viewPager.currentItem)
     }
 
     private fun applyBottomBarStyle(liquidEnabled: Boolean) {
@@ -237,10 +254,20 @@ class MainActivity : AppCompatActivity() {
         )
         binding.liquidBottomBar.setContent {
             MaterialExpressiveTheme(colorScheme = rememberAndroidThemeColorScheme()) {
+                val settings by applicationContext.appContainer.settingsRepository
+                    .settings.collectAsState()
                 MainLiquidBottomBar(
                     selectedTabIndex = { liquidTabIndex.intValue },
                     onTabSelected = ::selectMainTab,
                     backgroundView = binding.viewPager,
+                    glassStyle = LiquidGlassStyle(
+                        blurRadiusDp = settings.liquidBarGlassBlurRadiusDp,
+                        refractionHeightDp = settings.liquidBarGlassRefractionHeightDp,
+                        refractionAmountFrac = settings.liquidBarGlassRefractionAmountFrac,
+                        chromaticAberration = settings.liquidBarGlassChromaticAberration,
+                    ),
+                    surfaceAlpha = settings.liquidBarGlassSurfaceAlpha,
+                    widthFraction = settings.liquidBarWidthFraction,
                 )
             }
         }

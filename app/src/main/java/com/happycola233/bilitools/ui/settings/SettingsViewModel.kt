@@ -87,6 +87,10 @@ class SettingsViewModel(
         settingsRepository.setLiquidBottomTabsEnabled(enabled)
     }
 
+    fun setLiquidBarWidthFraction(value: Float) {
+        settingsRepository.setLiquidBarWidthFraction(value)
+    }
+
     fun setHapticFeedbackLevel(level: HapticFeedbackLevel) {
         settingsRepository.setHapticFeedbackLevel(level)
     }

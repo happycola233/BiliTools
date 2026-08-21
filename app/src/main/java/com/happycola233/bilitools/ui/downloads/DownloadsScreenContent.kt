@@ -26,6 +26,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
@@ -43,6 +45,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -164,6 +167,11 @@ fun DownloadsScreenContent(
     glassRefractionAmountFrac: Float,
     glassChromaticAberration: Boolean,
     glassSurfaceAlpha: Float,
+    barGlassBlurRadiusDp: Float,
+    barGlassRefractionHeightDp: Float,
+    barGlassRefractionAmountFrac: Float,
+    barGlassChromaticAberration: Boolean,
+    barGlassSurfaceAlpha: Float,
     onBatchManage: () -> Unit,
     onResumeAll: () -> Unit,
     onPauseAll: () -> Unit,
@@ -194,6 +202,12 @@ fun DownloadsScreenContent(
     onGlassChromaticAberrationChange: (Boolean) -> Unit,
     onGlassSurfaceAlphaChange: (Float) -> Unit,
     onGlassReset: () -> Unit,
+    onBarGlassBlurRadiusChange: (Float) -> Unit,
+    onBarGlassRefractionHeightChange: (Float) -> Unit,
+    onBarGlassRefractionAmountChange: (Float) -> Unit,
+    onBarGlassChromaticAberrationChange: (Boolean) -> Unit,
+    onBarGlassSurfaceAlphaChange: (Float) -> Unit,
+    onBarGlassReset: () -> Unit,
 ) {
     val backdrop = rememberLayerBackdrop()
     val density = LocalDensity.current
@@ -362,6 +376,17 @@ fun DownloadsScreenContent(
                 surfaceAlpha = glassSurfaceAlpha,
                 onSurfaceAlphaChange = onGlassSurfaceAlphaChange,
                 onReset = onGlassReset,
+                barBlurRadiusDp = barGlassBlurRadiusDp,
+                onBarBlurRadiusChange = onBarGlassBlurRadiusChange,
+                barRefractionHeightDp = barGlassRefractionHeightDp,
+                onBarRefractionHeightChange = onBarGlassRefractionHeightChange,
+                barRefractionAmountFrac = barGlassRefractionAmountFrac,
+                onBarRefractionAmountChange = onBarGlassRefractionAmountChange,
+                barChromaticAberration = barGlassChromaticAberration,
+                onBarChromaticAberrationChange = onBarGlassChromaticAberrationChange,
+                barSurfaceAlpha = barGlassSurfaceAlpha,
+                onBarSurfaceAlphaChange = onBarGlassSurfaceAlphaChange,
+                onBarReset = onBarGlassReset,
             )
         }
     }
@@ -857,8 +882,19 @@ private fun GlassDebugPanel(
     surfaceAlpha: Float,
     onSurfaceAlphaChange: (Float) -> Unit,
     onReset: () -> Unit,
+    barBlurRadiusDp: Float,
+    onBarBlurRadiusChange: (Float) -> Unit,
+    barRefractionHeightDp: Float,
+    onBarRefractionHeightChange: (Float) -> Unit,
+    barRefractionAmountFrac: Float,
+    onBarRefractionAmountChange: (Float) -> Unit,
+    barChromaticAberration: Boolean,
+    onBarChromaticAberrationChange: (Boolean) -> Unit,
+    barSurfaceAlpha: Float,
+    onBarSurfaceAlphaChange: (Float) -> Unit,
+    onBarReset: () -> Unit,
 ) {
-    val surfaceAlphaLabel = "\u8868\u5c42\u900f\u660e\u5ea6"
+    val colorScheme = MaterialTheme.colorScheme
 
     if (!expanded) {
         Box(
@@ -866,13 +902,13 @@ private fun GlassDebugPanel(
                 .blockTouchThrough()
                 .size(44.dp)
                 .clip(CircleShape)
-                .background(Color(0xD9FFFFFF))
+                .background(colorScheme.surfaceContainerHighest.copy(alpha = 0.9f))
                 .clickable { onToggleExpand() },
             contentAlignment = Alignment.Center,
         ) {
             BasicText(
                 text = "DBG",
-                style = TextStyle(color = Color(0xFF303548), fontSize = 11.sp),
+                style = TextStyle(color = colorScheme.onSurface, fontSize = 11.sp),
             )
         }
         return
@@ -881,9 +917,9 @@ private fun GlassDebugPanel(
     Column(
         modifier = modifier
             .blockTouchThrough()
-            .width(260.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(Color(0xE6FFFFFF))
+            .width(268.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(colorScheme.surfaceContainerHigh.copy(alpha = 0.94f))
             .padding(10.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -892,81 +928,146 @@ private fun GlassDebugPanel(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             BasicText(
-                text = "液态玻璃调试窗口",
+                text = "液态玻璃调试",
                 modifier = Modifier.weight(1f),
-                style = TextStyle(color = Color(0xFF1E2433), fontSize = 12.sp),
-            )
-            DebugSmallButton(text = "\u6536\u8d77", onClick = onToggleExpand)
-        }
-
-        DebugStepperRow(
-            label = "\u5706\u89d2\u534a\u5f84",
-            value = "${formatFloat(cornerRadiusDp)} dp",
-            onMinus = { onCornerRadiusChange((cornerRadiusDp - 1f).coerceIn(0f, 64f)) },
-            onPlus = { onCornerRadiusChange((cornerRadiusDp + 1f).coerceIn(0f, 64f)) },
-        )
-        DebugStepperRow(
-            label = "\u6a21\u7cca\u534a\u5f84",
-            value = "${formatFloat(blurRadiusDp)} dp",
-            onMinus = { onBlurRadiusChange((blurRadiusDp - 1f).coerceIn(0f, 48f)) },
-            onPlus = { onBlurRadiusChange((blurRadiusDp + 1f).coerceIn(0f, 48f)) },
-        )
-        DebugStepperRow(
-            label = "\u6298\u5c04\u9ad8\u5ea6",
-            value = "${formatFloat(refractionHeightDp)} dp",
-            onMinus = { onRefractionHeightChange((refractionHeightDp - 1f).coerceIn(0f, 72f)) },
-            onPlus = { onRefractionHeightChange((refractionHeightDp + 1f).coerceIn(0f, 72f)) },
-        )
-        DebugStepperRow(
-            label = "\u6298\u5c04\u5f3a\u5ea6",
-            value = formatFloat(refractionAmountFrac),
-            onMinus = { onRefractionAmountChange((refractionAmountFrac - 0.05f).coerceIn(0f, 1f)) },
-            onPlus = { onRefractionAmountChange((refractionAmountFrac + 0.05f).coerceIn(0f, 1f)) },
-        )
-        DebugStepperRow(
-            label = surfaceAlphaLabel,
-            value = formatFloat(surfaceAlpha),
-            onMinus = { onSurfaceAlphaChange((surfaceAlpha - 0.05f).coerceIn(0f, 1f)) },
-            onPlus = { onSurfaceAlphaChange((surfaceAlpha + 0.05f).coerceIn(0f, 1f)) },
-        )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0x0D000000))
-                .clickable { onChromaticAberrationChange(!chromaticAberration) }
-                .padding(horizontal = 8.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            BasicText(
-                text = "\u8272\u5dee",
-                modifier = Modifier.weight(1f),
-                style = TextStyle(color = Color(0xFF3A4050), fontSize = 12.sp),
-            )
-            BasicText(
-                text = if (chromaticAberration) "\u5f00" else "\u5173",
                 style = TextStyle(
-                    color = if (chromaticAberration) Color(0xFF7E1D1D) else Color(0xFF4C5366),
-                    fontSize = 12.sp,
+                    color = colorScheme.onSurface,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
                 ),
             )
+            DebugSmallButton(text = "收起", onClick = onToggleExpand)
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        Column(
+            modifier = Modifier
+                .heightIn(max = 460.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            DebugActionButton(
-                text = "\u91cd\u7f6e",
-                modifier = Modifier.weight(1f),
-                onClick = onReset,
+            DebugSectionHeader(title = "批量管理浮窗", onReset = onReset)
+            DebugStepperRow(
+                label = "圆角半径",
+                value = "${formatFloat(cornerRadiusDp)} dp",
+                onMinus = { onCornerRadiusChange((cornerRadiusDp - 1f).coerceIn(0f, 64f)) },
+                onPlus = { onCornerRadiusChange((cornerRadiusDp + 1f).coerceIn(0f, 64f)) },
             )
-            DebugActionButton(
-                text = "\u5173\u95ed",
-                modifier = Modifier.weight(1f),
-                onClick = onToggleExpand,
+            DebugStepperRow(
+                label = "模糊半径",
+                value = "${formatFloat(blurRadiusDp)} dp",
+                onMinus = { onBlurRadiusChange((blurRadiusDp - 1f).coerceIn(0f, 48f)) },
+                onPlus = { onBlurRadiusChange((blurRadiusDp + 1f).coerceIn(0f, 48f)) },
+            )
+            DebugStepperRow(
+                label = "折射高度",
+                value = "${formatFloat(refractionHeightDp)} dp",
+                onMinus = { onRefractionHeightChange((refractionHeightDp - 1f).coerceIn(0f, 72f)) },
+                onPlus = { onRefractionHeightChange((refractionHeightDp + 1f).coerceIn(0f, 72f)) },
+            )
+            DebugStepperRow(
+                label = "折射强度",
+                value = formatFloat(refractionAmountFrac),
+                onMinus = { onRefractionAmountChange((refractionAmountFrac - 0.05f).coerceIn(0f, 1f)) },
+                onPlus = { onRefractionAmountChange((refractionAmountFrac + 0.05f).coerceIn(0f, 1f)) },
+            )
+            DebugStepperRow(
+                label = "表层透明度",
+                value = formatFloat(surfaceAlpha),
+                onMinus = { onSurfaceAlphaChange((surfaceAlpha - 0.05f).coerceIn(0f, 1f)) },
+                onPlus = { onSurfaceAlphaChange((surfaceAlpha + 0.05f).coerceIn(0f, 1f)) },
+            )
+            DebugToggleRow(
+                label = "色差",
+                checked = chromaticAberration,
+                onToggle = onChromaticAberrationChange,
+            )
+
+            DebugSectionHeader(title = "底部导航栏", onReset = onBarReset)
+            DebugStepperRow(
+                label = "模糊半径",
+                value = "${formatFloat(barBlurRadiusDp)} dp",
+                onMinus = { onBarBlurRadiusChange((barBlurRadiusDp - 1f).coerceIn(0f, 48f)) },
+                onPlus = { onBarBlurRadiusChange((barBlurRadiusDp + 1f).coerceIn(0f, 48f)) },
+            )
+            DebugStepperRow(
+                label = "折射高度",
+                value = "${formatFloat(barRefractionHeightDp)} dp",
+                onMinus = { onBarRefractionHeightChange((barRefractionHeightDp - 1f).coerceIn(0f, 72f)) },
+                onPlus = { onBarRefractionHeightChange((barRefractionHeightDp + 1f).coerceIn(0f, 72f)) },
+            )
+            DebugStepperRow(
+                label = "折射强度",
+                value = formatFloat(barRefractionAmountFrac),
+                onMinus = { onBarRefractionAmountChange((barRefractionAmountFrac - 0.05f).coerceIn(0f, 1f)) },
+                onPlus = { onBarRefractionAmountChange((barRefractionAmountFrac + 0.05f).coerceIn(0f, 1f)) },
+            )
+            DebugStepperRow(
+                label = "表层透明度",
+                value = formatFloat(barSurfaceAlpha),
+                onMinus = { onBarSurfaceAlphaChange((barSurfaceAlpha - 0.05f).coerceIn(0f, 1f)) },
+                onPlus = { onBarSurfaceAlphaChange((barSurfaceAlpha + 0.05f).coerceIn(0f, 1f)) },
+            )
+            DebugToggleRow(
+                label = "色差",
+                checked = barChromaticAberration,
+                onToggle = onBarChromaticAberrationChange,
             )
         }
+    }
+}
+
+@Composable
+private fun DebugSectionHeader(
+    title: String,
+    onReset: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        BasicText(
+            text = title,
+            modifier = Modifier.weight(1f),
+            style = TextStyle(
+                color = MaterialTheme.colorScheme.primary,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+            ),
+        )
+        DebugSmallButton(text = "重置", onClick = onReset)
+    }
+}
+
+@Composable
+private fun DebugToggleRow(
+    label: String,
+    checked: Boolean,
+    onToggle: (Boolean) -> Unit,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(colorScheme.onSurface.copy(alpha = 0.05f))
+            .clickable { onToggle(!checked) }
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        BasicText(
+            text = label,
+            modifier = Modifier.weight(1f),
+            style = TextStyle(color = colorScheme.onSurfaceVariant, fontSize = 12.sp),
+        )
+        BasicText(
+            text = if (checked) "开" else "关",
+            style = TextStyle(
+                color = if (checked) colorScheme.primary else colorScheme.onSurfaceVariant,
+                fontSize = 12.sp,
+            ),
+        )
     }
 }
 
@@ -977,24 +1078,25 @@ private fun DebugStepperRow(
     onMinus: () -> Unit,
     onPlus: () -> Unit,
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .background(Color(0x0D000000))
+            .background(colorScheme.onSurface.copy(alpha = 0.05f))
             .padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         BasicText(
             text = label,
             modifier = Modifier.weight(1f),
-            style = TextStyle(color = Color(0xFF3A4050), fontSize = 12.sp),
+            style = TextStyle(color = colorScheme.onSurfaceVariant, fontSize = 12.sp),
         )
         DebugSmallButton(text = "-", onClick = onMinus)
         BasicText(
             text = value,
             modifier = Modifier.padding(horizontal = 6.dp),
-            style = TextStyle(color = Color(0xFF1F2433), fontSize = 12.sp),
+            style = TextStyle(color = colorScheme.onSurface, fontSize = 12.sp),
         )
         DebugSmallButton(text = "+", onClick = onPlus)
     }
@@ -1005,38 +1107,18 @@ private fun DebugSmallButton(
     text: String,
     onClick: () -> Unit,
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
-            .background(Color(0x14000000))
+            .background(colorScheme.onSurface.copy(alpha = 0.08f))
             .clickable(onClick = onClick)
             .padding(horizontal = 6.dp, vertical = 2.dp),
         contentAlignment = Alignment.Center,
     ) {
         BasicText(
             text = text,
-            style = TextStyle(color = Color(0xFF2F3545), fontSize = 12.sp),
-        )
-    }
-}
-
-@Composable
-private fun DebugActionButton(
-    text: String,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color(0x16000000))
-            .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        BasicText(
-            text = text,
-            style = TextStyle(color = Color(0xFF2F3545), fontSize = 12.sp),
+            style = TextStyle(color = colorScheme.onSurface, fontSize = 12.sp),
         )
     }
 }
