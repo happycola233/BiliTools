@@ -219,7 +219,7 @@
     <string name="downloads_multi_select_all">全选</string>
     <string name="downloads_multi_unselect_all">取消全选</string>
     <string name="downloads_multi_exit">退出</string>
-    <string name="downloads_multi_status">已选择：%1$d/%2$d</string>
+    <string name="downloads_multi_status">已选择 %1$d/%2$d</string>
     <string name="downloads_multi_clear_records">清除记录</string>
     <string name="downloads_multi_delete_files">删除文件</string>
     <string name="downloads_multi_no_task">暂无可操作任务</string>
