@@ -41,6 +41,7 @@ data class AppSettings(
     val themeColor: AppThemeColor = AppThemeColor.Dynamic,
     val darkModePureBlack: Boolean = false,
     val launchSplashAnimationEnabled: Boolean = true,
+    val liquidBottomTabsEnabled: Boolean = true,
     val hapticFeedbackLevel: HapticFeedbackLevel = HapticFeedbackLevel.Full,
     val liveActivityStyleNotificationEnabled: Boolean = true,
     val downloadRootRelativePath: String = SettingsRepository.DEFAULT_DOWNLOAD_ROOT,
@@ -238,6 +239,13 @@ class SettingsRepository(context: Context) {
         if (current.launchSplashAnimationEnabled == enabled) return
         prefs.edit().putBoolean(KEY_LAUNCH_SPLASH_ANIMATION_ENABLED, enabled).apply()
         _settings.value = current.copy(launchSplashAnimationEnabled = enabled)
+    }
+
+    fun setLiquidBottomTabsEnabled(enabled: Boolean) {
+        val current = _settings.value
+        if (current.liquidBottomTabsEnabled == enabled) return
+        prefs.edit().putBoolean(KEY_LIQUID_BOTTOM_TABS_ENABLED, enabled).apply()
+        _settings.value = current.copy(liquidBottomTabsEnabled = enabled)
     }
 
     fun setHapticFeedbackLevel(level: HapticFeedbackLevel) {
@@ -494,6 +502,10 @@ class SettingsRepository(context: Context) {
             darkModePureBlack = prefs.getBoolean(KEY_DARK_MODE_PURE_BLACK, false),
             launchSplashAnimationEnabled = prefs.getBoolean(
                 KEY_LAUNCH_SPLASH_ANIMATION_ENABLED,
+                true,
+            ),
+            liquidBottomTabsEnabled = prefs.getBoolean(
+                KEY_LIQUID_BOTTOM_TABS_ENABLED,
                 true,
             ),
             hapticFeedbackLevel = HapticFeedbackLevel.fromValue(
@@ -765,6 +777,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_THEME_COLOR = "theme_color"
         private const val KEY_DARK_MODE_PURE_BLACK = "dark_mode_pure_black"
         private const val KEY_LAUNCH_SPLASH_ANIMATION_ENABLED = "launch_splash_animation_enabled"
+        private const val KEY_LIQUID_BOTTOM_TABS_ENABLED = "liquid_bottom_tabs_enabled"
         private const val KEY_HAPTIC_FEEDBACK_LEVEL = "haptic_feedback_level"
         private const val KEY_LIVE_ACTIVITY_STYLE_NOTIFICATION_ENABLED =
             "live_activity_style_notification_enabled"

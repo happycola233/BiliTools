@@ -42,12 +42,11 @@
         </com.happycola233.bilitools.ui.widget.StableCollapsingToolbarLayout>
     </com.happycola233.bilitools.ui.widget.StableAppBarLayout>
 
+    <!-- 页面全出血绘制到屏幕底边，底栏净空由各页面内容自行预留（见 MainBottomBarInsets.kt） -->
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/view_pager"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:paddingBottom="80dp"
-        android:clipToPadding="false"
         app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 
     <com.google.android.material.bottomnavigation.BottomNavigationView
@@ -59,5 +58,12 @@
         android:background="?attr/colorSurfaceContainer"
         app:labelVisibilityMode="labeled"
         app:menu="@menu/bottom_nav" />
+
+    <!-- 液态玻璃底栏浮层：全屏以便玻璃采样层与内容区坐标对齐，空白区域触摸事件会透传给下层 View -->
+    <androidx.compose.ui.platform.ComposeView
+        android:id="@+id/liquid_bottom_bar"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

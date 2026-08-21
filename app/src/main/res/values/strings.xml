@@ -447,7 +447,7 @@
     <string name="settings_appearance_title">外观</string>
     <string name="settings_general_summary">默认下载质量、实时活动通知</string>
     <string name="settings_download_summary">下载位置、元数据、弹幕、移动网络、系统相册</string>
-    <string name="settings_appearance_summary">主题、配色、纯黑主题、启动动画、液态玻璃</string>
+    <string name="settings_appearance_summary">主题、配色、纯黑主题、液态玻璃底栏、启动动画</string>
     <string name="settings_about_summary">版本、更新、日志导出、开源协议、免责声明</string>
     <string name="settings_download_behavior">下载行为</string>
     <string name="settings_add_metadata">为下载文件添加元数据</string>
@@ -488,7 +488,9 @@
     <string name="settings_dark_mode_pure_black">深色模式使用纯黑背景</string>
     <string name="settings_dark_mode_pure_black_desc">仅在深色模式生效，将背景颜色设为 #000000</string>
     <string name="settings_downloads_glass_debug">启用液态玻璃调试窗口</string>
-    <string name="settings_downloads_glass_debug_desc">在下载页显示液态玻璃调试悬浮窗，可实时调节并预览效果（需要调参时可临时启用，参数将持久化保存）。目前液态玻璃效果仅用在批量管理浮窗中。</string>
+    <string name="settings_downloads_glass_debug_desc">在下载页显示液态玻璃调试悬浮窗，可实时调节并预览效果（需要调参时可临时启用，参数将持久化保存）。调试参数仅作用于下载页批量管理浮窗。</string>
+    <string name="settings_liquid_bottom_tabs">液态玻璃底栏</string>
+    <string name="settings_liquid_bottom_tabs_desc">底部导航栏使用液态玻璃效果，选中气泡支持拖动切换页面；关闭后使用 Material 风格底栏。</string>
     <string name="settings_black_theme_title">纯黑主题</string>
     <string name="settings_black_theme_desc">在深色模式下使用 AMOLED 纯黑背景。</string>
     <string name="settings_launch_splash_animation">启动动画</string>

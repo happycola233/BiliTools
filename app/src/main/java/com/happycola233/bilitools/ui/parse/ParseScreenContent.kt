@@ -151,6 +151,7 @@ import com.happycola233.bilitools.data.model.StreamFormat
 import com.happycola233.bilitools.data.model.VideoCodec
 import com.happycola233.bilitools.ui.FloatingControlsDefaults
 import com.happycola233.bilitools.ui.TopErrorMessageHost
+import com.happycola233.bilitools.ui.mainBottomBarBottomInset
 import com.happycola233.bilitools.ui.haptics.HapticTicker
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import kotlinx.coroutines.delay
@@ -355,6 +356,8 @@ fun ParseScreenContent(
         hasSelection &&
         streamReady
     val quickActionVisible = info != null && hasSelection
+    // 页面全出血绘制，内容从主界面底栏后方滚过，滚动与悬浮控件需预留底栏净空；外部下载入口无底栏
+    val mainBarBottomInset = if (externalMode) 0.dp else mainBottomBarBottomInset()
 
     Box(
         modifier = Modifier
@@ -369,7 +372,7 @@ fun ParseScreenContent(
                 start = screenHorizontalPadding,
                 top = 12.dp,
                 end = screenHorizontalPadding,
-                bottom = if (!externalMode || info != null) 96.dp else 24.dp,
+                bottom = (if (!externalMode || info != null) 96.dp else 24.dp) + mainBarBottomInset,
             ),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
@@ -458,7 +461,9 @@ fun ParseScreenContent(
 
         AnimatedVisibility(
             visible = quickActionVisible,
-            modifier = Modifier.align(Alignment.BottomEnd),
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(bottom = mainBarBottomInset),
             enter = fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()),
             exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()),
         ) {

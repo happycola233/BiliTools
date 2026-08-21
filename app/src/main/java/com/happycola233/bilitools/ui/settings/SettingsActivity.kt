@@ -193,6 +193,7 @@ class SettingsActivity : AppCompatActivity() {
                     }
                 },
                 onLaunchSplashAnimationChange = viewModel::setLaunchSplashAnimationEnabled,
+                onLiquidBottomTabsChange = viewModel::setLiquidBottomTabsEnabled,
                 onHapticFeedbackLevelChange = viewModel::setHapticFeedbackLevel,
                 onGlassDebugChange = viewModel::setDownloadsGlassDebugEnabled,
                 onIssueReportLoggingChange = viewModel::setIssueReportDetailedLoggingEnabled,

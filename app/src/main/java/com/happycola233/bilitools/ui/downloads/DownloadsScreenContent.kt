@@ -95,6 +95,7 @@ import com.happycola233.bilitools.data.model.DownloadGroup
 import com.happycola233.bilitools.data.model.DownloadItem
 import com.happycola233.bilitools.ui.FloatingControlsDefaults
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
+import com.happycola233.bilitools.ui.mainBottomBarBottomInset
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
@@ -196,11 +197,14 @@ fun DownloadsScreenContent(
 ) {
     val backdrop = rememberLayerBackdrop()
     val density = LocalDensity.current
-    val controlsBottomPadding = FloatingControlsDefaults.BottomPadding
+    // 页面全出血绘制，内容从主界面底栏后方滚过，列表与底部悬浮控件均需预留底栏净空
+    val mainBarBottomInset = mainBottomBarBottomInset()
+    val controlsBottomPadding = FloatingControlsDefaults.BottomPadding + mainBarBottomInset
     val panelBottomPadding = controlsBottomPadding + 8.dp
     val controlsOffsetDp = with(density) { controlsOffsetPx.toDp() }
     var panelHeightPx by remember { mutableStateOf(0) }
-    val baseBottomPaddingPx = with(density) { FloatingControlsDefaults.ListBottomPadding.roundToPx() }
+    val baseBottomPaddingPx =
+        with(density) { (FloatingControlsDefaults.ListBottomPadding + mainBarBottomInset).roundToPx() }
     val extraBottomPaddingPx =
         if (selectionMode) panelHeightPx + with(density) { 20.dp.roundToPx() } else 0
     val targetListBottomPaddingDp = with(density) { (baseBottomPaddingPx + extraBottomPaddingPx).toDp() }

@@ -95,7 +95,9 @@ import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.AppSettings
 import com.happycola233.bilitools.data.model.UserInfo
 import com.happycola233.bilitools.ui.TopErrorMessageHost
+import com.happycola233.bilitools.ui.MainBottomBarHeight
 import com.happycola233.bilitools.ui.login.LoginTab
+import com.happycola233.bilitools.ui.mainBottomBarBottomInset
 import com.happycola233.bilitools.ui.login.LoginUiState
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import com.happycola233.bilitools.ui.theme.BiliToolsSettingsTheme
@@ -307,7 +309,13 @@ private fun MeOverviewScreen(
         val nestedScrollInterop = rememberNestedScrollInteropConnection()
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(2.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+            // 页面全出血绘制，内容从主界面底栏后方滚过，底部预留底栏净空
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                top = 14.dp,
+                end = 16.dp,
+                bottom = 14.dp + mainBottomBarBottomInset(),
+            ),
             modifier = Modifier
                 .fillMaxSize()
                 .nestedScroll(nestedScrollInterop),
@@ -407,7 +415,13 @@ private fun LoginSubscreen(
         val nestedScrollInterop = rememberNestedScrollInteropConnection()
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(2.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+            // safeDrawingPadding 已含系统导航栏 inset，这里只需再预留底栏本体高度
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                top = 14.dp,
+                end = 16.dp,
+                bottom = 14.dp + MainBottomBarHeight,
+            ),
             modifier = Modifier
                 .fillMaxSize()
                 .safeDrawingPadding()

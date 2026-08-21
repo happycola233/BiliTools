@@ -83,6 +83,10 @@ class SettingsViewModel(
         settingsRepository.setLaunchSplashAnimationEnabled(enabled)
     }
 
+    fun setLiquidBottomTabsEnabled(enabled: Boolean) {
+        settingsRepository.setLiquidBottomTabsEnabled(enabled)
+    }
+
     fun setHapticFeedbackLevel(level: HapticFeedbackLevel) {
         settingsRepository.setHapticFeedbackLevel(level)
     }

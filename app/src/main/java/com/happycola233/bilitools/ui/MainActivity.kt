@@ -8,14 +8,21 @@ import android.util.TypedValue
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.os.bundleOf
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.ViewCompat
 import androidx.core.view.ViewGroupCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.doOnPreDraw
+import androidx.core.view.isVisible
 import androidx.core.view.updatePadding
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
 import com.happycola233.bilitools.BiliToolsApp
@@ -26,10 +33,14 @@ import com.happycola233.bilitools.databinding.ActivityMainBinding
 import com.happycola233.bilitools.ui.downloads.DownloadsFragment
 import com.happycola233.bilitools.ui.haptics.HapticEffect
 import com.happycola233.bilitools.ui.haptics.performAppHaptic
+import com.happycola233.bilitools.ui.liquidtabs.MainLiquidBottomBar
 import com.happycola233.bilitools.ui.me.MeFragment
 import com.happycola233.bilitools.ui.parse.ParseFragment
+import com.happycola233.bilitools.ui.theme.rememberAndroidThemeColorScheme
 import com.happycola233.bilitools.ui.update.UpdateDialog
 import com.google.android.material.color.MaterialColors
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
@@ -40,6 +51,8 @@ class MainActivity : AppCompatActivity() {
     private val pendingThemeRecreateRunnable = Runnable { runPendingThemeRecreate() }
     private var launchFlashGuard: View? = null
     private val launchFlashGuardTimeoutRunnable = Runnable { removeLaunchFlashGuard() }
+    private val liquidTabIndex = mutableIntStateOf(0)
+    private var liquidBarContentSet = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // 启动页背景色必须在 installSplashScreen() 把主题切到 postSplashScreenTheme 之前读取
@@ -62,7 +75,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         val bottomNavBaseBottomPadding = binding.bottomNav.paddingBottom
-        val viewPagerBaseBottomPadding = binding.viewPager.paddingBottom
 
         // Handle edge-to-edge manually.
         // AppBar gets its own listener that returns CONSUMED so the Material library's
@@ -75,7 +87,6 @@ class MainActivity : AppCompatActivity() {
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, windowInsets ->
             val bottomInsets = windowInsets.getInsets(BOTTOM_BAR_INSET_TYPES)
             binding.bottomNav.updatePadding(bottom = bottomNavBaseBottomPadding + bottomInsets.bottom)
-            binding.viewPager.updatePadding(bottom = viewPagerBaseBottomPadding + bottomInsets.bottom)
             windowInsets
         }
         ViewGroupCompat.installCompatInsetsDispatch(binding.root)
@@ -99,6 +110,7 @@ class MainActivity : AppCompatActivity() {
                     else -> R.id.parseFragment
                 }
                 binding.bottomNav.menu.findItem(menuId).isChecked = true
+                liquidTabIndex.intValue = position
 
                 // Update title
                 binding.collapsingToolbar.title = when (position) {
@@ -119,11 +131,7 @@ class MainActivity : AppCompatActivity() {
                 R.id.meFragment -> 2
                 else -> return@setOnItemSelectedListener true
             }
-            // 重复点击当前 Tab 不算切换，不给反馈。
-            if (binding.viewPager.currentItem != targetPosition) {
-                binding.bottomNav.performAppHaptic(HapticEffect.Select)
-                binding.viewPager.setCurrentItem(targetPosition, false)
-            }
+            selectMainTab(targetPosition)
             true
         }
 
@@ -132,6 +140,19 @@ class MainActivity : AppCompatActivity() {
         menuView?.let {
             for (i in 0 until it.childCount) {
                 it.getChildAt(i).setOnLongClickListener { true }
+            }
+        }
+
+        applyBottomBarStyle(
+            applicationContext.appContainer.settingsRepository
+                .currentSettings().liquidBottomTabsEnabled,
+        )
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                applicationContext.appContainer.settingsRepository.settings
+                    .map { it.liquidBottomTabsEnabled }
+                    .distinctUntilChanged()
+                    .collect { applyBottomBarStyle(it) }
             }
         }
 
@@ -186,6 +207,43 @@ class MainActivity : AppCompatActivity() {
             bundleOf(ExternalDownloadContract.RESULT_URL to url),
         )
         sourceIntent?.removeExtra(ExternalDownloadContract.EXTRA_URL)
+    }
+
+    private fun selectMainTab(position: Int) {
+        // 重复点击当前 Tab 不算切换，不给反馈。
+        if (binding.viewPager.currentItem == position) return
+        binding.root.performAppHaptic(HapticEffect.Select)
+        binding.viewPager.setCurrentItem(position, false)
+    }
+
+    private fun applyBottomBarStyle(liquidEnabled: Boolean) {
+        binding.bottomNav.isVisible = !liquidEnabled
+        binding.liquidBottomBar.isVisible = liquidEnabled
+        if (liquidEnabled) {
+            ensureLiquidBottomBarContent()
+        } else if (liquidBarContentSet) {
+            // 释放组合，停掉采样层的 PreDraw 监听，避免隐藏后继续做无谓的重录制
+            binding.liquidBottomBar.disposeComposition()
+            liquidBarContentSet = false
+        }
+    }
+
+    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
+    private fun ensureLiquidBottomBarContent() {
+        if (liquidBarContentSet) return
+        liquidBarContentSet = true
+        binding.liquidBottomBar.setViewCompositionStrategy(
+            ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed,
+        )
+        binding.liquidBottomBar.setContent {
+            MaterialExpressiveTheme(colorScheme = rememberAndroidThemeColorScheme()) {
+                MainLiquidBottomBar(
+                    selectedTabIndex = { liquidTabIndex.intValue },
+                    onTabSelected = ::selectMainTab,
+                    backgroundView = binding.viewPager,
+                )
+            }
+        }
     }
 
     /**

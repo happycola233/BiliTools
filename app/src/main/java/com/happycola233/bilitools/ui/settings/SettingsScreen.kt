@@ -194,6 +194,7 @@ fun BiliToolsSettingsContent(
     onRestoreNamingDefaults: () -> Unit,
     onBlackThemeChange: (Boolean) -> Unit,
     onLaunchSplashAnimationChange: (Boolean) -> Unit,
+    onLiquidBottomTabsChange: (Boolean) -> Unit,
     onHapticFeedbackLevelChange: (HapticFeedbackLevel) -> Unit,
     onGlassDebugChange: (Boolean) -> Unit,
     onIssueReportLoggingChange: (Boolean) -> Unit,
@@ -285,6 +286,7 @@ fun BiliToolsSettingsContent(
                         onThemeColorChange = onThemeColorChange,
                         onBlackThemeChange = onBlackThemeChange,
                         onLaunchSplashAnimationChange = onLaunchSplashAnimationChange,
+                        onLiquidBottomTabsChange = onLiquidBottomTabsChange,
                         onGlassDebugChange = onGlassDebugChange,
                         onBack = onNavigateBack,
                         modifier = modifier,
@@ -658,6 +660,7 @@ private fun AppearanceSettingsScreen(
     onThemeColorChange: (AppThemeColor) -> Unit,
     onBlackThemeChange: (Boolean) -> Unit,
     onLaunchSplashAnimationChange: (Boolean) -> Unit,
+    onLiquidBottomTabsChange: (Boolean) -> Unit,
     onGlassDebugChange: (Boolean) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -682,7 +685,7 @@ private fun AppearanceSettingsScreen(
             item {
                 ThemePickerListItem(
                     mode = settings.themeMode,
-                    items = 5,
+                    items = 6,
                     index = 0,
                     onThemeChange = onThemeModeChange,
                 )
@@ -691,7 +694,7 @@ private fun AppearanceSettingsScreen(
             item {
                 ColorSchemePickerListItem(
                     color = settings.themeColor,
-                    items = 5,
+                    items = 6,
                     index = 1,
                     onColorChange = onThemeColorChange,
                 )
@@ -703,9 +706,21 @@ private fun AppearanceSettingsScreen(
                     iconRes = R.drawable.ic_contrast_24,
                     title = stringResource(R.string.settings_black_theme_title),
                     description = stringResource(R.string.settings_black_theme_desc),
-                    items = 5,
+                    items = 6,
                     index = 2,
                     onCheckedChange = onBlackThemeChange,
+                )
+            }
+
+            item {
+                ExpressiveSwitchListItem(
+                    checked = settings.liquidBottomTabsEnabled,
+                    iconRes = R.drawable.ic_bottom_navigation_24,
+                    title = stringResource(R.string.settings_liquid_bottom_tabs),
+                    description = stringResource(R.string.settings_liquid_bottom_tabs_desc),
+                    items = 6,
+                    index = 3,
+                    onCheckedChange = onLiquidBottomTabsChange,
                 )
             }
 
@@ -715,8 +730,8 @@ private fun AppearanceSettingsScreen(
                     iconRes = R.drawable.ic_animation_24,
                     title = stringResource(R.string.settings_launch_splash_animation),
                     description = stringResource(R.string.settings_launch_splash_animation_desc),
-                    items = 5,
-                    index = 3,
+                    items = 6,
+                    index = 4,
                     onCheckedChange = onLaunchSplashAnimationChange,
                 )
             }
@@ -727,8 +742,8 @@ private fun AppearanceSettingsScreen(
                     iconRes = R.drawable.ic_blur_on_24,
                     title = stringResource(R.string.settings_downloads_glass_debug),
                     description = stringResource(R.string.settings_downloads_glass_debug_desc),
-                    items = 5,
-                    index = 4,
+                    items = 6,
+                    index = 5,
                     onCheckedChange = onGlassDebugChange,
                 )
             }
