@@ -46,7 +46,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LargeFlexibleTopAppBar
+import androidx.compose.material3.MediumFlexibleTopAppBar
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.LoadingIndicatorDefaults
@@ -79,6 +79,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -183,11 +184,10 @@ fun BiliToolsHistoryContent(
                 topBar = {
                     Surface(color = HistoryExpressiveDefaults.pageContainerColor) {
                         Column {
-                            LargeFlexibleTopAppBar(
+                            MediumFlexibleTopAppBar(
                                 title = {
                                     Text(
                                         text = stringResource(R.string.history_title),
-                                        style = MaterialTheme.typography.headlineMedium,
                                         fontWeight = FontWeight.Bold,
                                     )
                                 },
@@ -203,7 +203,6 @@ fun BiliToolsHistoryContent(
                                         } else {
                                             stringResource(R.string.history_entry_desc)
                                         },
-                                        style = MaterialTheme.typography.bodySmall,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                     )
@@ -258,8 +257,6 @@ fun BiliToolsHistoryContent(
                                     containerColor = HistoryExpressiveDefaults.pageContainerColor,
                                     scrolledContainerColor = HistoryExpressiveDefaults.pageContainerColor,
                                 ),
-                                collapsedHeight = TopAppBarDefaults.TopAppBarExpandedHeight,
-                                expandedHeight = 108.dp,
                                 scrollBehavior = scrollBehavior,
                             )
 
@@ -316,7 +313,8 @@ fun BiliToolsHistoryContent(
                 modifier = Modifier
                     .widthIn(max = 640.dp)
                     .fillMaxSize()
-                    .align(Alignment.Center),
+                    .align(Alignment.Center)
+                    .nestedScroll(scrollBehavior.nestedScrollConnection),
             ) { innerPadding ->
                 HistoryBody(
                     state = state,
