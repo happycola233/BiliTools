@@ -39,8 +39,8 @@ import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
+import androidx.compose.material3.SplitButton
 import androidx.compose.material3.SplitButtonDefaults
-import androidx.compose.material3.SplitButtonLayout
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -399,7 +399,7 @@ private fun UpdateActionButtons(
                     primaryActionHeight = with(density) { size.height.toDp() }
                 },
             ) {
-                SplitButtonLayout(
+                SplitButton(
                     leadingButton = {
                         SplitButtonDefaults.LeadingButton(
                             onClick = onDownloadUpdate,

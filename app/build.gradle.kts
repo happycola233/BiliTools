@@ -210,7 +210,9 @@ kotlin {
 android {
     namespace = "com.happycola233.bilitools"
     compileSdk {
-        version = release(36)
+        version = release(37) {
+            minorApiLevel = 0
+        }
     }
 
     defaultConfig {

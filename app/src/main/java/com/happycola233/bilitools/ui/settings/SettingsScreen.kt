@@ -1817,6 +1817,7 @@ private fun AboutSettingsScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun AnimatedAboutAppIcon(
     painter: Painter,

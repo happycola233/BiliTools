@@ -71,6 +71,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilledTonalButton
@@ -2746,7 +2747,6 @@ private fun ConnectedFormatButtons(
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Suppress("DEPRECATION")
 @Composable
 private fun <T> ConnectedToggleRow(
     options: List<SegmentedOption<T>>,
@@ -2756,56 +2756,101 @@ private fun <T> ConnectedToggleRow(
 ) {
     val haptics = rememberAppHaptics()
     ButtonGroup(
+        overflowIndicator = { menuState ->
+            ButtonGroupDefaults.OverflowIndicator(menuState)
+        },
         modifier = Modifier.fillMaxWidth(),
         expandedRatio = 0.16f,
         horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
     ) {
         options.forEachIndexed { index, option ->
-            val interactionSource = remember { MutableInteractionSource() }
-            ToggleButton(
-                checked = selected == option.value,
-                onCheckedChange = { checked ->
-                    when {
-                        checked -> {
-                            haptics.select()
-                            onSelected(option.value)
-                        }
+            customItem(
+                buttonGroupContent = {
+                    val interactionSource = remember { MutableInteractionSource() }
+                    ToggleButton(
+                        checked = selected == option.value,
+                        onCheckedChange = { checked ->
+                            when {
+                                checked -> {
+                                    haptics.select()
+                                    onSelected(option.value)
+                                }
 
-                        !selectionRequired && selected == option.value -> {
-                            haptics.select()
-                            onSelected(null)
+                                !selectionRequired && selected == option.value -> {
+                                    haptics.select()
+                                    onSelected(null)
+                                }
+                            }
+                        },
+                        enabled = option.enabled,
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = 44.dp)
+                            .animateWidth(interactionSource)
+                            .semanticsRoleRadio(),
+                        interactionSource = interactionSource,
+                        shapes = when (index) {
+                            0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                            options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                            else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                        },
+                        contentPadding = PaddingValues(horizontal = 10.dp),
+                    ) {
+                        option.iconRes?.let { iconRes ->
+                            Icon(
+                                painter = painterResource(iconRes),
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(Modifier.width(6.dp))
                         }
+                        Text(
+                            text = option.label,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = ParseTextStyles.buttonLabel,
+                        )
                     }
                 },
-                enabled = option.enabled,
-                modifier = Modifier
-                    .weight(1f)
-                    .heightIn(min = 44.dp)
-                    .animateWidth(interactionSource)
-                    .semanticsRoleRadio(),
-                interactionSource = interactionSource,
-                shapes = when (index) {
-                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                    options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                },
-                contentPadding = PaddingValues(horizontal = 10.dp),
-            ) {
-                option.iconRes?.let { iconRes ->
-                    Icon(
-                        painter = painterResource(iconRes),
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
+                menuContent = { menuState ->
+                    // 与主按钮行为对齐：显示选中态；selectionRequired 为 false 时再点已选项可取消选择
+                    val checked = selected == option.value
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = option.label,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                style = ParseTextStyles.buttonLabel,
+                            )
+                        },
+                        leadingIcon = {
+                            if (checked) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_check_rounded_24),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                        },
+                        onClick = {
+                            when {
+                                !checked -> {
+                                    haptics.select()
+                                    onSelected(option.value)
+                                }
+
+                                !selectionRequired -> {
+                                    haptics.select()
+                                    onSelected(null)
+                                }
+                            }
+                            menuState.dismiss()
+                        },
+                        enabled = option.enabled,
                     )
-                    Spacer(Modifier.width(6.dp))
-                }
-                Text(
-                    text = option.label,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = ParseTextStyles.buttonLabel,
-                )
-            }
+                },
+            )
         }
     }
 }
