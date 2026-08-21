@@ -97,7 +97,8 @@ data class MediaInfo(
     val list: List<MediaItem>,
     val sections: MediaSections? = null,
     val paged: Boolean = false,
-    // 分页来源的总页数；游标分页（如用户动态）拿不到总数时为 null
+    // 按请求页容量从接口总数换算出的总页数（不是当前页实际条数）。
+    // 游标分页（如用户动态）拿不到总数时为 null。
     val totalPages: Int? = null,
     val offset: String? = null,
     val collection: Boolean = false,

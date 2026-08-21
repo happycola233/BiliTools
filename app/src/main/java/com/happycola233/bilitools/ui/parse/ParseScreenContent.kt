@@ -2138,6 +2138,7 @@ private fun PageNavigator(
     } else {
         stringResource(R.string.parse_page_status, pageIndex)
     }
+    // 拿不到总数（游标分页）时保持可继续翻页；有总数则翻到最后一页后禁用下一页
     val hasNextPage = totalPages == null || pageIndex < totalPages
     Row(
         modifier = Modifier.fillMaxWidth(),

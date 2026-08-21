@@ -701,6 +701,7 @@ class MediaRepository(
             type = MediaType.MusicList,
             id = id,
             paged = true,
+            // 歌单接口直接返回总页数
             totalPages = listResp.data.pageCount,
             nfo = MediaNfo(
                 showTitle = data.title,
@@ -756,7 +757,7 @@ class MediaRepository(
             type = MediaType.WatchLater,
             id = "",
             paged = true,
-            totalPages = resp.data.count?.let { (it + pageSize - 1) / pageSize },
+            totalPages = totalPagesFromItemCount(resp.data.count, pageSize),
             nfo = MediaNfo(
                 tags = emptyList(),
                 stat = MediaStat(),
@@ -791,6 +792,7 @@ class MediaRepository(
         val target = options.target ?: folderList?.firstOrNull()?.id?.toLong()
         val targetId = target ?: idNum.toLongOrNull()
             ?: throw BiliHttpException("No favorite id provided", -1)
+        // 请求页容量；服务端按这个宽度切窗口，medias 实际条数可以更少
         val pageSize = 36
         val listAdapter = httpClient.adapter(FavoriteResourceResponse::class.java)
         val page = options.page.coerceAtLeast(1)
@@ -848,7 +850,7 @@ class MediaRepository(
             type = MediaType.Favorite,
             id = id,
             paged = true,
-            totalPages = resolvedInfo.mediaCount?.let { (it + pageSize - 1) / pageSize },
+            totalPages = totalPagesFromItemCount(resolvedInfo.mediaCount, pageSize),
             nfo = MediaNfo(
                 showTitle = resolvedInfo.title,
                 intro = resolvedInfo.intro,
@@ -1115,7 +1117,7 @@ class MediaRepository(
                 type = MediaType.UserVideo,
                 id = id,
                 paged = true,
-                totalPages = listTotalItems?.let { (it + listPageSize - 1) / listPageSize },
+                totalPages = totalPagesFromItemCount(listTotalItems, listPageSize),
                 nfo = MediaNfo(
                     showTitle = resolvedMeta.name,
                     intro = resolvedMeta.description,
@@ -1152,10 +1154,10 @@ class MediaRepository(
         }
         val vlist = listResp.data.list.vlist.orEmpty()
         val searchPage = listResp.data.page
-        val searchTotalPages = searchPage?.count?.let { count ->
-            val pageSize = searchPage.ps?.takeIf { it > 0 } ?: 25
-            (count + pageSize - 1) / pageSize
-        }
+        val searchTotalPages = totalPagesFromItemCount(
+            searchPage?.count,
+            searchPage?.ps?.takeIf { it > 0 } ?: 25,
+        )
         val list = vlist.mapIndexed { index, item ->
             MediaItem(
                 title = item.title,
@@ -1297,6 +1299,7 @@ class MediaRepository(
             type = MediaType.UserAudio,
             id = id,
             paged = true,
+            // 用户音频接口直接返回总页数
             totalPages = resp.data?.pageCount,
             nfo = MediaNfo(
                 tags = emptyList(),
@@ -1782,6 +1785,18 @@ class MediaRepository(
         }
     }
 
+    /**
+     * 用接口给出的总条数和本次请求的页容量换算总页数（向上取整）。
+     *
+     * 页容量是请求参数 `ps` / `page_size`，即服务端切分页窗口的宽度，不是「这一页列表一定有这么多条」。
+     * 收藏夹尤其明显：`info.media_count` 按窗口切页，窗口内失效、无权限等稿件仍占名额，但不会出现在 `medias` 里，
+     * 所以中间页实际条数可以小于 `ps`。总页数必须用总数 ÷ 请求页容量，不能用当前页返回条数去除。
+     */
+    private fun totalPagesFromItemCount(itemCount: Int?, pageSize: Int): Int? {
+        if (itemCount == null || pageSize <= 0) return null
+        return (itemCount + pageSize - 1) / pageSize
+    }
+
     private fun buildUrl(base: String, params: Map<String, String>): HttpUrl {
         val builder = base.toHttpUrl().newBuilder()
         params.forEach { (key, value) ->
@@ -2195,6 +2210,7 @@ private data class FavoriteResourceResponse(
 
 private data class FavoriteResourceData(
     @Json(name = "info") val info: FavoriteInfo,
+    // 当前窗口内能展示的稿件；失效/无权限等仍占分页名额，所以条数可以小于请求的 ps
     @Json(name = "medias") val medias: List<FavoriteMedia>,
     @Json(name = "has_more") val hasMore: Boolean? = null,
 )
@@ -2207,6 +2223,7 @@ private data class FavoriteInfo(
     @Json(name = "upper") val upper: FavoriteUpper?,
     @Json(name = "cnt_info") val cntInfo: FavoriteCntInfo,
     @Json(name = "ctime") val ctime: Long,
+    // 收藏夹内容总数（含 medias 里被过滤掉的条目），总页数按它 ÷ 请求 ps 向上取整
     @Json(name = "media_count") val mediaCount: Int? = null,
 )
 
