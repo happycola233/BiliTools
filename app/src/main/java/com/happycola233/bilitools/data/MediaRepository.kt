@@ -701,6 +701,7 @@ class MediaRepository(
             type = MediaType.MusicList,
             id = id,
             paged = true,
+            totalPages = listResp.data.pageCount,
             nfo = MediaNfo(
                 showTitle = data.title,
                 intro = data.intro,
@@ -755,6 +756,7 @@ class MediaRepository(
             type = MediaType.WatchLater,
             id = "",
             paged = true,
+            totalPages = resp.data.count?.let { (it + pageSize - 1) / pageSize },
             nfo = MediaNfo(
                 tags = emptyList(),
                 stat = MediaStat(),
@@ -846,6 +848,7 @@ class MediaRepository(
             type = MediaType.Favorite,
             id = id,
             paged = true,
+            totalPages = resolvedInfo.mediaCount?.let { (it + pageSize - 1) / pageSize },
             nfo = MediaNfo(
                 showTitle = resolvedInfo.title,
                 intro = resolvedInfo.intro,
@@ -1033,7 +1036,9 @@ class MediaRepository(
                 else -> throw BiliHttpException("No list found for target $target", -1)
             }
 
-            val (archives, meta, sections) = if (useSeason) {
+            // 合集/系列列表请求固定 page_size=10，与上方 params 保持一致
+            val listPageSize = 10
+            val selection = if (useSeason) {
                 val resolvedTarget = matchedSeason?.seasonId ?: target
                 val listBody = httpClient.get(
                     buildUrl(
@@ -1048,16 +1053,17 @@ class MediaRepository(
                     throw BiliHttpException(listResp.message ?: "Uploads list error", listResp.code)
                 }
                 val resolvedMeta = seasons.firstOrNull { it.meta?.seasonId == resolvedTarget }?.meta
-                Triple(
-                    listResp.data.archives.orEmpty(),
-                    resolvedMeta,
-                    MediaSections(
+                UploadsListSelection(
+                    archives = listResp.data.archives.orEmpty(),
+                    meta = resolvedMeta,
+                    sections = MediaSections(
                         target = resolvedTarget,
                         tabs = seasons.mapNotNull { item ->
                             val metaItem = item.meta ?: return@mapNotNull null
                             MediaTab(metaItem.seasonId, metaItem.name)
                         },
                     ),
+                    totalItems = listResp.data.page?.total,
                 )
             } else {
                 val resolvedTarget = matchedSeries?.seriesId ?: target
@@ -1074,19 +1080,21 @@ class MediaRepository(
                     throw BiliHttpException(listResp.message ?: "Uploads list error", listResp.code)
                 }
                 val resolvedMeta = series.firstOrNull { it.meta?.seriesId == resolvedTarget }?.meta
-                Triple(
-                    listResp.data.archives.orEmpty(),
-                    resolvedMeta,
-                    MediaSections(
+                UploadsListSelection(
+                    archives = listResp.data.archives.orEmpty(),
+                    meta = resolvedMeta,
+                    sections = MediaSections(
                         target = resolvedTarget,
                         tabs = series.mapNotNull { item ->
                             val metaItem = item.meta ?: return@mapNotNull null
                             MediaTab(metaItem.seriesId, metaItem.name)
                         },
                     ),
+                    totalItems = listResp.data.page?.total,
                 )
             }
 
+            val (archives, meta, sections, listTotalItems) = selection
             val resolvedMeta = meta ?: throw BiliHttpException("No meta found for uploads", -1)
             val list = archives.mapIndexed { index, item ->
                 MediaItem(
@@ -1107,6 +1115,7 @@ class MediaRepository(
                 type = MediaType.UserVideo,
                 id = id,
                 paged = true,
+                totalPages = listTotalItems?.let { (it + listPageSize - 1) / listPageSize },
                 nfo = MediaNfo(
                     showTitle = resolvedMeta.name,
                     intro = resolvedMeta.description,
@@ -1142,6 +1151,11 @@ class MediaRepository(
             throw BiliHttpException(listResp.message ?: "Uploads list error", listResp.code)
         }
         val vlist = listResp.data.list.vlist.orEmpty()
+        val searchPage = listResp.data.page
+        val searchTotalPages = searchPage?.count?.let { count ->
+            val pageSize = searchPage.ps?.takeIf { it > 0 } ?: 25
+            (count + pageSize - 1) / pageSize
+        }
         val list = vlist.mapIndexed { index, item ->
             MediaItem(
                 title = item.title,
@@ -1161,6 +1175,7 @@ class MediaRepository(
             type = MediaType.UserVideo,
             id = id,
             paged = true,
+            totalPages = searchTotalPages,
             nfo = MediaNfo(
                 tags = emptyList(),
                 stat = MediaStat(),
@@ -1282,6 +1297,7 @@ class MediaRepository(
             type = MediaType.UserAudio,
             id = id,
             paged = true,
+            totalPages = resp.data?.pageCount,
             nfo = MediaNfo(
                 tags = emptyList(),
                 stat = MediaStat(),
@@ -2131,6 +2147,7 @@ private data class MusicListDetailResponse(
 )
 
 private data class MusicListDetailData(
+    @Json(name = "pageCount") val pageCount: Int? = null,
     @Json(name = "data") val data: List<MusicInfoData>,
 )
 
@@ -2141,6 +2158,7 @@ private data class WatchLaterResponse(
 )
 
 private data class WatchLaterData(
+    @Json(name = "count") val count: Int? = null,
     @Json(name = "list") val list: List<WatchLaterItem>,
 )
 
@@ -2318,6 +2336,14 @@ private data class UploadsSeriesItem(
     @Json(name = "meta") val meta: UploadsMeta?,
 )
 
+// 合集/系列分支解析结果：条目列表、元数据、分节 tab 与列表内总条目数
+private data class UploadsListSelection(
+    val archives: List<UploadsArchive>,
+    val meta: UploadsMeta?,
+    val sections: MediaSections,
+    val totalItems: Int?,
+)
+
 private data class UploadsArchivesResponse(
     @Json(name = "code") val code: Int,
     @Json(name = "message") val message: String?,
@@ -2326,6 +2352,12 @@ private data class UploadsArchivesResponse(
 
 private data class UploadsArchivesData(
     @Json(name = "archives") val archives: List<UploadsArchive>?,
+    @Json(name = "page") val page: UploadsArchivesPage? = null,
+)
+
+// seasons_archives_list 与 series/archives 的 page 字段名不同，但 total 一致
+private data class UploadsArchivesPage(
+    @Json(name = "total") val total: Int? = null,
 )
 
 private data class UploadsArchive(
@@ -2355,6 +2387,12 @@ private data class UploadsSearchResponse(
 
 private data class UploadsSearchData(
     @Json(name = "list") val list: UploadsSearchList?,
+    @Json(name = "page") val page: UploadsSearchPage? = null,
+)
+
+private data class UploadsSearchPage(
+    @Json(name = "count") val count: Int? = null,
+    @Json(name = "ps") val ps: Int? = null,
 )
 
 private data class UploadsSearchList(
@@ -2399,6 +2437,7 @@ private data class UserAudioResponse(
 )
 
 private data class UserAudioData(
+    @Json(name = "pageCount") val pageCount: Int? = null,
     @Json(name = "data") val data: List<MusicInfoData>?,
 )
 

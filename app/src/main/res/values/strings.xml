@@ -88,6 +88,8 @@
     <string name="parse_page_nav_label">页码</string>
     <string name="parse_page_prev">上一页</string>
     <string name="parse_page_next">下一页</string>
+    <string name="parse_page_status">第 %1$d 页</string>
+    <string name="parse_page_status_with_pages">第 %1$d 页 · 共 %2$d 页</string>
     <string name="parse_section_label_favorite">选择收藏夹</string>
     <string name="parse_section_label_bangumi">选择版本</string>
 

@@ -101,6 +101,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -117,6 +118,7 @@ import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.LinkAnnotation
@@ -129,6 +131,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withLink
@@ -175,6 +178,8 @@ private val checkOptionMinHeight = 48.dp
 private val actionButtonLoadingIndicatorSize = 26.dp
 private val imageOptionChipHeight = 36.dp
 private val pageSelectionHeaderActionHeight = 32.dp
+private val pageNavigatorFieldWidth = 76.dp
+private val pageNavigatorFieldHeight = 40.dp
 private val pageSelectionItemSpacing = 10.dp
 private val pageSelectionListMaxHeight = 286.dp
 private val pageSelectionScrollbarContentInset = 10.dp
@@ -2049,6 +2054,7 @@ private fun PageSelectionHeader(
         if (info.paged) {
             PageNavigator(
                 pageIndex = state.pageIndex,
+                totalPages = info.totalPages,
                 loading = !controlsEnabled,
                 onLoadPrevPage = onLoadPrevPage,
                 onLoadNextPage = onLoadNextPage,
@@ -2116,6 +2122,7 @@ private fun PageSelectionHeaderAction(
 @Composable
 private fun PageNavigator(
     pageIndex: Int,
+    totalPages: Int?,
     loading: Boolean,
     onLoadPrevPage: () -> Unit,
     onLoadNextPage: () -> Unit,
@@ -2126,10 +2133,16 @@ private fun PageNavigator(
     LaunchedEffect(pageIndex) {
         pageText = pageIndex.toString()
     }
+    val pageSummary = if (totalPages != null && totalPages > 0) {
+        stringResource(R.string.parse_page_status_with_pages, pageIndex, totalPages)
+    } else {
+        stringResource(R.string.parse_page_status, pageIndex)
+    }
+    val hasNextPage = totalPages == null || pageIndex < totalPages
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         TextButton(
             onClick = {
@@ -2140,35 +2153,77 @@ private fun PageNavigator(
         ) {
             Text(stringResource(R.string.parse_page_prev))
         }
-        OutlinedTextField(
+        PageNumberField(
             value = pageText,
-            onValueChange = { pageText = it.filter(Char::isDigit) },
-            modifier = Modifier.weight(1f),
-            label = { Text(stringResource(R.string.parse_page_nav_label)) },
             enabled = !loading,
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Number,
-                imeAction = ImeAction.Done,
-            ),
-            keyboardActions = KeyboardActions(
-                onDone = {
-                    pageText.toIntOrNull()?.let { page ->
-                        haptics.confirm()
-                        onLoadPage(page)
-                    }
-                },
-            ),
-            shape = RoundedCornerShape(controlCornerRadius),
+            onValueChange = { pageText = it.filter(Char::isDigit) },
+            onCommit = {
+                pageText.toIntOrNull()?.let { page ->
+                    haptics.confirm()
+                    onLoadPage(page)
+                }
+            },
+        )
+        Text(
+            text = pageSummary,
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            style = ParseTextStyles.supporting,
         )
         TextButton(
             onClick = {
                 haptics.tap()
                 onLoadNextPage()
             },
-            enabled = !loading,
+            enabled = hasNextPage && !loading,
         ) {
             Text(stringResource(R.string.parse_page_next))
+        }
+    }
+}
+
+@Composable
+private fun PageNumberField(
+    value: String,
+    enabled: Boolean,
+    onValueChange: (String) -> Unit,
+    onCommit: () -> Unit,
+) {
+    val fieldLabel = stringResource(R.string.parse_page_nav_label)
+    val textColor = if (enabled) {
+        MaterialTheme.colorScheme.onSurface
+    } else {
+        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+    }
+    Surface(
+        modifier = Modifier
+            .width(pageNavigatorFieldWidth)
+            .height(pageNavigatorFieldHeight),
+        shape = RoundedCornerShape(50),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { contentDescription = fieldLabel },
+                enabled = enabled,
+                singleLine = true,
+                textStyle = ParseTextStyles.body.copy(
+                    color = textColor,
+                    textAlign = TextAlign.Center,
+                ),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Done,
+                ),
+                keyboardActions = KeyboardActions(onDone = { onCommit() }),
+            )
         }
     }
 }
