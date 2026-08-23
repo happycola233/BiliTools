@@ -199,7 +199,17 @@ data class ParseUiState(
     val selectedItemStat: MediaStat? = null,
     val lastDownload: DownloadItem? = null,
     val isLoggedIn: Boolean = false,
-)
+) {
+    val hasSelectedDownloadContent: Boolean
+        get() = outputType != null ||
+            subtitleEnabled ||
+            aiSummaryEnabled ||
+            nfoCollectionEnabled ||
+            nfoSingleEnabled ||
+            danmakuLiveEnabled ||
+            danmakuHistoryEnabled ||
+            selectedImageIds.isNotEmpty()
+}
 
 private fun defaultDate(): String {
     return LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
@@ -902,6 +912,10 @@ class ParseViewModel(
         val selectedIndices = state.selectedItemIndices.filter { it in state.items.indices }
         if (selectedIndices.isEmpty()) {
             _state.update { it.copy(error = strings.get(R.string.parse_error_no_selection)) }
+            return
+        }
+        if (!state.hasSelectedDownloadContent) {
+            _state.update { it.copy(error = strings.get(R.string.parse_error_no_download_content)) }
             return
         }
         if (state.outputType != null && state.playUrlInfo == null) {

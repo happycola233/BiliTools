@@ -427,6 +427,7 @@
     <string name="parse_mobile_confirm_message">你正在使用移动网络，继续下载可能产生流量费用。是否继续？</string>
     <string name="parse_mobile_confirm_action">继续下载</string>
     <string name="parse_error_no_selection">请先选择至少一项</string>
+    <string name="parse_error_no_download_content">请选择输出类型或附加内容</string>
     <string name="icon_stat_play">&#xE699;</string>
     <string name="icon_stat_danmaku">&#xE6AB;</string>
     <string name="icon_stat_reply">&#xE6AC;</string>

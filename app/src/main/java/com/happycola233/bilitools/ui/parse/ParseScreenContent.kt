@@ -359,6 +359,7 @@ fun ParseScreenContent(
         !state.streamLoading &&
         !state.downloadStarting &&
         hasSelection &&
+        state.hasSelectedDownloadContent &&
         streamReady
     val quickActionVisible = info != null && hasSelection
     // 页面全出血绘制，内容从主界面底栏后方滚过，滚动与悬浮控件需预留底栏净空；外部下载入口无底栏
