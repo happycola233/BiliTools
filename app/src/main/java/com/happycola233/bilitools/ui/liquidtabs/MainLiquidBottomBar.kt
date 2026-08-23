@@ -30,6 +30,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.happycola233.bilitools.R
+import com.happycola233.bilitools.ui.theme.AppSurfaces
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 
@@ -81,11 +82,12 @@ fun MainLiquidBottomBar(
         }
     }
 
-    val surfaceColor = MaterialTheme.colorScheme.surface
-    val onDrawBackdrop: ContentDrawScope.() -> Unit = remember(backgroundView, surfaceColor) {
+    // 采样层的底色需与页面底色一致，否则玻璃在内容空白处会折射出异色
+    val backdropBaseColor = AppSurfaces.pageContainerColor
+    val onDrawBackdrop: ContentDrawScope.() -> Unit = remember(backgroundView, backdropBaseColor) {
         {
             contentVersion.intValue // 读取版本号以订阅 View 内容变化
-            drawRect(surfaceColor)
+            drawRect(backdropBaseColor)
             drawIntoCanvas { canvas ->
                 val native = canvas.nativeCanvas
                 val checkpoint = native.save()

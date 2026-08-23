@@ -20,7 +20,10 @@ fun rememberAndroidThemeColorScheme(): ColorScheme {
     return remember(view, isDarkTheme) {
         val baseScheme = if (isDarkTheme) darkColorScheme() else lightColorScheme()
         baseScheme.copy(
-            primary = view.resolveThemeColor(android.R.attr.colorPrimary, baseScheme.primary),
+            primary = view.resolveThemeColor(
+                androidx.appcompat.R.attr.colorPrimary,
+                baseScheme.primary,
+            ),
             onPrimary = view.resolveThemeColor(
                 com.google.android.material.R.attr.colorOnPrimary,
                 baseScheme.onPrimary,
@@ -86,8 +89,16 @@ fun rememberAndroidThemeColorScheme(): ColorScheme {
                 com.google.android.material.R.attr.colorOnSurfaceVariant,
                 baseScheme.onSurfaceVariant,
             ),
-            surfaceTint = view.resolveThemeColor(android.R.attr.colorPrimary, baseScheme.surfaceTint),
-            error = view.resolveThemeColor(android.R.attr.colorError, baseScheme.error),
+            surfaceTint = view.resolveThemeColor(
+                androidx.appcompat.R.attr.colorPrimary,
+                baseScheme.surfaceTint,
+            ),
+            // Material 主题不会把 colorError 映射到平台的 android:colorError，
+            // 读平台属性会穿透到 ROM 的系统强调色，必须读 AppCompat 声明的那个
+            error = view.resolveThemeColor(
+                androidx.appcompat.R.attr.colorError,
+                baseScheme.error,
+            ),
             onError = view.resolveThemeColor(
                 com.google.android.material.R.attr.colorOnError,
                 baseScheme.onError,
@@ -128,8 +139,26 @@ fun rememberAndroidThemeColorScheme(): ColorScheme {
                 com.google.android.material.R.attr.colorSurfaceContainerLowest,
                 baseScheme.surfaceContainerLowest,
             ),
-        )
+        ).let { scheme ->
+            scheme.copy(
+                surfaceBright = deriveSurfaceBright(isDarkTheme, scheme),
+                surfaceDim = deriveSurfaceDim(isDarkTheme, scheme),
+            )
+        }
     }
+}
+
+/**
+ * 自定义配色的 XML 主题只声明了 surface 与 surfaceContainer* 色阶，没有 colorSurfaceBright / colorSurfaceDim，
+ * 直接读属性会拿到 Material 基线调色板的紫色，与应用配色不符。这里按 M3 的色阶关系推导，
+ * 供「读 View 主题」与「按设置项自建主题」两条路径共用，确保两者算出的卡片底色完全一致。
+ */
+internal fun deriveSurfaceBright(darkTheme: Boolean, scheme: ColorScheme): Color {
+    return if (darkTheme) scheme.surfaceContainerHighest else scheme.surface
+}
+
+internal fun deriveSurfaceDim(darkTheme: Boolean, scheme: ColorScheme): Color {
+    return if (darkTheme) scheme.surface else scheme.surfaceContainerHighest
 }
 
 private fun View.resolveThemeColor(

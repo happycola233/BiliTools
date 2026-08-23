@@ -5,13 +5,13 @@
     android:id="@+id/container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorSurface">
+    android:background="?attr/colorSurfaceContainer">
 
     <com.happycola233.bilitools.ui.widget.StableAppBarLayout
         android:id="@+id/app_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?attr/colorSurface"
+        android:background="?attr/colorSurfaceContainer"
         android:fitsSystemWindows="false"
         android:stateListAnimator="@null"
         app:elevation="0dp"
@@ -23,7 +23,7 @@
             android:layout_height="96dp"
             android:fitsSystemWindows="false"
             app:collapsedTitleTextAppearance="@style/TextAppearance.BiliTools.Main.CollapsedTitle"
-            app:contentScrim="?attr/colorSurface"
+            app:contentScrim="?attr/colorSurfaceContainer"
             app:expandedTitleMarginBottom="28dp"
             app:expandedTitleMarginStart="16dp"
             app:expandedTitleTextAppearance="@style/TextAppearance.BiliTools.Main.ExpandedTitle"

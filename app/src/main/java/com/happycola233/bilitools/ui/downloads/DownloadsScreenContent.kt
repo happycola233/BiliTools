@@ -99,6 +99,7 @@ import com.happycola233.bilitools.data.model.DownloadItem
 import com.happycola233.bilitools.ui.FloatingControlsDefaults
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import com.happycola233.bilitools.ui.mainBottomBarBottomInset
+import com.happycola233.bilitools.ui.theme.AppSurfaces
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
@@ -233,7 +234,8 @@ fun DownloadsScreenContent(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .layerBackdrop(backdrop),
+                .layerBackdrop(backdrop)
+                .background(AppSurfaces.pageContainerColor),
         ) {
             DownloadsListContent(
                 groups = groups,
@@ -743,7 +745,7 @@ private fun DownloadsBatchGlassPanel(
         com.google.android.material.R.attr.colorOnSurface,
         0xFF101418.toInt(),
     )
-    val actionTextColor = Color(0xFF6A688F)
+    val actionTextColor = MaterialTheme.colorScheme.primary
     val panelSubTextColor = materialColor(
         com.google.android.material.R.attr.colorOnSurfaceVariant,
         0xFF58616B.toInt(),
@@ -842,8 +844,8 @@ private fun DownloadsBatchGlassPanel(
                 iconRes = R.drawable.ic_delete_sweep_24,
                 text = stringResource(R.string.downloads_multi_clear_records),
                 enabled = clearEnabled,
-                containerColor = Color(0xFFE8E8F8),
-                contentColor = Color(0xFF4A4C5C),
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                 onClick = onClearRecords,
                 modifier = Modifier
                     .weight(1f)
@@ -853,8 +855,8 @@ private fun DownloadsBatchGlassPanel(
                 iconRes = R.drawable.ic_delete_24,
                 text = stringResource(R.string.downloads_multi_delete_files),
                 enabled = deleteEnabled,
-                containerColor = Color(0xFFF2D8D8),
-                contentColor = Color(0xFF8C2727),
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
                 onClick = onDeleteFiles,
                 modifier = Modifier
                     .weight(1f)

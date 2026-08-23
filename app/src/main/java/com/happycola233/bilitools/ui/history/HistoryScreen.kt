@@ -78,7 +78,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -102,7 +101,9 @@ import com.happycola233.bilitools.data.AppSettings
 import com.happycola233.bilitools.data.model.HistoryItem
 import com.happycola233.bilitools.data.model.HistoryTab
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
+import com.happycola233.bilitools.ui.theme.AppSurfaces
 import com.happycola233.bilitools.ui.theme.BiliToolsSettingsTheme
+import com.happycola233.bilitools.ui.theme.usesPureBlackSurfaces
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -1274,11 +1275,7 @@ private fun historyDeviceFilterLabel(filter: HistoryDeviceFilter): String {
 private object HistoryExpressiveDefaults {
     val pageContainerColor
         @Composable
-        get() = if (!MaterialTheme.colorScheme.usesPureBlackSurfaces()) {
-            MaterialTheme.colorScheme.surfaceContainer
-        } else {
-            MaterialTheme.colorScheme.surface
-        }
+        get() = AppSurfaces.pageContainerColor
 
     val pageBackgroundBrush
         @Composable
@@ -1292,26 +1289,16 @@ private object HistoryExpressiveDefaults {
 
     val toolbarActionColor
         @Composable
-        get() = if (!MaterialTheme.colorScheme.usesPureBlackSurfaces()) {
-            MaterialTheme.colorScheme.surfaceBright
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerHigh
-        }
+        get() = AppSurfaces.cardContainerColor
 
     val listItemContainerColor
         @Composable
-        get() = if (!MaterialTheme.colorScheme.usesPureBlackSurfaces()) {
-            MaterialTheme.colorScheme.surfaceBright
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerHigh
-        }
+        get() = AppSurfaces.cardContainerColor
 
     val groupContainerColor
         @Composable
-        get() = if (!MaterialTheme.colorScheme.usesPureBlackSurfaces()) {
-            MaterialTheme.colorScheme.surfaceContainerLow
-        } else {
-            MaterialTheme.colorScheme.surfaceContainer
+        get() = with(MaterialTheme.colorScheme) {
+            if (usesPureBlackSurfaces()) surfaceContainer else surfaceContainerLow
         }
 
     val inputContainerColor
@@ -1336,10 +1323,6 @@ private object HistoryExpressiveDefaults {
             width = 1.dp,
             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f),
         )
-}
-
-private fun androidx.compose.material3.ColorScheme.usesPureBlackSurfaces(): Boolean {
-    return surface == Color.Black && background == Color.Black
 }
 
 private val HISTORY_TIME_FORMATTER =

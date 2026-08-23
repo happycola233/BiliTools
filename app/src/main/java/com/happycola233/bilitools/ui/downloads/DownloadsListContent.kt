@@ -11,6 +11,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -22,6 +23,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -67,12 +69,10 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -89,7 +89,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.google.android.material.color.MaterialColors
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.model.DownloadGroup
@@ -100,6 +99,7 @@ import com.happycola233.bilitools.data.model.DownloadStatus
 import com.happycola233.bilitools.data.model.DownloadTaskType
 import com.happycola233.bilitools.ui.haptics.HapticThresholdGate
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
+import com.happycola233.bilitools.ui.theme.AppSurfaces
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -209,23 +209,6 @@ private class DownloadsProgressIndicatorController(
 private data class ProgressIndicatorHolder(
     val controller: DownloadsProgressIndicatorController,
 )
-
-@Composable
-private fun downloadsThemeColor(
-    attrName: String,
-    fallback: Color,
-): Color {
-    val view = LocalView.current
-    val context = view.context
-    return remember(view, context, attrName, fallback) {
-        val attrId = context.resources.getIdentifier(attrName, "attr", context.packageName)
-        if (attrId == 0) {
-            fallback
-        } else {
-            Color(MaterialColors.getColor(view, attrId, fallback.toArgb()))
-        }
-    }
-}
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -425,7 +408,7 @@ private fun DownloadsSectionHeader(
     )
 
     Surface(
-        color = MaterialTheme.colorScheme.surface,
+        color = AppSurfaces.pageContainerColor,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
@@ -508,12 +491,9 @@ private fun DownloadsGroupCard(
     val context = LocalContext.current
     val density = LocalDensity.current
     val haptics = rememberAppHaptics()
-    val errorColor = downloadsThemeColor("colorError", MaterialTheme.colorScheme.error)
-    val onErrorColor = downloadsThemeColor("colorOnError", MaterialTheme.colorScheme.onError)
-    val coverPlaceholderColor = downloadsThemeColor(
-        "colorSurfaceVariant",
-        MaterialTheme.colorScheme.surfaceVariant,
-    )
+    val errorColor = MaterialTheme.colorScheme.error
+    val onErrorColor = MaterialTheme.colorScheme.onError
+    val coverPlaceholderColor = AppSurfaces.insetContainerColor
     val scope = rememberCoroutineScope()
     val swipeTargetPx = with(density) { 88.dp.toPx() }
     val dismissThresholdPx = with(density) { 140.dp.toPx() }
@@ -527,7 +507,7 @@ private fun DownloadsGroupCard(
         targetValue = if (selected) {
             MaterialTheme.colorScheme.primaryContainer
         } else {
-            MaterialTheme.colorScheme.surfaceContainer
+            AppSurfaces.cardContainerColor
         },
         animationSpec = tween(durationMillis = 180),
         label = "downloadsGroupContainerColor",
@@ -572,7 +552,7 @@ private fun DownloadsGroupCard(
         targetValue = if (selected) {
             MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.12f)
         } else {
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
         },
         animationSpec = tween(durationMillis = 180),
         label = "downloadsGroupDividerColor",
@@ -605,6 +585,12 @@ private fun DownloadsGroupCard(
         targetValue = if (expanded && !selectionMode) 180f else 0f,
         animationSpec = tween(durationMillis = GROUP_ARROW_DURATION_MILLIS),
         label = "downloadsGroupArrow",
+    )
+    // 展开后头部与内嵌面板之间只留一道窄缝，收起时恢复卡片自身的对称内边距
+    val headerBottomPadding by animateDpAsState(
+        targetValue = if (expanded && !selectionMode) 6.dp else 16.dp,
+        animationSpec = tween(durationMillis = GROUP_EXPAND_DURATION_MILLIS, easing = FastOutSlowInEasing),
+        label = "downloadsGroupHeaderBottomPadding",
     )
 
     LaunchedEffect(swiped, selectionMode, dragging, swipeTargetPx) {
@@ -755,7 +741,7 @@ private fun DownloadsGroupCard(
                         start = if (selectionMode) 12.dp else 16.dp,
                         end = if (selectionMode) 12.dp else 16.dp,
                         top = 16.dp,
-                        bottom = 16.dp,
+                        bottom = headerBottomPadding,
                     ),
                 ) {
                     AnimatedVisibility(visible = selectionMode) {
@@ -888,67 +874,76 @@ private fun DownloadsGroupCard(
                                 animationSpec = tween(durationMillis = GROUP_EXPAND_DURATION_MILLIS, easing = FastOutSlowInEasing),
                             ),
                 ) {
-                    Column(
-                        modifier = Modifier.animateContentSize(
-                            animationSpec = tween(durationMillis = GROUP_EXPAND_DURATION_MILLIS, easing = FastOutSlowInEasing),
-                        ),
+                    // 展开区做成卡片内的内嵌面板：底色比卡片更沉、带独立圆角，
+                    // 与「我」页、设置页的层级语言一致，避免用通宽分割线把卡片劈成两块
+                    Surface(
+                        color = AppSurfaces.insetContainerColor,
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 8.dp, end = 8.dp, bottom = 8.dp)
+                            .animateContentSize(
+                                animationSpec = tween(durationMillis = GROUP_EXPAND_DURATION_MILLIS, easing = FastOutSlowInEasing),
+                            ),
                     ) {
-                        HorizontalDivider(
-                            color = groupDividerColor,
-                        )
-
-                        if (showActionButton) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(start = 16.dp, top = 6.dp, end = 16.dp, bottom = 6.dp),
-                            ) {
-                                Text(
-                                    text = buildGroupActionsSummaryText(context, group),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = groupHeadlineColor,
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f),
-                                )
-
-                                FilledTonalButton(
-                                    onClick = {
-                                        haptics.tap()
-                                        if (groupActionState.hasActiveDownloads) {
-                                            onPauseGroup()
-                                        } else {
-                                            onResumeGroup()
-                                        }
-                                    },
-                                    modifier = Modifier.padding(start = 12.dp),
+                        Column {
+                            if (showActionButton) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(start = 16.dp, top = 10.dp, end = 16.dp, bottom = 2.dp),
                                 ) {
-                                    Icon(
-                                        painter = painterResource(
-                                            if (groupActionState.hasActiveDownloads) {
-                                                R.drawable.ic_pause_24
-                                            } else {
-                                                R.drawable.ic_play_arrow_24
-                                            }
-                                        ),
-                                        contentDescription = null,
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        if (groupActionState.hasActiveDownloads) {
-                                            stringResource(R.string.download_pause)
-                                        } else {
-                                            stringResource(R.string.download_resume)
-                                        },
+                                        text = buildGroupActionsSummaryText(context, group),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = groupHeadlineColor,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f),
                                     )
+
+                                    FilledTonalButton(
+                                        onClick = {
+                                            haptics.tap()
+                                            if (groupActionState.hasActiveDownloads) {
+                                                onPauseGroup()
+                                            } else {
+                                                onResumeGroup()
+                                            }
+                                        },
+                                        modifier = Modifier.padding(start = 12.dp),
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(
+                                                if (groupActionState.hasActiveDownloads) {
+                                                    R.drawable.ic_pause_24
+                                                } else {
+                                                    R.drawable.ic_play_arrow_24
+                                                }
+                                            ),
+                                            contentDescription = null,
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            if (groupActionState.hasActiveDownloads) {
+                                                stringResource(R.string.download_pause)
+                                            } else {
+                                                stringResource(R.string.download_resume)
+                                            },
+                                        )
+                                    }
                                 }
                             }
-                        }
 
-                        Column {
-                            group.tasks.forEach { task ->
+                            group.tasks.forEachIndexed { index, task ->
+                                if (index > 0) {
+                                    HorizontalDivider(
+                                        color = groupDividerColor,
+                                        modifier = Modifier.padding(horizontal = 14.dp),
+                                    )
+                                }
                                 DownloadTaskRow(
                                     item = task,
                                     onPauseResume = { onTaskPauseResume(task) },
@@ -975,7 +970,7 @@ private fun DownloadTaskRow(
 ) {
     val context = LocalContext.current
     val haptics = rememberAppHaptics()
-    val errorColor = downloadsThemeColor("colorError", MaterialTheme.colorScheme.error)
+    val errorColor = MaterialTheme.colorScheme.error
     val managed = isManagedTask(item)
     val isMissing = item.status == DownloadStatus.Success && item.outputMissing
     val progress = DownloadProgressRules.normalizeTaskProgress(item.status, item.progress)
@@ -1001,15 +996,10 @@ private fun DownloadTaskRow(
             .animateContentSize(
                 animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
             )
-            .combinedClickable(
-                enabled = !isMissing,
-                interactionSource = remember(item.id) { MutableInteractionSource() },
-                indication = null,
-                onClick = {
-                    haptics.tap()
-                    onClick()
-                },
-            )
+            .clickable(enabled = !isMissing) {
+                haptics.tap()
+                onClick()
+            }
             .padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {

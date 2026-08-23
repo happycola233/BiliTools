@@ -29,7 +29,8 @@
         <item name="colorSurfaceContainer">@color/md_theme_light_surfaceContainer</item>
         <item name="colorSurfaceContainerHigh">@color/md_theme_light_surfaceContainerHigh</item>
         <item name="colorSurfaceContainerHighest">@color/md_theme_light_surfaceContainerHighest</item>
-        <item name="android:windowBackground">?attr/colorSurface</item>
+        <!-- 与各页面底色（AppSurfaces.pageContainerColor）一致，避免 Activity 切换时闪出异色 -->
+        <item name="android:windowBackground">?attr/colorSurfaceContainer</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>
@@ -394,5 +395,7 @@
         <item name="colorSurfaceContainer">#FF101010</item>
         <item name="colorSurfaceContainerHigh">#FF171717</item>
         <item name="colorSurfaceContainerHighest">#FF1F1F1F</item>
+        <!-- 纯黑模式下页面底色回落到 colorSurface，窗口背景需同步为纯黑 -->
+        <item name="android:windowBackground">#FF000000</item>
     </style>
 </resources>

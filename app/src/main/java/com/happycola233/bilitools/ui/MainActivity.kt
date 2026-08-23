@@ -149,7 +149,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        updateTopBarColor(binding.viewPager.currentItem)
+        applyMainSurfaceColors()
         handleOpenDownloadsIntent(intent)
         handleExternalDownloadIntent(intent)
         if (savedInstanceState == null) {
@@ -212,7 +212,7 @@ class MainActivity : AppCompatActivity() {
         binding.viewPager.setCurrentItem(position, false)
     }
 
-    /** 同步底栏选中态（Material 底栏与液态气泡）、标题与顶栏配色到指定页面。 */
+    /** 同步底栏选中态（Material 底栏与液态气泡）与标题到指定页面。 */
     private fun syncMainTabUi(position: Int) {
         val menuId = when (position) {
             0 -> R.id.parseFragment
@@ -230,8 +230,6 @@ class MainActivity : AppCompatActivity() {
             else -> getString(R.string.app_name)
         }
         applyMainTitleTypeface(position)
-
-        updateTopBarColor(position)
     }
 
     /** 解析页标题「BiliTools」使用 Google Sans Flex（ROND=100）品牌字体，其余页还原布局中定义的标题样式。 */
@@ -440,19 +438,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun updateTopBarColor(position: Int) {
-        val color = when (position) {
-            2 -> resolveMeTopBarColor()
-            else -> resolveThemeColor(com.google.android.material.R.attr.colorSurface)
-        }
+    /**
+     * 顶栏、根容器与 Material 底栏统一使用页面底色，让三个页面的 Compose 内容与外围 View 无缝拼接。
+     * 取色规则与 Compose 侧的 AppSurfaces.pageContainerColor 保持一致。
+     */
+    private fun applyMainSurfaceColors() {
+        val color = resolvePageContainerColor()
+        binding.root.setBackgroundColor(color)
         binding.appBar.setBackgroundColor(color)
         binding.collapsingToolbar.setBackgroundColor(color)
         binding.collapsingToolbar.setContentScrimColor(color)
         binding.collapsingToolbar.setStatusBarScrimColor(color)
         binding.toolbar.setBackgroundColor(color)
+        binding.bottomNav.setBackgroundColor(color)
     }
 
-    private fun resolveMeTopBarColor(): Int {
+    private fun resolvePageContainerColor(): Int {
         val surface = resolveThemeColor(com.google.android.material.R.attr.colorSurface)
         val background = resolveThemeColor(android.R.attr.colorBackground, surface)
         return if (surface == Color.BLACK && background == Color.BLACK) {

@@ -65,10 +65,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExposedDropdownMenu
@@ -157,11 +157,11 @@ import com.happycola233.bilitools.ui.TopErrorMessageHost
 import com.happycola233.bilitools.ui.mainBottomBarBottomInset
 import com.happycola233.bilitools.ui.haptics.HapticTicker
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
+import com.happycola233.bilitools.ui.theme.AppSurfaces
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private val screenHorizontalPadding = 16.dp
-private val cardCornerRadius = 24.dp
 private val controlCornerRadius = 18.dp
 private val inputCardHorizontalPadding = 20.dp
 private val inputCardVerticalPadding = 20.dp
@@ -367,7 +367,7 @@ fun ParseScreenContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface),
+            .background(AppSurfaces.pageContainerColor),
     ) {
         LazyColumn(
             modifier = Modifier
@@ -425,8 +425,8 @@ fun ParseScreenContent(
                     item(key = "login-hint") {
                         MessageCard(
                             message = stringResource(R.string.parse_login_limited),
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                         )
                     }
                 }
@@ -1093,14 +1093,7 @@ private fun ParseInputCard(
     onMediaTypeChange: (MediaType?) -> Unit,
 ) {
     val focusManager = LocalFocusManager.current
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(cardCornerRadius),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
-    ) {
+    ParseCard {
         Column(
             modifier = Modifier.padding(
                 horizontal = inputCardHorizontalPadding,
@@ -1167,7 +1160,7 @@ private fun SearchInputBar(
             .fillMaxWidth()
             .height(inputSearchBarHeight),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surface,
+        color = AppSurfaces.insetContainerColor,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Row(
@@ -1247,14 +1240,7 @@ private fun ParseResultCard(
         durationMillis = parseContentAnimationDurationMillis,
         easing = FastOutSlowInEasing,
     )
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(cardCornerRadius),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
-    ) {
+    ParseCard {
         Column(
             modifier = Modifier.animateContentSize(animationSpec = contentSizeSpec),
         ) {
@@ -1355,7 +1341,7 @@ private fun CoverImage(coverUrl: String) {
         modifier = Modifier
             .fillMaxWidth()
             .height(204.dp)
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+            .background(AppSurfaces.insetContainerColor),
         contentAlignment = Alignment.Center,
     ) {
         if (displayedCoverUrl.isNotBlank()) {
@@ -2203,7 +2189,7 @@ private fun PageNumberField(
             .width(pageNavigatorFieldWidth)
             .height(pageNavigatorFieldHeight),
         shape = RoundedCornerShape(50),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = AppSurfaces.insetContainerColor,
     ) {
         Box(contentAlignment = Alignment.Center) {
             BasicTextField(
@@ -2246,7 +2232,7 @@ private fun PageItemRow(
         targetValue = if (checked) {
             MaterialTheme.colorScheme.secondaryContainer
         } else {
-            MaterialTheme.colorScheme.surfaceContainer
+            AppSurfaces.insetContainerColor
         },
         animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
     )
@@ -2392,14 +2378,7 @@ private fun ParseOptionsCard(
         easing = FastOutSlowInEasing,
     )
 
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(cardCornerRadius),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
-    ) {
+    ParseCard {
         Column(
             modifier = Modifier
                 .padding(
@@ -3147,9 +3126,9 @@ private fun <T> CompactSelectionField(
     )
     val containerColor by animateColorAsState(
         targetValue = if (expanded) {
-            MaterialTheme.colorScheme.surfaceContainerHigh
+            AppSurfaces.insetActiveContainerColor
         } else {
-            MaterialTheme.colorScheme.surfaceContainer
+            AppSurfaces.insetContainerColor
         },
         animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
     )
@@ -3248,6 +3227,22 @@ private fun <T> CompactSelectionField(
             }
         }
     }
+}
+
+/** 解析页的一级卡片：与「我」页、设置页的列表卡片同底色、同圆角、无投影。 */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun ParseCard(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.largeIncreased,
+        colors = CardDefaults.cardColors(containerColor = AppSurfaces.cardContainerColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        content = content,
+    )
 }
 
 @Composable

@@ -82,12 +82,7 @@ private fun rememberSettingsThemeColorScheme(
     }
 
     return remember(themedContext, darkTheme) {
-        themedContext.resolveThemeColorScheme(
-            darkTheme = darkTheme,
-            usePlatformDynamicSurfaceTokens =
-                settings.themeColor == AppThemeColor.Dynamic &&
-                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
-        )
+        themedContext.resolveThemeColorScheme(darkTheme = darkTheme)
     }
 }
 
@@ -124,12 +119,12 @@ private fun Context.createSettingsThemeContext(
     }
 }
 
-private fun Context.resolveThemeColorScheme(
-    darkTheme: Boolean,
-    usePlatformDynamicSurfaceTokens: Boolean,
-): ColorScheme {
+private fun Context.resolveThemeColorScheme(darkTheme: Boolean): ColorScheme {
     val baseScheme = if (darkTheme) darkColorScheme() else lightColorScheme()
-    val primary = resolveThemeColor(android.R.attr.colorPrimary, baseScheme.primary)
+    val primary = resolveThemeColor(
+        androidx.appcompat.R.attr.colorPrimary,
+        baseScheme.primary,
+    )
     val onPrimary = resolveThemeColor(
         com.google.android.material.R.attr.colorOnPrimary,
         baseScheme.onPrimary,
@@ -195,7 +190,12 @@ private fun Context.resolveThemeColorScheme(
         com.google.android.material.R.attr.colorOnSurfaceVariant,
         baseScheme.onSurfaceVariant,
     )
-    val error = resolveThemeColor(android.R.attr.colorError, baseScheme.error)
+    // Material 主题不会把 colorError 映射到平台的 android:colorError，
+    // 读平台属性会穿透到 ROM 的系统强调色，必须读 AppCompat 声明的那个
+    val error = resolveThemeColor(
+        androidx.appcompat.R.attr.colorError,
+        baseScheme.error,
+    )
     val onError = resolveThemeColor(
         com.google.android.material.R.attr.colorOnError,
         baseScheme.onError,
@@ -236,29 +236,6 @@ private fun Context.resolveThemeColorScheme(
         com.google.android.material.R.attr.colorSurfaceContainerLowest,
         baseScheme.surfaceContainerLowest,
     )
-    val surfaceBright =
-        if (usePlatformDynamicSurfaceTokens) {
-            resolveThemeColor(
-                com.google.android.material.R.attr.colorSurfaceBright,
-                baseScheme.surfaceBright,
-            )
-        } else if (darkTheme) {
-            surfaceContainerHighest
-        } else {
-            surface
-        }
-    val surfaceDim =
-        if (usePlatformDynamicSurfaceTokens) {
-            resolveThemeColor(
-                com.google.android.material.R.attr.colorSurfaceDim,
-                baseScheme.surfaceDim,
-            )
-        } else if (darkTheme) {
-            surface
-        } else {
-            surfaceContainerHighest
-        }
-
     return baseScheme.copy(
         primary = primary,
         onPrimary = onPrimary,
@@ -278,9 +255,7 @@ private fun Context.resolveThemeColorScheme(
         onSurface = onSurface,
         surfaceVariant = surfaceVariant,
         onSurfaceVariant = onSurfaceVariant,
-        surfaceBright = surfaceBright,
-        surfaceDim = surfaceDim,
-        surfaceTint = resolveThemeColor(android.R.attr.colorPrimary, baseScheme.surfaceTint),
+        surfaceTint = primary,
         error = error,
         onError = onError,
         errorContainer = errorContainer,
@@ -292,7 +267,12 @@ private fun Context.resolveThemeColorScheme(
         surfaceContainerHighest = surfaceContainerHighest,
         surfaceContainerLow = surfaceContainerLow,
         surfaceContainerLowest = surfaceContainerLowest,
-    )
+    ).let { scheme ->
+        scheme.copy(
+            surfaceBright = deriveSurfaceBright(darkTheme, scheme),
+            surfaceDim = deriveSurfaceDim(darkTheme, scheme),
+        )
+    }
 }
 
 private fun Context.resolveThemeColor(

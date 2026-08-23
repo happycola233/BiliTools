@@ -46,6 +46,7 @@ import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.appContainer
 import com.happycola233.bilitools.ui.applySettingsThemeOverlays
 import com.happycola233.bilitools.ui.enableBiliEdgeToEdge
+import com.happycola233.bilitools.ui.theme.AppSurfaces
 import com.happycola233.bilitools.ui.theme.BiliToolsSettingsTheme
 
 class StreamFormatGuideActivity : AppCompatActivity() {
@@ -259,19 +260,11 @@ private fun StreamFormatSection(
 private object GuideDefaults {
     val pageContainerColor: Color
         @Composable
-        get() = if (!usesPureBlackSurfaces()) {
-            MaterialTheme.colorScheme.surfaceContainer
-        } else {
-            MaterialTheme.colorScheme.surface
-        }
+        get() = AppSurfaces.pageContainerColor
 
     val sectionContainerColor: Color
         @Composable
-        get() = if (!usesPureBlackSurfaces()) {
-            MaterialTheme.colorScheme.surfaceBright
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerHigh
-        }
+        get() = AppSurfaces.cardContainerColor
 
     val topBarColors: TopAppBarColors
         @OptIn(ExperimentalMaterial3Api::class)
@@ -280,10 +273,4 @@ private object GuideDefaults {
             containerColor = pageContainerColor,
             scrolledContainerColor = pageContainerColor,
         )
-
-    @Composable
-    private fun usesPureBlackSurfaces(): Boolean {
-        val colorScheme = MaterialTheme.colorScheme
-        return colorScheme.surface == Color.Black && colorScheme.background == Color.Black
-    }
 }

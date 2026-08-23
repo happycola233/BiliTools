@@ -100,6 +100,7 @@ import com.happycola233.bilitools.ui.login.LoginTab
 import com.happycola233.bilitools.ui.mainBottomBarBottomInset
 import com.happycola233.bilitools.ui.login.LoginUiState
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
+import com.happycola233.bilitools.ui.theme.AppSurfaces
 import com.happycola233.bilitools.ui.theme.BiliToolsSettingsTheme
 import java.util.Locale
 import kotlin.math.abs
@@ -494,7 +495,7 @@ private fun LoginHeader(
             onClick = onBack,
             shapes = IconButtonDefaults.shapes(),
             colors = IconButtonDefaults.filledTonalIconButtonColors(
-                containerColor = MeExpressiveDefaults.listItemContainerColor,
+                containerColor = AppSurfaces.cardContainerColor,
             ),
         ) {
             Icon(
@@ -588,7 +589,7 @@ private fun LoginPanelCard(
 ) {
     val motionScheme = MaterialTheme.motionScheme
     Surface(
-        color = MeExpressiveDefaults.listItemContainerColor,
+        color = AppSurfaces.cardContainerColor,
         shape = MeExpressiveShapes.cardShape,
         modifier = modifier
             .fillMaxWidth()
@@ -1001,7 +1002,7 @@ private fun ProfileCard(
     val showVipBadge = remember(userInfo) { shouldShowVipBadge(userInfo) }
 
     Surface(
-        color = MeExpressiveDefaults.listItemContainerColor,
+        color = AppSurfaces.cardContainerColor,
         shape = MeExpressiveShapes.cardShape,
         modifier = modifier.fillMaxWidth(),
     ) {
@@ -1135,7 +1136,7 @@ private fun ProfileLoadingCard(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        color = MeExpressiveDefaults.listItemContainerColor,
+        color = AppSurfaces.cardContainerColor,
         shape = MeExpressiveShapes.cardShape,
         modifier = modifier.fillMaxWidth(),
     ) {
@@ -1317,7 +1318,7 @@ private fun MePageContainer(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .fillMaxSize()
-            .background(MeExpressiveDefaults.pageContainerColor),
+            .background(AppSurfaces.pageContainerColor),
     ) {
         Box(
             modifier = Modifier
@@ -1418,7 +1419,7 @@ private fun MeClickableListItem(
         leadingContent = leadingContent,
         trailingContent = trailingContent,
         colors = androidx.compose.material3.ListItemDefaults.colors(
-            containerColor = MeExpressiveDefaults.listItemContainerColor,
+            containerColor = AppSurfaces.cardContainerColor,
         ),
         modifier = modifier
             .clip(
@@ -1440,24 +1441,6 @@ private fun MeClickableListItem(
                 },
             ),
     )
-}
-
-private object MeExpressiveDefaults {
-    val pageContainerColor: Color
-        @Composable
-        get() = if (!MaterialTheme.colorScheme.usesPureBlackSurfaces()) {
-            MaterialTheme.colorScheme.surfaceContainer
-        } else {
-            MaterialTheme.colorScheme.surface
-        }
-
-    val listItemContainerColor: Color
-        @Composable
-        get() = if (!MaterialTheme.colorScheme.usesPureBlackSurfaces()) {
-            MaterialTheme.colorScheme.surfaceBright
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerHigh
-        }
 }
 
 private object MeExpressiveShapes {
@@ -1494,10 +1477,6 @@ private fun formatCoins(value: Double?): String {
     } else {
         String.format(Locale.US, "%.1f", value)
     }
-}
-
-private fun androidx.compose.material3.ColorScheme.usesPureBlackSurfaces(): Boolean {
-    return surface == Color.Black && background == Color.Black
 }
 
 private fun ContentScale.toScaleType(): android.widget.ImageView.ScaleType {

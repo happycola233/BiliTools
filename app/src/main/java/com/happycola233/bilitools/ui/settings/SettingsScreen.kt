@@ -155,6 +155,7 @@ import com.happycola233.bilitools.data.SettingsRepository
 import com.happycola233.bilitools.data.TopLevelFolderMode
 import com.happycola233.bilitools.ui.BiliTvLaunchMotion
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
+import com.happycola233.bilitools.ui.theme.AppSurfaces
 import com.happycola233.bilitools.ui.theme.BiliToolsFonts
 import com.happycola233.bilitools.ui.theme.BiliToolsSettingsTheme
 import com.mikepenz.aboutlibraries.Libs
@@ -1119,7 +1120,7 @@ private fun NamingTemplateEditorPanel(
     )
 
     Surface(
-        color = SettingsExpressiveDefaults.listItemContainerColor,
+        color = AppSurfaces.cardContainerColor,
         shape = shape,
         modifier = modifier.fillMaxWidth(),
     ) {
@@ -2275,7 +2276,7 @@ private fun DefaultQualityCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Surface(
-        color = SettingsExpressiveDefaults.listItemContainerColor,
+        color = AppSurfaces.cardContainerColor,
         shape = SettingsExpressiveShapes.cardShape,
         modifier = modifier.fillMaxWidth(),
     ) {
@@ -3134,7 +3135,7 @@ private fun SettingsScaffold(
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .fillMaxSize()
-            .background(SettingsExpressiveDefaults.pageContainerColor),
+            .background(AppSurfaces.pageContainerColor),
     ) {
         androidx.compose.material3.Scaffold(
             topBar = {
@@ -3151,7 +3152,7 @@ private fun SettingsScaffold(
                             onClick = onBack,
                             shapes = IconButtonDefaults.shapes(),
                             colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = SettingsExpressiveDefaults.listItemContainerColor,
+                                containerColor = AppSurfaces.cardContainerColor,
                             ),
                         ) {
                             Icon(
@@ -3164,7 +3165,7 @@ private fun SettingsScaffold(
                     scrollBehavior = scrollBehavior,
                 )
             },
-            containerColor = SettingsExpressiveDefaults.pageContainerColor,
+            containerColor = AppSurfaces.pageContainerColor,
             modifier = modifier
                 .widthIn(max = SettingsExpressiveShapes.paneMaxWidth)
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -3175,34 +3176,18 @@ private fun SettingsScaffold(
 }
 
 private object SettingsExpressiveDefaults {
-    val pageContainerColor: Color
-        @Composable
-        get() = if (!MaterialTheme.colorScheme.usesPureBlackSurfaces()) {
-            MaterialTheme.colorScheme.surfaceContainer
-        } else {
-            MaterialTheme.colorScheme.surface
-        }
-
-    val listItemContainerColor: Color
-        @Composable
-        get() = if (!MaterialTheme.colorScheme.usesPureBlackSurfaces()) {
-            MaterialTheme.colorScheme.surfaceBright
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerHigh
-        }
-
     val topBarColors: TopAppBarColors
         @Composable
         get() = TopAppBarDefaults.topAppBarColors(
-            containerColor = pageContainerColor,
-            scrolledContainerColor = pageContainerColor,
+            containerColor = AppSurfaces.pageContainerColor,
+            scrolledContainerColor = AppSurfaces.pageContainerColor,
         )
 
     val listItemColors: ListItemColors
         @OptIn(ExperimentalMaterial3ExpressiveApi::class)
         @Composable
         get() = ListItemDefaults.segmentedColors(
-            containerColor = listItemContainerColor,
+            containerColor = AppSurfaces.cardContainerColor,
         )
 
     val switchColors: SwitchColors
@@ -3210,10 +3195,6 @@ private object SettingsExpressiveDefaults {
         get() = SwitchDefaults.colors(
             checkedIconColor = MaterialTheme.colorScheme.primary,
         )
-}
-
-private fun androidx.compose.material3.ColorScheme.usesPureBlackSurfaces(): Boolean {
-    return surface == Color.Black && background == Color.Black
 }
 
 private object SettingsExpressiveShapes {
