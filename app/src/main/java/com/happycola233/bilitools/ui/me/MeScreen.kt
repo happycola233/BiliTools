@@ -101,6 +101,7 @@ import com.happycola233.bilitools.ui.mainBottomBarBottomInset
 import com.happycola233.bilitools.ui.login.LoginUiState
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import com.happycola233.bilitools.ui.theme.AppSurfaces
+import com.happycola233.bilitools.ui.theme.BiliToolsFonts
 import com.happycola233.bilitools.ui.theme.BiliToolsSettingsTheme
 import java.util.Locale
 import kotlin.math.abs
@@ -1229,6 +1230,7 @@ private fun ProfileStat(
         Text(
             text = value,
             style = MaterialTheme.typography.titleMedium,
+            fontFamily = BiliToolsFonts.googleSansFlexRond100,
             fontWeight = FontWeight.Bold,
         )
     }
