@@ -96,7 +96,7 @@ internal fun LiquidBottomTabs(
 ) {
     val isLightTheme = !isSystemInDarkTheme()
 
-    // 与下载页批量管理玻璃面板同一配方（亮度/饱和度调节 + 深度折射 + 色散 + 边缘高光），保证全局玻璃质感一致
+    // 与下载页玻璃浮窗同一配方（亮度/饱和度调节 + 深度折射 + 色散 + 边缘高光），保证全局玻璃质感一致
     val luminance = if (isLightTheme) 0.58f else 0.42f
     val l = (luminance * 2f - 1f).let { sign(it) * it * it }
     val glassBrightness = if (l > 0f) lerp(0.1f, 0.5f, l) else lerp(0.1f, -0.2f, -l)

@@ -1,7 +1,6 @@
 package com.happycola233.bilitools.ui.liquidtabs
 
 import android.view.View
-import android.view.ViewTreeObserver
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -16,23 +15,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.ContentDrawScope
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.happycola233.bilitools.R
+import com.happycola233.bilitools.ui.liquidglass.rememberViewLayerBackdrop
 import com.happycola233.bilitools.ui.theme.AppSurfaces
 import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 
 private data class LiquidTabSpec(
     @param:DrawableRes val iconRes: Int,
@@ -63,47 +56,15 @@ fun MainLiquidBottomBar(
     widthFraction: Float,
     modifier: Modifier = Modifier,
 ) {
-    val contentVersion = remember { mutableIntStateOf(0) }
-    DisposableEffect(backgroundView) {
-        var lastX = backgroundView.x
-        var lastY = backgroundView.y
-        val listener = ViewTreeObserver.OnPreDrawListener {
-            val moved = backgroundView.x != lastX || backgroundView.y != lastY
-            if (moved || backgroundView.isDirty) {
-                lastX = backgroundView.x
-                lastY = backgroundView.y
-                contentVersion.intValue++
-            }
-            true
-        }
-        backgroundView.viewTreeObserver.addOnPreDrawListener(listener)
-        onDispose {
-            backgroundView.viewTreeObserver.takeIf { it.isAlive }?.removeOnPreDrawListener(listener)
-        }
-    }
-
     // 采样层的底色需与页面底色一致，否则玻璃在内容空白处会折射出异色
     val backdropBaseColor = AppSurfaces.pageContainerColor
-    val onDrawBackdrop: ContentDrawScope.() -> Unit = remember(backgroundView, backdropBaseColor) {
-        {
-            contentVersion.intValue // 读取版本号以订阅 View 内容变化
-            drawRect(backdropBaseColor)
-            drawIntoCanvas { canvas ->
-                val native = canvas.nativeCanvas
-                val checkpoint = native.save()
-                native.translate(backgroundView.x, backgroundView.y)
-                backgroundView.draw(native)
-                native.restoreToCount(checkpoint)
-            }
-        }
-    }
-    val backdrop = rememberLayerBackdrop(onDraw = onDrawBackdrop)
+    val backdrop = rememberViewLayerBackdrop(backgroundView, backdropBaseColor)
 
     Box(modifier.fillMaxSize()) {
         // 采样层锚点：与整个浮层同尺寸，保证坐标系与 Activity 内容区对齐
         Box(Modifier.fillMaxSize().layerBackdrop(backdrop))
 
-        // 表层与下载页批量管理玻璃面板同配方：纯白/纯黑叠加，玻璃质感由折射与高光呈现
+        // 表层与下载页玻璃浮窗同配方：纯白/纯黑叠加，玻璃质感由折射与高光呈现
         val isLightTheme = !isSystemInDarkTheme()
         LiquidBottomTabs(
             selectedTabIndex = selectedTabIndex,

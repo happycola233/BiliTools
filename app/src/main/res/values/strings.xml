@@ -490,7 +490,7 @@
     <string name="settings_dark_mode_pure_black">深色模式使用纯黑背景</string>
     <string name="settings_dark_mode_pure_black_desc">仅在深色模式生效，将背景颜色设为 #000000</string>
     <string name="settings_downloads_glass_debug">启用液态玻璃调试窗口</string>
-    <string name="settings_downloads_glass_debug_desc">在下载页显示液态玻璃调试悬浮窗，可分别调节批量管理浮窗与底部导航栏的玻璃参数并实时预览（需要调参时可临时启用，参数将持久化保存）。</string>
+    <string name="settings_downloads_glass_debug_desc">在下载页显示液态玻璃调试悬浮窗，可分别调节下载页玻璃浮窗与底部导航栏的玻璃参数并实时预览（需要调参时可临时启用，参数将持久化保存）。</string>
     <string name="settings_liquid_bottom_tabs">液态玻璃底栏</string>
     <string name="settings_liquid_bar_width">液态底栏宽度</string>
     <string name="settings_liquid_bar_width_desc">调整底栏胶囊占屏幕可用宽度的比例。</string>

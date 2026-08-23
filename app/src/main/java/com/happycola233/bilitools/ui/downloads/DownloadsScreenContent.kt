@@ -34,7 +34,6 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.TextButton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -64,8 +63,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -81,10 +78,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.util.lerp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.core.text.HtmlCompat
 import android.text.style.MetricAffectingSpan
 import androidx.compose.material3.FloatingActionButtonMenu
@@ -102,13 +96,7 @@ import com.happycola233.bilitools.ui.mainBottomBarBottomInset
 import com.happycola233.bilitools.ui.theme.AppSurfaces
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
-import com.kyant.backdrop.drawBackdrop
-import com.kyant.backdrop.effects.blur
-import com.kyant.backdrop.effects.colorControls
-import com.kyant.backdrop.effects.lens
-import com.kyant.backdrop.highlight.Highlight
 import java.util.Locale
-import kotlin.math.sign
 
 sealed interface DownloadsDialogState {
     data class DeleteTask(
@@ -136,11 +124,6 @@ enum class DownloadsTaskAction {
     Open,
     Share,
 }
-
-private val downloadsTaskActionsOuterHorizontalPadding = 12.dp
-private val downloadsTaskActionsContentHorizontalPadding = 24.dp
-private val downloadsTaskActionsIconSlotWidth = 24.dp
-private val downloadsTaskActionsIconTextSpacing = 12.dp
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -184,7 +167,6 @@ fun DownloadsScreenContent(
     onDeleteFiles: () -> Unit,
     onDialogDismiss: () -> Unit,
     onDialogConfirm: (Boolean) -> Unit,
-    onTaskActionSelected: (DownloadsTaskAction) -> Unit,
     onToggleSection: (DownloadSectionType) -> Unit,
     onToggleGroupExpanded: (Long) -> Unit,
     onSwipedGroupChange: (Long?) -> Unit,
@@ -224,6 +206,14 @@ fun DownloadsScreenContent(
         if (selectionMode) panelHeightPx + with(density) { 20.dp.roundToPx() } else 0
     val targetListBottomPaddingDp = with(density) { (baseBottomPaddingPx + extraBottomPaddingPx).toDp() }
     val motionScheme = MaterialTheme.motionScheme
+    val downloadsGlassStyle = DownloadsGlassStyle(
+        cornerRadiusDp = glassCornerRadiusDp,
+        blurRadiusDp = glassBlurRadiusDp,
+        refractionHeightDp = glassRefractionHeightDp,
+        refractionAmountFrac = glassRefractionAmountFrac,
+        chromaticAberration = glassChromaticAberration,
+        surfaceAlpha = glassSurfaceAlpha,
+    )
     val listBottomPaddingDp by animateDpAsState(
         targetValue = targetListBottomPaddingDp,
         animationSpec = motionScheme.defaultSpatialSpec(),
@@ -302,13 +292,7 @@ fun DownloadsScreenContent(
                 deleteEnabled = batchDeleteEnabled,
                 controlsOffset = controlsOffsetDp,
                 bottomPadding = panelBottomPadding,
-                debugOverrideEnabled = true,
-                cornerRadiusDp = glassCornerRadiusDp,
-                blurRadiusDp = glassBlurRadiusDp,
-                refractionHeightDp = glassRefractionHeightDp,
-                refractionAmountFrac = glassRefractionAmountFrac,
-                chromaticAberration = glassChromaticAberration,
-                surfaceAlpha = glassSurfaceAlpha,
+                glassStyle = downloadsGlassStyle,
                 onExitSelection = onExitSelection,
                 onSelectAll = onSelectAll,
                 onClearRecords = onClearRecords,
@@ -352,12 +336,6 @@ fun DownloadsScreenContent(
             onDismiss = onDialogDismiss,
             onConfirm = onDialogConfirm,
         )
-        DownloadsTaskActionsDialog(
-            dialogState = dialogState,
-            onDismiss = onDialogDismiss,
-            onActionSelected = onTaskActionSelected,
-        )
-
         if (glassDebugEnabled) {
             GlassDebugPanel(
                 modifier = Modifier
@@ -533,114 +511,6 @@ private fun DownloadsDeleteDialog(
     )
 }
 
-@Composable
-private fun DownloadsTaskActionsDialog(
-    dialogState: DownloadsDialogState?,
-    onDismiss: () -> Unit,
-    onActionSelected: (DownloadsTaskAction) -> Unit,
-) {
-    val state = dialogState as? DownloadsDialogState.TaskActions ?: return
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = true),
-    ) {
-        Surface(
-            shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 0.dp,
-            shadowElevation = 16.dp,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(
-                modifier = Modifier.padding(
-                    start = downloadsTaskActionsOuterHorizontalPadding,
-                    end = downloadsTaskActionsOuterHorizontalPadding,
-                    top = 20.dp,
-                    bottom = 12.dp,
-                ),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    text = state.title,
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 4,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(
-                        start = downloadsTaskActionsContentHorizontalPadding,
-                        end = downloadsTaskActionsContentHorizontalPadding,
-                        top = 12.dp,
-                        bottom = 8.dp,
-                    ),
-                )
-                DownloadsTaskActionRow(
-                    iconRes = R.drawable.ic_open_in_new_24,
-                    text = stringResource(R.string.download_action_open),
-                    onClick = { onActionSelected(DownloadsTaskAction.Open) },
-                )
-                DownloadsTaskActionRow(
-                    iconRes = R.drawable.ic_share_24,
-                    text = stringResource(R.string.download_action_share),
-                    onClick = { onActionSelected(DownloadsTaskAction.Share) },
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun DownloadsTaskActionRow(
-    iconRes: Int,
-    text: String,
-    onClick: () -> Unit,
-) {
-    val haptics = rememberAppHaptics()
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 2.dp),
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .clickable {
-                    haptics.tap()
-                    onClick()
-                }
-                .padding(
-                    start = downloadsTaskActionsContentHorizontalPadding,
-                    end = downloadsTaskActionsContentHorizontalPadding,
-                    top = 16.dp,
-                    bottom = 16.dp,
-                ),
-        ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.width(downloadsTaskActionsIconSlotWidth),
-            ) {
-                Icon(
-                    painter = painterResource(iconRes),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-            Text(
-                text = text,
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier
-                    .padding(start = downloadsTaskActionsIconTextSpacing)
-                    .weight(1f),
-            )
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun DownloadsManageFab(
@@ -723,24 +593,13 @@ private fun DownloadsBatchGlassPanel(
     deleteEnabled: Boolean,
     controlsOffset: Dp,
     bottomPadding: Dp,
-    debugOverrideEnabled: Boolean,
-    cornerRadiusDp: Float,
-    blurRadiusDp: Float,
-    refractionHeightDp: Float,
-    refractionAmountFrac: Float,
-    chromaticAberration: Boolean,
-    surfaceAlpha: Float,
+    glassStyle: DownloadsGlassStyle,
     onExitSelection: () -> Unit,
     onSelectAll: () -> Unit,
     onClearRecords: () -> Unit,
     onDeleteFiles: () -> Unit,
     onHeightChanged: (Int) -> Unit,
 ) {
-    val isLightTheme = !isSystemInDarkTheme()
-    val luminance = if (isLightTheme) 0.58f else 0.42f
-    val effectiveSurfaceAlpha = surfaceAlpha.coerceIn(0f, 1f)
-    val surfaceOverlayColor = if (isLightTheme) Color.White else Color.Black
-
     val panelTextColor = materialColor(
         com.google.android.material.R.attr.colorOnSurface,
         0xFF101418.toInt(),
@@ -758,39 +617,7 @@ private fun DownloadsBatchGlassPanel(
             .offset(y = controlsOffset)
             .blockTouchThrough()
             .onSizeChanged { onHeightChanged(it.height) }
-            .drawBackdrop(
-                backdrop = backdrop,
-                shape = { RoundedCornerShape(cornerRadiusDp.dp) },
-                effects = {
-                    val l = (luminance * 2f - 1f).let { sign(it) * it * it }
-                    colorControls(
-                        brightness =
-                            if (l > 0f) lerp(0.1f, 0.5f, l)
-                            else lerp(0.1f, -0.2f, -l),
-                        contrast =
-                            if (l > 0f) lerp(1f, 0f, l)
-                            else 1f,
-                        saturation = 1.5f,
-                    )
-                    val adaptiveBlurPx =
-                        if (l > 0f) lerp(8.dp.toPx(), 16.dp.toPx(), l)
-                        else lerp(8.dp.toPx(), 2.dp.toPx(), -l)
-                    val activeBlurPx =
-                        if (debugOverrideEnabled) blurRadiusDp.dp.toPx()
-                        else adaptiveBlurPx
-                    blur(activeBlurPx)
-                    lens(
-                        refractionHeightDp.dp.toPx(),
-                        size.minDimension * refractionAmountFrac.coerceIn(0f, 1f),
-                        depthEffect = true,
-                        chromaticAberration = chromaticAberration,
-                    )
-                },
-                highlight = { Highlight.Plain },
-                onDrawSurface = {
-                    drawRect(surfaceOverlayColor.copy(alpha = effectiveSurfaceAlpha))
-                },
-            )
+            .downloadsGlassSurface(backdrop = backdrop, style = glassStyle)
             .padding(horizontal = 20.dp, vertical = 16.dp)
             .animateContentSize(
                 animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
@@ -947,7 +774,7 @@ private fun GlassDebugPanel(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            DebugSectionHeader(title = "批量管理浮窗", onReset = onReset)
+            DebugSectionHeader(title = "下载页玻璃浮窗", onReset = onReset)
             DebugStepperRow(
                 label = "圆角半径",
                 value = "${formatFloat(cornerRadiusDp)} dp",
@@ -1295,16 +1122,6 @@ private fun formatFloat(value: Float): String {
     return String.format(Locale.US, "%.2f", value)
 }
 
-private fun Modifier.blockTouchThrough(): Modifier {
-    return pointerInput(Unit) {
-        awaitPointerEventScope {
-            while (true) {
-                val event = awaitPointerEvent(PointerEventPass.Final)
-                event.changes.forEach { it.consume() }
-            }
-        }
-    }
-}
 
 @Composable
 private fun materialColor(

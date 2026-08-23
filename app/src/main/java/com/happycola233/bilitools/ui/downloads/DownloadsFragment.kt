@@ -20,6 +20,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.PopupMenu
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -154,7 +155,6 @@ class DownloadsFragment : Fragment() {
                     onDeleteFiles = { confirmBatchDelete(deleteFile = true) },
                     onDialogDismiss = { dismissDownloadsDialog() },
                     onDialogConfirm = { deleteFile -> confirmDownloadsDialog(deleteFile) },
-                    onTaskActionSelected = { action -> performTaskAction(action) },
                     onToggleSection = { toggleSection(it) },
                     onToggleGroupExpanded = { toggleGroupExpanded(it) },
                     onSwipedGroupChange = { composeSwipedGroupId = it },
@@ -230,11 +230,19 @@ class DownloadsFragment : Fragment() {
                     if (composeSwipedGroupId !in currentIds) {
                         composeSwipedGroupId = null
                     }
-                    composeDialogState = pruneDownloadsDialogState(
-                        dialogState = composeDialogState,
+                    val previousDialogState = composeDialogState
+                    val prunedDialogState = pruneDownloadsDialogState(
+                        dialogState = previousDialogState,
                         currentGroupIds = currentIds,
                         currentTaskIds = currentTaskIds,
                     )
+                    if (
+                        previousDialogState is DownloadsDialogState.TaskActions &&
+                        prunedDialogState == null
+                    ) {
+                        DownloadsTaskActionsGlassOverlay.dismiss(requireActivity() as AppCompatActivity)
+                    }
+                    composeDialogState = prunedDialogState
                     updateSelectionUi()
                     composeEmptyStateVisible = list.isEmpty()
                     val manageState = calculateGlobalManageState()
@@ -434,6 +442,9 @@ class DownloadsFragment : Fragment() {
     }
 
     private fun dismissDownloadsDialog() {
+        if (composeDialogState is DownloadsDialogState.TaskActions) {
+            (activity as? AppCompatActivity)?.let(DownloadsTaskActionsGlassOverlay::dismiss)
+        }
         if (composeDialogState is DownloadsDialogState.DeleteTask ||
             composeDialogState is DownloadsDialogState.DeleteGroup
         ) {
@@ -507,9 +518,26 @@ class DownloadsFragment : Fragment() {
         if (!canShowTaskActionsDialog(item)) {
             return
         }
-        composeDialogState = DownloadsDialogState.TaskActions(
+        val dialogState = DownloadsDialogState.TaskActions(
             itemId = item.id,
             title = item.fileName.ifBlank { item.title },
+        )
+        composeDialogState = dialogState
+        val activity = requireActivity() as AppCompatActivity
+        DownloadsTaskActionsGlassOverlay.show(
+            activity = activity,
+            backgroundView = activity.findViewById(R.id.container),
+            state = dialogState,
+            onDismiss = {
+                if (composeDialogState == dialogState) {
+                    composeDialogState = null
+                }
+            },
+            onActionSelected = { action ->
+                if (composeDialogState == dialogState) {
+                    performTaskAction(action)
+                }
+            },
         )
     }
 
@@ -960,6 +988,8 @@ class DownloadsFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        (activity as? AppCompatActivity)?.let(DownloadsTaskActionsGlassOverlay::dismiss)
+        composeDialogState = null
         super.onDestroyView()
         val appBar = requireActivity().findViewById<com.google.android.material.appbar.AppBarLayout>(R.id.app_bar)
         offsetListener?.let { appBar?.removeOnOffsetChangedListener(it) }
