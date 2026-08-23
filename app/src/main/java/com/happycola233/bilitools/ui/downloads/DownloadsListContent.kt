@@ -257,7 +257,7 @@ internal fun DownloadsListContent(
             .nestedScroll(nestedScrollInterop),
     ) {
         sections.forEach { section ->
-            val useVisibilitySectionAnimation = section.groups.size <= SECTION_VISIBILITY_ANIMATION_THRESHOLD
+            val useVisibilitySectionAnimation = section.groups.size <= MAX_GROUP_COUNT_FOR_FULL_SECTION_ANIMATION
             stickyHeader(key = "section-${section.type}") {
                 DownloadsSectionHeader(
                     section = section,
@@ -391,10 +391,6 @@ private fun DownloadsSectionHeader(
         DownloadSectionType.Downloading -> stringResource(R.string.downloads_section_downloading)
         DownloadSectionType.Downloaded -> stringResource(R.string.downloads_section_downloaded)
     }
-    val iconRes = when (section.type) {
-        DownloadSectionType.Downloading -> R.drawable.ic_downloading_24
-        DownloadSectionType.Downloaded -> R.drawable.ic_download_done_24
-    }
     val displayTitle = title.ifBlank {
         when (section.type) {
             DownloadSectionType.Downloading -> "正在下载"
@@ -426,23 +422,12 @@ private fun DownloadsSectionHeader(
                 )
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    painter = painterResource(iconRes),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = displayTitle,
-                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                )
-            }
+            Text(
+                text = displayTitle,
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+            )
 
             Text(
                 text = buildSectionMetaLabelText(section),
@@ -1147,7 +1132,8 @@ private enum class TaskAction {
     Retry,
 }
 
-private const val SECTION_VISIBILITY_ANIMATION_THRESHOLD = 24
+// 垂直伸缩会在动画期间持续触发布局计算，超大分区仍使用轻量列表项动画。
+private const val MAX_GROUP_COUNT_FOR_FULL_SECTION_ANIMATION = 64
 
 private fun buildDownloadsSections(
     groups: List<DownloadGroup>,
