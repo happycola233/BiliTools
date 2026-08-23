@@ -15,6 +15,7 @@ import org.gradle.api.tasks.TaskAction
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.aboutlibraries.android)
 }
 
 val appReleaseVersionCode = 13
@@ -310,6 +311,7 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.svg)
     implementation(libs.markwon.core)
+    implementation(libs.aboutlibraries.core)
     implementation(libs.jaudiotagger)
     implementation(libs.ffmpeg.kit.main.android16kb)
     testImplementation(libs.junit)

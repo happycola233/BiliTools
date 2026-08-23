@@ -540,6 +540,8 @@
 ]]></string>
     <string name="settings_license_title">开源协议</string>
     <string name="settings_license_summary">GPL-3.0-or-later</string>
+    <string name="settings_opensource_licenses_title">开源许可证</string>
+    <string name="settings_opensource_licenses_summary">本应用使用的第三方开源库</string>
     <string name="settings_issue_report_enabled_title">记录详细 issue 日志</string>
     <string name="settings_issue_report_enabled_desc">日志仅保存在本地，导出时会附带设备信息、当前设置和网络状态摘要；Cookie、Set-Cookie 与 Authorization 已做脱敏。</string>
     <string name="settings_issue_report_export_title">导出并分享日志</string>

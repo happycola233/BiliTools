@@ -3,6 +3,7 @@ package com.happycola233.bilitools.ui
 import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Color
+import android.graphics.Typeface
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.View
@@ -14,6 +15,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.core.content.res.ResourcesCompat
 import androidx.core.os.bundleOf
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.ViewCompat
@@ -56,6 +58,9 @@ class MainActivity : AppCompatActivity() {
     private val launchFlashGuardTimeoutRunnable = Runnable { removeLaunchFlashGuard() }
     private val liquidTabIndex = mutableIntStateOf(0)
     private var liquidBarContentSet = false
+    private val brandTitleTypeface: Typeface? by lazy {
+        ResourcesCompat.getFont(this, R.font.google_sans_flex_600_rond100)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // 启动页背景色必须在 installSplashScreen() 把主题切到 postSplashScreenTheme 之前读取
@@ -98,6 +103,8 @@ class MainActivity : AppCompatActivity() {
             installLaunchFlashGuard(splashBackgroundColor)
         }
         requestInsetsRefresh()
+
+        applyMainTitleTypeface(binding.viewPager.currentItem)
 
         val pagerAdapter = MainPagerAdapter(this)
         binding.viewPager.adapter = pagerAdapter
@@ -222,8 +229,25 @@ class MainActivity : AppCompatActivity() {
             2 -> getString(R.string.nav_me)
             else -> getString(R.string.app_name)
         }
+        applyMainTitleTypeface(position)
 
         updateTopBarColor(position)
+    }
+
+    /** 解析页标题「BiliTools」使用 Google Sans Flex（ROND=100）品牌字体，其余页还原布局中定义的标题样式。 */
+    private fun applyMainTitleTypeface(position: Int) {
+        val brandTypeface = brandTitleTypeface?.takeIf { position == 0 }
+        if (brandTypeface != null) {
+            binding.collapsingToolbar.setCollapsedTitleTypeface(brandTypeface)
+            binding.collapsingToolbar.setExpandedTitleTypeface(brandTypeface)
+        } else {
+            binding.collapsingToolbar.setCollapsedTitleTextAppearance(
+                R.style.TextAppearance_BiliTools_Main_CollapsedTitle,
+            )
+            binding.collapsingToolbar.setExpandedTitleTextAppearance(
+                R.style.TextAppearance_BiliTools_Main_ExpandedTitle,
+            )
+        }
     }
 
     override fun onRestoreInstanceState(savedInstanceState: Bundle) {

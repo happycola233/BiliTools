@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Google Sans Flex 品牌变体：600 字重 + ROND=100 圆角轴（变体轴烘焙进资源，View 与 Compose 共用） -->
+<font-family xmlns:android="http://schemas.android.com/apk/res/android">
+    <font
+        android:font="@font/google_sans_flex"
+        android:fontStyle="normal"
+        android:fontWeight="600"
+        android:fontVariationSettings="'wght' 600, 'ROND' 100" />
+</font-family>

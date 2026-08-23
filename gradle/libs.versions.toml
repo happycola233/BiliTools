@@ -24,6 +24,7 @@ compose = "1.12.0"
 composeMaterial3 = "1.5.0-alpha26"
 backdrop = "2.0.0"
 ffmpegKit = "6.1.7"
+aboutLibraries = "15.0.4"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -60,7 +61,9 @@ androidx-compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graph
 backdrop = { group = "io.github.kyant0", name = "backdrop", version.ref = "backdrop" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "composeMaterial3" }
 ffmpeg-kit-main-android16kb = { group = "io.github.jamaismagic.ffmpeg", name = "ffmpeg-kit-main-16kb", version.ref = "ffmpegKit" }
+aboutlibraries-core = { group = "com.mikepenz", name = "aboutlibraries-core", version.ref = "aboutLibraries" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+aboutlibraries-android = { id = "com.mikepenz.aboutlibraries.plugin.android", version.ref = "aboutLibraries" }

@@ -20,6 +20,7 @@ sealed class SettingsDestination : NavKey {
     data object Naming : SettingsDestination()
     data object Appearance : SettingsDestination()
     data object About : SettingsDestination()
+    data object OpenSourceLicenses : SettingsDestination()
 }
 
 class SettingsViewModel(
@@ -32,10 +33,17 @@ class SettingsViewModel(
 
     fun navigateTo(destination: SettingsDestination) {
         if (backStack.lastOrNull() == destination) return
-        if (
-            destination == SettingsDestination.DefaultDownloadQuality &&
-            backStack.lastOrNull() == SettingsDestination.General
-        ) {
+        // 允许在二级页面之上继续下钻的三级页面
+        val isThirdLevel =
+            (
+                destination == SettingsDestination.DefaultDownloadQuality &&
+                    backStack.lastOrNull() == SettingsDestination.General
+                ) ||
+                (
+                    destination == SettingsDestination.OpenSourceLicenses &&
+                        backStack.lastOrNull() == SettingsDestination.About
+                    )
+        if (isThirdLevel) {
             backStack.add(destination)
             return
         }

@@ -3,7 +3,6 @@ package com.happycola233.bilitools.ui.settings
 import android.os.Build
 import android.text.format.Formatter
 import androidx.annotation.DrawableRes
-import androidx.annotation.RawRes
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -30,10 +29,8 @@ import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,7 +55,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -110,6 +106,8 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
@@ -157,7 +155,10 @@ import com.happycola233.bilitools.data.SettingsRepository
 import com.happycola233.bilitools.data.TopLevelFolderMode
 import com.happycola233.bilitools.ui.BiliTvLaunchMotion
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
+import com.happycola233.bilitools.ui.theme.BiliToolsFonts
 import com.happycola233.bilitools.ui.theme.BiliToolsSettingsTheme
+import com.mikepenz.aboutlibraries.Libs
+import com.mikepenz.aboutlibraries.entity.Library
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -312,9 +313,19 @@ fun BiliToolsSettingsContent(
                         issueReportExporting = issueReportExporting,
                         issueReportClearing = issueReportClearing,
                         onCheckUpdate = onCheckUpdate,
+                        onOpenSourceLicenses = {
+                            onNavigate(SettingsDestination.OpenSourceLicenses)
+                        },
                         onIssueReportLoggingChange = onIssueReportLoggingChange,
                         onExportIssueReport = onExportIssueReport,
                         onClearIssueReport = onClearIssueReport,
+                        onBack = onNavigateBack,
+                        modifier = modifier,
+                    )
+                }
+
+                entry<SettingsDestination.OpenSourceLicenses> {
+                    OpenSourceLicensesScreen(
                         onBack = onNavigateBack,
                         modifier = modifier,
                     )
@@ -1641,6 +1652,7 @@ private fun AboutSettingsScreen(
     issueReportExporting: Boolean,
     issueReportClearing: Boolean,
     onCheckUpdate: () -> Unit,
+    onOpenSourceLicenses: () -> Unit,
     onIssueReportLoggingChange: (Boolean) -> Unit,
     onExportIssueReport: () -> Unit,
     onClearIssueReport: () -> Unit,
@@ -1721,12 +1733,14 @@ private fun AboutSettingsScreen(
                             Text(
                                 text = stringResource(R.string.app_name),
                                 style = MaterialTheme.typography.titleLarge,
+                                fontFamily = BiliToolsFonts.googleSansFlexRond100,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface,
                             )
                             Text(
                                 text = "$versionName ($versionCode)",
                                 style = MaterialTheme.typography.labelLarge,
+                                fontFamily = BiliToolsFonts.googleSansFlexRond100,
                                 color = MaterialTheme.colorScheme.primary,
                             )
                         }
@@ -1749,7 +1763,7 @@ private fun AboutSettingsScreen(
 
             item {
                 ClickableListItem(
-                    items = 2,
+                    items = 3,
                     index = 0,
                     leadingContent = { SettingsItemIcon(R.drawable.ic_update_24) },
                     headlineContent = {
@@ -1768,7 +1782,7 @@ private fun AboutSettingsScreen(
 
             item {
                 ClickableListItem(
-                    items = 2,
+                    items = 3,
                     index = 1,
                     leadingContent = { SettingsItemIcon(R.drawable.ic_gavel_24) },
                     headlineContent = {
@@ -1776,6 +1790,24 @@ private fun AboutSettingsScreen(
                     },
                     supportingContent = { Text(stringResource(R.string.settings_license_summary)) },
                     onClick = { showLicense = true },
+                )
+            }
+
+            item {
+                ClickableListItem(
+                    items = 3,
+                    index = 2,
+                    leadingContent = { SettingsItemIcon(R.drawable.ic_code_24) },
+                    headlineContent = {
+                        SettingsItemTitle(stringResource(R.string.settings_opensource_licenses_title))
+                    },
+                    supportingContent = {
+                        Text(stringResource(R.string.settings_opensource_licenses_summary))
+                    },
+                    trailingContent = {
+                        SettingsItemIcon(R.drawable.ic_chevron_right_24)
+                    },
+                    onClick = onOpenSourceLicenses,
                 )
             }
 
@@ -1859,11 +1891,7 @@ private fun AboutSettingsScreen(
     }
 
     if (showLicense) {
-        LicenseBottomSheet(
-            title = stringResource(R.string.settings_license_title),
-            licenseRawRes = R.raw.license_gpl3,
-            onDismiss = { showLicense = false },
-        )
+        LicenseBottomSheet(onDismiss = { showLicense = false })
     }
 }
 
@@ -2892,53 +2920,136 @@ private fun ClickableListItem(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun LicenseBottomSheet(
-    title: String,
-    @RawRes licenseRawRes: Int,
-    onDismiss: () -> Unit,
+private fun OpenSourceLicensesScreen(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val licenseText = rememberRawTextResource(licenseRawRes)
-    val licenseHorizontalScrollState = rememberScrollState()
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val context = LocalContext.current
+    // aboutlibraries.json 由 AboutLibraries Gradle 插件在构建期生成并打进 res/raw
+    val libraries = remember {
+        val json = context.resources.openRawResource(R.raw.aboutlibraries)
+            .bufferedReader()
+            .use { it.readText() }
+        Libs.Builder().withJson(json).build().libraries
+    }
+
+    SettingsScaffold(
+        title = stringResource(R.string.settings_opensource_licenses_title),
+        subtitle = stringResource(R.string.settings_about_title),
+        onBack = onBack,
+        scrollBehavior = scrollBehavior,
+        modifier = modifier,
+    ) { innerPadding ->
         LazyColumn(
-            modifier = Modifier.padding(horizontal = 16.dp),
-            contentPadding = PaddingValues(bottom = 24.dp),
+            contentPadding = innerPadding,
+            modifier = Modifier.fillMaxSize(),
         ) {
-            item {
+            item { Spacer(Modifier.height(8.dp)) }
+            items(libraries) { library ->
+                OpenSourceLibraryItem(library)
+            }
+            item { Spacer(Modifier.height(16.dp)) }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun OpenSourceLibraryItem(library: Library) {
+    val uriHandler = LocalUriHandler.current
+    val haptics = rememberAppHaptics()
+    val website = library.website?.takeIf { it.isNotBlank() }
+    val author = remember(library) {
+        library.developers
+            .mapNotNull { developer -> developer.name?.takeIf(String::isNotBlank) }
+            .joinToString(", ")
+            .ifEmpty { library.organization?.name.orEmpty() }
+    }
+    val version = library.artifactVersion?.takeIf { it.isNotBlank() }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = website != null) {
+                haptics.tap()
+                website?.let(uriHandler::openUri)
+            }
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = library.name,
+                style = MaterialTheme.typography.titleMedium,
+                fontFamily = BiliToolsFonts.googleSansFlexRond100,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            if (author.isNotEmpty()) {
                 Text(
-                    text = title,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
+                    text = author,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = BiliToolsFonts.googleSansFlex,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            item {
-                SelectionContainer {
-                    Text(
-                        text = licenseText,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp,
-                        ),
-                        softWrap = false,
-                        modifier = Modifier.horizontalScroll(licenseHorizontalScrollState),
-                    )
+            if (library.licenses.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    library.licenses.forEach { license ->
+                        LicenseNameChip(license.name)
+                    }
                 }
             }
+        }
+        if (version != null) {
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = version,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontFamily = FontFamily.Monospace,
+                ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.End,
+                modifier = Modifier.widthIn(max = 132.dp),
+            )
         }
     }
 }
 
 @Composable
-private fun rememberRawTextResource(@RawRes rawRes: Int): String {
-    val context = LocalContext.current
-    return remember(rawRes) {
-        context.resources.openRawResource(rawRes).bufferedReader().use { it.readText() }
+private fun LicenseNameChip(name: String) {
+    // 按许可证名称哈希取基准色，深浅色模式分别调和出柔和底色与可读前景色
+    val isDarkTheme = MaterialTheme.colorScheme.onSurface.luminance() > 0.5f
+    val baseColor = licenseChipBaseColors[abs(name.hashCode()) % licenseChipBaseColors.size]
+    val containerColor = baseColor.copy(alpha = if (isDarkTheme) 0.28f else 0.14f)
+    val contentColor = if (isDarkTheme) {
+        lerp(baseColor, Color.White, 0.55f)
+    } else {
+        lerp(baseColor, Color.Black, 0.30f)
     }
+    Text(
+        text = name,
+        style = MaterialTheme.typography.labelSmall,
+        fontFamily = BiliToolsFonts.googleSansFlex,
+        color = contentColor,
+        modifier = Modifier
+            .background(containerColor, RoundedCornerShape(50))
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+    )
 }
+
+private val licenseChipBaseColors = listOf(
+    Color(0xFF7E57C2),
+    Color(0xFF5C6BC0),
+    Color(0xFF1E88E5),
+    Color(0xFF00897B),
+    Color(0xFF43A047),
+    Color(0xFFF57C00),
+    Color(0xFFD81B60),
+)
 
 private fun buildIssueReportSummary(
     context: android.content.Context,
