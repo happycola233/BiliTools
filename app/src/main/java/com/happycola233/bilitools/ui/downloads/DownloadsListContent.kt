@@ -67,10 +67,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
@@ -230,7 +234,7 @@ internal fun DownloadsListContent(
     onTaskPauseResume: (DownloadItem) -> Unit,
     onTaskRetry: (DownloadItem) -> Unit,
     onTaskDelete: (DownloadItem) -> Unit,
-    onTaskClick: (DownloadItem) -> Unit,
+    onTaskClick: (DownloadItem, Rect) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
@@ -470,7 +474,7 @@ private fun DownloadsGroupCard(
     onTaskPauseResume: (DownloadItem) -> Unit,
     onTaskRetry: (DownloadItem) -> Unit,
     onTaskDelete: (DownloadItem) -> Unit,
-    onTaskClick: (DownloadItem) -> Unit,
+    onTaskClick: (DownloadItem, Rect) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -934,7 +938,7 @@ private fun DownloadsGroupCard(
                                     onPauseResume = { onTaskPauseResume(task) },
                                     onRetry = { onTaskRetry(task) },
                                     onDelete = { onTaskDelete(task) },
-                                    onClick = { onTaskClick(task) },
+                                    onClick = { bounds -> onTaskClick(task, bounds) },
                                 )
                             }
                         }
@@ -945,13 +949,18 @@ private fun DownloadsGroupCard(
     }
 }
 
+/** 缓存任务行的布局坐标，供操作菜单锚定；用普通引用持有以免每次布局都触发重组。 */
+private class TaskRowCoordinatesHolder {
+    var coordinates: LayoutCoordinates? = null
+}
+
 @Composable
 private fun DownloadTaskRow(
     item: DownloadItem,
     onPauseResume: () -> Unit,
     onRetry: () -> Unit,
     onDelete: () -> Unit,
-    onClick: () -> Unit,
+    onClick: (Rect) -> Unit,
 ) {
     val context = LocalContext.current
     val haptics = rememberAppHaptics()
@@ -975,15 +984,18 @@ private fun DownloadTaskRow(
         else -> false
     }
 
+    val coordinatesHolder = remember { TaskRowCoordinatesHolder() }
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .animateContentSize(
                 animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
             )
+            .onGloballyPositioned { coordinatesHolder.coordinates = it }
             .clickable(enabled = !isMissing) {
+                val bounds = coordinatesHolder.coordinates?.boundsInWindow() ?: return@clickable
                 haptics.tap()
-                onClick()
+                onClick(bounds)
             }
             .padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 12.dp),
     ) {

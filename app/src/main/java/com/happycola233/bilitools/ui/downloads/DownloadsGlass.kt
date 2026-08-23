@@ -4,6 +4,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
@@ -15,6 +16,7 @@ import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.colorControls
 import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.highlight.Highlight
+import com.kyant.backdrop.shadow.Shadow
 import kotlin.math.sign
 
 /** 下载页玻璃浮层的共享配方，由 DBG 面板中的「下载页玻璃浮窗」参数统一驱动。 */
@@ -38,13 +40,25 @@ internal fun AppSettings.toDownloadsGlassStyle(): DownloadsGlassStyle {
     )
 }
 
+/** 浮窗默认投影，与库内默认值保持一致。 */
+private val defaultGlassShadow: () -> Shadow = { Shadow.Default }
+
+/** 模态弹窗的投影比常驻浮窗更深，配合遮罩把弹窗从页面里托起来。 */
+private val modalGlassShadowValue = Shadow(radius = 24.dp, color = Color.Black.copy(alpha = 0.2f))
+internal val modalGlassShadow: () -> Shadow = { modalGlassShadowValue }
+
 /**
  * 批量管理浮窗与任务操作弹窗共用的 Backdrop 玻璃表面，避免两处效果和调试参数逐渐分叉。
+ *
+ * [layerBlock] 用于缩放/淡入等浮窗自身的变换：交给 Backdrop 处理后，采样背景会被反向变换抵消，
+ * 折射内容始终与真实页面对齐，不会出现背景跟着一起缩放的割裂感。
  */
 @Composable
 internal fun Modifier.downloadsGlassSurface(
     backdrop: Backdrop,
     style: DownloadsGlassStyle,
+    shadow: () -> Shadow = defaultGlassShadow,
+    layerBlock: (GraphicsLayerScope.() -> Unit)? = null,
 ): Modifier {
     val isLightTheme = !isSystemInDarkTheme()
     val luminance = if (isLightTheme) 0.58f else 0.42f
@@ -77,6 +91,8 @@ internal fun Modifier.downloadsGlassSurface(
             )
         },
         highlight = { Highlight.Plain },
+        shadow = shadow,
+        layerBlock = layerBlock,
         onDrawSurface = {
             drawRect(
                 surfaceOverlayColor.copy(alpha = style.surfaceAlpha.coerceIn(0f, 1f)),

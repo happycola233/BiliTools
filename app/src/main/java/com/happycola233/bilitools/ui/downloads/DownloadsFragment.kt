@@ -18,6 +18,7 @@ import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
@@ -169,7 +170,7 @@ class DownloadsFragment : Fragment() {
                         }
                     },
                     onTaskDelete = { item -> confirmTaskDelete(item) },
-                    onTaskClick = { item -> showTaskActions(item) },
+                    onTaskClick = { item, bounds -> showTaskActions(item, bounds) },
                     onGlassCornerRadiusChange = { settingsRepository.setDownloadsGlassCornerRadiusDp(it) },
                     onGlassBlurRadiusChange = { settingsRepository.setDownloadsGlassBlurRadiusDp(it) },
                     onGlassRefractionHeightChange = { settingsRepository.setDownloadsGlassRefractionHeightDp(it) },
@@ -514,7 +515,7 @@ class DownloadsFragment : Fragment() {
         exitSelectionMode()
     }
 
-    private fun showTaskActions(item: DownloadItem) {
+    private fun showTaskActions(item: DownloadItem, anchorInWindow: Rect) {
         if (!canShowTaskActionsDialog(item)) {
             return
         }
@@ -528,6 +529,7 @@ class DownloadsFragment : Fragment() {
             activity = activity,
             backgroundView = activity.findViewById(R.id.container),
             state = dialogState,
+            anchorInWindow = anchorInWindow,
             onDismiss = {
                 if (composeDialogState == dialogState) {
                     composeDialogState = null

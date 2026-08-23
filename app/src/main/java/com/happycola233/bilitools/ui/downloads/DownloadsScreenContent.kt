@@ -60,6 +60,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.toArgb
@@ -177,7 +178,7 @@ fun DownloadsScreenContent(
     onTaskPauseResume: (DownloadItem) -> Unit,
     onTaskRetry: (DownloadItem) -> Unit,
     onTaskDelete: (DownloadItem) -> Unit,
-    onTaskClick: (DownloadItem) -> Unit,
+    onTaskClick: (DownloadItem, Rect) -> Unit,
     onGlassCornerRadiusChange: (Float) -> Unit,
     onGlassBlurRadiusChange: (Float) -> Unit,
     onGlassRefractionHeightChange: (Float) -> Unit,
