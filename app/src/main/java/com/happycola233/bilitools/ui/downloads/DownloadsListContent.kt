@@ -777,10 +777,22 @@ private fun DownloadsGroupCard(
                             text = group.title,
                             style = MaterialTheme.typography.titleMedium,
                             color = groupHeadlineColor,
-                            maxLines = if (selectionMode || isCompletedGroup) 2 else 1,
+                            maxLines = when {
+                                expanded && !selectionMode -> Int.MAX_VALUE
+                                selectionMode || isCompletedGroup -> 2
+                                else -> 1
+                            },
                             overflow = TextOverflow.Ellipsis,
                             textDecoration = if (allMissing) TextDecoration.LineThrough else TextDecoration.None,
-                            modifier = Modifier.alpha(if (allMissing) 0.6f else 1f),
+                            modifier = Modifier
+                                .animateContentSize(
+                                    animationSpec = tween(
+                                        durationMillis = GROUP_EXPAND_DURATION_MILLIS,
+                                        easing = FastOutSlowInEasing,
+                                    ),
+                                    alignment = Alignment.TopStart,
+                                )
+                                .alpha(if (allMissing) 0.6f else 1f),
                         )
 
                         Row(
