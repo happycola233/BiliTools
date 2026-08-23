@@ -126,6 +126,8 @@
     <string name="parse_misc_label">杂项</string>
     <string name="parse_subtitle_label">字幕</string>
     <string name="parse_subtitle_language">字幕语言</string>
+    <string name="parse_subtitle_language_all">全部</string>
+    <string name="parse_subtitle_multi_hint">将下载所选条目的全部可用字幕。</string>
     <string name="parse_copy_subtitle_now">复制字幕</string>
     <string name="parse_subtitle_copy_dialog_title">字幕预览与复制</string>
     <string name="parse_subtitle_copy_dialog_subtitle">可切换条目预览字幕，支持复制当前或复制全部。</string>

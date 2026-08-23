@@ -157,7 +157,7 @@ class ParseFragment : Fragment() {
                     onAudioBitrateModeChange = viewModel::setAudioBitrateMode,
                     onAudioBitrateChange = viewModel::setAudioBitrate,
                     onSubtitleEnabledChange = viewModel::setSubtitleEnabled,
-                    onSubtitleLanguageChange = viewModel::setSubtitleLanguage,
+                    onSubtitleLanguageChange = viewModel::setSubtitleLanguageSelection,
                     onCopySubtitles = viewModel::copySubtitlesNow,
                     onAiSummaryEnabledChange = viewModel::setAiSummaryEnabled,
                     onCopyAiSummaries = viewModel::copyAiSummariesNow,

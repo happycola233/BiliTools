@@ -33,4 +33,11 @@ class ParseUiStateTest {
             assertTrue(state.hasSelectedDownloadContent)
         }
     }
+
+    @Test
+    fun isMultiSelect_requiresMoreThanOneSelectedItem() {
+        assertFalse(ParseUiState(selectedItemIndices = emptyList()).isMultiSelect)
+        assertFalse(ParseUiState(selectedItemIndices = listOf(0)).isMultiSelect)
+        assertTrue(ParseUiState(selectedItemIndices = listOf(0, 1)).isMultiSelect)
+    }
 }

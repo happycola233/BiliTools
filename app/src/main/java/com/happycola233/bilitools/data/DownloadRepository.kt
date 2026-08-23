@@ -141,6 +141,8 @@ class DownloadRepository(
     private val groupInfo = ConcurrentHashMap<Long, GroupInfo>()
     private val groupTaskIds = ConcurrentHashMap<Long, MutableList<Long>>()
     private val tasks = ConcurrentHashMap<Long, DownloadItem>()
+    private val deletingGroupIds = mutableSetOf<Long>()
+    private val deletingTaskIds = mutableSetOf<Long>()
     private val lock = Any()
 
     fun ensureLoaded() {
@@ -355,21 +357,89 @@ class DownloadRepository(
         errorMessage: String? = null,
         localUri: String? = null,
     ): DownloadItem {
-        val id = extraTaskIds.getAndDecrement()
-        val progress = if (status == DownloadStatus.Success) 100 else 0
-        val item = buildItem(
-            id,
-            groupId,
-            type,
-            taskTitle,
-            fileName,
-            "",
+        return addExtraTaskInternal(
+            groupId = groupId,
+            type = type,
+            taskTitle = taskTitle,
+            fileName = fileName,
             status = status,
-            progress = progress,
             errorMessage = errorMessage,
             localUri = localUri,
+            parentTaskId = null,
+        )!!
+    }
+
+    // 动态发现的附加任务必须与删除流程同锁校验，避免已删除的任务组被重新创建。
+    fun addExtraTaskIfParentActive(
+        parentTaskId: Long,
+        groupId: Long,
+        type: DownloadTaskType,
+        taskTitle: String,
+        fileName: String,
+        status: DownloadStatus,
+        errorMessage: String? = null,
+        localUri: String? = null,
+    ): DownloadItem? {
+        return addExtraTaskInternal(
+            groupId = groupId,
+            type = type,
+            taskTitle = taskTitle,
+            fileName = fileName,
+            status = status,
+            errorMessage = errorMessage,
+            localUri = localUri,
+            parentTaskId = parentTaskId,
         )
-        addTask(item)
+    }
+
+    private fun addExtraTaskInternal(
+        groupId: Long,
+        type: DownloadTaskType,
+        taskTitle: String,
+        fileName: String,
+        status: DownloadStatus,
+        errorMessage: String?,
+        localUri: String?,
+        parentTaskId: Long?,
+    ): DownloadItem? {
+        val item = synchronized(lock) {
+            if (parentTaskId != null) {
+                val parentTask = tasks[parentTaskId] ?: return@synchronized null
+                val parentActive = parentTask.groupId == groupId &&
+                    (parentTask.status == DownloadStatus.Pending ||
+                        parentTask.status == DownloadStatus.Running)
+                if (!parentActive ||
+                    parentTaskId in deletingTaskIds ||
+                    groupId in deletingGroupIds ||
+                    groupInfo[groupId] == null ||
+                    groupTaskIds[groupId] == null
+                ) {
+                    return@synchronized null
+                }
+            }
+
+            val id = extraTaskIds.getAndDecrement()
+            val progress = if (status == DownloadStatus.Success) 100 else 0
+            val created = DownloadProgressRules.normalizeTask(
+                buildItem(
+                    id,
+                    groupId,
+                    type,
+                    taskTitle,
+                    fileName,
+                    "",
+                    status = status,
+                    progress = progress,
+                    errorMessage = errorMessage,
+                    localUri = localUri,
+                ),
+            )
+            tasks[created.id] = created
+            groupTaskIds.getOrPut(groupId) { mutableListOf() }.add(created.id)
+            created
+        } ?: return null
+        updateGroups()
+        schedulePersist()
         return item
     }
 
@@ -652,24 +722,31 @@ class DownloadRepository(
     }
 
     fun deleteGroup(groupId: Long, deleteFile: Boolean) {
-        val relativePath = groupInfo[groupId]?.relativePath
-        val ids = synchronized(lock) { groupTaskIds[groupId]?.toList().orEmpty() }
-        val items = ids.mapNotNull { tasks[it] }
-        
-        if (items.isNotEmpty()) {
-            deleteTasks(items, deleteFile)
-        } else {
-             // Force remove empty group
-             synchronized(lock) {
-                 groupInfo.remove(groupId)
-                 groupTaskIds.remove(groupId)
-             }
-             updateGroups()
-             schedulePersist()
+        val (relativePath, items) = synchronized(lock) {
+            deletingGroupIds.add(groupId)
+            val path = groupInfo[groupId]?.relativePath
+            val groupItems = groupTaskIds[groupId].orEmpty().mapNotNull { tasks[it] }
+            path to groupItems
         }
-        
-        if (deleteFile && !relativePath.isNullOrBlank()) {
-             deleteGroupFolder(relativePath)
+        try {
+            if (items.isNotEmpty()) {
+                deleteTasks(items, deleteFile)
+            } else {
+                synchronized(lock) {
+                    groupInfo.remove(groupId)
+                    groupTaskIds.remove(groupId)
+                }
+                updateGroups()
+                schedulePersist()
+            }
+
+            if (deleteFile && !relativePath.isNullOrBlank()) {
+                deleteGroupFolder(relativePath)
+            }
+        } finally {
+            synchronized(lock) {
+                deletingGroupIds.remove(groupId)
+            }
         }
     }
 
@@ -1536,6 +1613,10 @@ class DownloadRepository(
     }
 
     fun clearAllGroups() {
+        synchronized(lock) {
+            deletingGroupIds.addAll(groupInfo.keys)
+            deletingTaskIds.addAll(tasks.keys)
+        }
         val downloadJobSnapshot = downloadJobs.values.toList()
         val mergeJobSnapshot = mergeJobs.values.toList()
         val extraJobSnapshot = extraJobs.values.toList()
@@ -1565,6 +1646,8 @@ class DownloadRepository(
             groupInfo.clear()
             groupTaskIds.clear()
             tasks.clear()
+            deletingGroupIds.clear()
+            deletingTaskIds.clear()
         }
         updateGroups()
         schedulePersist()
@@ -1606,22 +1689,32 @@ class DownloadRepository(
 
     private fun deleteTasks(items: List<DownloadItem>, deleteFile: Boolean) {
         if (items.isEmpty()) return
+        val taskIds = items.mapTo(mutableSetOf()) { it.id }
         val groupIds = items.map { it.groupId }.distinct()
-        items.forEach { cleanupTaskResources(it, deleteFile) }
         synchronized(lock) {
-            items.forEach { item ->
-                tasks.remove(item.id)
-                groupTaskIds[item.groupId]?.remove(item.id)
-            }
-            groupIds.forEach { groupId ->
-                if (groupTaskIds[groupId].isNullOrEmpty()) {
-                    groupTaskIds.remove(groupId)
-                    groupInfo.remove(groupId)
+            deletingTaskIds.addAll(taskIds)
+        }
+        try {
+            items.forEach { cleanupTaskResources(it, deleteFile) }
+            synchronized(lock) {
+                items.forEach { item ->
+                    tasks.remove(item.id)
+                    groupTaskIds[item.groupId]?.remove(item.id)
+                }
+                groupIds.forEach { groupId ->
+                    if (groupTaskIds[groupId].isNullOrEmpty()) {
+                        groupTaskIds.remove(groupId)
+                        groupInfo.remove(groupId)
+                    }
                 }
             }
+            updateGroups()
+            schedulePersist()
+        } finally {
+            synchronized(lock) {
+                deletingTaskIds.removeAll(taskIds)
+            }
         }
-        updateGroups()
-        schedulePersist()
     }
 
     private fun cleanupTaskResources(item: DownloadItem, deleteFile: Boolean) {
@@ -2051,6 +2144,8 @@ class DownloadRepository(
             groupTaskIds.clear()
             groupTaskIds.putAll(restoredGroupTaskIds)
             tasks.clear()
+            deletingGroupIds.clear()
+            deletingTaskIds.clear()
             tasks.putAll(restoredTasks.mapValues { (_, item) ->
                 DownloadProgressRules.normalizeTask(item)
             })

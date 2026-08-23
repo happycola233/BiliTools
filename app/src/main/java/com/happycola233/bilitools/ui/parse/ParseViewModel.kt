@@ -49,6 +49,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
@@ -91,6 +93,22 @@ private data class StreamRequestKey(
     val format: StreamFormat,
 )
 
+private data class ExtrasTargetKey(
+    val mediaType: MediaType,
+    val resourceId: String,
+)
+
+private fun MediaItem.extrasTargetKey(): ExtrasTargetKey {
+    val resourceId = when {
+        aid != null && cid != null -> "aid:$aid:cid:$cid"
+        epid != null -> "epid:$epid"
+        cid != null -> "cid:$cid"
+        !bvid.isNullOrBlank() -> "bvid:$bvid:index:$index"
+        else -> "url:$url:index:$index"
+    }
+    return ExtrasTargetKey(type, resourceId)
+}
+
 private data class DownloadTargets(
     val isCollectionMode: Boolean,
     val items: List<MediaItem>,
@@ -127,6 +145,64 @@ enum class QualityMode {
     Highest,
     Lowest,
     Fixed,
+}
+
+internal enum class SubtitleSelectionPolicy {
+    SelectedLanguage,
+    AllAvailable,
+}
+
+sealed interface SubtitleLanguageSelection {
+    data object All : SubtitleLanguageSelection
+
+    data class Language(val lan: String) : SubtitleLanguageSelection
+}
+
+internal fun subtitleSelectionPolicy(
+    selectedItemCount: Int,
+    languageSelection: SubtitleLanguageSelection?,
+): SubtitleSelectionPolicy {
+    return if (
+        selectedItemCount > 1 ||
+        languageSelection !is SubtitleLanguageSelection.Language
+    ) {
+        SubtitleSelectionPolicy.AllAvailable
+    } else {
+        SubtitleSelectionPolicy.SelectedLanguage
+    }
+}
+
+internal fun selectSubtitles(
+    subtitles: List<SubtitleInfo>,
+    languageSelection: SubtitleLanguageSelection?,
+    policy: SubtitleSelectionPolicy,
+): List<SubtitleInfo> {
+    return when (policy) {
+        SubtitleSelectionPolicy.AllAvailable -> subtitles
+        SubtitleSelectionPolicy.SelectedLanguage -> when (languageSelection) {
+            SubtitleLanguageSelection.All -> subtitles
+            is SubtitleLanguageSelection.Language -> subtitles
+                .firstOrNull { it.lan == languageSelection.lan }
+                ?.let(::listOf)
+                .orEmpty()
+            null -> emptyList()
+        }
+    }
+}
+
+internal fun pickSubtitleLanguageSelection(
+    subtitles: List<SubtitleInfo>,
+    currentSelection: SubtitleLanguageSelection?,
+): SubtitleLanguageSelection? {
+    if (subtitles.isEmpty()) return null
+    if (subtitles.size == 1) return SubtitleLanguageSelection.Language(subtitles.first().lan)
+    return when (currentSelection) {
+        SubtitleLanguageSelection.All -> SubtitleLanguageSelection.All
+        is SubtitleLanguageSelection.Language -> currentSelection
+            .takeIf { selected -> subtitles.any { it.lan == selected.lan } }
+            ?: SubtitleLanguageSelection.All
+        null -> SubtitleLanguageSelection.All
+    }
 }
 
 data class SubtitleCopyEntry(
@@ -180,8 +256,9 @@ data class ParseUiState(
     val selectedResolutionId: Int? = null,
     val selectedCodec: VideoCodec? = null,
     val selectedAudioId: Int? = null,
+    // 当前单选条目的语言选项；多选下载与复制始终逐条请求，不读取此缓存。
     val subtitleList: List<SubtitleInfo> = emptyList(),
-    val selectedSubtitleLan: String? = null,
+    val subtitleLanguageSelection: SubtitleLanguageSelection? = null,
     val subtitleEnabled: Boolean = false,
     val aiSummaryAvailable: Boolean = false,
     val aiSummaryEnabled: Boolean = false,
@@ -209,6 +286,9 @@ data class ParseUiState(
             danmakuLiveEnabled ||
             danmakuHistoryEnabled ||
             selectedImageIds.isNotEmpty()
+
+    val isMultiSelect: Boolean
+        get() = selectedItemIndices.size > 1
 }
 
 private fun defaultDate(): String {
@@ -237,6 +317,8 @@ class ParseViewModel(
     private var loadedStreamKey: StreamRequestKey? = null
     private var loadingStreamKey: StreamRequestKey? = null
     private var failedStreamKey: StreamRequestKey? = null
+    private var extrasRefreshGeneration = 0L
+    private var subtitleSelectionTargetKey: ExtrasTargetKey? = null
 
     init {
         refreshLoginState()
@@ -270,6 +352,7 @@ class ParseViewModel(
     }
 
     fun parse(input: String) {
+        invalidateExtrasRefresh()
         viewModelScope.launch {
             resetStreamLoadTracking()
             _state.update {
@@ -344,6 +427,7 @@ class ParseViewModel(
     fun clear() {
         val selectedType = _state.value.selectedMediaType
         resetStreamLoadTracking()
+        invalidateExtrasRefresh()
         offsetMap.clear()
         itemStatCache.clear()
         itemDescriptionCache.clear()
@@ -367,6 +451,7 @@ class ParseViewModel(
         val items = _state.value.items
         if (index !in items.indices) return
         val selected = _state.value.selectedItemIndices.toMutableList()
+        val previousSelectedCount = selected.size
         if (selected.contains(index)) {
             selected.remove(index)
         } else {
@@ -399,7 +484,9 @@ class ParseViewModel(
             }
             normalizeQualityModes(nextState)
         }
-        if (currentChanged && info != null && nextItem != null) {
+        val returnedToSingleSelection = selected.size == 1 && previousSelectedCount != 1
+        // 多选允许保留当前条目缺失的附加资源选项；退回单选时需重新按实际可用性收紧状态。
+        if ((currentChanged || returnedToSingleSelection) && info != null && nextItem != null) {
             viewModelScope.launch {
                 refreshExtras(info, nextItem)
             }
@@ -763,8 +850,8 @@ class ParseViewModel(
         _state.update { it.copy(subtitleEnabled = enabled) }
     }
 
-    fun setSubtitleLanguage(lan: String) {
-        _state.update { it.copy(selectedSubtitleLan = lan) }
+    fun setSubtitleLanguageSelection(selection: SubtitleLanguageSelection) {
+        _state.update { it.copy(subtitleLanguageSelection = selection) }
     }
 
     fun setAiSummaryEnabled(enabled: Boolean) {
@@ -945,6 +1032,10 @@ class ParseViewModel(
             val snapshot = state
             viewModelScope.launch(Dispatchers.IO) {
                 val targets = buildDownloadTargets(snapshot, info, selectedIndices)
+                val selectionPolicy = subtitleSelectionPolicy(
+                    selectedItemCount = selectedIndices.size,
+                    languageSelection = snapshot.subtitleLanguageSelection,
+                )
                 val namingSession = createNamingSession(
                     info = info,
                     targets = targets,
@@ -1185,6 +1276,7 @@ class ParseViewModel(
                         namingSession = namingSession,
                         groupId = groupId,
                         groupRelativePath = groupRelativePath,
+                        subtitleSelectionPolicy = selectionPolicy,
                     )
                 }
                 _state.update { it.copy(lastDownload = lastDownload) }
@@ -1200,6 +1292,7 @@ class ParseViewModel(
         namingSession: NamingSession,
         groupId: Long,
         groupRelativePath: String,
+        subtitleSelectionPolicy: SubtitleSelectionPolicy,
     ) {
         if (snapshot.subtitleEnabled) {
             val aid = item.aid
@@ -1226,7 +1319,14 @@ class ParseViewModel(
                     taskType = DownloadTaskType.Subtitle,
                     namingSession = namingSession,
                     context = subtitleContext,
-                    extension = snapshot.selectedSubtitleLan?.let { "$it.srt" } ?: "srt",
+                    extension = if (subtitleSelectionPolicy == SubtitleSelectionPolicy.SelectedLanguage) {
+                        (snapshot.subtitleLanguageSelection as? SubtitleLanguageSelection.Language)
+                            ?.lan
+                            ?.let { "$it.srt" }
+                            ?: "srt"
+                    } else {
+                        "srt"
+                    },
                 )
                 saveBytesTask(
                     groupId = groupId,
@@ -1235,21 +1335,43 @@ class ParseViewModel(
                     fileName = initialName,
                     mimeType = null,
                     relativePath = groupRelativePath,
-                    bytesProvider = { _, _, updateMetadata ->
+                    bytesProvider = { task, _, updateMetadata ->
+                        // 首个占位任务负责发现字幕列表，其余语言再分别追加为独立下载任务。
                         val subtitles = extrasRepository.getSubtitles(aid, cid)
-                        val subtitle = selectSubtitle(subtitles, snapshot.selectedSubtitleLan)
+                        val selectedSubtitles = selectSubtitles(
+                            subtitles = subtitles,
+                            languageSelection = snapshot.subtitleLanguageSelection,
+                            policy = subtitleSelectionPolicy,
+                        )
+                        val firstSubtitle = selectedSubtitles.firstOrNull()
                             ?: return@saveBytesTask null
-                        val name = resolveTemplateFileName(
+                        val firstSubtitleName = resolveTemplateFileName(
                             taskType = DownloadTaskType.Subtitle,
                             namingSession = namingSession,
                             context = subtitleContext,
-                            extension = "${subtitle.lan}.srt",
+                            extension = "${firstSubtitle.lan}.srt",
                         )
-                        updateMetadata(
-                            "${subtitleTitle} - ${subtitle.name}",
-                            name,
-                        )
-                        extrasRepository.getSubtitleSrt(subtitle)
+                        if (!updateMetadata(
+                            "$subtitleTitle - ${firstSubtitle.name}",
+                            firstSubtitleName,
+                        )) {
+                            throw CancellationException("Subtitle task is no longer active")
+                        }
+                        selectedSubtitles.drop(1).forEach { subtitle ->
+                            currentCoroutineContext().ensureActive()
+                            if (!saveSubtitleTask(
+                                parentTaskId = task.id,
+                                groupId = groupId,
+                                subtitle = subtitle,
+                                subtitleTitle = subtitleTitle,
+                                subtitleContext = subtitleContext,
+                                namingSession = namingSession,
+                                groupRelativePath = groupRelativePath,
+                            )) {
+                                throw CancellationException("Subtitle group is no longer active")
+                            }
+                        }
+                        extrasRepository.getSubtitleSrt(firstSubtitle)
                     },
                     errorMessage = strings.get(R.string.parse_error_no_subtitle),
                 )
@@ -1518,6 +1640,34 @@ class ParseViewModel(
         }
     }
 
+    private fun saveSubtitleTask(
+        parentTaskId: Long,
+        groupId: Long,
+        subtitle: SubtitleInfo,
+        subtitleTitle: String,
+        subtitleContext: NamingRenderContext,
+        namingSession: NamingSession,
+        groupRelativePath: String,
+    ): Boolean {
+        val fileName = resolveTemplateFileName(
+            taskType = DownloadTaskType.Subtitle,
+            namingSession = namingSession,
+            context = subtitleContext,
+            extension = "${subtitle.lan}.srt",
+        )
+        return saveBytesTask(
+            groupId = groupId,
+            type = DownloadTaskType.Subtitle,
+            taskTitle = "$subtitleTitle - ${subtitle.name}",
+            fileName = fileName,
+            mimeType = null,
+            relativePath = groupRelativePath,
+            bytesProvider = { _, _, _ -> extrasRepository.getSubtitleSrt(subtitle) },
+            errorMessage = strings.get(R.string.parse_error_no_subtitle),
+            parentTaskId = parentTaskId,
+        )
+    }
+
     fun copySubtitlesNow() {
         val snapshot = _state.value
         val info = snapshot.mediaInfo ?: return
@@ -1646,7 +1796,11 @@ class ParseViewModel(
         selectedIndices: List<Int>,
     ): List<SubtitleCopyEntry> {
         val targets = buildDownloadTargets(snapshot, info, selectedIndices)
-        return targets.items.map { rawItem ->
+        val selectionPolicy = subtitleSelectionPolicy(
+            selectedItemCount = selectedIndices.size,
+            languageSelection = snapshot.subtitleLanguageSelection,
+        )
+        return targets.items.flatMap { rawItem ->
             val item = runCatching { mediaRepository.resolveItemForPlay(rawItem, rawItem.type) }
                 .getOrDefault(rawItem)
             val naming = resolveGroupNaming(
@@ -1663,32 +1817,40 @@ class ParseViewModel(
             } else {
                 emptyList()
             }
-            val subtitle = selectSubtitle(subtitles, snapshot.selectedSubtitleLan)
+            val selectedSubtitles = selectSubtitles(
+                subtitles = subtitles,
+                languageSelection = snapshot.subtitleLanguageSelection,
+                policy = selectionPolicy,
+            )
             val title = buildSubtitleEntryTitle(naming.groupTitle, naming.groupSubtitle)
-            if (subtitle == null) {
-                SubtitleCopyEntry(
-                    title = title,
-                    subtitleName = null,
-                    content = null,
-                    error = strings.get(R.string.parse_error_no_subtitle),
-                )
-            } else {
-                val content = runCatching {
-                    decodeSubtitleContent(extrasRepository.getSubtitleSrt(subtitle))
-                }.getOrNull()
-                if (content.isNullOrBlank()) {
+            if (selectedSubtitles.isEmpty()) {
+                listOf(
                     SubtitleCopyEntry(
                         title = title,
-                        subtitleName = subtitle.name,
+                        subtitleName = null,
                         content = null,
                         error = strings.get(R.string.parse_error_no_subtitle),
-                    )
-                } else {
-                    SubtitleCopyEntry(
-                        title = title,
-                        subtitleName = subtitle.name,
-                        content = content,
-                    )
+                    ),
+                )
+            } else {
+                selectedSubtitles.map { subtitle ->
+                    val content = runCatching {
+                        decodeSubtitleContent(extrasRepository.getSubtitleSrt(subtitle))
+                    }.getOrNull()
+                    if (content.isNullOrBlank()) {
+                        SubtitleCopyEntry(
+                            title = title,
+                            subtitleName = subtitle.name,
+                            content = null,
+                            error = strings.get(R.string.parse_error_no_subtitle),
+                        )
+                    } else {
+                        SubtitleCopyEntry(
+                            title = title,
+                            subtitleName = subtitle.name,
+                            content = content,
+                        )
+                    }
                 }
             }
         }
@@ -2217,11 +2379,6 @@ class ParseViewModel(
         return extension.trim().uppercase()
     }
 
-    private fun selectSubtitle(subtitles: List<SubtitleInfo>, selectedLan: String?): SubtitleInfo? {
-        return subtitles.firstOrNull { it.lan == selectedLan }
-            ?: if (selectedLan == null) subtitles.firstOrNull() else null
-    }
-
     private fun buildSubtitleEntryTitle(title: String, subtitle: String?): String {
         return if (subtitle.isNullOrBlank()) title else "$title - $subtitle"
     }
@@ -2233,6 +2390,22 @@ class ParseViewModel(
     }
 
     private suspend fun refreshExtras(info: MediaInfo, item: MediaItem) {
+        val targetKey = item.extrasTargetKey()
+        val currentTargetKey = _state.value.items
+            .getOrNull(_state.value.selectedItemIndex)
+            ?.extrasTargetKey()
+        if (currentTargetKey != targetKey) return
+
+        val requestGeneration = ++extrasRefreshGeneration
+        if (subtitleSelectionTargetKey != targetKey) {
+            subtitleSelectionTargetKey = targetKey
+            _state.update {
+                it.copy(
+                    subtitleList = emptyList(),
+                    subtitleLanguageSelection = null,
+                )
+            }
+        }
         val aid = item.aid
         val cid = item.cid
         val subtitles = if (aid != null && cid != null) {
@@ -2245,7 +2418,6 @@ class ParseViewModel(
         } else {
             false
         }
-        val selectedSubtitle = pickSubtitle(subtitles, _state.value.selectedSubtitleLan)
         val collectionAvailable = isCollectionNfoAvailable(info)
         val thumbs = info.nfo.thumbs.filter { it.url.isNotBlank() }
         val imageOptions = thumbs
@@ -2253,46 +2425,64 @@ class ParseViewModel(
             .map { thumb -> ImageOption(thumb.id, mapImageLabel(thumb.id)) }
         val imageOptionIds = imageOptions.map { it.id }
         val imageOptionIdSet = imageOptionIds.toSet()
-        val selectedImageIds =
-            _state.value.selectedImageIds.filter { imageOptionIdSet.contains(it) }.toSet()
-        val allowMissing = _state.value.selectedItemIndices.size > 1
-        _state.update {
-            it.copy(
+        var applied = false
+        _state.update { current ->
+            val activeTargetKey = current.items
+                .getOrNull(current.selectedItemIndex)
+                ?.extrasTargetKey()
+            if (requestGeneration != extrasRefreshGeneration || activeTargetKey != targetKey) {
+                return@update current
+            }
+            applied = true
+            val selectedSubtitle = pickSubtitleLanguageSelection(
+                subtitles = subtitles,
+                currentSelection = current.subtitleLanguageSelection,
+            )
+            val selectedImageIds =
+                current.selectedImageIds.filter { imageOptionIdSet.contains(it) }.toSet()
+            val allowMissing = current.isMultiSelect
+            current.copy(
                 subtitleList = subtitles,
-                selectedSubtitleLan = selectedSubtitle,
+                subtitleLanguageSelection = selectedSubtitle,
                 subtitleEnabled = if (allowMissing) {
-                    it.subtitleEnabled
+                    current.subtitleEnabled
                 } else {
-                    it.subtitleEnabled && subtitles.isNotEmpty()
+                    current.subtitleEnabled && subtitles.isNotEmpty()
                 },
                 aiSummaryAvailable = aiAvailable,
                 aiSummaryEnabled = if (allowMissing) {
-                    it.aiSummaryEnabled
+                    current.aiSummaryEnabled
                 } else if (aiAvailable) {
-                    it.aiSummaryEnabled
+                    current.aiSummaryEnabled
                 } else {
                     false
                 },
                 nfoCollectionEnabled = if (allowMissing) {
-                    it.nfoCollectionEnabled
+                    current.nfoCollectionEnabled
                 } else {
-                    it.nfoCollectionEnabled && collectionAvailable
+                    current.nfoCollectionEnabled && collectionAvailable
                 },
                 danmakuLiveEnabled = if (allowMissing) {
-                    it.danmakuLiveEnabled
+                    current.danmakuLiveEnabled
                 } else {
-                    it.danmakuLiveEnabled && aid != null && cid != null
+                    current.danmakuLiveEnabled && aid != null && cid != null
                 },
                 danmakuHistoryEnabled = if (allowMissing) {
-                    it.danmakuHistoryEnabled
+                    current.danmakuHistoryEnabled
                 } else {
-                    it.danmakuHistoryEnabled && cid != null
+                    current.danmakuHistoryEnabled && cid != null
                 },
                 imageOptions = imageOptions,
                 selectedImageIds = selectedImageIds,
             )
         }
+        if (!applied) return
         refreshItemPresentation(info, item, _state.value.selectedItemIndex, fromPreview = false)
+    }
+
+    private fun invalidateExtrasRefresh() {
+        extrasRefreshGeneration += 1
+        subtitleSelectionTargetKey = null
     }
 
     private fun refreshItemPresentation(
@@ -3094,18 +3284,30 @@ class ParseViewModel(
         bytesProvider: suspend (
             DownloadItem,
             (ExtraTaskProgress) -> Unit,
-            (String, String) -> Unit,
+            (String, String) -> Boolean,
         ) -> ByteArray?,
         errorMessage: String,
-    ) {
-        val task = downloadRepository.addExtraTask(
-            groupId,
-            type,
-            taskTitle,
-            fileName,
-            DownloadStatus.Pending,
-        )
-        downloadRepository.launchExtraTask(task.id) extraTask@{
+        parentTaskId: Long? = null,
+    ): Boolean {
+        val task = if (parentTaskId == null) {
+            downloadRepository.addExtraTask(
+                groupId,
+                type,
+                taskTitle,
+                fileName,
+                DownloadStatus.Pending,
+            )
+        } else {
+            downloadRepository.addExtraTaskIfParentActive(
+                parentTaskId = parentTaskId,
+                groupId = groupId,
+                type = type,
+                taskTitle = taskTitle,
+                fileName = fileName,
+                status = DownloadStatus.Pending,
+            ) ?: return false
+        }
+        return downloadRepository.launchExtraTask(task.id) extraTask@{
             try {
                 var outputFileName = fileName
                 var lastProgress = 0
@@ -3129,9 +3331,9 @@ class ParseViewModel(
                         progressIndeterminate = update.progressIndeterminate,
                     )
                 }
-                fun updateTaskMetadata(nextTitle: String, nextFileName: String) {
+                fun updateTaskMetadata(nextTitle: String, nextFileName: String): Boolean {
                     outputFileName = nextFileName
-                    downloadRepository.updateExtraTaskMetadata(task.id, nextTitle, nextFileName)
+                    return downloadRepository.updateExtraTaskMetadata(task.id, nextTitle, nextFileName)
                 }
                 if (!downloadRepository.updateExtraTask(task.id, DownloadStatus.Running, progress = 0)) {
                     return@extraTask
@@ -3212,13 +3414,6 @@ class ParseViewModel(
         val clean = url.substringBefore("?").substringBefore("#")
         val ext = clean.substringAfterLast('.', "")
         return if (ext.isBlank() || ext.length > 4) "jpg" else ext
-    }
-
-    private fun pickSubtitle(list: List<SubtitleInfo>, current: String?): String? {
-        if (list.isEmpty()) return null
-        if (current != null && list.any { it.lan == current }) return current
-        val zh = list.firstOrNull { it.lan.startsWith("zh") || it.name.contains("涓枃") }
-        return zh?.lan ?: list.first().lan
     }
 
     private fun isValidDate(value: String): Boolean {

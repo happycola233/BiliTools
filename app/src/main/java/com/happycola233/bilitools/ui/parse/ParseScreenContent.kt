@@ -326,7 +326,7 @@ fun ParseScreenContent(
     onAudioBitrateModeChange: (QualityMode) -> Unit,
     onAudioBitrateChange: (Int) -> Unit,
     onSubtitleEnabledChange: (Boolean) -> Unit,
-    onSubtitleLanguageChange: (String) -> Unit,
+    onSubtitleLanguageChange: (SubtitleLanguageSelection) -> Unit,
     onCopySubtitles: () -> Unit,
     onAiSummaryEnabledChange: (Boolean) -> Unit,
     onCopyAiSummaries: () -> Unit,
@@ -2322,7 +2322,7 @@ private fun ParseOptionsCard(
     onAudioBitrateModeChange: (QualityMode) -> Unit,
     onAudioBitrateChange: (Int) -> Unit,
     onSubtitleEnabledChange: (Boolean) -> Unit,
-    onSubtitleLanguageChange: (String) -> Unit,
+    onSubtitleLanguageChange: (SubtitleLanguageSelection) -> Unit,
     onCopySubtitles: () -> Unit,
     onAiSummaryEnabledChange: (Boolean) -> Unit,
     onCopyAiSummaries: () -> Unit,
@@ -2334,8 +2334,7 @@ private fun ParseOptionsCard(
     onDanmakuHourChange: (String) -> Unit,
     onImageSelectionChange: (String, Boolean) -> Unit,
 ) {
-    val selectedCount = state.selectedItemIndices.size
-    val isMultiSelect = selectedCount > 1
+    val isMultiSelect = state.isMultiSelect
     val allowAnyExtras = isMultiSelect
     val controlsEnabled = !state.loading && !state.collectionModeLoading
     val streamControlsEnabled = controlsEnabled && !state.streamLoading
@@ -2366,14 +2365,31 @@ private fun ParseOptionsCard(
         (info.collection || info.type == MediaType.Bangumi || info.type == MediaType.Lesson)
     val danmakuLiveEnabled = (selectedItem?.aid != null && selectedItem.cid != null) || allowAnyExtras
     val danmakuHistoryEnabled = selectedItem?.cid != null || allowAnyExtras
-    val subtitleLanguageOptions = state.subtitleList.map { DropdownOption(it.name, it) }
-    val subtitleLanguageValue = state.subtitleList
-        .firstOrNull { it.lan == state.selectedSubtitleLan }
-        ?.name
-        .orEmpty()
+    val allSubtitleLanguagesLabel = stringResource(R.string.parse_subtitle_language_all)
+    val subtitleLanguageOptions: List<DropdownOption<SubtitleLanguageSelection>> = buildList {
+        if (state.subtitleList.size > 1) {
+            add(DropdownOption(allSubtitleLanguagesLabel, SubtitleLanguageSelection.All))
+        }
+        state.subtitleList.forEach { subtitle ->
+            add(
+                DropdownOption(
+                    subtitle.name,
+                    SubtitleLanguageSelection.Language(subtitle.lan),
+                ),
+            )
+        }
+    }
+    val subtitleLanguageValue = when (val selection = state.subtitleLanguageSelection) {
+        SubtitleLanguageSelection.All -> allSubtitleLanguagesLabel
+        is SubtitleLanguageSelection.Language -> state.subtitleList
+            .firstOrNull { it.lan == selection.lan }
+            ?.name
+            .orEmpty()
+        null -> ""
+    }
     val subtitleLanguageEnabled = state.subtitleEnabled &&
         controlsEnabled &&
-        (state.subtitleList.isNotEmpty() || allowAnyExtras)
+        state.subtitleList.isNotEmpty()
     val sizeSpec = tween<IntSize>(
         durationMillis = parseContentAnimationDurationMillis,
         easing = FastOutSlowInEasing,
@@ -2438,7 +2454,9 @@ private fun ParseOptionsCard(
                 OptionsSection(title = stringResource(R.string.parse_misc_label)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(
+                            if (isMultiSelect) 12.dp else 8.dp,
+                        ),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         CheckOption(
@@ -2448,16 +2466,18 @@ private fun ParseOptionsCard(
                             onCheckedChange = onSubtitleEnabledChange,
                             minHeight = compactSelectionHeight,
                             textStartPadding = 0.dp,
-                            modifier = Modifier.weight(0.9f),
+                            modifier = Modifier.weight(if (isMultiSelect) 1f else 0.9f),
                         )
-                        CompactSelectionField(
-                            label = stringResource(R.string.parse_subtitle_language),
-                            value = subtitleLanguageValue,
-                            enabled = subtitleLanguageEnabled,
-                            options = subtitleLanguageOptions,
-                            onOptionSelected = { onSubtitleLanguageChange(it.value.lan) },
-                            modifier = Modifier.weight(1.1f),
-                        )
+                        if (!isMultiSelect) {
+                            CompactSelectionField(
+                                label = stringResource(R.string.parse_subtitle_language),
+                                value = subtitleLanguageValue,
+                                enabled = subtitleLanguageEnabled,
+                                options = subtitleLanguageOptions,
+                                onOptionSelected = { onSubtitleLanguageChange(it.value) },
+                                modifier = Modifier.weight(1.1f),
+                            )
+                        }
                         CheckOption(
                             text = stringResource(R.string.parse_ai_summary_label),
                             checked = state.aiSummaryEnabled,
@@ -2465,8 +2485,11 @@ private fun ParseOptionsCard(
                             onCheckedChange = onAiSummaryEnabledChange,
                             minHeight = compactSelectionHeight,
                             textStartPadding = 0.dp,
-                            modifier = Modifier.weight(0.9f),
+                            modifier = Modifier.weight(if (isMultiSelect) 1f else 0.9f),
                         )
+                    }
+                    if (isMultiSelect && state.subtitleEnabled) {
+                        HelperText(text = stringResource(R.string.parse_subtitle_multi_hint))
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
