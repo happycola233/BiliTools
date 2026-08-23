@@ -82,6 +82,9 @@ private const val TASK_ACTIONS_ENTER_SCALE = 0.92f
 /** 让内容比缩放更早到达不透明，缩放收尾时画面已经稳定。 */
 private const val TASK_ACTIONS_ALPHA_SPEEDUP = 1.6f
 
+private fun taskActionsScale(progress: Float): Float =
+    lerp(TASK_ACTIONS_ENTER_SCALE, 1f, progress)
+
 /**
  * 把任务操作弹窗挂到 Activity 内容之上，而不是放进独立的 Dialog Window。
  * 只有保持在同一窗口中，Backdrop 才能录制并折射弹窗背后的实时页面。
@@ -224,13 +227,16 @@ private fun DownloadsTaskActionsOverlayContent(
                 )
                 .clearAndSetSemantics {},
         )
-        TaskActionsAnchoredLayout(anchor = anchor) {
-            // 以左上角为缩放原点：Backdrop 的反向变换同样以左上角为基准，
-            // 这样折射画面在整个缩放过程中都与真实页面严丝合缝，同时菜单看起来正是从任务行长出来的。
+        TaskActionsAnchoredLayout(
+            anchor = anchor,
+            animationProgress = { transition.value },
+        ) {
+            // Backdrop 2.0 的反向采样补偿固定以左上角为基准，因此玻璃层保持左上缩放；
+            // 菜单位于任务行上方时，由外层布局同步移动面板，使视觉缩放原点落在面板底边。
             val panelLayerBlock: GraphicsLayerScope.() -> Unit = remember {
                 {
                     val progress = transition.value
-                    val scale = lerp(TASK_ACTIONS_ENTER_SCALE, 1f, progress)
+                    val scale = taskActionsScale(progress)
                     transformOrigin = TransformOrigin(0f, 0f)
                     scaleX = scale
                     scaleY = scale
@@ -285,11 +291,13 @@ private fun DownloadsTaskActionsOverlayContent(
 
 /**
  * 把菜单摆到被点击任务行的紧邻位置：优先贴在行下方，下方放不下就翻到上方，
- * 水平方向与任务行左边缘对齐，并始终留在安全区内。
+ * 水平方向与任务行左边缘对齐，并始终留在安全区内。动画期间固定靠近任务行的那条边，
+ * 让下方菜单向下展开、上方菜单向上展开。
  */
 @Composable
 private fun TaskActionsAnchoredLayout(
     anchor: Rect,
+    animationProgress: () -> Float,
     content: @Composable () -> Unit,
 ) {
     val safeInsets = WindowInsets.safeDrawing
@@ -312,12 +320,19 @@ private fun TaskActionsAnchoredLayout(
             val maxY = (limitY - placeable.height).coerceAtLeast(minY)
             val below = anchor.bottom.roundToInt() + gap
             val above = anchor.top.roundToInt() - gap - placeable.height
-            val y = when {
+            val placeAbove = below > maxY && above >= minY
+            val settledY = when {
                 below <= maxY -> below
-                above >= minY -> above
+                placeAbove -> above
                 else -> below.coerceIn(minY, maxY)
             }
-            placeable.place(anchor.left.roundToInt().coerceIn(minX, maxX), y)
+            val animatedY = if (placeAbove) {
+                val scale = taskActionsScale(animationProgress())
+                settledY + ((1f - scale) * placeable.height).roundToInt()
+            } else {
+                settledY
+            }
+            placeable.place(anchor.left.roundToInt().coerceIn(minX, maxX), animatedY)
         }
     }
 }
