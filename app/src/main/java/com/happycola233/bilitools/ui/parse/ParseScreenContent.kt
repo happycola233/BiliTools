@@ -1424,6 +1424,7 @@ private fun SectionControls(
     onSectionChange: (Long) -> Unit,
     onCollectionModeChange: (Boolean) -> Unit,
 ) {
+    val haptics = rememberAppHaptics()
     val sections = state.sections
     val showSections = sections != null && sections.tabs.isNotEmpty() && !state.collectionMode
     val controlsEnabled = !state.loading && !state.collectionModeLoading
@@ -1478,7 +1479,10 @@ private fun SectionControls(
                 }
                 Switch(
                     checked = state.collectionMode,
-                    onCheckedChange = onCollectionModeChange,
+                    onCheckedChange = { enabled ->
+                        haptics.toggle(enabled)
+                        onCollectionModeChange(enabled)
+                    },
                     enabled = controlsEnabled,
                     modifier = Modifier.padding(end = 2.dp),
                 )
