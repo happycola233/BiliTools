@@ -212,7 +212,6 @@
     <string name="parse_error_no_nfo">无可用 NFO 元数据</string>
     <string name="parse_error_invalid_date">历史弹幕日期无效</string>
     <string name="parse_error_invalid_hour">历史弹幕小时需为 00-23</string>
-    <string name="parse_multi_resource_hint">批量下载会逐项检查资源；缺少所选内容的条目会标记为“无对应资源”并自动跳过。</string>
     <string name="download_unavailable_generic">当前条目没有所选资源</string>
     <string name="download_unavailable_audio">当前条目没有可用音频</string>
     <string name="download_unavailable_video">当前条目没有可用视频</string>
@@ -441,7 +440,6 @@
     <string name="parse_select_all">全选</string>
     <string name="parse_clear_all">清空</string>
     <string name="parse_notice_download_started">已开始下载</string>
-    <string name="parse_notice_download_started_multi">已开始逐项下载，无对应资源的内容将自动跳过</string>
     <string name="parse_mobile_confirm_title">当前使用移动网络</string>
     <string name="parse_mobile_confirm_message">你正在使用移动网络，继续下载可能产生流量费用。是否继续？</string>
     <string name="parse_mobile_confirm_action">继续下载</string>

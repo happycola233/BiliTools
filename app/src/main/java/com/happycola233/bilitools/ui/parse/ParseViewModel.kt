@@ -1064,13 +1064,7 @@ class ParseViewModel(
             _state.update {
                 it.copy(
                     downloadStarting = false,
-                    notice = strings.get(
-                        if (state.isMultiSelect) {
-                            R.string.parse_notice_download_started_multi
-                        } else {
-                            R.string.parse_notice_download_started
-                        },
-                    ),
+                    notice = strings.get(R.string.parse_notice_download_started),
                 )
             }
             val snapshot = state
