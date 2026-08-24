@@ -385,6 +385,7 @@ fun ParseScreenContent(
             item(key = "input") {
                 ParseInputCard(
                     inputText = inputText,
+                    inputError = state.inputError,
                     loading = state.loading,
                     selectedMediaType = state.selectedMediaType,
                     onInputChange = onInputChange,
@@ -1086,6 +1087,7 @@ private fun CopyPreviewScrollbarMetrics.Companion.empty(
 @Composable
 private fun ParseInputCard(
     inputText: String,
+    inputError: String?,
     loading: Boolean,
     selectedMediaType: MediaType?,
     onInputChange: (String) -> Unit,
@@ -1115,6 +1117,7 @@ private fun ParseInputCard(
             ) {
                 SearchInputBar(
                     value = inputText,
+                    errorMessage = inputError,
                     onValueChange = onInputChange,
                     onPaste = onPaste,
                     onDone = {
@@ -1148,75 +1151,137 @@ private fun ParseInputCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SearchInputBar(
     value: String,
+    errorMessage: String?,
     onValueChange: (String) -> Unit,
     onPaste: () -> Unit,
     onDone: () -> Unit,
 ) {
     val textStyle = ParseTextStyles.body.copy(color = MaterialTheme.colorScheme.onSurface)
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(inputSearchBarHeight),
-        shape = RoundedCornerShape(16.dp),
-        color = AppSurfaces.insetContainerColor,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-    ) {
-        Row(
+    val hasError = !errorMessage.isNullOrBlank()
+    val haptics = rememberAppHaptics()
+    // 收起动画期间沿用最后一条提示，避免文字在退场时突然消失。
+    var lastErrorMessage by remember { mutableStateOf("") }
+    LaunchedEffect(errorMessage) {
+        if (!errorMessage.isNullOrBlank()) {
+            lastErrorMessage = errorMessage
+            haptics.reject()
+        }
+    }
+    val motionScheme = MaterialTheme.motionScheme
+    val borderColor by animateColorAsState(
+        targetValue = if (hasError) {
+            MaterialTheme.colorScheme.error
+        } else {
+            MaterialTheme.colorScheme.outlineVariant
+        },
+        animationSpec = motionScheme.fastEffectsSpec(),
+        label = "SearchInputBarBorder",
+    )
+    val leadingIconColor by animateColorAsState(
+        targetValue = if (hasError) {
+            MaterialTheme.colorScheme.error
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        animationSpec = motionScheme.fastEffectsSpec(),
+        label = "SearchInputBarLeadingIcon",
+    )
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Surface(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(start = 16.dp, end = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .fillMaxWidth()
+                .height(inputSearchBarHeight),
+            shape = RoundedCornerShape(16.dp),
+            color = AppSurfaces.insetContainerColor,
+            border = BorderStroke(1.dp, borderColor),
         ) {
-            Image(
-                painter = painterResource(R.drawable.ic_search_24),
-                contentDescription = null,
-                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant),
-                modifier = Modifier.size(22.dp),
-            )
-            BasicTextField(
-                value = value,
-                onValueChange = onValueChange,
+            Row(
                 modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 14.dp),
-                singleLine = true,
-                textStyle = textStyle,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Uri,
-                    imeAction = ImeAction.Done,
-                ),
-                keyboardActions = KeyboardActions(onDone = { onDone() }),
-                decorationBox = { innerTextField ->
-                    if (value.isBlank()) {
-                        Text(
-                            text = stringResource(R.string.parse_hint),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            style = ParseTextStyles.body,
-                        )
-                    }
-                    innerTextField()
-                },
-            )
-            Box(
-                modifier = Modifier
-                    .width(1.dp)
-                    .height(24.dp)
-                    .background(MaterialTheme.colorScheme.outlineVariant),
-            )
-            TextButton(
-                onClick = onPaste,
-                shape = RoundedCornerShape(14.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp),
-                modifier = Modifier.height(44.dp),
+                    .fillMaxSize()
+                    .padding(start = 16.dp, end = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
+                Image(
+                    painter = painterResource(R.drawable.ic_search_24),
+                    contentDescription = null,
+                    colorFilter = ColorFilter.tint(leadingIconColor),
+                    modifier = Modifier.size(22.dp),
+                )
+                BasicTextField(
+                    value = value,
+                    onValueChange = onValueChange,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 14.dp),
+                    singleLine = true,
+                    textStyle = textStyle,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Uri,
+                        imeAction = ImeAction.Done,
+                    ),
+                    keyboardActions = KeyboardActions(onDone = { onDone() }),
+                    decorationBox = { innerTextField ->
+                        if (value.isBlank()) {
+                            Text(
+                                text = stringResource(R.string.parse_hint),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                style = ParseTextStyles.body,
+                            )
+                        }
+                        innerTextField()
+                    },
+                )
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(24.dp)
+                        .background(MaterialTheme.colorScheme.outlineVariant),
+                )
+                TextButton(
+                    onClick = onPaste,
+                    shape = RoundedCornerShape(14.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp),
+                    modifier = Modifier.height(44.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.parse_paste),
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            }
+        }
+
+        AnimatedVisibility(
+            visible = hasError,
+            enter = fadeIn(animationSpec = motionScheme.fastEffectsSpec()) +
+                expandVertically(animationSpec = motionScheme.defaultSpatialSpec()),
+            exit = fadeOut(animationSpec = motionScheme.fastEffectsSpec()) +
+                shrinkVertically(animationSpec = motionScheme.defaultSpatialSpec()),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 4.dp, top = 8.dp, end = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_error_24),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(16.dp),
+                )
                 Text(
-                    text = stringResource(R.string.parse_paste),
-                    fontWeight = FontWeight.SemiBold,
+                    text = lastErrorMessage,
+                    style = ParseTextStyles.supporting,
+                    color = MaterialTheme.colorScheme.error,
                 )
             }
         }

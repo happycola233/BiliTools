@@ -134,6 +134,8 @@ class ParseFragment : Fragment() {
                         inputText = next
                         if (next.isEmpty()) {
                             viewModel.clear()
+                        } else {
+                            viewModel.clearInputError()
                         }
                     },
                     onPaste = ::pasteFromClipboard,

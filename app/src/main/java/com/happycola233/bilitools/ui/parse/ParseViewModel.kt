@@ -233,6 +233,8 @@ data class ParseUiState(
     val subtitleCopying: Boolean = false,
     val aiSummaryCopying: Boolean = false,
     val error: String? = null,
+    // 输入框本身的校验提示：就地展示在输入框下方，不占用顶部错误横幅。
+    val inputError: String? = null,
     val notice: String? = null,
     val mediaInfo: MediaInfo? = null,
     val items: List<MediaItem> = emptyList(),
@@ -352,6 +354,12 @@ class ParseViewModel(
     }
 
     fun parse(input: String) {
+        if (input.isBlank()) {
+            _state.update {
+                it.copy(inputError = strings.get(R.string.parse_error_empty_input), error = null)
+            }
+            return
+        }
         invalidateExtrasRefresh()
         viewModelScope.launch {
             resetStreamLoadTracking()
@@ -361,6 +369,7 @@ class ParseViewModel(
                     streamLoading = false,
                     collectionModeLoading = false,
                     error = null,
+                    inputError = null,
                     notice = null,
                 )
             }
@@ -419,7 +428,19 @@ class ParseViewModel(
                     offsetMap[1] = ""
                 }
             }.onFailure { err ->
-                setLoadingError(err)
+                // 输入无法识别属于表单校验问题，就地提示比顶部横幅更贴近出错位置。
+                if (err is IllegalArgumentException) {
+                    _state.update {
+                        it.copy(
+                            loading = false,
+                            collectionModeLoading = false,
+                            inputError = mapError(err),
+                            isLoggedIn = authRepository.isLoggedIn(),
+                        )
+                    }
+                } else {
+                    setLoadingError(err)
+                }
             }
         }
     }
@@ -445,6 +466,11 @@ class ParseViewModel(
 
     fun clearError() {
         _state.update { it.copy(error = null) }
+    }
+
+    fun clearInputError() {
+        if (_state.value.inputError == null) return
+        _state.update { it.copy(inputError = null) }
     }
 
     fun toggleItemSelection(index: Int) {
