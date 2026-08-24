@@ -24,6 +24,7 @@ import com.happycola233.bilitools.data.model.DownloadMediaParams
 import com.happycola233.bilitools.data.model.DownloadProgressRules
 import com.happycola233.bilitools.data.model.DownloadStatus
 import com.happycola233.bilitools.data.model.DownloadTaskType
+import com.happycola233.bilitools.data.model.isResolvedWithoutFailure
 import com.happycola233.bilitools.data.model.MediaInfo
 import com.happycola233.bilitools.data.model.MediaItem
 import com.happycola233.bilitools.data.model.MediaType
@@ -356,6 +357,7 @@ class DownloadRepository(
         status: DownloadStatus,
         errorMessage: String? = null,
         localUri: String? = null,
+        statusDetail: String? = null,
     ): DownloadItem {
         return addExtraTaskInternal(
             groupId = groupId,
@@ -365,6 +367,27 @@ class DownloadRepository(
             status = status,
             errorMessage = errorMessage,
             localUri = localUri,
+            statusDetail = statusDetail,
+            parentTaskId = null,
+        )!!
+    }
+
+    fun addUnavailableTask(
+        groupId: Long,
+        type: DownloadTaskType,
+        taskTitle: String,
+        reason: String,
+        fileName: String = "",
+    ): DownloadItem {
+        return addExtraTaskInternal(
+            groupId = groupId,
+            type = type,
+            taskTitle = taskTitle,
+            fileName = fileName,
+            status = DownloadStatus.Unavailable,
+            errorMessage = null,
+            localUri = null,
+            statusDetail = reason,
             parentTaskId = null,
         )!!
     }
@@ -379,6 +402,7 @@ class DownloadRepository(
         status: DownloadStatus,
         errorMessage: String? = null,
         localUri: String? = null,
+        statusDetail: String? = null,
     ): DownloadItem? {
         return addExtraTaskInternal(
             groupId = groupId,
@@ -388,6 +412,7 @@ class DownloadRepository(
             status = status,
             errorMessage = errorMessage,
             localUri = localUri,
+            statusDetail = statusDetail,
             parentTaskId = parentTaskId,
         )
     }
@@ -400,6 +425,7 @@ class DownloadRepository(
         status: DownloadStatus,
         errorMessage: String?,
         localUri: String?,
+        statusDetail: String?,
         parentTaskId: Long?,
     ): DownloadItem? {
         val item = synchronized(lock) {
@@ -419,7 +445,7 @@ class DownloadRepository(
             }
 
             val id = extraTaskIds.getAndDecrement()
-            val progress = if (status == DownloadStatus.Success) 100 else 0
+            val progress = if (status.isResolvedWithoutFailure) 100 else 0
             val created = DownloadProgressRules.normalizeTask(
                 buildItem(
                     id,
@@ -432,6 +458,7 @@ class DownloadRepository(
                     progress = progress,
                     errorMessage = errorMessage,
                     localUri = localUri,
+                    statusDetail = statusDetail,
                 ),
             )
             tasks[created.id] = created
@@ -888,7 +915,7 @@ class DownloadRepository(
                     speedBytesPerSec = 0,
                     etaSeconds = null,
                     userPaused = false,
-                    errorMessage = "Save failed",
+                    errorMessage = context.getString(R.string.download_failure_save),
                 ),
             )
             schedulePersist()
@@ -915,7 +942,8 @@ class DownloadRepository(
                 speedBytesPerSec = 0,
                 etaSeconds = null,
                 userPaused = false,
-                errorMessage = err.message ?: "Download failed",
+                errorMessage = err.message?.takeIf { it.isNotBlank() }
+                    ?: context.getString(R.string.download_failure_download_unknown),
             ),
         )
         downloadJobs.remove(id)
@@ -1453,7 +1481,12 @@ class DownloadRepository(
                 other.job = null
                 other.speedBytesPerSec = 0
                 schedulePersist()
-                updateMergedProgress(task, true, err.message ?: "Download failed")
+                updateMergedProgress(
+                    task,
+                    true,
+                    err.message?.takeIf { it.isNotBlank() }
+                        ?: context.getString(R.string.download_failure_download_unknown),
+                )
             }
         }
     }
@@ -1662,7 +1695,7 @@ class DownloadRepository(
                 if (ids.isEmpty()) return@forEach
                 val groupTasks = ids.mapNotNull { tasks[it] }
                 if (groupTasks.isNotEmpty() &&
-                    groupTasks.all { it.status == DownloadStatus.Success }) {
+                    groupTasks.all { it.status.isResolvedWithoutFailure }) {
                     completedGroups.add(groupId)
                     taskIds.addAll(ids)
                 }
@@ -1919,7 +1952,7 @@ class DownloadRepository(
             val progress = if (activeTasks.isNotEmpty()) {
                 DownloadProgressRules.normalizeAggregateProgress(
                     progress = rawProgress,
-                    allTasksSucceeded = activeTasks.all { item -> item.status == DownloadStatus.Success },
+                    allTasksResolved = activeTasks.all { item -> item.status.isResolvedWithoutFailure },
                 )
             } else {
                 0
@@ -2276,7 +2309,7 @@ class DownloadRepository(
             TAG,
             "[restore-managed] rebuilt task state, taskId=${item.id}, file=${item.fileName}, finalStatus=${finalItem.status}, downloaded=$downloaded, total=$total, progress=$progress, autoResume=$autoResume",
         )
-        val state = if (finalItem.status != DownloadStatus.Success &&
+        val state = if (!finalItem.status.isResolvedWithoutFailure &&
             finalItem.status != DownloadStatus.Cancelled) {
             ResumableState(
                 id = item.id,
@@ -2369,7 +2402,7 @@ class DownloadRepository(
             }
         }
         if (snapshot == null) {
-            if (item.status == DownloadStatus.Success) {
+            if (item.status.isResolvedWithoutFailure || item.status == DownloadStatus.Cancelled) {
                 return MergedRestoreResult(
                     item = item.copy(
                         speedBytesPerSec = 0,
@@ -2385,7 +2418,8 @@ class DownloadRepository(
                 status = DownloadStatus.Failed,
                 speedBytesPerSec = 0,
                 etaSeconds = null,
-                errorMessage = item.errorMessage ?: "Resume data missing",
+                errorMessage = item.errorMessage
+                    ?: context.getString(R.string.download_failure_resume_data_missing),
             )
             return MergedRestoreResult(
                 item = failedItem,
@@ -2413,10 +2447,10 @@ class DownloadRepository(
         val audioCompleted =
             snapshot.audio.completed || (audioTotal > 0 && audioDownloaded >= audioTotal)
 
-        if (item.status == DownloadStatus.Success ||
+        if (item.status.isResolvedWithoutFailure ||
             item.status == DownloadStatus.Cancelled) {
             val finalItem = item.copy(
-                progress = if (item.status == DownloadStatus.Success) 100 else item.progress,
+                progress = if (item.status.isResolvedWithoutFailure) 100 else item.progress,
                 downloadedBytes = downloaded,
                 totalBytes = total,
                 speedBytesPerSec = 0,
@@ -2586,7 +2620,7 @@ class DownloadRepository(
                                 status = DownloadStatus.Failed,
                                 speedBytesPerSec = 0,
                                 etaSeconds = null,
-                                errorMessage = "Merge failed",
+                                errorMessage = context.getString(R.string.download_failure_merge),
                             ),
                         )
                     }
@@ -2616,7 +2650,8 @@ class DownloadRepository(
                                 status = DownloadStatus.Failed,
                                 speedBytesPerSec = 0,
                                 etaSeconds = null,
-                                errorMessage = err.message ?: "Merge failed",
+                                errorMessage = err.message?.takeIf { it.isNotBlank() }
+                                    ?: context.getString(R.string.download_failure_merge),
                             ),
                         )
                     }

@@ -4,7 +4,8 @@ object DownloadProgressRules {
     fun normalizeTaskProgress(status: DownloadStatus, progress: Int): Int {
         val clamped = progress.coerceIn(0, 100)
         return when (status) {
-            DownloadStatus.Success -> 100
+            DownloadStatus.Success,
+            DownloadStatus.Unavailable -> 100
             DownloadStatus.Pending,
             DownloadStatus.Running,
             DownloadStatus.Paused,
@@ -23,8 +24,8 @@ object DownloadProgressRules {
         }
     }
 
-    fun normalizeAggregateProgress(progress: Int, allTasksSucceeded: Boolean): Int {
+    fun normalizeAggregateProgress(progress: Int, allTasksResolved: Boolean): Int {
         val clamped = progress.coerceIn(0, 100)
-        return if (allTasksSucceeded) 100 else clamped.coerceAtMost(99)
+        return if (allTasksResolved) 100 else clamped.coerceAtMost(99)
     }
 }

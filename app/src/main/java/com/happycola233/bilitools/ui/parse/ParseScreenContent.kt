@@ -2416,6 +2416,17 @@ private fun ParseOptionsCard(
 
             Spacer(Modifier.height(optionsCardTitleBottomSpacing))
 
+            AnimatedOptionsVisibility(visible = isMultiSelect) {
+                Column {
+                    MessageCard(
+                        message = stringResource(R.string.parse_multi_resource_hint),
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                    Spacer(Modifier.height(optionsCardSectionSpacing))
+                }
+            }
+
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(optionsCardSectionSpacing),

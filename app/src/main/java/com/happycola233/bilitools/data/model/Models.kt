@@ -123,9 +123,14 @@ enum class DownloadStatus {
     Paused,
     Merging,
     Success,
+    Unavailable,
     Failed,
     Cancelled,
 }
+
+/** 已正常处理完毕的结果：资源成功保存，或确认该条目没有对应资源后跳过。 */
+val DownloadStatus.isResolvedWithoutFailure: Boolean
+    get() = this == DownloadStatus.Success || this == DownloadStatus.Unavailable
 
 enum class DownloadTaskType {
     Video,

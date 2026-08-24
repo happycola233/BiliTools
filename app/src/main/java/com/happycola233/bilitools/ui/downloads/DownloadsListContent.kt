@@ -101,6 +101,7 @@ import com.happycola233.bilitools.data.model.DownloadMediaParams
 import com.happycola233.bilitools.data.model.DownloadProgressRules
 import com.happycola233.bilitools.data.model.DownloadStatus
 import com.happycola233.bilitools.data.model.DownloadTaskType
+import com.happycola233.bilitools.data.model.isResolvedWithoutFailure
 import com.happycola233.bilitools.ui.haptics.HapticThresholdGate
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import com.happycola233.bilitools.ui.theme.AppSurfaces
@@ -548,15 +549,19 @@ private fun DownloadsGroupCard(
     )
 
     val allMissing = remember(group.tasks) {
-        group.tasks.isNotEmpty() && group.tasks.all {
-            it.status == DownloadStatus.Success && it.outputMissing
-        }
+        val savedTasks = group.tasks.filter { it.status == DownloadStatus.Success }
+        savedTasks.isNotEmpty() &&
+            savedTasks.all { it.outputMissing } &&
+            group.tasks.all { it.status.isResolvedWithoutFailure }
     }
     val isCompletedGroup = remember(group.tasks) {
-        group.tasks.isNotEmpty() && group.tasks.all { it.status == DownloadStatus.Success }
+        group.tasks.isNotEmpty() && group.tasks.all { it.status.isResolvedWithoutFailure }
     }
-    val completedCount = remember(group.tasks) {
-        group.tasks.count { it.status == DownloadStatus.Success }
+    val resolvedCount = remember(group.tasks) {
+        group.tasks.count { it.status.isResolvedWithoutFailure }
+    }
+    val unavailableCount = remember(group.tasks) {
+        group.tasks.count { it.status == DownloadStatus.Unavailable }
     }
     val groupProgress = remember(group.tasks) { calculateGroupProgress(group.tasks) }
     val groupActionState = remember(group.tasks) { resolveDownloadsGroupActionState(group) }
@@ -819,7 +824,7 @@ private fun DownloadsGroupCard(
                             )
                         }
 
-                        if (!isCompletedGroup) {
+                        if (!isCompletedGroup || unavailableCount > 0) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.padding(top = 8.dp),
@@ -835,11 +840,13 @@ private fun DownloadsGroupCard(
                                 Text(
                                     text = buildGroupProgressSummaryText(
                                         context = context,
-                                        completed = completedCount,
+                                        resolved = resolvedCount,
                                         totalCount = group.tasks.size,
                                         progress = groupProgress,
                                         hasFailedTask = group.tasks.any { it.status == DownloadStatus.Failed },
+                                        unavailableCount = unavailableCount,
                                         errorColor = errorColor,
+                                        unavailableColor = groupAccentColor,
                                     ),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = groupHeadlineColor,
@@ -979,6 +986,7 @@ private fun DownloadTaskRow(
     val errorColor = MaterialTheme.colorScheme.error
     val managed = isManagedTask(item)
     val isMissing = item.status == DownloadStatus.Success && item.outputMissing
+    val isUnavailable = item.status == DownloadStatus.Unavailable
     val progress = DownloadProgressRules.normalizeTaskProgress(item.status, item.progress)
     val visualState = resolveDownloadsTaskProgressVisualState(item)
     val actionType = when {
@@ -1004,7 +1012,7 @@ private fun DownloadTaskRow(
                 animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
             )
             .onGloballyPositioned { coordinatesHolder.coordinates = it }
-            .clickable(enabled = !isMissing) {
+            .clickable(enabled = !isMissing && !isUnavailable) {
                 val bounds = coordinatesHolder.coordinates?.boundsInWindow() ?: return@clickable
                 haptics.tap()
                 onClick(bounds)
@@ -1027,18 +1035,25 @@ private fun DownloadTaskRow(
                     modifier = Modifier.alpha(if (isMissing) 0.6f else 1f),
                 )
 
-                Text(
-                    text = buildTaskDetailText(context, item),
-                    style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
-                    color = when (item.status) {
-                        DownloadStatus.Failed,
-                        DownloadStatus.Cancelled -> errorColor
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                    modifier = Modifier
-                        .padding(top = 2.dp)
-                        .alpha(if (isMissing) 0.6f else 1f),
-                )
+                if (item.status == DownloadStatus.Failed || isUnavailable) {
+                    TaskOutcomeMessage(
+                        item = item,
+                        modifier = Modifier.padding(top = 3.dp),
+                    )
+                } else {
+                    Text(
+                        text = buildTaskDetailText(context, item),
+                        style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
+                        color = if (item.status == DownloadStatus.Cancelled) {
+                            errorColor
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        modifier = Modifier
+                            .padding(top = 2.dp)
+                            .alpha(if (isMissing) 0.6f else 1f),
+                    )
+                }
             }
 
             if (actionType != null) {
@@ -1061,7 +1076,13 @@ private fun DownloadTaskRow(
                                 TaskAction.Retry -> R.drawable.ic_retry_24
                             }
                         ),
-                        contentDescription = null,
+                        contentDescription = stringResource(
+                            when (actionType) {
+                                TaskAction.Pause -> R.string.download_pause
+                                TaskAction.Resume -> R.string.download_resume
+                                TaskAction.Retry -> R.string.download_retry
+                            },
+                        ),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -1076,7 +1097,7 @@ private fun DownloadTaskRow(
             ) {
                 Icon(
                     painter = painterResource(R.drawable.ic_delete_24),
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.download_delete),
                     tint = errorColor,
                 )
             }
@@ -1105,6 +1126,107 @@ private fun DownloadTaskRow(
                 }
             }
         }
+    }
+}
+
+/**
+ * 失败与「无对应资源」的说明文案。与普通任务的辅助文案保持同一层级，
+ * 只用图标与语义色区分，避免在卡片、内嵌面板之外再叠一层色块容器。
+ */
+@Composable
+private fun TaskOutcomeMessage(
+    item: DownloadItem,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val unavailable = item.status == DownloadStatus.Unavailable
+    val accentColor = if (unavailable) {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    } else {
+        MaterialTheme.colorScheme.error
+    }
+    val label = if (unavailable) {
+        stringResource(R.string.download_status_unavailable)
+    } else {
+        stringResource(R.string.download_status_failed)
+    }
+    val detail = if (unavailable) {
+        stringResource(
+            R.string.download_detail_unavailable,
+            item.statusDetail?.trim()?.takeIf { it.isNotBlank() }
+                ?: stringResource(R.string.download_unavailable_generic),
+        )
+    } else {
+        resolveFailureReason(item.errorMessage)
+    }
+    val params = buildMediaParams(context, item.mediaParams, item.fileName, item.taskType)
+    val paramsText = if (params.isNullOrBlank()) {
+        null
+    } else {
+        stringResource(R.string.download_task_params, params)
+    }
+    val message = buildAnnotatedString {
+        pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
+        append(label)
+        pop()
+        append(" · ")
+        append(detail)
+    }
+    val messageLineHeight = 18.sp
+    val inlineIconSize = 14.dp
+    val firstLineHeight = with(LocalDensity.current) { messageLineHeight.toDp() }
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top,
+        ) {
+            // 固定在首行行高的中央，避免文案换行后图标跟随整段文字居中。
+            Box(
+                modifier = Modifier
+                    .width(inlineIconSize)
+                    .height(firstLineHeight),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(
+                        if (unavailable) R.drawable.ic_info_24 else R.drawable.ic_error_24,
+                    ),
+                    contentDescription = null,
+                    tint = accentColor,
+                    modifier = Modifier.size(inlineIconSize),
+                )
+            }
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodySmall.copy(lineHeight = messageLineHeight),
+                color = accentColor,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 6.dp),
+            )
+        }
+        paramsText?.let { mediaParamsText ->
+            Text(
+                text = mediaParamsText,
+                style = MaterialTheme.typography.bodySmall.copy(lineHeight = messageLineHeight),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun resolveFailureReason(rawMessage: String?): String {
+    val message = rawMessage?.trim()?.takeIf { it.isNotBlank() }
+        ?: return stringResource(R.string.download_reason_unknown)
+    return when (message) {
+        "Save failed" -> stringResource(R.string.download_failure_save)
+        "Download failed" -> stringResource(R.string.download_failure_download_unknown)
+        "Merge failed" -> stringResource(R.string.download_failure_merge)
+        "Resume data missing" -> stringResource(R.string.download_failure_resume_data_missing)
+        else -> message
     }
 }
 
@@ -1165,10 +1287,10 @@ private fun buildDownloadsSections(
 ): List<DownloadsSectionUi> {
     if (groups.isEmpty()) return emptyList()
     val downloadingGroups = groups.filter { group ->
-        group.tasks.any { it.status != DownloadStatus.Success }
+        group.tasks.any { !it.status.isResolvedWithoutFailure }
     }
-    val downloadedGroups = groups.filter { group ->
-        group.tasks.isNotEmpty() && group.tasks.all { it.status == DownloadStatus.Success }
+    val completedGroups = groups.filter { group ->
+        group.tasks.isNotEmpty() && group.tasks.all { it.status.isResolvedWithoutFailure }
     }
     val totalSpeed = downloadingGroups.sumOf { group ->
         group.tasks.sumOf { task ->
@@ -1186,8 +1308,8 @@ private fun buildDownloadsSections(
         ),
         DownloadsSectionUi(
             type = DownloadSectionType.Downloaded,
-            groups = downloadedGroups,
-            count = downloadedGroups.size,
+            groups = completedGroups,
+            count = completedGroups.size,
             collapsed = collapsedSections.contains(DownloadSectionType.Downloaded),
         ),
     )
@@ -1232,27 +1354,42 @@ private fun buildCreatedAtText(context: Context, createdAt: Long): String {
 
 private fun buildGroupProgressSummaryText(
     context: Context,
-    completed: Int,
+    resolved: Int,
     totalCount: Int,
     progress: Int,
     hasFailedTask: Boolean,
+    unavailableCount: Int,
     errorColor: Color,
+    unavailableColor: Color,
 ): AnnotatedString {
     val baseText = context.getString(
         R.string.downloads_group_progress_compact,
-        completed,
+        resolved,
         totalCount,
         progress,
     )
-    if (!hasFailedTask) {
+    if (!hasFailedTask && unavailableCount <= 0) {
         return AnnotatedString(baseText)
     }
     return buildAnnotatedString {
         append(baseText)
-        append(" · ")
-        pushStyle(SpanStyle(color = errorColor))
-        append(context.getString(R.string.downloads_group_progress_failed))
-        pop()
+        if (hasFailedTask) {
+            append(" · ")
+            pushStyle(SpanStyle(color = errorColor))
+            append(context.getString(R.string.downloads_group_progress_failed))
+            pop()
+        }
+        if (unavailableCount > 0) {
+            append(" · ")
+            pushStyle(SpanStyle(color = unavailableColor))
+            append(
+                context.getString(
+                    R.string.downloads_group_progress_unavailable,
+                    unavailableCount,
+                ),
+            )
+            pop()
+        }
     }
 }
 
@@ -1342,6 +1479,7 @@ private fun buildTaskDetailText(
         DownloadStatus.Pending -> context.getString(R.string.download_status_pending)
         DownloadStatus.Paused -> context.getString(R.string.download_status_paused, progress)
         DownloadStatus.Failed -> context.getString(R.string.download_status_failed)
+        DownloadStatus.Unavailable -> context.getString(R.string.download_status_unavailable)
         DownloadStatus.Merging -> context.getString(R.string.download_status_merging)
         DownloadStatus.Success -> if (item.outputMissing) {
             context.getString(R.string.download_status_missing)
@@ -1355,7 +1493,7 @@ private fun buildTaskDetailText(
     return if (params.isNullOrBlank()) {
         baseText
     } else {
-        "$baseText\n参数：$params"
+        "$baseText\n${context.getString(R.string.download_task_params, params)}"
     }
 }
 
@@ -1465,14 +1603,14 @@ private fun calculateDownloadingEtaSeconds(groups: List<DownloadGroup>): Long? {
 
 private fun calculateGroupProgress(tasks: List<DownloadItem>): Int {
     if (tasks.isEmpty()) return 0
-    val allSucceeded = tasks.all { it.status == DownloadStatus.Success }
-    if (allSucceeded) return 100
+    val allResolved = tasks.all { it.status.isResolvedWithoutFailure }
+    if (allResolved) return 100
     val sizeTasks = tasks.filter { it.totalBytes > 0L }
     if (sizeTasks.isEmpty()) {
         val average = tasks.sumOf { item ->
             DownloadProgressRules.normalizeTaskProgress(item.status, item.progress)
         } / tasks.size
-        return DownloadProgressRules.normalizeAggregateProgress(average, allSucceeded)
+        return DownloadProgressRules.normalizeAggregateProgress(average, allResolved)
     }
     val total = sizeTasks.sumOf { it.totalBytes }
     if (total <= 0L) return 0
@@ -1480,7 +1618,7 @@ private fun calculateGroupProgress(tasks: List<DownloadItem>): Int {
         item.downloadedBytes.coerceAtMost(item.totalBytes)
     }
     val progress = ((downloaded * 100) / total).toInt()
-    return DownloadProgressRules.normalizeAggregateProgress(progress, allSucceeded)
+    return DownloadProgressRules.normalizeAggregateProgress(progress, allResolved)
 }
 
 private fun resolveDownloadsGroupActionState(group: DownloadGroup): DownloadsGroupActionState {
@@ -1529,6 +1667,7 @@ private fun resolveDownloadsTaskProgressVisualState(
 
         DownloadStatus.Paused,
         DownloadStatus.Failed,
+        DownloadStatus.Unavailable,
         DownloadStatus.Success,
         DownloadStatus.Cancelled -> DownloadsProgressVisualState.FlatDeterminate
     }

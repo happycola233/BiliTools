@@ -211,6 +211,12 @@
     <string name="parse_error_no_nfo">无可用 NFO 元数据</string>
     <string name="parse_error_invalid_date">历史弹幕日期无效</string>
     <string name="parse_error_invalid_hour">历史弹幕小时需为 00-23</string>
+    <string name="parse_multi_resource_hint">批量下载会逐项检查资源；缺少所选内容的条目会标记为“无对应资源”并自动跳过。</string>
+    <string name="download_unavailable_generic">当前条目没有所选资源</string>
+    <string name="download_unavailable_audio">当前条目没有可用音频</string>
+    <string name="download_unavailable_video">当前条目没有可用视频</string>
+    <string name="download_unavailable_audio_video">当前条目缺少可合并的音频或视频</string>
+    <string name="download_unavailable_image">当前条目没有对应图片资源</string>
 
     <string name="common_error_unknown">发生未知错误</string>
 
@@ -272,6 +278,7 @@
     <string name="downloads_multi_done_delete">已处理 %1$d 项任务</string>
     <string name="downloads_group_progress_compact">%1$d/%2$d 项 · %3$d%%</string>
     <string name="downloads_group_progress_failed">存在失败项</string>
+    <string name="downloads_group_progress_unavailable">跳过 %1$d 项</string>
     <string name="downloads_group_toggle">展开详情</string>
     <string name="downloads_group_pause">暂停该组</string>
     <string name="downloads_group_resume">继续该组</string>
@@ -283,7 +290,7 @@
     <string name="downloads_group_actions_summary_size">共 %1$d 项 · %2$s</string>
     <string name="downloads_group_actions_summary_size_speed">共 %1$d 项 · %2$s - %3$s</string>
     <string name="downloads_section_downloading">正在下载</string>
-    <string name="downloads_section_downloaded">已下载</string>
+    <string name="downloads_section_downloaded">已完成</string>
     <string name="downloads_section_count">%1$d 项</string>
     <string name="downloads_section_count_speed">%1$d 项 · %2$s</string>
     <string name="downloads_resume_all">全部开始</string>
@@ -304,16 +311,19 @@
     <string name="download_status_success">已完成</string>
     <string name="download_status_missing">已完成（文件已丢失）</string>
     <string name="download_status_failed">下载失败</string>
+    <string name="download_status_unavailable">无对应资源</string>
     <string name="download_status_cancelled">已取消</string>
     <string name="download_pause">暂停</string>
     <string name="download_resume">继续</string>
     <string name="download_cancel">取消</string>
+    <string name="download_retry">重试</string>
     <string name="download_delete">删除</string>
     <string name="download_delete_with_file">同时删除已下载的文件</string>
     <string name="download_delete_confirm_task">确定要删除该任务吗？</string>
     <string name="download_delete_confirm_group">确定要删除该任务组吗？此操作将删除组内所有任务。</string>
     <string name="download_task_meta_format">任务：%1$s · %2$s</string>
     <string name="download_task_location">保存位置：%1$s</string>
+    <string name="download_task_params">参数：%1$s</string>
     <string name="download_time_unknown">时间未知</string>
     <string name="download_action_open">打开方式</string>
     <string name="download_action_open_with">选择打开方式</string>
@@ -342,7 +352,7 @@
     <string name="download_detail_running">已下载 %1$s · %2$s · %3$s</string>
     <string name="download_detail_pending">排队中 · 已下载 %1$s</string>
     <string name="download_detail_paused">已下载 %1$s · %2$s</string>
-    <string name="download_detail_failed">失败原因：%1$s</string>
+    <string name="download_detail_unavailable">%1$s，已跳过</string>
     <string name="download_detail_success">文件大小 %1$s</string>
     <string name="download_detail_cancelled">已取消</string>
     <string name="download_reason_user_paused">已暂停</string>
@@ -358,6 +368,11 @@
     <string name="download_reason_redirect">重定向过多</string>
     <string name="download_reason_http_code">服务器响应异常</string>
     <string name="download_reason_unknown">原因未知</string>
+    <string name="download_failure_save">文件保存失败，请检查下载位置和剩余空间</string>
+    <string name="download_failure_download_unknown">下载过程中发生未知错误</string>
+    <string name="download_failure_merge">音视频合并失败</string>
+    <string name="download_failure_resume_data_missing">续传数据已丢失，请重新下载</string>
+    <string name="download_failure_extra">%1$s处理失败：%2$s</string>
     <string name="login_user_guest">未登录</string>
     <string name="login_user_mid">UID：%1$d</string>
     <string name="login_user_mid_unknown">UID：--</string>
@@ -425,6 +440,7 @@
     <string name="parse_select_all">全选</string>
     <string name="parse_clear_all">清空</string>
     <string name="parse_notice_download_started">已开始下载</string>
+    <string name="parse_notice_download_started_multi">已开始逐项下载，无对应资源的内容将自动跳过</string>
     <string name="parse_mobile_confirm_title">当前使用移动网络</string>
     <string name="parse_mobile_confirm_message">你正在使用移动网络，继续下载可能产生流量费用。是否继续？</string>
     <string name="parse_mobile_confirm_action">继续下载</string>

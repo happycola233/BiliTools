@@ -1,6 +1,8 @@
 package com.happycola233.bilitools.data.model
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DownloadProgressRulesTest {
@@ -34,20 +36,39 @@ class DownloadProgressRulesTest {
     }
 
     @Test
+    fun normalizeTaskProgress_marksUnavailableTaskAsResolved() {
+        assertEquals(
+            100,
+            DownloadProgressRules.normalizeTaskProgress(
+                status = DownloadStatus.Unavailable,
+                progress = 0,
+            ),
+        )
+    }
+
+    @Test
     fun normalizeAggregateProgress_capsIncompleteGroupAtNinetyNine() {
         assertEquals(
             99,
             DownloadProgressRules.normalizeAggregateProgress(
                 progress = 100,
-                allTasksSucceeded = false,
+                allTasksResolved = false,
             ),
         )
         assertEquals(
             100,
             DownloadProgressRules.normalizeAggregateProgress(
                 progress = 100,
-                allTasksSucceeded = true,
+                allTasksResolved = true,
             ),
         )
+    }
+
+    @Test
+    fun resolvedStatus_includesSuccessAndUnavailableOnly() {
+        assertTrue(DownloadStatus.Success.isResolvedWithoutFailure)
+        assertTrue(DownloadStatus.Unavailable.isResolvedWithoutFailure)
+        assertFalse(DownloadStatus.Failed.isResolvedWithoutFailure)
+        assertFalse(DownloadStatus.Cancelled.isResolvedWithoutFailure)
     }
 }

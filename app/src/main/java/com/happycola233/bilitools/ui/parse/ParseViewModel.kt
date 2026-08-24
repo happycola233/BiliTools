@@ -1005,6 +1005,18 @@ class ParseViewModel(
             _state.update { it.copy(error = strings.get(R.string.parse_error_no_download_content)) }
             return
         }
+        if (state.danmakuHistoryEnabled) {
+            val historyInputError = when {
+                !isValidDate(state.danmakuDate) -> strings.get(R.string.parse_error_invalid_date)
+                state.danmakuHour.isNotBlank() && parseHour(state.danmakuHour) == null ->
+                    strings.get(R.string.parse_error_invalid_hour)
+                else -> null
+            }
+            if (historyInputError != null) {
+                _state.update { it.copy(error = historyInputError) }
+                return
+            }
+        }
         if (state.outputType != null && state.playUrlInfo == null) {
             _state.update { it.copy(error = strings.get(R.string.parse_error_no_stream)) }
             return
@@ -1026,7 +1038,13 @@ class ParseViewModel(
             _state.update {
                 it.copy(
                     downloadStarting = false,
-                    notice = strings.get(R.string.parse_notice_download_started),
+                    notice = strings.get(
+                        if (state.isMultiSelect) {
+                            R.string.parse_notice_download_started_multi
+                        } else {
+                            R.string.parse_notice_download_started
+                        },
+                    ),
                 )
             }
             val snapshot = state
@@ -1044,13 +1062,14 @@ class ParseViewModel(
                 targets.items.forEach { rawItem ->
                     val item = runCatching { mediaRepository.resolveItemForPlay(rawItem, rawItem.type) }
                         .getOrDefault(rawItem)
-                    val playUrlInfo = if (snapshot.outputType != null) {
+                    val playUrlResult = if (snapshot.outputType != null) {
                         runCatching {
                             mediaRepository.getPlayUrlInfo(item, item.type, snapshot.format)
-                        }.getOrNull()
+                        }
                     } else {
                         null
                     }
+                    val playUrlInfo = playUrlResult?.getOrNull()
                     val naming = resolveGroupNaming(
                         info = info,
                         item = item,
@@ -1093,7 +1112,15 @@ class ParseViewModel(
 
                     val outputType = snapshot.outputType
                     if (outputType != null && playUrlInfo == null) {
-                        _state.update { it.copy(error = strings.get(R.string.parse_error_no_stream)) }
+                        val streamError = playUrlResult?.exceptionOrNull()
+                        val message = streamError?.let(::mapError)
+                            ?: strings.get(R.string.parse_error_no_stream)
+                        AppLog.w(
+                            TAG,
+                            "[download] failed to resolve stream, type=${item.type}, title=${item.title}",
+                            streamError,
+                        )
+                        _state.update { it.copy(error = message) }
                     }
                     if (outputType != null && playUrlInfo != null) {
                         val selectedVideo = selectVideoStream(
@@ -1116,33 +1143,35 @@ class ParseViewModel(
                             snapshot.selectedAudioId,
                             snapshot.audioBitrateMode,
                         )
-                        var canDownloadMedia = true
-                        when (outputType) {
-                            OutputType.AudioOnly -> {
-                                if (selectedAudio == null) {
-                                    _state.update { it.copy(error = strings.get(R.string.parse_error_no_audio)) }
-                                    canDownloadMedia = false
-                                }
+                        val downloadTitle = when (outputType) {
+                            OutputType.AudioOnly -> strings.get(R.string.output_audio)
+                            OutputType.VideoOnly -> strings.get(R.string.output_video)
+                            OutputType.AudioVideo -> strings.get(R.string.output_audio_video)
+                        }
+                        val downloadTaskType = when (outputType) {
+                            OutputType.AudioOnly -> DownloadTaskType.Audio
+                            OutputType.VideoOnly -> DownloadTaskType.Video
+                            OutputType.AudioVideo -> DownloadTaskType.AudioVideo
+                        }
+                        val unavailableReason = when (outputType) {
+                            OutputType.AudioOnly -> if (selectedAudio == null) {
+                                strings.get(R.string.download_unavailable_audio)
+                            } else {
+                                null
                             }
-                            OutputType.VideoOnly -> {
-                                if (selectedVideo == null) {
-                                    _state.update { it.copy(error = strings.get(R.string.parse_error_no_url)) }
-                                    canDownloadMedia = false
-                                }
+                            OutputType.VideoOnly -> if (selectedVideo == null) {
+                                strings.get(R.string.download_unavailable_video)
+                            } else {
+                                null
                             }
-                            OutputType.AudioVideo -> {
-                                if (mergeVideo == null) {
-                                    _state.update { it.copy(error = strings.get(R.string.parse_error_no_url)) }
-                                    canDownloadMedia = false
-                                }
+                            OutputType.AudioVideo -> when {
+                                mergeVideo == null -> strings.get(R.string.download_unavailable_video)
+                                playUrlInfo.format == StreamFormat.Dash && selectedAudio == null ->
+                                    strings.get(R.string.download_unavailable_audio_video)
+                                else -> null
                             }
                         }
-                        if (canDownloadMedia) {
-                            val downloadTitle = when (outputType) {
-                                OutputType.AudioOnly -> strings.get(R.string.output_audio)
-                                OutputType.VideoOnly -> strings.get(R.string.output_video)
-                                OutputType.AudioVideo -> strings.get(R.string.output_audio_video)
-                            }
+                        if (unavailableReason == null) {
                             val outputVideoCodec = when (outputType) {
                                 OutputType.AudioOnly -> null
                                 OutputType.VideoOnly -> selectedVideo?.codec ?: snapshot.selectedCodec
@@ -1173,7 +1202,7 @@ class ParseViewModel(
                                         DownloadTaskType.Audio,
                                         downloadTitle,
                                         audioName,
-                                        selectedAudio!!.url,
+                                        selectedAudio.url,
                                         mediaParams,
                                         embeddedMetadata = embeddedMetadata,
                                     )
@@ -1194,7 +1223,7 @@ class ParseViewModel(
                                         taskType = DownloadTaskType.Video,
                                         namingSession = namingSession,
                                         context = videoNamingContext,
-                                        extension = extensionForVideoStream(selectedVideo!!),
+                                        extension = extensionForVideoStream(selectedVideo),
                                     )
                                     lastDownload = downloadRepository.enqueue(
                                         groupId,
@@ -1209,7 +1238,7 @@ class ParseViewModel(
                                 OutputType.AudioVideo -> {
                                     if (playUrlInfo.format == StreamFormat.Dash && selectedAudio != null) {
                                         val mediaParams = buildMediaParams(mergeVideo, outputVideoCodec, selectedAudio)
-                                        val mergedExtension = extensionForMergedOutput(selectedAudio!!)
+                                        val mergedExtension = extensionForMergedOutput(selectedAudio)
                                         val mergedNamingContext = buildNamingRenderContext(
                                             info = info,
                                             item = item,
@@ -1231,7 +1260,7 @@ class ParseViewModel(
                                             downloadTitle,
                                             outputName,
                                             mergeVideo!!.url,
-                                            selectedAudio!!.url,
+                                            selectedAudio.url,
                                             mediaParams,
                                             embeddedMetadata = embeddedMetadata,
                                         )
@@ -1251,7 +1280,7 @@ class ParseViewModel(
                                             taskType = DownloadTaskType.AudioVideo,
                                             namingSession = namingSession,
                                             context = mergedNamingContext,
-                                            extension = extensionForVideoStream(mergeVideo!!),
+                                            extension = extensionForVideoStream(mergeVideo),
                                         )
                                         lastDownload = downloadRepository.enqueue(
                                             groupId,
@@ -1265,6 +1294,13 @@ class ParseViewModel(
                                     }
                                 }
                             }
+                        } else {
+                            downloadRepository.addUnavailableTask(
+                                groupId = groupId,
+                                type = downloadTaskType,
+                                taskTitle = downloadTitle,
+                                reason = unavailableReason,
+                            )
                         }
                     }
 
@@ -1299,7 +1335,7 @@ class ParseViewModel(
             val cid = item.cid
             val subtitleTitle = strings.get(R.string.parse_subtitle_label)
             if (aid == null || cid == null) {
-                addFailedExtraTask(
+                addUnavailableExtraTask(
                     groupId,
                     DownloadTaskType.Subtitle,
                     subtitleTitle,
@@ -1373,7 +1409,7 @@ class ParseViewModel(
                         }
                         extrasRepository.getSubtitleSrt(firstSubtitle)
                     },
-                    errorMessage = strings.get(R.string.parse_error_no_subtitle),
+                    unavailableMessage = strings.get(R.string.parse_error_no_subtitle),
                 )
             }
         }
@@ -1384,7 +1420,7 @@ class ParseViewModel(
             val bvid = item.bvid
             val taskTitle = strings.get(R.string.parse_ai_summary_label)
             if (aid == null || cid == null || bvid.isNullOrBlank()) {
-                addFailedExtraTask(
+                addUnavailableExtraTask(
                     groupId,
                     DownloadTaskType.AiSummary,
                     taskTitle,
@@ -1417,7 +1453,7 @@ class ParseViewModel(
                     contentProvider = {
                         extrasRepository.getAiSummaryMarkdown(summaryTitle, bvid, aid, cid)
                     },
-                    errorMessage = strings.get(R.string.parse_error_no_ai),
+                    unavailableMessage = strings.get(R.string.parse_error_no_ai),
                 )
             }
         }
@@ -1433,10 +1469,10 @@ class ParseViewModel(
                     mimeType = null,
                     relativePath = groupRelativePath,
                     contentProvider = { NfoGenerator.buildCollectionNfo(info) },
-                    errorMessage = strings.get(R.string.parse_error_no_nfo),
+                    unavailableMessage = strings.get(R.string.parse_error_no_nfo),
                 )
             } else {
-                addFailedExtraTask(
+                addUnavailableExtraTask(
                     groupId,
                     DownloadTaskType.NfoCollection,
                     taskTitle,
@@ -1470,7 +1506,7 @@ class ParseViewModel(
                 mimeType = null,
                 relativePath = groupRelativePath,
                 contentProvider = { NfoGenerator.buildSingleNfo(info, item) },
-                errorMessage = strings.get(R.string.parse_error_no_nfo),
+                unavailableMessage = strings.get(R.string.parse_error_no_nfo),
             )
         }
 
@@ -1496,7 +1532,7 @@ class ParseViewModel(
                 extension = if (convertXmlDanmakuToAss) "ass" else "xml",
             )
             if (aid == null || cid == null) {
-                addFailedExtraTask(
+                addUnavailableExtraTask(
                     groupId,
                     DownloadTaskType.DanmakuLive,
                     taskTitle,
@@ -1521,7 +1557,7 @@ class ParseViewModel(
                             }
                         }
                     },
-                    errorMessage = strings.get(R.string.common_error_unknown),
+                    unavailableMessage = strings.get(R.string.parse_error_no_danmaku),
                 )
             }
         }
@@ -1531,22 +1567,14 @@ class ParseViewModel(
             val hour = parseHour(snapshot.danmakuHour)
             val taskTitle = strings.get(R.string.parse_danmaku_history)
             val cid = item.cid
-            val validationError = when {
-                cid == null -> strings.get(R.string.parse_error_no_danmaku)
-                !isValidDate(date) -> strings.get(R.string.parse_error_invalid_date)
-                snapshot.danmakuHour.isNotBlank() && hour == null ->
-                    strings.get(R.string.parse_error_invalid_hour)
-                else -> null
-            }
-            if (validationError != null) {
-                addFailedExtraTask(
+            if (cid == null) {
+                addUnavailableExtraTask(
                     groupId,
                     DownloadTaskType.DanmakuHistory,
                     taskTitle,
-                    validationError,
+                    strings.get(R.string.parse_error_no_danmaku),
                 )
             } else {
-                val historyCid = cid!!
                 val danmakuHistoryContext = buildNamingRenderContext(
                     info = info,
                     item = item,
@@ -1571,12 +1599,12 @@ class ParseViewModel(
                     relativePath = groupRelativePath,
                     bytesProvider = { _, _, _ ->
                         if (convertXmlDanmakuToAss) {
-                            extrasRepository.getDanmakuHistoryAss(historyCid, date, hour)
+                            extrasRepository.getDanmakuHistoryAss(cid, date, hour)
                         } else {
-                            extrasRepository.getDanmakuHistoryXml(historyCid, date, hour)
+                            extrasRepository.getDanmakuHistoryXml(cid, date, hour)
                         }
                     },
-                    errorMessage = strings.get(R.string.common_error_unknown),
+                    unavailableMessage = strings.get(R.string.parse_error_no_danmaku),
                 )
             }
         }
@@ -1587,56 +1615,56 @@ class ParseViewModel(
                 .filter { it.url.isNotBlank() }
                 .filter { selectedIds.contains(it.id) }
                 .distinctBy { it.id }
-            if (thumbs.isNotEmpty()) {
-                val labelCounts = thumbs.groupingBy { thumb ->
-                    mapImageLabel(thumb.id)
-                }.eachCount()
-                thumbs.forEach { thumb ->
-                    val label = mapImageLabel(thumb.id)
-                    val fileLabel = if ((labelCounts[label] ?: 0) > 1) {
-                        "$label-${thumb.id}"
-                    } else {
-                        label
-                    }
-                    val taskType = when (thumb.id) {
-                        "cover", "pic" -> DownloadTaskType.Cover
-                        else -> DownloadTaskType.CollectionCover
-                    }
-                    val imageContext = buildNamingRenderContext(
-                        info = info,
-                        item = item,
-                        naming = naming,
-                        namingSession = namingSession,
-                        taskType = taskType,
-                        taskLabel = fileLabel,
-                        mediaParams = null,
-                    )
-                    val name = resolveTemplateFileName(
-                        taskType = taskType,
-                        namingSession = namingSession,
-                        context = imageContext,
-                        extension = extensionFromUrl(thumb.url),
-                    )
-                    saveBytesTask(
-                        groupId = groupId,
-                        type = taskType,
-                        taskTitle = label,
-                        fileName = name,
-                        mimeType = "image/*",
-                        relativePath = groupRelativePath,
-                        bytesProvider = { _, _, _ -> extrasRepository.fetchBytes(thumb.url) },
-                        errorMessage = strings.get(R.string.common_error_unknown),
-                    )
+            val labelCounts = thumbs.groupingBy { thumb ->
+                mapImageLabel(thumb.id)
+            }.eachCount()
+            thumbs.forEach { thumb ->
+                val label = mapImageLabel(thumb.id)
+                val fileLabel = if ((labelCounts[label] ?: 0) > 1) {
+                    "$label-${thumb.id}"
+                } else {
+                    label
                 }
-            } else {
-                val message = strings.get(R.string.parse_error_no_cover)
-                addFailedExtraTask(
-                    groupId,
-                    DownloadTaskType.CollectionCover,
-                    strings.get(R.string.parse_image_label),
-                    message,
+                val taskType = imageDownloadTaskType(thumb.id)
+                val imageContext = buildNamingRenderContext(
+                    info = info,
+                    item = item,
+                    naming = naming,
+                    namingSession = namingSession,
+                    taskType = taskType,
+                    taskLabel = fileLabel,
+                    mediaParams = null,
+                )
+                val name = resolveTemplateFileName(
+                    taskType = taskType,
+                    namingSession = namingSession,
+                    context = imageContext,
+                    extension = extensionFromUrl(thumb.url),
+                )
+                saveBytesTask(
+                    groupId = groupId,
+                    type = taskType,
+                    taskTitle = label,
+                    fileName = name,
+                    mimeType = "image/*",
+                    relativePath = groupRelativePath,
+                    bytesProvider = { _, _, _ -> extrasRepository.fetchBytes(thumb.url) },
+                    unavailableMessage = strings.get(R.string.download_unavailable_image),
                 )
             }
+            val availableIds = thumbs.mapTo(mutableSetOf()) { it.id }
+            selectedIds
+                .filterNot(availableIds::contains)
+                .sorted()
+                .forEach { unavailableId ->
+                    val label = mapImageLabel(unavailableId)
+                    addUnavailableExtraTask(
+                        groupId = groupId,
+                        type = imageDownloadTaskType(unavailableId),
+                        taskTitle = label,
+                        reason = strings.get(R.string.download_unavailable_image),
+                    )
+                }
         }
     }
 
@@ -1663,7 +1691,7 @@ class ParseViewModel(
             mimeType = null,
             relativePath = groupRelativePath,
             bytesProvider = { _, _, _ -> extrasRepository.getSubtitleSrt(subtitle) },
-            errorMessage = strings.get(R.string.parse_error_no_subtitle),
+            unavailableMessage = strings.get(R.string.parse_error_no_subtitle),
             parentTaskId = parentTaskId,
         )
     }
@@ -2991,6 +3019,13 @@ class ParseViewModel(
         return strings.get(AudioQualities.labelRes(id))
     }
 
+    private fun imageDownloadTaskType(imageId: String): DownloadTaskType {
+        return when (imageId.substringBefore('-')) {
+            "cover", "pic" -> DownloadTaskType.Cover
+            else -> DownloadTaskType.CollectionCover
+        }
+    }
+
     private fun mapImageLabel(id: String): String {
         val base = id.substringBefore('-')
         val suffix = id.substringAfter('-', "")
@@ -3132,22 +3167,20 @@ class ParseViewModel(
             .toString()
     }
 
-    private fun addFailedExtraTask(
+    private fun addUnavailableExtraTask(
         groupId: Long,
         type: DownloadTaskType,
         taskTitle: String,
-        errorMessage: String,
+        reason: String,
         fileName: String = "",
     ) {
-        downloadRepository.addExtraTask(
-            groupId,
-            type,
-            taskTitle,
-            fileName,
-            DownloadStatus.Failed,
-            errorMessage = errorMessage,
+        downloadRepository.addUnavailableTask(
+            groupId = groupId,
+            type = type,
+            taskTitle = taskTitle,
+            reason = reason,
+            fileName = fileName,
         )
-        _state.update { it.copy(error = errorMessage) }
     }
 
     private fun isCollectionNfoAvailable(info: MediaInfo): Boolean {
@@ -3176,9 +3209,9 @@ class ParseViewModel(
         }
     }
 
-    private fun extraTaskErrorMessage(fallback: String, err: Throwable?): String {
-        if (err == null) return fallback
+    private fun extraTaskErrorMessage(taskTitle: String, err: Throwable?): String {
         val detail = when (err) {
+            null -> null
             is BiliHttpException -> {
                 val base = err.message?.takeIf { it.isNotBlank() }
                     ?: strings.get(R.string.parse_error_failed)
@@ -3186,7 +3219,8 @@ class ParseViewModel(
             }
             else -> err.message
         }?.takeIf { it.isNotBlank() }
-        return if (detail == null) fallback else "$fallback: $detail"
+            ?: strings.get(R.string.download_reason_unknown)
+        return strings.get(R.string.download_failure_extra, taskTitle, detail)
     }
 
     private fun saveTextTask(
@@ -3197,7 +3231,7 @@ class ParseViewModel(
         mimeType: String?,
         relativePath: String,
         contentProvider: suspend () -> String?,
-        errorMessage: String,
+        unavailableMessage: String,
     ) {
         val task = downloadRepository.addExtraTask(
             groupId,
@@ -3215,11 +3249,10 @@ class ParseViewModel(
                 if (content.isNullOrBlank()) {
                     downloadRepository.updateExtraTask(
                         task.id,
-                        DownloadStatus.Failed,
-                        progress = 0,
-                        errorMessage = errorMessage,
+                        DownloadStatus.Unavailable,
+                        progress = 100,
+                        statusDetail = unavailableMessage,
                     )
-                    _state.update { it.copy(error = errorMessage) }
                     return@extraTask
                 }
                 if (!downloadRepository.updateExtraTask(
@@ -3248,9 +3281,11 @@ class ParseViewModel(
                         task.id,
                         DownloadStatus.Failed,
                         progress = 0,
-                        errorMessage = errorMessage,
+                        errorMessage = strings.get(R.string.download_failure_save),
                     )
-                    _state.update { it.copy(error = errorMessage) }
+                    _state.update {
+                        it.copy(error = strings.get(R.string.download_failure_save))
+                    }
                 }
             } catch (err: CancellationException) {
                 downloadRepository.updateExtraTask(
@@ -3261,7 +3296,7 @@ class ParseViewModel(
                 )
                 throw err
             } catch (err: Throwable) {
-                val message = extraTaskErrorMessage(errorMessage, err)
+                val message = extraTaskErrorMessage(taskTitle, err)
                 AppLog.w(TAG, "[extra-task] text failed, type=$type, file=$fileName", err)
                 downloadRepository.updateExtraTask(
                     task.id,
@@ -3286,7 +3321,7 @@ class ParseViewModel(
             (ExtraTaskProgress) -> Unit,
             (String, String) -> Boolean,
         ) -> ByteArray?,
-        errorMessage: String,
+        unavailableMessage: String,
         parentTaskId: Long? = null,
     ): Boolean {
         val task = if (parentTaskId == null) {
@@ -3342,11 +3377,10 @@ class ParseViewModel(
                 if (bytes == null) {
                     downloadRepository.updateExtraTask(
                         task.id,
-                        DownloadStatus.Failed,
-                        progress = 0,
-                        errorMessage = errorMessage,
+                        DownloadStatus.Unavailable,
+                        progress = 100,
+                        statusDetail = unavailableMessage,
                     )
-                    _state.update { it.copy(error = errorMessage) }
                     return@extraTask
                 }
                 if (!downloadRepository.updateExtraTask(
@@ -3374,9 +3408,11 @@ class ParseViewModel(
                         task.id,
                         DownloadStatus.Failed,
                         progress = 0,
-                        errorMessage = errorMessage,
+                        errorMessage = strings.get(R.string.download_failure_save),
                     )
-                    _state.update { it.copy(error = errorMessage) }
+                    _state.update {
+                        it.copy(error = strings.get(R.string.download_failure_save))
+                    }
                 }
             } catch (err: CancellationException) {
                 downloadRepository.updateExtraTask(
@@ -3387,7 +3423,7 @@ class ParseViewModel(
                 )
                 throw err
             } catch (err: Throwable) {
-                val message = extraTaskErrorMessage(errorMessage, err)
+                val message = extraTaskErrorMessage(taskTitle, err)
                 AppLog.w(TAG, "[extra-task] bytes failed, type=$type, file=$fileName", err)
                 downloadRepository.updateExtraTask(
                     task.id,
