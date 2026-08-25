@@ -104,6 +104,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -2766,10 +2767,9 @@ private fun QualityControls(
         AnimatedOptionsVisibility(visible = !state.warning.isNullOrBlank()) {
             Column {
                 Spacer(Modifier.height(8.dp))
-                MessageCard(
-                    message = state.warning.orEmpty(),
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                HelperText(
+                    text = state.warning.orEmpty(),
+                    icon = painterResource(R.drawable.ic_info_24),
                 )
             }
         }
@@ -3571,12 +3571,33 @@ private fun StreamFormatHint() {
 }
 
 @Composable
-private fun HelperText(text: String) {
-    Text(
-        text = text,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        style = ParseTextStyles.supporting,
-    )
+private fun HelperText(
+    text: String,
+    icon: Painter? = null,
+) {
+    val supportingStyle = ParseTextStyles.supporting
+    val contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (icon != null) {
+            // 与首行文字垂直居中对齐，避免多行文案时图标偏移到整段中部
+            Box(
+                modifier = Modifier.height(with(LocalDensity.current) { supportingStyle.lineHeight.toDp() }),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = icon,
+                    contentDescription = null,
+                    tint = contentColor,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
+        }
+        Text(
+            text = text,
+            color = contentColor,
+            style = supportingStyle,
+        )
+    }
 }
 
 @Composable
