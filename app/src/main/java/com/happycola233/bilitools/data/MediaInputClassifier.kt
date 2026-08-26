@@ -6,24 +6,25 @@ import okhttp3.HttpUrl
 
 internal object MediaInputClassifier {
     fun parseDirectId(raw: String): ParsedInput? {
-        if (!DIRECT_ID_REGEX.matches(raw)) return null
+        if (raw.startsWith("uid", ignoreCase = true)) {
+            val digits = raw.substring(3)
+            if (!digits.isAsciiDigits()) return null
+            return ParsedInput("uid$digits", MediaType.UserVideo)
+        }
 
-        val prefix = if (raw.startsWith("uid", ignoreCase = true)) {
-            "uid"
-        } else {
-            raw.substring(0, 2).lowercase()
+        // BV 号体本身区分大小写，只把前缀规范成 BV。
+        if (raw.length == BV_ID_LENGTH && raw.startsWith("bv", ignoreCase = true)) {
+            val body = raw.substring(2)
+            if (body.all { it.isAsciiLetterOrDigit() }) {
+                return ParsedInput("BV$body", MediaType.Video)
+            }
         }
-        val type = when (prefix) {
-            "av", "bv" -> MediaType.Video
-            "ep", "ss", "md" -> MediaType.Bangumi
-            "au" -> MediaType.Music
-            "am" -> MediaType.MusicList
-            "cv" -> MediaType.Opus
-            "rl" -> MediaType.OpusList
-            "uid" -> MediaType.UserVideo
-            else -> null
-        }
-        return ParsedInput(raw, type)
+
+        if (raw.length <= 2) return null
+        val digits = raw.substring(2)
+        if (!digits.isAsciiDigits()) return null
+        val type = TWO_CHAR_PREFIX_TYPES[raw.substring(0, 2).lowercase()] ?: return null
+        return ParsedInput(raw.substring(0, 2).lowercase() + digits, type)
     }
 
     /**
@@ -66,8 +67,21 @@ internal object MediaInputClassifier {
         throw IllegalArgumentException("Invalid input")
     }
 
-    private val DIRECT_ID_REGEX = Regex(
-        "^(av\\d+|BV[0-9A-Za-z]{10}|ep\\d+|ss\\d+|md\\d+|au\\d+|am\\d+|cv\\d+|rl\\d+|uid\\d+)$",
-        RegexOption.IGNORE_CASE,
+    private const val BV_ID_LENGTH = 12
+
+    private val TWO_CHAR_PREFIX_TYPES = mapOf(
+        "av" to MediaType.Video,
+        "ep" to MediaType.Bangumi,
+        "ss" to MediaType.Bangumi,
+        "md" to MediaType.Bangumi,
+        "au" to MediaType.Music,
+        "am" to MediaType.MusicList,
+        "cv" to MediaType.Opus,
+        "rl" to MediaType.OpusList,
     )
+
+    private fun String.isAsciiDigits(): Boolean = isNotEmpty() && all { it in '0'..'9' }
+
+    private fun Char.isAsciiLetterOrDigit(): Boolean =
+        this in '0'..'9' || this in 'A'..'Z' || this in 'a'..'z'
 }

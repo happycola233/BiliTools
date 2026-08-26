@@ -71,45 +71,48 @@ class MediaRepository(
         val root = segments.getOrNull(0)
         val second = segments.getOrNull(1)
         if (!second.isNullOrBlank()) {
-            if (BV_REGEX.matches(second) || AV_REGEX.matches(second)) {
-                return ParsedInput(second, MediaType.Video)
+            val parsedSecond = MediaInputClassifier.parseDirectId(second)
+            when (parsedSecond?.type) {
+                MediaType.Video,
+                MediaType.Music,
+                MediaType.MusicList,
+                MediaType.Opus,
+                -> return parsedSecond
+                else -> Unit
             }
-            if (AU_REGEX.matches(second)) {
-                return ParsedInput(second, MediaType.Music)
-            }
-            if (AM_REGEX.matches(second)) {
-                return ParsedInput(second, MediaType.MusicList)
-            }
-        }
-
-        if (!second.isNullOrBlank()) {
-            if (CV_REGEX.matches(second) || root == "opus") {
+            if (root.equals("opus", ignoreCase = true)) {
                 return ParsedInput(second, MediaType.Opus)
             }
         }
 
-        if (root == "watchlater") {
+        if (root.equals("watchlater", ignoreCase = true)) {
             return ParsedInput("", MediaType.WatchLater)
         }
 
         val third = segments.getOrNull(2)
-        if (!third.isNullOrBlank() && (EP_REGEX.matches(third) || SS_REGEX.matches(third) || MD_REGEX.matches(third))) {
-            return when (root) {
-                "bangumi" -> ParsedInput(third, MediaType.Bangumi)
-                "cheese" -> ParsedInput(third, MediaType.Lesson)
-                else -> throw IllegalArgumentException("Invalid input")
+        if (!third.isNullOrBlank()) {
+            val parsedThird = MediaInputClassifier.parseDirectId(third)
+            when (parsedThird?.type) {
+                MediaType.Bangumi -> return when {
+                    root.equals("bangumi", ignoreCase = true) -> parsedThird
+                    root.equals("cheese", ignoreCase = true) ->
+                        ParsedInput(parsedThird.id, MediaType.Lesson)
+                    else -> throw IllegalArgumentException("Invalid input")
+                }
+                MediaType.OpusList -> return parsedThird
+                else -> Unit
             }
         }
 
-        if (!third.isNullOrBlank() && RL_REGEX.matches(third)) {
-            return ParsedInput(third, MediaType.OpusList)
-        }
-
-        if (second == "watchlater") {
+        if (second.equals("watchlater", ignoreCase = true)) {
             val id = url.queryParameter("aid")
                 ?: url.queryParameter("oid")
                 ?: url.queryParameter("bvid")
             if (id != null) {
+                val parsedQueryId = MediaInputClassifier.parseDirectId(id)
+                if (parsedQueryId?.type == MediaType.Video) {
+                    return parsedQueryId
+                }
                 return ParsedInput(id, MediaType.Video)
             }
         }
@@ -1801,15 +1804,6 @@ class MediaRepository(
         private val DOMAIN_ONLY_REGEX =
             Regex("\\.(bilibili\\.com|b23\\.tv)$", RegexOption.IGNORE_CASE)
 
-        private val BV_REGEX = Regex("^BV[0-9A-Za-z]{10}$", RegexOption.IGNORE_CASE)
-        private val AV_REGEX = Regex("^av\\d+$", RegexOption.IGNORE_CASE)
-        private val AU_REGEX = Regex("^au\\d+$", RegexOption.IGNORE_CASE)
-        private val AM_REGEX = Regex("^am\\d+$", RegexOption.IGNORE_CASE)
-        private val CV_REGEX = Regex("^cv\\d+$", RegexOption.IGNORE_CASE)
-        private val EP_REGEX = Regex("^ep\\d+$", RegexOption.IGNORE_CASE)
-        private val SS_REGEX = Regex("^ss\\d+$", RegexOption.IGNORE_CASE)
-        private val MD_REGEX = Regex("^md\\d+$", RegexOption.IGNORE_CASE)
-        private val RL_REGEX = Regex("^rl\\d+$", RegexOption.IGNORE_CASE)
         private val OPUS_ID_REGEX = Regex("/opus/(\\d+)")
         private val OPUS_INITIAL_STATE_REGEX = Regex(
             "window\\.__INITIAL_STATE__\\s*=\\s*([\\s\\S]*?)(?=;\\(\\s*function)",

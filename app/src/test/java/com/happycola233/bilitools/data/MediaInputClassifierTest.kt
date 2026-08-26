@@ -10,13 +10,32 @@ import org.junit.Test
 
 class MediaInputClassifierTest {
     @Test
-    fun parseDirectId_recognizesUidPrefixCaseInsensitively() {
-        listOf("uid123456", "UID123456", "UiD123456").forEach { input ->
-            assertEquals(
-                ParsedInput(input, MediaType.UserVideo),
-                MediaInputClassifier.parseDirectId(input),
-            )
+    fun parseDirectId_recognizesAllPrefixesCaseInsensitively() {
+        val cases = listOf(
+            Triple("av123456", "AV123456", MediaType.Video),
+            Triple("BV1xx411c7mD", "bv1xx411c7mD", MediaType.Video),
+            Triple("ep123456", "EP123456", MediaType.Bangumi),
+            Triple("ss123456", "Ss123456", MediaType.Bangumi),
+            Triple("md123456", "MD123456", MediaType.Bangumi),
+            Triple("au123456", "Au123456", MediaType.Music),
+            Triple("am123456", "AM123456", MediaType.MusicList),
+            Triple("cv123456", "Cv123456", MediaType.Opus),
+            Triple("rl123456", "RL123456", MediaType.OpusList),
+            Triple("uid123456", "UiD123456", MediaType.UserVideo),
+        )
+
+        cases.forEach { (canonical, mixed, type) ->
+            assertEquals(ParsedInput(canonical, type), MediaInputClassifier.parseDirectId(canonical))
+            assertEquals(ParsedInput(canonical, type), MediaInputClassifier.parseDirectId(mixed))
         }
+    }
+
+    @Test
+    fun parseDirectId_preservesBvBodyCasing() {
+        assertEquals(
+            ParsedInput("BV1Xx411C7mD", MediaType.Video),
+            MediaInputClassifier.parseDirectId("bV1Xx411C7mD"),
+        )
     }
 
     @Test

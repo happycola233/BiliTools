@@ -176,7 +176,7 @@ class VideoRepository(
         val trimmed = input.trim()
         val bvMatch = BV_REGEX.find(trimmed)?.value
         if (bvMatch != null) {
-            return VideoId(bvid = bvMatch)
+            return VideoId(bvid = "BV" + bvMatch.substring(2))
         }
         val avMatch = AV_REGEX.find(trimmed)?.groupValues?.getOrNull(1)
         if (avMatch != null) {
@@ -189,8 +189,8 @@ class VideoRepository(
     }
 
     companion object {
-    private val BV_REGEX = Regex("BV[0-9A-Za-z]{10}")
-    private val AV_REGEX = Regex("av(\\d+)")
+    private val BV_REGEX = Regex("BV[0-9A-Za-z]{10}", RegexOption.IGNORE_CASE)
+    private val AV_REGEX = Regex("av(\\d+)", RegexOption.IGNORE_CASE)
     }
 
     private fun normalizeCoverUrl(url: String): String {
