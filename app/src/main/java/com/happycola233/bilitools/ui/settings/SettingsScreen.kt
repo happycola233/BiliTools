@@ -1273,18 +1273,18 @@ private fun NamingTokenChip(
     )
     val containerColor by animateColorAsState(
         targetValue = if (isPressed) {
-            MaterialTheme.colorScheme.secondaryContainer
+            MaterialTheme.colorScheme.primaryContainer
         } else {
-            MaterialTheme.colorScheme.surfaceContainerHighest
+            MaterialTheme.colorScheme.secondaryContainer
         },
         animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
         label = "namingTokenChipContainer",
     )
     val contentColor by animateColorAsState(
         targetValue = if (isPressed) {
-            MaterialTheme.colorScheme.onSecondaryContainer
+            MaterialTheme.colorScheme.onPrimaryContainer
         } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
+            MaterialTheme.colorScheme.onSecondaryContainer
         },
         animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
         label = "namingTokenChipContent",
