@@ -1645,7 +1645,15 @@ private fun PageSelectionList(
     val boundaryConnection = rememberScrollBoundaryNestedScrollConnection(boundaryConsumption)
     val overscrollEffect = rememberBoundaryAwareOverscrollEffect(boundaryConsumption)
 
-    LaunchedEffect(state.items) {
+    // 只在列表成员被整页替换时回顶。点击预览会补拉单条详情并改写 items，
+    // 若以 items 本身为 key，滚动会被误重置到第一条。
+    LaunchedEffect(
+        info.id,
+        info.type,
+        state.pageIndex,
+        state.selectedSectionId,
+        state.collectionMode,
+    ) {
         listState.scrollToItem(0)
     }
 
