@@ -807,6 +807,7 @@ class MediaRepository(
                 duration = item.duration,
                 pubTime = item.pubtime,
                 type = mapFavoriteType(item.type),
+                upper = item.upper?.toMediaUpper(),
                 isTarget = index == 0,
                 index = baseIndex + index,
                 fid = data.info.id,
@@ -837,7 +838,7 @@ class MediaRepository(
                 ),
                 thumbs = listOf(MediaThumb("cover", normalizeCoverUrl(resolvedInfo.cover))),
                 premiered = resolvedInfo.ctime * 1000,
-                upper = resolvedInfo.upper?.let { MediaUpper(it.name, it.mid, it.face) },
+                upper = resolvedInfo.upper?.toMediaUpper(),
             ),
             list = list,
             sections = sections,
@@ -2133,7 +2134,9 @@ private data class FavoriteUpper(
     @Json(name = "mid") val mid: Long,
     @Json(name = "name") val name: String,
     @Json(name = "face") val face: String,
-)
+) {
+    fun toMediaUpper(): MediaUpper = MediaUpper(name, mid, face)
+}
 
 private data class FavoriteCntInfo(
     @Json(name = "collect") val collect: Int,
@@ -2152,6 +2155,7 @@ private data class FavoriteMedia(
     @Json(name = "cnt_info") val cntInfo: FavoriteMediaCntInfo? = null,
     @Json(name = "duration") val duration: Int,
     @Json(name = "pubtime") val pubtime: Long,
+    @Json(name = "upper") val upper: FavoriteUpper? = null,
 )
 
 private data class FavoriteMediaCntInfo(

@@ -77,6 +77,8 @@ data class MediaItem(
     val duration: Int,
     val pubTime: Long,
     val type: MediaType,
+    // 稿件自身的 UP；收藏夹等容器里每条可以不同，缺省时回退到 nfo.upper
+    val upper: MediaUpper? = null,
     val isTarget: Boolean,
     val index: Int,
     val aid: Long? = null,
@@ -95,6 +97,8 @@ data class MediaItem(
         bvid?.trim()?.takeIf { it.isNotBlank() }?.let { return it }
         return cvid?.let { "cv$it" }
     }
+
+    fun resolvedUpper(info: MediaInfo): MediaUpper? = upper ?: info.nfo.upper
 }
 
 data class MediaInfo(

@@ -90,7 +90,7 @@ object NfoGenerator {
         appendNode(sb, "plot", plot)
         appendNode(sb, "premiered", formatDate(item.pubTime))
         appendNode(sb, "runtime", (item.duration / 60).coerceAtLeast(1))
-        info.nfo.upper?.name?.let { appendNode(sb, "director", it) }
+        item.resolvedUpper(info)?.name?.let { appendNode(sb, "director", it) }
         info.nfo.tags.forEach { tag ->
             appendNode(sb, "genre", tag)
             appendNode(sb, "tag", tag)

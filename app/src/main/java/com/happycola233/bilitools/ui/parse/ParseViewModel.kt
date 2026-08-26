@@ -1253,7 +1253,7 @@ class ParseViewModel(
                             )
                             return@mapNotNull null
                         }
-                        val document = result.getOrNull()?.withItemFallback(rawItem, info.nfo.upper)
+                        val document = result.getOrNull()?.withItemFallback(rawItem, rawItem.resolvedUpper(info))
                         PreparedDownloadTarget(
                             item = document?.let { rawItem.withOpusDocument(it) } ?: rawItem,
                             opusDocument = document,
@@ -2592,6 +2592,7 @@ class ParseViewModel(
         )
         val collectionTitle = resolveNamingCollectionTitle(info)
         val containerLabel = mapMediaTypeLabel(info.type)
+        val namingUpper = representativeItem?.resolvedUpper(info) ?: info.nfo.upper
         val topContext = NamingRenderContext(
             videoTitle = videoTitle,
             collectionTitle = collectionTitle,
@@ -2599,8 +2600,8 @@ class ParseViewModel(
             pubTimeEpochSeconds = representativeItem?.pubTime?.takeIf { it > 0L }
                 ?: info.nfo.premiered,
             downTimeEpochSeconds = downTimeEpochSeconds,
-            upper = info.nfo.upper?.name,
-            upperId = info.nfo.upper?.mid?.toString(),
+            upper = namingUpper?.name,
+            upperId = namingUpper?.mid?.toString(),
             aid = representativeItem?.aid?.toString(),
             sid = representativeItem?.sid?.toString(),
             fid = representativeItem?.fid?.toString(),
@@ -2677,6 +2678,7 @@ class ParseViewModel(
         )
         val collectionTitle = resolveNamingCollectionTitle(info)
         val resolvedTaskLabel = taskLabel ?: taskType?.let(::mapTaskTypeLabel)
+        val namingUpper = item.resolvedUpper(info)
         return NamingRenderContext(
             videoTitle = videoTitle,
             collectionTitle = collectionTitle,
@@ -2692,8 +2694,8 @@ class ParseViewModel(
             index = item.index + 1,
             pubTimeEpochSeconds = item.pubTime.takeIf { it > 0L } ?: info.nfo.premiered,
             downTimeEpochSeconds = namingSession.downTimeEpochSeconds,
-            upper = info.nfo.upper?.name,
-            upperId = info.nfo.upper?.mid?.toString(),
+            upper = namingUpper?.name,
+            upperId = namingUpper?.mid?.toString(),
             aid = item.aid?.toString(),
             sid = item.sid?.toString(),
             fid = item.fid?.toString(),
@@ -2848,7 +2850,7 @@ class ParseViewModel(
         val opusDocument = if (isOpus) {
             runCatching { opusRepository.getDocument(item) }
                 .getOrNull()
-                ?.withItemFallback(item, info.nfo.upper)
+                ?.withItemFallback(item, item.resolvedUpper(info))
         } else {
             null
         }
@@ -3550,7 +3552,7 @@ class ParseViewModel(
             ?: fallbackAlbum.trim().takeIf { it.isNotBlank() }
 
         val title = item.title.trim().takeIf { it.isNotBlank() } ?: album
-        val artist = info.nfo.upper?.name?.trim()?.takeIf { it.isNotBlank() }
+        val artist = item.resolvedUpper(info)?.name?.trim()?.takeIf { it.isNotBlank() }
         val comment = item.description.trim().takeIf { it.isNotBlank() }
             ?: info.nfo.intro?.trim()?.takeIf { it.isNotBlank() }
 
