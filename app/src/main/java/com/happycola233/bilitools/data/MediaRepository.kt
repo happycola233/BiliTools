@@ -37,19 +37,7 @@ class MediaRepository(
         if (raw.isBlank()) {
             throw IllegalArgumentException("Invalid input")
         }
-        if (DIRECT_ID_REGEX.matches(raw)) {
-            val prefix = raw.substring(0, 2).lowercase()
-            val type = when (prefix) {
-                "av", "bv" -> MediaType.Video
-                "ep", "ss", "md" -> MediaType.Bangumi
-                "au" -> MediaType.Music
-                "am" -> MediaType.MusicList
-                "cv" -> MediaType.Opus
-                "rl" -> MediaType.OpusList
-                else -> null
-            }
-            return ParsedInput(raw, type)
-        }
+        MediaInputClassifier.parseDirectId(raw)?.let { return it }
 
         val picked = raw.split(Regex("\\s+")).firstOrNull { token ->
             URL_CANDIDATE_REGEX.matches(token) && URL_SAFE_REGEX.matches(token)
@@ -77,29 +65,9 @@ class MediaRepository(
             return parseInput(resolved, allowRaw)
         }
 
+        MediaInputClassifier.parseSpaceUrl(url)?.let { return it }
+
         val segments = url.pathSegments.filter { it.isNotBlank() }
-
-        if (host == "space.bilibili.com") {
-            val mid = segments.getOrNull(0) ?: throw IllegalArgumentException("Invalid input")
-            val type = segments.getOrNull(1)
-            if (type == "favlist") {
-                val fid = url.queryParameter("fid")?.toLongOrNull()
-                return ParsedInput(mid, MediaType.Favorite, fid)
-            }
-            // 兼容 /{mid}/video 与 /{mid}/upload/video
-            if ((segments.getOrNull(2) ?: type) == "video" || type == "lists" || segments.size == 1) {
-                val listId = Regex("/lists/(\\d+)").find(url.encodedPath)?.groupValues?.getOrNull(1)
-                return ParsedInput(mid, MediaType.UserVideo, listId?.toLongOrNull())
-            }
-            if (segments.getOrNull(2) == "opus" || type == "article") {
-                return ParsedInput(mid, MediaType.UserOpus)
-            }
-            if (segments.getOrNull(2) == "audio" || type == "audio") {
-                return ParsedInput(mid, MediaType.UserAudio)
-            }
-            throw IllegalArgumentException("Invalid input")
-        }
-
         val root = segments.getOrNull(0)
         val second = segments.getOrNull(1)
         if (!second.isNullOrBlank()) {
@@ -1826,8 +1794,6 @@ class MediaRepository(
     }
 
     companion object {
-        private val DIRECT_ID_REGEX =
-            Regex("^(av\\d+|BV[0-9A-Za-z]{10}|ep\\d+|ss\\d+|md\\d+|au\\d+|am\\d+|cv\\d+|rl\\d+)$", RegexOption.IGNORE_CASE)
         private val URL_CANDIDATE_REGEX =
             Regex("^(?:https?://)?(?:[\\w-]+\\.)*(?:bilibili\\.com|b23\\.tv)/.+$", RegexOption.IGNORE_CASE)
         private val URL_SAFE_REGEX =
