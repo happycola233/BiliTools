@@ -493,7 +493,9 @@ private fun HistoryBody(
             ) {
                 itemsIndexed(
                     items = state.items,
-                    key = { _, item -> "${item.bvid ?: item.uri ?: item.title}-${item.viewAt}" },
+                    key = { _, item ->
+                        "${item.bvid ?: item.uri ?: item.oid ?: item.title}-${item.viewAt}"
+                    },
                 ) { index, item ->
                     val previousItem = state.items.getOrNull(index - 1)
                     val showSectionHeader =
@@ -810,51 +812,23 @@ private fun HistoryItemCard(
                     overflow = TextOverflow.Ellipsis,
                 )
 
-                if (authorName != null) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.then(
-                            if (authorClickable) {
-                                Modifier.clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    onClick = {
-                                        haptics.tap()
-                                        onOpenAuthor()
-                                    },
-                                )
-                            } else {
-                                Modifier
-                            }
-                        ),
-                    ) {
-                        AsyncImage(
-                            model = item.authorAvatarUrl ?: R.drawable.default_avatar,
-                            placeholder = painterResource(R.drawable.default_avatar),
-                            error = painterResource(R.drawable.default_avatar),
-                            fallback = painterResource(R.drawable.default_avatar),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(16.dp)
-                                .clip(CircleShape),
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = authorName,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                if (progressText != null) {
+                    if (authorName != null) {
+                        HistoryAuthorLabel(
+                            name = authorName,
+                            avatarUrl = item.authorAvatarUrl,
+                            clickable = authorClickable,
+                            onClick = {
+                                haptics.tap()
+                                onOpenAuthor()
+                            },
                         )
                     }
-                }
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    if (progressText != null) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
                         Text(
                             text = progressText,
                             style = MaterialTheme.typography.bodySmall,
@@ -863,21 +837,33 @@ private fun HistoryItemCard(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
                         )
-                    } else {
-                        Spacer(modifier = Modifier.weight(1f))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        HistoryViewAtText(text = viewAtText)
                     }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Text(
-                        text = viewAtText,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        textAlign = TextAlign.End,
-                    )
+                } else {
+                    // 直播、专栏、商品等没有播放进度，把 UP 与观看时间收进同一行。
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        if (authorName != null) {
+                            HistoryAuthorLabel(
+                                name = authorName,
+                                avatarUrl = item.authorAvatarUrl,
+                                clickable = authorClickable,
+                                onClick = {
+                                    haptics.tap()
+                                    onOpenAuthor()
+                                },
+                                modifier = Modifier.weight(1f),
+                            )
+                        } else {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        HistoryViewAtText(text = viewAtText)
+                    }
                 }
-
             }
 
             if (canJumpDownload) {
@@ -906,6 +892,62 @@ private fun HistoryItemCard(
             )
         }
     }
+}
+
+@Composable
+private fun HistoryAuthorLabel(
+    name: String,
+    avatarUrl: String?,
+    clickable: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.then(
+            if (clickable) {
+                Modifier.clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onClick,
+                )
+            } else {
+                Modifier
+            }
+        ),
+    ) {
+        AsyncImage(
+            model = avatarUrl ?: R.drawable.default_avatar,
+            placeholder = painterResource(R.drawable.default_avatar),
+            error = painterResource(R.drawable.default_avatar),
+            fallback = painterResource(R.drawable.default_avatar),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(16.dp)
+                .clip(CircleShape),
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = name,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false),
+        )
+    }
+}
+
+@Composable
+private fun HistoryViewAtText(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        textAlign = TextAlign.End,
+    )
 }
 
 @Composable

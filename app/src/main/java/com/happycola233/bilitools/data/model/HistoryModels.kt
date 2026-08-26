@@ -11,6 +11,8 @@ data class HistoryItem(
     val coverUrl: String? = null,
     val coverUrls: List<String> = emptyList(),
     val uri: String? = null,
+    /** 历史目标 id：稿件 avid / 直播间 id / 专栏 cvid / 文集 rlid。 */
+    val oid: Long? = null,
     val bvid: String? = null,
     val cid: Long? = null,
     val business: String? = null,

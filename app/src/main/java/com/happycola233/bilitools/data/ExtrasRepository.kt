@@ -397,8 +397,9 @@ class ExtrasRepository(
             coverUrl = normalizedCover,
             coverUrls = normalizedCovers,
             uri = uri?.takeIf { it.isNotBlank() }?.let(::normalizeUrl),
+            oid = history?.oid?.takeIf { it > 0 },
             bvid = history?.bvid?.takeIf { it.isNotBlank() },
-            cid = history?.cid,
+            cid = history?.cid?.takeIf { it > 0 },
             business = history?.business?.takeIf { it.isNotBlank() },
             page = history?.page,
             part = history?.part?.takeIf { it.isNotBlank() },
@@ -538,6 +539,7 @@ private data class HistoryItemData(
 )
 
 private data class HistoryMetaData(
+    @param:Json(name = "oid") val oid: Long?,
     @param:Json(name = "bvid") val bvid: String?,
     @param:Json(name = "cid") val cid: Long?,
     @param:Json(name = "business") val business: String?,
