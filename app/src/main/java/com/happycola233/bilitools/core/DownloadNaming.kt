@@ -252,6 +252,9 @@ object DownloadNaming {
 
     private val tokenRegex = Regex("\\{([^{}]+)\\}")
     private val trailingDotsRegex = Regex("\\.+$")
+    // 变量缺失时，模板里相邻的 “ - ” 会拼成 “ -  - ”；至少两段连接符才收成一段。
+    private val redundantDashSeparatorRegex = Regex("""(\s*-\s*){2,}""")
+    private val redundantWhitespaceRegex = Regex("""\s{2,}""")
     private val dayjsFormatterFallback = DateTimeFormatter.ofPattern(
         "yyyy-MM-dd_HH-mm-ss",
         Locale.getDefault(),
@@ -319,7 +322,7 @@ object DownloadNaming {
     ): String {
         val sanitized = sanitizeComponent(raw)
         return if (cleanSeparators) {
-            trimOuterSeparators(sanitized)
+            cleanRedundantSeparators(sanitized)
         } else {
             sanitized
         }
@@ -346,8 +349,11 @@ object DownloadNaming {
         }
     }
 
-    private fun trimOuterSeparators(raw: String): String {
-        return raw.trim { it.isWhitespace() || it == '-' }
+    private fun cleanRedundantSeparators(raw: String): String {
+        return raw
+            .replace(redundantDashSeparatorRegex, " - ")
+            .replace(redundantWhitespaceRegex, " ")
+            .trim { it.isWhitespace() || it == '-' }
     }
 
     private fun valueFor(
