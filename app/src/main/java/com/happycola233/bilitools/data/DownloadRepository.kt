@@ -1283,9 +1283,11 @@ class DownloadRepository(
             }?.let { return it }
         }
 
-        val groupBvid = groupInfo[item.groupId]?.bvid?.trim().orEmpty()
-        if (groupBvid.isNotBlank()) {
-            candidates.firstOrNull { candidate -> candidate.bvid == groupBvid }?.let { return it }
+        val groupContentId = groupInfo[item.groupId]?.bvid?.trim().orEmpty()
+        if (groupContentId.isNotBlank()) {
+            candidates.firstOrNull { candidate ->
+                candidate.displayContentId() == groupContentId
+            }?.let { return it }
         }
 
         return candidates.firstOrNull { it.isTarget } ?: candidates.firstOrNull()

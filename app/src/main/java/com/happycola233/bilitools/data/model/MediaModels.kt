@@ -89,7 +89,13 @@ data class MediaItem(
     val opid: String? = null,
     val cvid: Long? = null,
     val rlid: Long? = null,
-)
+) {
+    /** 下载列表等处展示的公开内容号：视频为 BV，专栏为 cv。 */
+    fun displayContentId(): String? {
+        bvid?.trim()?.takeIf { it.isNotBlank() }?.let { return it }
+        return cvid?.let { "cv$it" }
+    }
+}
 
 data class MediaInfo(
     val type: MediaType,

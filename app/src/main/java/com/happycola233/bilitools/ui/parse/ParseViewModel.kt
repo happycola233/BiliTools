@@ -1300,7 +1300,7 @@ class ParseViewModel(
                         val groupId = downloadRepository.createGroup(
                             naming.groupTitle,
                             naming.groupSubtitle,
-                            item.bvid,
+                            item.displayContentId(),
                             item.coverUrl,
                             relativePath = requestedGroupRelativePath,
                         )
