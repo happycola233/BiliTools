@@ -63,4 +63,42 @@ class ParseUiStateTest {
         assertFalse(selection.opusContentEnabled)
         assertFalse(selection.opusImagesEnabled)
     }
+
+    @Test
+    fun restrictExtraSelections_opusClearsPlayerExtrasNfoAndAuxiliaryImages() {
+        val restricted = ParseUiState(
+            outputType = null,
+            subtitleEnabled = true,
+            aiSummaryEnabled = true,
+            nfoCollectionEnabled = true,
+            nfoSingleEnabled = true,
+            danmakuLiveEnabled = true,
+            danmakuHistoryEnabled = true,
+            selectedImageIds = setOf("cover"),
+        ).restrictExtraSelections(listOf(MediaType.Opus))
+
+        assertFalse(restricted.subtitleEnabled)
+        assertFalse(restricted.aiSummaryEnabled)
+        assertFalse(restricted.nfoCollectionEnabled)
+        assertFalse(restricted.nfoSingleEnabled)
+        assertFalse(restricted.danmakuLiveEnabled)
+        assertFalse(restricted.danmakuHistoryEnabled)
+        assertTrue(restricted.selectedImageIds.isEmpty())
+        assertFalse(restricted.hasSelectedDownloadContent)
+    }
+
+    @Test
+    fun restrictExtraSelections_playableMediaPreservesExistingSelections() {
+        val original = ParseUiState(
+            subtitleEnabled = true,
+            aiSummaryEnabled = true,
+            nfoCollectionEnabled = true,
+            nfoSingleEnabled = true,
+            danmakuLiveEnabled = true,
+            danmakuHistoryEnabled = true,
+            selectedImageIds = setOf("cover"),
+        )
+
+        assertEquals(original, original.restrictExtraSelections(listOf(MediaType.Video)))
+    }
 }

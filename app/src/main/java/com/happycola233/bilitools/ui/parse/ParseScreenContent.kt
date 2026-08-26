@@ -357,13 +357,16 @@ fun ParseScreenContent(
     val showOptions = info != null && state.selectedItemIndices.isNotEmpty()
 
     val hasSelection = state.selectedItemIndices.isNotEmpty()
+    val hasSupportedDownloadContent = state.restrictExtraSelections(
+        state.selectedItemIndices.mapNotNull { index -> state.items.getOrNull(index)?.type },
+    ).hasSelectedDownloadContent
     val streamReady = state.outputType == null || state.playUrlInfo != null
     val downloadEnabled = !state.loading &&
         !state.collectionModeLoading &&
         !state.streamLoading &&
         !state.downloadStarting &&
         hasSelection &&
-        state.hasSelectedDownloadContent &&
+        hasSupportedDownloadContent &&
         streamReady
     val quickActionVisible = info != null && hasSelection
     // 页面全出血绘制，内容从主界面底栏后方滚过，滚动与悬浮控件需预留底栏净空；外部下载入口无底栏
@@ -2414,10 +2417,14 @@ private fun ParseOptionsCard(
     onOpusImagesEnabledChange: (Boolean) -> Unit,
 ) {
     val isMultiSelect = state.isMultiSelect
-    val allowAnyExtras = isMultiSelect
+    val allowMissingExtras = isMultiSelect
     val controlsEnabled = !state.loading && !state.collectionModeLoading
     val streamControlsEnabled = controlsEnabled && !state.streamLoading
     val mediaCapabilities = (selectedItem?.type ?: info.type).capabilities
+    val supportsMiscExport = mediaCapabilities.supportsSubtitleExport ||
+        mediaCapabilities.supportsAiSummaryExport
+    val hasPrimaryOptions = mediaCapabilities.supportsOpusExport ||
+        mediaCapabilities.supportsPlaybackStream
     val formatEnabled = state.outputType != null && streamControlsEnabled
     val hasVideo = state.videoStreams.isNotEmpty()
     val hasAudio = state.audioStreams.isNotEmpty()
@@ -2443,8 +2450,10 @@ private fun ParseOptionsCard(
         !state.aiSummaryCopying
     val collectionAvailable = !info.nfo.showTitle.isNullOrBlank() &&
         (info.collection || info.type == MediaType.Bangumi || info.type == MediaType.Lesson)
-    val danmakuLiveEnabled = (selectedItem?.aid != null && selectedItem.cid != null) || allowAnyExtras
-    val danmakuHistoryEnabled = selectedItem?.cid != null || allowAnyExtras
+    val danmakuLiveEnabled = mediaCapabilities.supportsDanmakuExport &&
+        ((selectedItem?.aid != null && selectedItem.cid != null) || allowMissingExtras)
+    val danmakuHistoryEnabled = mediaCapabilities.supportsDanmakuExport &&
+        (selectedItem?.cid != null || allowMissingExtras)
     val allSubtitleLanguagesLabel = stringResource(R.string.parse_subtitle_language_all)
     val subtitleLanguageOptions: List<DropdownOption<SubtitleLanguageSelection>> = buildList {
         if (state.subtitleList.size > 1) {
@@ -2557,142 +2566,184 @@ private fun ParseOptionsCard(
                     )
                 }
 
-                if (mediaCapabilities.supportsOpusExport || mediaCapabilities.supportsPlaybackStream) {
-                    SectionDivider()
+                if (supportsMiscExport) {
+                    if (hasPrimaryOptions) {
+                        SectionDivider()
+                    }
+                    OptionsSection(title = stringResource(R.string.parse_misc_label)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(
+                                if (isMultiSelect) 12.dp else 8.dp,
+                            ),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            if (mediaCapabilities.supportsSubtitleExport) {
+                                CheckOption(
+                                    text = stringResource(R.string.parse_subtitle_label),
+                                    checked = state.subtitleEnabled,
+                                    enabled = controlsEnabled &&
+                                        (state.subtitleList.isNotEmpty() || allowMissingExtras),
+                                    onCheckedChange = onSubtitleEnabledChange,
+                                    minHeight = compactSelectionHeight,
+                                    textStartPadding = 0.dp,
+                                    modifier = Modifier.weight(if (isMultiSelect) 1f else 0.9f),
+                                )
+                                if (!isMultiSelect) {
+                                    CompactSelectionField(
+                                        label = stringResource(R.string.parse_subtitle_language),
+                                        value = subtitleLanguageValue,
+                                        enabled = subtitleLanguageEnabled,
+                                        options = subtitleLanguageOptions,
+                                        onOptionSelected = { onSubtitleLanguageChange(it.value) },
+                                        modifier = Modifier.weight(1.1f),
+                                    )
+                                }
+                            }
+                            if (mediaCapabilities.supportsAiSummaryExport) {
+                                CheckOption(
+                                    text = stringResource(R.string.parse_ai_summary_label),
+                                    checked = state.aiSummaryEnabled,
+                                    enabled = controlsEnabled &&
+                                        (state.aiSummaryAvailable || allowMissingExtras),
+                                    onCheckedChange = onAiSummaryEnabledChange,
+                                    minHeight = compactSelectionHeight,
+                                    textStartPadding = 0.dp,
+                                    modifier = Modifier.weight(if (isMultiSelect) 1f else 0.9f),
+                                )
+                            }
+                        }
+                        if (
+                            mediaCapabilities.supportsSubtitleExport &&
+                            isMultiSelect &&
+                            state.subtitleEnabled
+                        ) {
+                            HelperText(text = stringResource(R.string.parse_subtitle_multi_hint))
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            if (mediaCapabilities.supportsSubtitleExport) {
+                                ExpressiveActionButton(
+                                    text = stringResource(R.string.parse_copy_subtitle_now),
+                                    iconRes = R.drawable.ic_content_copy_24,
+                                    loading = state.subtitleCopying,
+                                    enabled = copyEnabledBase &&
+                                        (state.subtitleList.isNotEmpty() || allowMissingExtras),
+                                    tonal = true,
+                                    onClick = onCopySubtitles,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                            if (mediaCapabilities.supportsAiSummaryExport) {
+                                ExpressiveActionButton(
+                                    text = stringResource(R.string.parse_copy_ai_summary_now),
+                                    iconRes = R.drawable.ic_content_copy_24,
+                                    loading = state.aiSummaryCopying,
+                                    enabled = copyEnabledBase &&
+                                        (state.aiSummaryAvailable || allowMissingExtras),
+                                    tonal = true,
+                                    onClick = onCopyAiSummaries,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                        }
+                    }
                 }
-                OptionsSection(title = stringResource(R.string.parse_misc_label)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(
-                            if (isMultiSelect) 12.dp else 8.dp,
-                        ),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        CheckOption(
-                            text = stringResource(R.string.parse_subtitle_label),
-                            checked = state.subtitleEnabled,
-                            enabled = controlsEnabled && (state.subtitleList.isNotEmpty() || allowAnyExtras),
-                            onCheckedChange = onSubtitleEnabledChange,
-                            minHeight = compactSelectionHeight,
-                            textStartPadding = 0.dp,
-                            modifier = Modifier.weight(if (isMultiSelect) 1f else 0.9f),
-                        )
-                        if (!isMultiSelect) {
-                            CompactSelectionField(
-                                label = stringResource(R.string.parse_subtitle_language),
-                                value = subtitleLanguageValue,
-                                enabled = subtitleLanguageEnabled,
-                                options = subtitleLanguageOptions,
-                                onOptionSelected = { onSubtitleLanguageChange(it.value) },
-                                modifier = Modifier.weight(1.1f),
+
+                if (mediaCapabilities.supportsNfoExport) {
+                    if (hasPrimaryOptions || supportsMiscExport) {
+                        SectionDivider()
+                    }
+                    OptionsSection(title = stringResource(R.string.parse_nfo_label)) {
+                        TwoColumnChecks {
+                            CheckOption(
+                                text = stringResource(R.string.parse_nfo_collection),
+                                checked = state.nfoCollectionEnabled,
+                                enabled = controlsEnabled &&
+                                    (collectionAvailable || allowMissingExtras),
+                                onCheckedChange = onNfoCollectionEnabledChange,
+                                modifier = Modifier.weight(1f),
+                            )
+                            CheckOption(
+                                text = stringResource(R.string.parse_nfo_single),
+                                checked = state.nfoSingleEnabled,
+                                enabled = controlsEnabled &&
+                                    (info.list.isNotEmpty() || allowMissingExtras),
+                                onCheckedChange = onNfoSingleEnabledChange,
+                                modifier = Modifier.weight(1f),
                             )
                         }
-                        CheckOption(
-                            text = stringResource(R.string.parse_ai_summary_label),
-                            checked = state.aiSummaryEnabled,
-                            enabled = controlsEnabled && (state.aiSummaryAvailable || allowAnyExtras),
-                            onCheckedChange = onAiSummaryEnabledChange,
-                            minHeight = compactSelectionHeight,
-                            textStartPadding = 0.dp,
-                            modifier = Modifier.weight(if (isMultiSelect) 1f else 0.9f),
-                        )
                     }
-                    if (isMultiSelect && state.subtitleEnabled) {
-                        HelperText(text = stringResource(R.string.parse_subtitle_multi_hint))
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                }
+
+                if (mediaCapabilities.supportsDanmakuExport) {
+                    if (
+                        hasPrimaryOptions ||
+                        supportsMiscExport ||
+                        mediaCapabilities.supportsNfoExport
                     ) {
-                        ExpressiveActionButton(
-                            text = stringResource(R.string.parse_copy_subtitle_now),
-                            iconRes = R.drawable.ic_content_copy_24,
-                            loading = state.subtitleCopying,
-                            enabled = copyEnabledBase && (state.subtitleList.isNotEmpty() || allowAnyExtras),
-                            tonal = true,
-                            onClick = onCopySubtitles,
-                            modifier = Modifier.weight(1f),
-                        )
-                        ExpressiveActionButton(
-                            text = stringResource(R.string.parse_copy_ai_summary_now),
-                            iconRes = R.drawable.ic_content_copy_24,
-                            loading = state.aiSummaryCopying,
-                            enabled = copyEnabledBase && (state.aiSummaryAvailable || allowAnyExtras),
-                            tonal = true,
-                            onClick = onCopyAiSummaries,
-                            modifier = Modifier.weight(1f),
-                        )
+                        SectionDivider()
+                    }
+                    OptionsSection(title = stringResource(R.string.parse_danmaku_label)) {
+                        TwoColumnChecks {
+                            CheckOption(
+                                text = stringResource(R.string.parse_danmaku_live),
+                                checked = state.danmakuLiveEnabled,
+                                enabled = controlsEnabled && danmakuLiveEnabled,
+                                onCheckedChange = onDanmakuLiveEnabledChange,
+                                modifier = Modifier.weight(1f),
+                            )
+                            CheckOption(
+                                text = stringResource(R.string.parse_danmaku_history),
+                                checked = state.danmakuHistoryEnabled,
+                                enabled = controlsEnabled && danmakuHistoryEnabled,
+                                onCheckedChange = onDanmakuHistoryEnabledChange,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            OutlinedTextField(
+                                value = state.danmakuDate,
+                                onValueChange = onDanmakuDateChange,
+                                modifier = Modifier.weight(1f),
+                                label = { Text(stringResource(R.string.parse_danmaku_date)) },
+                                enabled = controlsEnabled && state.danmakuHistoryEnabled,
+                                singleLine = true,
+                                shape = RoundedCornerShape(controlCornerRadius),
+                            )
+                            OutlinedTextField(
+                                value = state.danmakuHour,
+                                onValueChange = { value ->
+                                    onDanmakuHourChange(value.filter(Char::isDigit).take(2))
+                                },
+                                modifier = Modifier.weight(1f),
+                                label = { Text(stringResource(R.string.parse_danmaku_hour)) },
+                                enabled = controlsEnabled && state.danmakuHistoryEnabled,
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                shape = RoundedCornerShape(controlCornerRadius),
+                            )
+                        }
                     }
                 }
 
-                SectionDivider()
-                OptionsSection(title = stringResource(R.string.parse_nfo_label)) {
-                    TwoColumnChecks {
-                        CheckOption(
-                            text = stringResource(R.string.parse_nfo_collection),
-                            checked = state.nfoCollectionEnabled,
-                            enabled = controlsEnabled && (collectionAvailable || allowAnyExtras),
-                            onCheckedChange = onNfoCollectionEnabledChange,
-                            modifier = Modifier.weight(1f),
-                        )
-                        CheckOption(
-                            text = stringResource(R.string.parse_nfo_single),
-                            checked = state.nfoSingleEnabled,
-                            enabled = controlsEnabled && (info.list.isNotEmpty() || allowAnyExtras),
-                            onCheckedChange = onNfoSingleEnabledChange,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
-
-                SectionDivider()
-                OptionsSection(title = stringResource(R.string.parse_danmaku_label)) {
-                    TwoColumnChecks {
-                        CheckOption(
-                            text = stringResource(R.string.parse_danmaku_live),
-                            checked = state.danmakuLiveEnabled,
-                            enabled = controlsEnabled && danmakuLiveEnabled,
-                            onCheckedChange = onDanmakuLiveEnabledChange,
-                            modifier = Modifier.weight(1f),
-                        )
-                        CheckOption(
-                            text = stringResource(R.string.parse_danmaku_history),
-                            checked = state.danmakuHistoryEnabled,
-                            enabled = controlsEnabled && danmakuHistoryEnabled,
-                            onCheckedChange = onDanmakuHistoryEnabledChange,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                if (
+                    mediaCapabilities.supportsAuxiliaryImageExport &&
+                    state.imageOptions.isNotEmpty()
+                ) {
+                    if (
+                        hasPrimaryOptions ||
+                        supportsMiscExport ||
+                        mediaCapabilities.supportsNfoExport ||
+                        mediaCapabilities.supportsDanmakuExport
                     ) {
-                        OutlinedTextField(
-                            value = state.danmakuDate,
-                            onValueChange = onDanmakuDateChange,
-                            modifier = Modifier.weight(1f),
-                            label = { Text(stringResource(R.string.parse_danmaku_date)) },
-                            enabled = controlsEnabled && state.danmakuHistoryEnabled,
-                            singleLine = true,
-                            shape = RoundedCornerShape(controlCornerRadius),
-                        )
-                        OutlinedTextField(
-                            value = state.danmakuHour,
-                            onValueChange = { value ->
-                                onDanmakuHourChange(value.filter(Char::isDigit).take(2))
-                            },
-                            modifier = Modifier.weight(1f),
-                            label = { Text(stringResource(R.string.parse_danmaku_hour)) },
-                            enabled = controlsEnabled && state.danmakuHistoryEnabled,
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            shape = RoundedCornerShape(controlCornerRadius),
-                        )
+                        SectionDivider()
                     }
-                }
-
-                if (state.imageOptions.isNotEmpty()) {
-                    SectionDivider()
                     OptionsSection(title = stringResource(R.string.parse_image_label)) {
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),

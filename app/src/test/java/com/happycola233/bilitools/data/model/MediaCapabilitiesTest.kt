@@ -11,12 +11,41 @@ class MediaCapabilitiesTest {
 
         assertTrue(capabilities.supportsOpusExport)
         assertFalse(capabilities.supportsPlaybackStream)
+        assertFalse(capabilities.supportsSubtitleExport)
+        assertFalse(capabilities.supportsAiSummaryExport)
+        assertFalse(capabilities.supportsNfoExport)
+        assertFalse(capabilities.supportsDanmakuExport)
+        assertFalse(capabilities.supportsAuxiliaryImageExport)
     }
 
     @Test
-    fun existingPlayableTypesKeepPlaybackCapability() {
+    fun opusCollectionsKeepDocumentExportWithoutPlayerExtras() {
+        listOf(MediaType.OpusList, MediaType.UserOpus).forEach { type ->
+            val capabilities = type.capabilities
+
+            assertTrue(capabilities.supportsOpusExport)
+            assertFalse(capabilities.supportsPlaybackStream)
+            assertFalse(capabilities.supportsSubtitleExport)
+            assertFalse(capabilities.supportsAiSummaryExport)
+            assertFalse(capabilities.supportsNfoExport)
+            assertFalse(capabilities.supportsDanmakuExport)
+            assertFalse(capabilities.supportsAuxiliaryImageExport)
+        }
+    }
+
+    @Test
+    fun existingPlayableTypesKeepPlaybackAndExtraCapabilities() {
         listOf(MediaType.Video, MediaType.Bangumi, MediaType.Lesson, MediaType.Music)
-            .forEach { type -> assertTrue(type.capabilities.supportsPlaybackStream) }
+            .forEach { type ->
+                val capabilities = type.capabilities
+
+                assertTrue(capabilities.supportsPlaybackStream)
+                assertTrue(capabilities.supportsSubtitleExport)
+                assertTrue(capabilities.supportsAiSummaryExport)
+                assertTrue(capabilities.supportsNfoExport)
+                assertTrue(capabilities.supportsDanmakuExport)
+                assertTrue(capabilities.supportsAuxiliaryImageExport)
+            }
     }
 
     @Test

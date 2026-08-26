@@ -33,6 +33,7 @@ import com.happycola233.bilitools.data.model.DownloadEmbeddedMetadata
 import com.happycola233.bilitools.data.model.DownloadItem
 import com.happycola233.bilitools.data.model.DownloadStatus
 import com.happycola233.bilitools.data.model.DownloadTaskType
+import com.happycola233.bilitools.data.model.MediaCapabilities
 import com.happycola233.bilitools.data.model.MediaInfo
 import com.happycola233.bilitools.data.model.MediaItem
 import com.happycola233.bilitools.data.model.MediaSections
@@ -339,6 +340,32 @@ data class ParseUiState(
         get() = selectedItemIndices.size > 1
 }
 
+/**
+ * 只保留当前媒体类型能够处理的附加选项。资源是否真实存在仍由详情探测决定；这里负责阻止
+ * 图文等类型继承上一轮解析或多选状态中的播放器附属任务。
+ */
+internal fun ParseUiState.restrictExtraSelections(mediaTypes: Collection<MediaType>): ParseUiState {
+    val capabilities = mediaTypes.map { type -> type.capabilities }
+    return copy(
+        subtitleEnabled = subtitleEnabled && capabilities.any { it.supportsSubtitleExport },
+        aiSummaryEnabled = aiSummaryEnabled && capabilities.any { it.supportsAiSummaryExport },
+        nfoCollectionEnabled = nfoCollectionEnabled && capabilities.any { it.supportsNfoExport },
+        nfoSingleEnabled = nfoSingleEnabled && capabilities.any { it.supportsNfoExport },
+        danmakuLiveEnabled = danmakuLiveEnabled && capabilities.any { it.supportsDanmakuExport },
+        danmakuHistoryEnabled = danmakuHistoryEnabled && capabilities.any { it.supportsDanmakuExport },
+        selectedImageIds = selectedImageIds.takeIf {
+            capabilities.any { capability -> capability.supportsAuxiliaryImageExport }
+        }.orEmpty(),
+    )
+}
+
+private fun ParseUiState.selectedMediaTypes(): List<MediaType> = selectedItemIndices
+    .mapNotNull { index -> items.getOrNull(index)?.type }
+
+private inline fun ParseUiState.selectedMediaSupports(
+    capability: (MediaCapabilities) -> Boolean,
+): Boolean = selectedMediaTypes().any { type -> capability(type.capabilities) }
+
 private fun defaultDate(): String {
     return LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
 }
@@ -471,7 +498,7 @@ class ParseViewModel(
                                 streamLoading = defaultCapabilities?.supportsPlaybackStream == true,
                                 isLoggedIn = authRepository.isLoggedIn(),
                             ),
-                        ),
+                        ).restrictExtraSelections(listOfNotNull(defaultItem?.type)),
                     )
                 }
                 info.list.getOrNull(defaultIndex)?.let { item ->
@@ -942,7 +969,13 @@ class ParseViewModel(
     }
 
     fun setSubtitleEnabled(enabled: Boolean) {
-        _state.update { it.copy(subtitleEnabled = enabled) }
+        _state.update { current ->
+            current.copy(
+                subtitleEnabled = enabled && current.selectedMediaSupports {
+                    it.supportsSubtitleExport
+                },
+            )
+        }
     }
 
     fun setSubtitleLanguageSelection(selection: SubtitleLanguageSelection) {
@@ -950,23 +983,53 @@ class ParseViewModel(
     }
 
     fun setAiSummaryEnabled(enabled: Boolean) {
-        _state.update { it.copy(aiSummaryEnabled = enabled) }
+        _state.update { current ->
+            current.copy(
+                aiSummaryEnabled = enabled && current.selectedMediaSupports {
+                    it.supportsAiSummaryExport
+                },
+            )
+        }
     }
 
     fun setNfoCollectionEnabled(enabled: Boolean) {
-        _state.update { it.copy(nfoCollectionEnabled = enabled) }
+        _state.update { current ->
+            current.copy(
+                nfoCollectionEnabled = enabled && current.selectedMediaSupports {
+                    it.supportsNfoExport
+                },
+            )
+        }
     }
 
     fun setNfoSingleEnabled(enabled: Boolean) {
-        _state.update { it.copy(nfoSingleEnabled = enabled) }
+        _state.update { current ->
+            current.copy(
+                nfoSingleEnabled = enabled && current.selectedMediaSupports {
+                    it.supportsNfoExport
+                },
+            )
+        }
     }
 
     fun setDanmakuLiveEnabled(enabled: Boolean) {
-        _state.update { it.copy(danmakuLiveEnabled = enabled) }
+        _state.update { current ->
+            current.copy(
+                danmakuLiveEnabled = enabled && current.selectedMediaSupports {
+                    it.supportsDanmakuExport
+                },
+            )
+        }
     }
 
     fun setDanmakuHistoryEnabled(enabled: Boolean) {
-        _state.update { it.copy(danmakuHistoryEnabled = enabled) }
+        _state.update { current ->
+            current.copy(
+                danmakuHistoryEnabled = enabled && current.selectedMediaSupports {
+                    it.supportsDanmakuExport
+                },
+            )
+        }
     }
 
     fun setDanmakuDate(value: String) {
@@ -978,25 +1041,37 @@ class ParseViewModel(
     }
 
     fun setImageSelection(id: String, selected: Boolean) {
-        _state.update {
-            val updated = it.selectedImageIds.toMutableSet()
+        _state.update { current ->
+            if (selected && !current.selectedMediaSupports { it.supportsAuxiliaryImageExport }) {
+                return@update current
+            }
+            val updated = current.selectedImageIds.toMutableSet()
             if (selected) {
                 updated.add(id)
             } else {
                 updated.remove(id)
             }
-            it.copy(selectedImageIds = updated)
+            current.copy(selectedImageIds = updated)
         }
     }
 
     fun setOpusContentEnabled(enabled: Boolean) {
-        _state.update { it.copy(opusContentEnabled = enabled) }
+        _state.update { current ->
+            current.copy(
+                opusContentEnabled = enabled && current.selectedMediaSupports {
+                    it.supportsOpusExport
+                },
+            )
+        }
     }
 
     fun setOpusImagesEnabled(enabled: Boolean) {
         _state.update { current ->
-            if (current.opusImagesAvailable == false && !current.isMultiSelect) current
-            else current.copy(opusImagesEnabled = enabled)
+            when {
+                enabled && !current.selectedMediaSupports { it.supportsOpusExport } -> current
+                current.opusImagesAvailable == false && !current.isMultiSelect -> current
+                else -> current.copy(opusImagesEnabled = enabled)
+            }
         }
     }
 
@@ -1100,12 +1175,18 @@ class ParseViewModel(
     }
 
     fun download() {
-        val state = _state.value
-        val info = state.mediaInfo ?: return
-        val selectedIndices = state.selectedItemIndices.filter { it in state.items.indices }
+        val initialState = _state.value
+        val info = initialState.mediaInfo ?: return
+        val selectedIndices = initialState.selectedItemIndices.filter { it in initialState.items.indices }
         if (selectedIndices.isEmpty()) {
             _state.update { it.copy(error = strings.get(R.string.parse_error_no_selection)) }
             return
+        }
+        val state = initialState.restrictExtraSelections(
+            selectedIndices.map { index -> initialState.items[index].type },
+        )
+        if (state != initialState) {
+            _state.value = state
         }
         if (!state.hasSelectedDownloadContent) {
             _state.update { it.copy(error = strings.get(R.string.parse_error_no_download_content)) }
@@ -1623,7 +1704,9 @@ class ParseViewModel(
         groupRelativePath: String,
         subtitleSelectionPolicy: SubtitleSelectionPolicy,
     ) {
-        if (snapshot.subtitleEnabled) {
+        val capabilities = item.type.capabilities
+
+        if (snapshot.subtitleEnabled && capabilities.supportsSubtitleExport) {
             val aid = item.aid
             val cid = item.cid
             val subtitleTitle = strings.get(R.string.parse_subtitle_label)
@@ -1707,7 +1790,7 @@ class ParseViewModel(
             }
         }
 
-        if (snapshot.aiSummaryEnabled) {
+        if (snapshot.aiSummaryEnabled && capabilities.supportsAiSummaryExport) {
             val aid = item.aid
             val cid = item.cid
             val bvid = item.bvid
@@ -1751,7 +1834,7 @@ class ParseViewModel(
             }
         }
 
-        if (snapshot.nfoCollectionEnabled) {
+        if (snapshot.nfoCollectionEnabled && capabilities.supportsNfoExport) {
             val taskTitle = strings.get(R.string.parse_nfo_collection)
             if (isCollectionNfoAvailable(info)) {
                 saveTextTask(
@@ -1774,7 +1857,7 @@ class ParseViewModel(
             }
         }
 
-        if (snapshot.nfoSingleEnabled) {
+        if (snapshot.nfoSingleEnabled && capabilities.supportsNfoExport) {
             val taskTitle = strings.get(R.string.parse_nfo_single)
             val nfoContext = buildNamingRenderContext(
                 info = info,
@@ -1804,7 +1887,7 @@ class ParseViewModel(
         }
 
         val convertXmlDanmakuToAss = settingsRepository.shouldConvertXmlDanmakuToAss()
-        if (snapshot.danmakuLiveEnabled) {
+        if (snapshot.danmakuLiveEnabled && capabilities.supportsDanmakuExport) {
             val aid = item.aid
             val cid = item.cid
             val duration = item.duration
@@ -1855,7 +1938,7 @@ class ParseViewModel(
             }
         }
 
-        if (snapshot.danmakuHistoryEnabled) {
+        if (snapshot.danmakuHistoryEnabled && capabilities.supportsDanmakuExport) {
             val date = snapshot.danmakuDate
             val hour = parseHour(snapshot.danmakuHour)
             val taskTitle = strings.get(R.string.parse_danmaku_history)
@@ -1902,7 +1985,9 @@ class ParseViewModel(
             }
         }
 
-        val selectedIds = snapshot.selectedImageIds
+        val selectedIds = snapshot.selectedImageIds.takeIf {
+            capabilities.supportsAuxiliaryImageExport
+        }.orEmpty()
         if (selectedIds.isNotEmpty()) {
             val thumbs = info.nfo.thumbs
                 .filter { it.url.isNotBlank() }
@@ -1993,9 +2078,16 @@ class ParseViewModel(
         val snapshot = _state.value
         val info = snapshot.mediaInfo ?: return
         if (snapshot.subtitleCopying || snapshot.aiSummaryCopying) return
-        val selectedIndices = snapshot.selectedItemIndices.filter { it in snapshot.items.indices }
-        if (selectedIndices.isEmpty()) {
+        val requestedIndices = snapshot.selectedItemIndices.filter { it in snapshot.items.indices }
+        if (requestedIndices.isEmpty()) {
             _state.update { it.copy(error = strings.get(R.string.parse_error_no_selection)) }
+            return
+        }
+        val selectedIndices = requestedIndices.filter { index ->
+            snapshot.items[index].type.capabilities.supportsSubtitleExport
+        }
+        if (selectedIndices.isEmpty()) {
+            _state.update { it.copy(error = strings.get(R.string.parse_error_no_subtitle)) }
             return
         }
         viewModelScope.launch {
@@ -2054,9 +2146,16 @@ class ParseViewModel(
         val snapshot = _state.value
         val info = snapshot.mediaInfo ?: return
         if (snapshot.subtitleCopying || snapshot.aiSummaryCopying) return
-        val selectedIndices = snapshot.selectedItemIndices.filter { it in snapshot.items.indices }
-        if (selectedIndices.isEmpty()) {
+        val requestedIndices = snapshot.selectedItemIndices.filter { it in snapshot.items.indices }
+        if (requestedIndices.isEmpty()) {
             _state.update { it.copy(error = strings.get(R.string.parse_error_no_selection)) }
+            return
+        }
+        val selectedIndices = requestedIndices.filter { index ->
+            snapshot.items[index].type.capabilities.supportsAiSummaryExport
+        }
+        if (selectedIndices.isEmpty()) {
+            _state.update { it.copy(error = strings.get(R.string.parse_error_no_ai)) }
             return
         }
         viewModelScope.launch {
@@ -2729,7 +2828,8 @@ class ParseViewModel(
                 )
             }
         }
-        val isOpus = item.type.capabilities.supportsOpusExport
+        val capabilities = item.type.capabilities
+        val isOpus = capabilities.supportsOpusExport
         val opusDocument = if (isOpus) {
             runCatching { opusRepository.getDocument(item) }
                 .getOrNull()
@@ -2741,18 +2841,22 @@ class ParseViewModel(
         val resolvedItem = opusDocument?.let { document -> item.withOpusDocument(document) } ?: item
         val aid = item.aid
         val cid = item.cid
-        val subtitles = if (aid != null && cid != null) {
+        val subtitles = if (capabilities.supportsSubtitleExport && aid != null && cid != null) {
             runCatching { extrasRepository.getSubtitles(aid, cid) }.getOrDefault(emptyList())
         } else {
             emptyList()
         }
-        val aiAvailable = if (aid != null && cid != null) {
+        val aiAvailable = if (capabilities.supportsAiSummaryExport && aid != null && cid != null) {
             runCatching { extrasRepository.hasAiSummary(aid, cid) }.getOrDefault(false)
         } else {
             false
         }
-        val collectionAvailable = isCollectionNfoAvailable(info)
-        val thumbs = if (isOpus) emptyList() else info.nfo.thumbs.filter { it.url.isNotBlank() }
+        val collectionAvailable = capabilities.supportsNfoExport && isCollectionNfoAvailable(info)
+        val thumbs = if (capabilities.supportsAuxiliaryImageExport) {
+            info.nfo.thumbs.filter { it.url.isNotBlank() }
+        } else {
+            emptyList()
+        }
         val imageOptions = thumbs
             .distinctBy { it.id }
             .map { thumb -> ImageOption(thumb.id, mapImageLabel(thumb.id)) }
@@ -2790,34 +2894,23 @@ class ParseViewModel(
                 selectedItemStat = opusDocument?.stat ?: current.selectedItemStat,
                 subtitleList = subtitles,
                 subtitleLanguageSelection = selectedSubtitle,
-                subtitleEnabled = if (allowMissing) {
-                    current.subtitleEnabled
-                } else {
-                    current.subtitleEnabled && subtitles.isNotEmpty()
-                },
+                subtitleEnabled = current.subtitleEnabled &&
+                    capabilities.supportsSubtitleExport &&
+                    (allowMissing || subtitles.isNotEmpty()),
                 aiSummaryAvailable = aiAvailable,
-                aiSummaryEnabled = if (allowMissing) {
-                    current.aiSummaryEnabled
-                } else if (aiAvailable) {
-                    current.aiSummaryEnabled
-                } else {
-                    false
-                },
-                nfoCollectionEnabled = if (allowMissing) {
-                    current.nfoCollectionEnabled
-                } else {
-                    current.nfoCollectionEnabled && collectionAvailable
-                },
-                danmakuLiveEnabled = if (allowMissing) {
-                    current.danmakuLiveEnabled
-                } else {
-                    current.danmakuLiveEnabled && aid != null && cid != null
-                },
-                danmakuHistoryEnabled = if (allowMissing) {
-                    current.danmakuHistoryEnabled
-                } else {
-                    current.danmakuHistoryEnabled && cid != null
-                },
+                aiSummaryEnabled = current.aiSummaryEnabled &&
+                    capabilities.supportsAiSummaryExport &&
+                    (allowMissing || aiAvailable),
+                nfoCollectionEnabled = current.nfoCollectionEnabled &&
+                    capabilities.supportsNfoExport &&
+                    (allowMissing || collectionAvailable),
+                nfoSingleEnabled = current.nfoSingleEnabled && capabilities.supportsNfoExport,
+                danmakuLiveEnabled = current.danmakuLiveEnabled &&
+                    capabilities.supportsDanmakuExport &&
+                    (allowMissing || (aid != null && cid != null)),
+                danmakuHistoryEnabled = current.danmakuHistoryEnabled &&
+                    capabilities.supportsDanmakuExport &&
+                    (allowMissing || cid != null),
                 imageOptions = imageOptions,
                 selectedImageIds = selectedImageIds,
                 opusImagesAvailable = opusImagesAvailable,

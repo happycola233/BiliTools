@@ -86,6 +86,11 @@ data class OpusAssetPlan(
 data class MediaCapabilities(
     val supportsPlaybackStream: Boolean = false,
     val supportsOpusExport: Boolean = false,
+    val supportsSubtitleExport: Boolean = false,
+    val supportsAiSummaryExport: Boolean = false,
+    val supportsNfoExport: Boolean = false,
+    val supportsDanmakuExport: Boolean = false,
+    val supportsAuxiliaryImageExport: Boolean = false,
 )
 
 val MediaType.capabilities: MediaCapabilities
@@ -94,8 +99,19 @@ val MediaType.capabilities: MediaCapabilities
         MediaType.Bangumi,
         MediaType.Lesson,
         MediaType.Music,
-        -> MediaCapabilities(supportsPlaybackStream = true)
+        -> MediaCapabilities(
+            supportsPlaybackStream = true,
+            supportsSubtitleExport = true,
+            supportsAiSummaryExport = true,
+            supportsNfoExport = true,
+            supportsDanmakuExport = true,
+            supportsAuxiliaryImageExport = true,
+        )
 
-        MediaType.Opus -> MediaCapabilities(supportsOpusExport = true)
+        MediaType.Opus,
+        MediaType.OpusList,
+        MediaType.UserOpus,
+        -> MediaCapabilities(supportsOpusExport = true)
+
         else -> MediaCapabilities()
     }
