@@ -334,10 +334,13 @@ data class ParseUiState(
             danmakuHistoryEnabled ||
             selectedImageIds.isNotEmpty() ||
             opusContentEnabled ||
-            opusImagesEnabled
+            opusImagesEffectivelyEnabled
 
     val isMultiSelect: Boolean
         get() = selectedItemIndices.size > 1
+
+    val opusImagesEffectivelyEnabled: Boolean
+        get() = opusImagesEnabled && (isMultiSelect || opusImagesAvailable != false)
 }
 
 /**
@@ -357,6 +360,15 @@ internal fun ParseUiState.restrictExtraSelections(mediaTypes: Collection<MediaTy
             capabilities.any { capability -> capability.supportsAuxiliaryImageExport }
         }.orEmpty(),
     )
+}
+
+/**
+ * 单选且已确认没有正文图片时，禁用态勾选不能再当作有效选择。
+ * 多选仍保留勾选，以便批次里其他条目继续导出图片。
+ */
+internal fun ParseUiState.withResolvedOpusImageSelection(): ParseUiState {
+    if (opusImagesEnabled == opusImagesEffectivelyEnabled) return this
+    return copy(opusImagesEnabled = false)
 }
 
 private fun ParseUiState.selectedMediaTypes(): List<MediaType> = selectedItemIndices
@@ -1184,7 +1196,7 @@ class ParseViewModel(
         }
         val state = initialState.restrictExtraSelections(
             selectedIndices.map { index -> initialState.items[index].type },
-        )
+        ).withResolvedOpusImageSelection()
         if (state != initialState) {
             _state.value = state
         }
@@ -1568,7 +1580,7 @@ class ParseViewModel(
         items.map { item ->
             async {
                 val requested = item.type.capabilities.supportsOpusExport &&
-                    (snapshot.opusContentEnabled || snapshot.opusImagesEnabled)
+                    (snapshot.opusContentEnabled || snapshot.opusImagesEffectivelyEnabled)
                 if (!requested) return@async Result.success(null)
                 try {
                     Result.success(requestSemaphore.withPermit { opusRepository.getDocument(item) })
@@ -1659,7 +1671,7 @@ class ParseViewModel(
                 context = contentContext,
                 extension = "md",
             )
-            val localAssets = if (snapshot.opusImagesEnabled) imageAssets else emptyList()
+            val localAssets = if (snapshot.opusImagesEffectivelyEnabled) imageAssets else emptyList()
             saveTextTask(
                 groupId = groupId,
                 type = DownloadTaskType.OpusContent,
@@ -1672,14 +1684,17 @@ class ParseViewModel(
             )
         }
 
-        if (snapshot.opusImagesEnabled) {
+        if (snapshot.opusImagesEffectivelyEnabled) {
             if (imageAssets.isEmpty()) {
-                downloadRepository.addUnavailableTask(
-                    groupId = groupId,
-                    type = DownloadTaskType.OpusImage,
-                    taskTitle = imageTitle,
-                    reason = strings.get(R.string.download_unavailable_opus_images),
-                )
+                // 单选时选项已被禁用，不再留下一条“资源不可用”记录。
+                if (snapshot.isMultiSelect) {
+                    downloadRepository.addUnavailableTask(
+                        groupId = groupId,
+                        type = DownloadTaskType.OpusImage,
+                        taskTitle = imageTitle,
+                        reason = strings.get(R.string.download_unavailable_opus_images),
+                    )
+                }
             } else {
                 imageAssets.forEachIndexed { index, asset ->
                     downloadRepository.enqueue(
@@ -2915,7 +2930,7 @@ class ParseViewModel(
                 selectedImageIds = selectedImageIds,
                 opusImagesAvailable = opusImagesAvailable,
                 opusImagesEnabled = isOpus && current.opusImagesEnabled,
-            )
+            ).withResolvedOpusImageSelection()
         }
         if (!applied) return
         refreshItemPresentation(info, resolvedItem, _state.value.selectedItemIndex, fromPreview = false)

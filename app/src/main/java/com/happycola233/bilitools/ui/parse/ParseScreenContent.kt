@@ -2517,7 +2517,7 @@ private fun ParseOptionsCard(
                             )
                             CheckOption(
                                 text = stringResource(R.string.parse_opus_images),
-                                checked = state.opusImagesEnabled,
+                                checked = state.opusImagesEffectivelyEnabled,
                                 enabled = controlsEnabled &&
                                     (state.opusImagesAvailable != false || isMultiSelect),
                                 onCheckedChange = onOpusImagesEnabledChange,

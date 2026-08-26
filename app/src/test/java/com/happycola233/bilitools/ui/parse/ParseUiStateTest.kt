@@ -101,4 +101,49 @@ class ParseUiStateTest {
 
         assertEquals(original, original.restrictExtraSelections(listOf(MediaType.Video)))
     }
+
+    @Test
+    fun withResolvedOpusImageSelection_unchecksSingleSelectWhenImagesUnavailable() {
+        val state = ParseUiState(
+            outputType = null,
+            selectedItemIndices = listOf(0),
+            opusImagesEnabled = true,
+            opusImagesAvailable = false,
+        )
+
+        val resolved = state.withResolvedOpusImageSelection()
+
+        assertTrue(state.opusImagesEnabled)
+        assertFalse(state.opusImagesEffectivelyEnabled)
+        assertFalse(state.hasSelectedDownloadContent)
+        assertFalse(resolved.opusImagesEnabled)
+        assertEquals(state.copy(opusImagesEnabled = false), resolved)
+    }
+
+    @Test
+    fun withResolvedOpusImageSelection_keepsMultiSelectWhenSomeItemsMayHaveImages() {
+        val state = ParseUiState(
+            outputType = null,
+            selectedItemIndices = listOf(0, 1),
+            opusImagesEnabled = true,
+            opusImagesAvailable = false,
+        )
+
+        assertEquals(state, state.withResolvedOpusImageSelection())
+        assertTrue(state.opusImagesEffectivelyEnabled)
+        assertTrue(state.hasSelectedDownloadContent)
+    }
+
+    @Test
+    fun withResolvedOpusImageSelection_keepsSelectionWhileAvailabilityIsUnknown() {
+        val state = ParseUiState(
+            outputType = null,
+            selectedItemIndices = listOf(0),
+            opusImagesEnabled = true,
+            opusImagesAvailable = null,
+        )
+
+        assertEquals(state, state.withResolvedOpusImageSelection())
+        assertTrue(state.hasSelectedDownloadContent)
+    }
 }
