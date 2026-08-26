@@ -86,7 +86,8 @@ class MediaRepository(
                 val fid = url.queryParameter("fid")?.toLongOrNull()
                 return ParsedInput(mid, MediaType.Favorite, fid)
             }
-            if (segments.getOrNull(2) == "video" || type == "lists" || segments.size == 1) {
+            // 兼容 /{mid}/video 与 /{mid}/upload/video
+            if ((segments.getOrNull(2) ?: type) == "video" || type == "lists" || segments.size == 1) {
                 val listId = Regex("/lists/(\\d+)").find(url.encodedPath)?.groupValues?.getOrNull(1)
                 return ParsedInput(mid, MediaType.UserVideo, listId?.toLongOrNull())
             }
