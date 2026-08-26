@@ -25,6 +25,7 @@ import com.happycola233.bilitools.data.model.DownloadProgressRules
 import com.happycola233.bilitools.data.model.DownloadStatus
 import com.happycola233.bilitools.data.model.DownloadTaskType
 import com.happycola233.bilitools.data.model.isResolvedWithoutFailure
+import com.happycola233.bilitools.data.model.isManagedTransfer
 import com.happycola233.bilitools.data.model.MediaInfo
 import com.happycola233.bilitools.data.model.MediaItem
 import com.happycola233.bilitools.data.model.MediaType
@@ -1171,6 +1172,7 @@ class DownloadRepository(
     }
 
     private suspend fun resolveManagedRetryUrl(item: DownloadItem): String? {
+        if (item.taskType == DownloadTaskType.OpusImage) return item.url
         val resolved = resolveRetrySource(item) ?: return null
         return when (item.taskType) {
             DownloadTaskType.Audio -> {
@@ -2552,12 +2554,7 @@ class DownloadRepository(
     }
 
     private fun isManagedTask(item: DownloadItem): Boolean {
-        return when (item.taskType) {
-            DownloadTaskType.Video,
-            DownloadTaskType.Audio,
-            DownloadTaskType.AudioVideo -> true
-            else -> false
-        }
+        return item.taskType.isManagedTransfer
     }
 
     private fun startMerge(task: MergedDownload) {
@@ -3624,6 +3621,12 @@ class DownloadRepository(
             "mp3" -> "audio/mpeg"
             "eac3" -> "audio/eac3"
             "aac" -> "audio/aac"
+            "jpg", "jpeg" -> "image/jpeg"
+            "png" -> "image/png"
+            "gif" -> "image/gif"
+            "webp" -> "image/webp"
+            "avif" -> "image/avif"
+            "bmp" -> "image/bmp"
             else -> "application/octet-stream"
         }
     }

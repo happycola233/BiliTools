@@ -170,6 +170,8 @@ class ParseFragment : Fragment() {
                     onDanmakuDateChange = viewModel::setDanmakuDate,
                     onDanmakuHourChange = viewModel::setDanmakuHour,
                     onImageSelectionChange = viewModel::setImageSelection,
+                    onOpusContentEnabledChange = viewModel::setOpusContentEnabled,
+                    onOpusImagesEnabledChange = viewModel::setOpusImagesEnabled,
                     onDismissSubtitleCopyDialog = { subtitleCopyDialogEntries = null },
                     onDismissAiSummaryCopyDialog = { aiSummaryCopyDialogEntries = null },
                     onCopyCurrentSubtitle = ::handleCopyCurrentSubtitle,
@@ -227,6 +229,12 @@ class ParseFragment : Fragment() {
                                     aiSummaryCopyDialogEntries = event.entries
                                 }
                             }
+                            is ParseEvent.DownloadQueued -> {
+                                if (externalMode && closeAfterDownloadQueued) {
+                                    closeAfterDownloadQueued = false
+                                    (activity as? ExternalDownloadHost)?.onExternalDownloadQueued()
+                                }
+                            }
                         }
                     }
                 }
@@ -241,14 +249,8 @@ class ParseFragment : Fragment() {
         }
 
         if (externalMode && closeAfterDownloadQueued) {
-            when {
-                state.lastDownload != null -> {
-                    closeAfterDownloadQueued = false
-                    (activity as? ExternalDownloadHost)?.onExternalDownloadQueued()
-                }
-                !state.downloadStarting && !state.error.isNullOrBlank() -> {
-                    closeAfterDownloadQueued = false
-                }
+            if (!state.downloadStarting && !state.error.isNullOrBlank()) {
+                closeAfterDownloadQueued = false
             }
         }
     }

@@ -8,6 +8,7 @@ import com.happycola233.bilitools.data.ExtrasRepository
 import com.happycola233.bilitools.data.IssueReportRepository
 import com.happycola233.bilitools.data.SettingsRepository
 import com.happycola233.bilitools.data.MediaRepository
+import com.happycola233.bilitools.data.OpusRepository
 import com.happycola233.bilitools.data.UpdateRepository
 import com.happycola233.bilitools.data.VideoRepository
 import com.happycola233.bilitools.update.AppUpdateManager
@@ -26,7 +27,8 @@ class AppContainer(context: Context) {
 
     val authRepository by lazy { AuthRepository(httpClient, cookieStore, wbiSigner) }
     val videoRepository by lazy { VideoRepository(httpClient, wbiSigner, cookieStore) }
-    val mediaRepository by lazy { MediaRepository(httpClient, wbiSigner, cookieStore) }
+    val opusRepository by lazy { OpusRepository(httpClient, cookieStore) }
+    val mediaRepository by lazy { MediaRepository(httpClient, wbiSigner, cookieStore, opusRepository) }
     val extrasRepository by lazy { ExtrasRepository(httpClient, wbiSigner) }
     val updateRepository by lazy { UpdateRepository(appContext, gitHubRouteManager, settingsRepository) }
     val appUpdateManager by lazy { AppUpdateManager(appContext) }

@@ -76,10 +76,27 @@ class MediaInputClassifierTest {
     }
 
     @Test
+    fun parseSpaceUrl_recognizesUserArticleAndUploadOpusPaths() {
+        val cases = listOf(
+            "https://space.bilibili.com/123456/article",
+            "https://space.bilibili.com/123456/upload/opus",
+            "https://m.bilibili.com/space/123456/article",
+            "https://m.bilibili.com/space/123456/upload/opus",
+        )
+
+        cases.forEach { urlString ->
+            assertEquals(
+                ParsedInput("123456", MediaType.UserOpus),
+                MediaInputClassifier.parseSpaceUrl(urlString.toHttpUrl()),
+            )
+        }
+    }
+
+    @Test
     fun parseSpaceUrl_doesNotTreatOtherMobileSpacePathsAsUserVideo() {
         val url = "https://m.bilibili.com/space/123456/dynamic".toHttpUrl()
 
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows(InvalidMediaInputException::class.java) {
             MediaInputClassifier.parseSpaceUrl(url)
         }
     }

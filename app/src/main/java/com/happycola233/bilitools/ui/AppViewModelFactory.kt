@@ -21,6 +21,7 @@ class AppViewModelFactory(
             modelClass.isAssignableFrom(ParseViewModel::class.java) -> {
                 ParseViewModel(
                     container.mediaRepository,
+                    container.opusRepository,
                     container.extrasRepository,
                     container.downloadRepository,
                     container.exportRepository,

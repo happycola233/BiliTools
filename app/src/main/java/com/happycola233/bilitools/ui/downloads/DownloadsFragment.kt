@@ -34,7 +34,7 @@ import com.happycola233.bilitools.core.appContainer
 import com.happycola233.bilitools.data.model.DownloadItem
 import com.happycola233.bilitools.data.model.DownloadGroup
 import com.happycola233.bilitools.data.model.DownloadStatus
-import com.happycola233.bilitools.data.model.DownloadTaskType
+import com.happycola233.bilitools.data.model.isManagedTransfer
 import com.happycola233.bilitools.data.SettingsRepository
 import com.happycola233.bilitools.databinding.FragmentDownloadsBinding
 import com.happycola233.bilitools.ui.AppViewModelFactory
@@ -806,12 +806,7 @@ class DownloadsFragment : Fragment() {
     }
 
     private fun isManagedTask(task: DownloadItem): Boolean {
-        return when (task.taskType) {
-            DownloadTaskType.Video,
-            DownloadTaskType.Audio,
-            DownloadTaskType.AudioVideo -> true
-            else -> false
-        }
+        return task.taskType.isManagedTransfer
     }
 
     private fun openWith(uri: Uri, fileName: String) {

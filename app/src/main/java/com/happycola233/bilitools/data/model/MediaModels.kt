@@ -87,6 +87,7 @@ data class MediaItem(
     val sid: Long? = null,
     val fid: Long? = null,
     val opid: String? = null,
+    val cvid: Long? = null,
     val rlid: Long? = null,
 )
 
@@ -101,6 +102,7 @@ data class MediaInfo(
     // 游标分页（如用户动态）拿不到总数时为 null。
     val totalPages: Int? = null,
     val offset: String? = null,
+    val hasMore: Boolean? = null,
     val collection: Boolean = false,
 )
 

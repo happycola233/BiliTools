@@ -1,0 +1,140 @@
+{
+  "code": 0,
+  "message": "0",
+  "data": {
+    "item": {
+      "id_str": "987654321",
+      "basic": {
+        "title": "接口基础标题",
+        "uid": 123
+      },
+      "modules": [
+        {
+          "module_top": {
+            "display": {
+              "album": {
+                "pics": [
+                  { "url": "http://i0.hdslb.com/bfs/new_dyn/top.jpg@672w_378h_1c?scale=1", "comment": "顶部" }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "module_title": { "text": "详情标题" }
+        },
+        {
+          "module_author": {
+            "mid": 123,
+            "name": "夹具作者",
+            "face": "http://i0.hdslb.com/bfs/face/avatar.jpg@96w_96h",
+            "pub_ts": 1700000000
+          }
+        },
+        {
+          "module_stat": {
+            "coin": { "count": 2 },
+            "comment": { "count": 3 },
+            "favorite": { "count": 4 },
+            "forward": { "count": 5 },
+            "like": { "count": 6 }
+          }
+        },
+        {
+          "module_extend": {
+            "items": [
+              { "text": "标签一" },
+              { "text": "标签一" }
+            ]
+          },
+          "module_topic": { "name": "话题标签" }
+        },
+        {
+          "module_content": {
+            "paragraphs": [
+              {
+                "para_type": 1,
+                "text": {
+                  "nodes": [
+                    {
+                      "type": "TEXT_NODE_TYPE_WORD",
+                      "word": {
+                        "font_size": 24,
+                        "style": { "bold": true },
+                        "words": "正文标题 "
+                      }
+                    },
+                    { "rich": { "type": "RICH_TEXT_NODE_TYPE_AT", "text": "@用户", "rid": "42" } },
+                    { "rich": { "type": "RICH_TEXT_NODE_TYPE_TOPIC", "text": "#话题#", "jump_url": "//search.bilibili.com/all?keyword=test" } },
+                    { "rich": { "type": "RICH_TEXT_NODE_TYPE_BV", "text": "BV 视频", "rid": "BV1xx411c7mD" } },
+                    { "rich": { "type": "RICH_TEXT_NODE_TYPE_AV", "text": "AV 视频", "rid": "170001" } },
+                    { "rich": { "type": "RICH_TEXT_NODE_TYPE_CV", "text": "CV 专栏", "rid": "1" } },
+                    { "rich": { "type": "RICH_TEXT_NODE_TYPE_WEB", "text": "网页", "jump_url": "https://example.com/page" } },
+                    { "rich": { "type": "RICH_TEXT_NODE_TYPE_VOTE", "text": "投票", "rid": "9" } },
+                    { "rich": { "type": "RICH_TEXT_NODE_TYPE_GOODS", "text": "商品", "jump_url": "https://example.com/goods" } },
+                    { "rich": { "type": "RICH_TEXT_NODE_TYPE_EMOJI", "text": "[笑]" } },
+                    { "formula": { "latex_content": "x^2" } },
+                    {
+                      "rich": {
+                        "type": "RICH_TEXT_NODE_TYPE_VIEW_PICTURE",
+                        "text": "查看图片",
+                        "pics": [
+                          { "src": "http://i0.hdslb.com/bfs/new_dyn/view.png@100w_100h" }
+                        ]
+                      }
+                    },
+                    { "rich": { "type": "RICH_TEXT_NODE_TYPE_UNKNOWN", "text": "未知节点文字" } }
+                  ]
+                }
+              },
+              {
+                "para_type": 2,
+                "pic": {
+                  "pics": [
+                    { "url": "http://i0.hdslb.com/bfs/new_dyn/top.jpg?duplicate=1" },
+                    { "url": "http://i0.hdslb.com/bfs/new_dyn/body.webp@1000w" }
+                  ]
+                }
+              },
+              { "para_type": 3 },
+              {
+                "para_type": 4,
+                "text": { "nodes": [ { "word": { "font_size": 17, "style": {}, "words": "引用内容" } } ] }
+              },
+              {
+                "para_type": 5,
+                "list": {
+                  "style": 1,
+                  "items": [
+                    { "level": 1, "order": 1, "nodes": [ { "word": { "words": "列表一" } } ] },
+                    { "level": 2, "order": 2, "nodes": [ { "word": { "words": "列表二" } } ] }
+                  ]
+                }
+              },
+              {
+                "para_type": 6,
+                "link_card": {
+                  "card": {
+                    "goods": {
+                      "items": [
+                        { "name": "卡片商品", "jump_url": "https://example.com/card" }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "para_type": 7,
+                "code": { "lang": "language-kotlin", "content": "println(&quot;ok&quot;)" }
+              },
+              {
+                "para_type": 99,
+                "text": { "nodes": [ { "word": { "words": "未知段落文字" } } ] }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

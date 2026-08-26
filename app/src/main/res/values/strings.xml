@@ -125,6 +125,9 @@
     <string name="parse_codec_label">编码格式</string>
     <string name="parse_bitrate_label">音频比特率</string>
     <string name="parse_misc_label">杂项</string>
+    <string name="parse_opus_label">图文</string>
+    <string name="parse_opus_content">图文内容</string>
+    <string name="parse_opus_images">图文图片</string>
     <string name="parse_subtitle_label">字幕</string>
     <string name="parse_subtitle_language">字幕语言</string>
     <string name="parse_subtitle_language_all">全部</string>
@@ -217,6 +220,12 @@
     <string name="download_unavailable_video">当前条目没有可用视频</string>
     <string name="download_unavailable_audio_video">当前条目缺少可合并的音频或视频</string>
     <string name="download_unavailable_image">当前条目没有对应图片资源</string>
+    <string name="download_unavailable_opus_images">该图文没有正文图片</string>
+    <string name="parse_error_opus_risk_control">图文详情请求受限，请稍后重试</string>
+    <string name="parse_error_opus_login_required">请登录后查看该图文</string>
+    <string name="parse_error_opus_permission_denied">当前账号无权查看该图文</string>
+    <string name="parse_error_opus_not_found">图文不存在或已不可见</string>
+    <string name="parse_error_opus_invalid_response">图文详情数据不完整，请稍后重试</string>
 
     <string name="common_error_unknown">发生未知错误</string>
 
@@ -342,6 +351,8 @@
     <string name="download_task_danmaku_history">历史弹幕</string>
     <string name="download_task_cover">封面</string>
     <string name="download_task_collection_cover">合集封面</string>
+    <string name="download_task_opus_content">图文内容</string>
+    <string name="download_task_opus_image">图文图片</string>
     <string name="download_progress_percent">%1$d%%</string>
     <string name="download_size_progress">%1$s / %2$s</string>
     <string name="download_size_downloaded">%1$s</string>
@@ -440,6 +451,7 @@
     <string name="parse_select_all">全选</string>
     <string name="parse_clear_all">清空</string>
     <string name="parse_notice_download_started">已开始下载</string>
+    <string name="parse_notice_download_started_partial">已开始下载，%1$d 条图文暂时无法读取</string>
     <string name="parse_mobile_confirm_title">当前使用移动网络</string>
     <string name="parse_mobile_confirm_message">你正在使用移动网络，继续下载可能产生流量费用。是否继续？</string>
     <string name="parse_mobile_confirm_action">继续下载</string>
@@ -455,6 +467,7 @@
     <string name="parse_error_no_danmaku">未找到可用弹幕</string>
     <string name="parse_error_no_cover">未找到可用封面</string>
     <string name="parse_notice_no_more">没有更多内容</string>
+    <string name="parse_notice_page_not_loaded">请先逐页加载到这里</string>
     <string name="delete">删除</string>
     <string name="download_error_unsafe_exit">程序意外退出，文件可能损坏，请重新下载</string>
 

@@ -153,6 +153,7 @@ import com.happycola233.bilitools.data.model.MediaType
 import com.happycola233.bilitools.data.model.OutputType
 import com.happycola233.bilitools.data.model.StreamFormat
 import com.happycola233.bilitools.data.model.VideoCodec
+import com.happycola233.bilitools.data.model.capabilities
 import com.happycola233.bilitools.ui.FloatingControlsDefaults
 import com.happycola233.bilitools.ui.TopErrorMessageHost
 import com.happycola233.bilitools.ui.mainBottomBarBottomInset
@@ -338,6 +339,8 @@ fun ParseScreenContent(
     onDanmakuDateChange: (String) -> Unit,
     onDanmakuHourChange: (String) -> Unit,
     onImageSelectionChange: (String, Boolean) -> Unit,
+    onOpusContentEnabledChange: (Boolean) -> Unit,
+    onOpusImagesEnabledChange: (Boolean) -> Unit,
     onDismissSubtitleCopyDialog: () -> Unit,
     onDismissAiSummaryCopyDialog: () -> Unit,
     onCopyCurrentSubtitle: (SubtitleCopyEntry) -> Unit,
@@ -461,6 +464,8 @@ fun ParseScreenContent(
                             onDanmakuDateChange = onDanmakuDateChange,
                             onDanmakuHourChange = onDanmakuHourChange,
                             onImageSelectionChange = onImageSelectionChange,
+                            onOpusContentEnabledChange = onOpusContentEnabledChange,
+                            onOpusImagesEnabledChange = onOpusImagesEnabledChange,
                         )
                     }
                 }
@@ -2112,6 +2117,7 @@ private fun PageSelectionHeader(
             PageNavigator(
                 pageIndex = state.pageIndex,
                 totalPages = info.totalPages,
+                hasMore = info.hasMore,
                 loading = !controlsEnabled,
                 onLoadPrevPage = onLoadPrevPage,
                 onLoadNextPage = onLoadNextPage,
@@ -2180,6 +2186,7 @@ private fun PageSelectionHeaderAction(
 private fun PageNavigator(
     pageIndex: Int,
     totalPages: Int?,
+    hasMore: Boolean?,
     loading: Boolean,
     onLoadPrevPage: () -> Unit,
     onLoadNextPage: () -> Unit,
@@ -2196,7 +2203,7 @@ private fun PageNavigator(
         stringResource(R.string.parse_page_status, pageIndex)
     }
     // 拿不到总数（游标分页）时保持可继续翻页；有总数则翻到最后一页后禁用下一页
-    val hasNextPage = totalPages == null || pageIndex < totalPages
+    val hasNextPage = hasMore ?: (totalPages == null || pageIndex < totalPages)
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -2403,11 +2410,14 @@ private fun ParseOptionsCard(
     onDanmakuDateChange: (String) -> Unit,
     onDanmakuHourChange: (String) -> Unit,
     onImageSelectionChange: (String, Boolean) -> Unit,
+    onOpusContentEnabledChange: (Boolean) -> Unit,
+    onOpusImagesEnabledChange: (Boolean) -> Unit,
 ) {
     val isMultiSelect = state.isMultiSelect
     val allowAnyExtras = isMultiSelect
     val controlsEnabled = !state.loading && !state.collectionModeLoading
     val streamControlsEnabled = controlsEnabled && !state.streamLoading
+    val mediaCapabilities = (selectedItem?.type ?: info.type).capabilities
     val formatEnabled = state.outputType != null && streamControlsEnabled
     val hasVideo = state.videoStreams.isNotEmpty()
     val hasAudio = state.audioStreams.isNotEmpty()
@@ -2486,41 +2496,70 @@ private fun ParseOptionsCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(optionsCardSectionSpacing),
             ) {
-                OptionsSection(title = stringResource(R.string.parse_output_type)) {
-                    ConnectedOutputButtons(
-                        selected = state.outputType,
-                        audioVideoEnabled = streamControlsEnabled && allowAv,
-                        videoEnabled = streamControlsEnabled && isDash && hasVideo,
-                        audioEnabled = streamControlsEnabled && isDash && hasAudio,
-                        onOutputTypeChange = onOutputTypeChange,
+                if (mediaCapabilities.supportsOpusExport) {
+                    OptionsSection(title = stringResource(R.string.parse_opus_label)) {
+                        TwoColumnChecks {
+                            CheckOption(
+                                text = stringResource(R.string.parse_opus_content),
+                                checked = state.opusContentEnabled,
+                                enabled = controlsEnabled,
+                                onCheckedChange = onOpusContentEnabledChange,
+                                modifier = Modifier.weight(1f),
+                            )
+                            CheckOption(
+                                text = stringResource(R.string.parse_opus_images),
+                                checked = state.opusImagesEnabled,
+                                enabled = controlsEnabled &&
+                                    (state.opusImagesAvailable != false || isMultiSelect),
+                                onCheckedChange = onOpusImagesEnabledChange,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                        if (state.opusImagesAvailable == false && !isMultiSelect) {
+                            HelperText(text = stringResource(R.string.download_unavailable_opus_images))
+                        }
+                    }
+                }
+
+                if (mediaCapabilities.supportsPlaybackStream) {
+                    OptionsSection(title = stringResource(R.string.parse_output_type)) {
+                        ConnectedOutputButtons(
+                            selected = state.outputType,
+                            audioVideoEnabled = streamControlsEnabled && allowAv,
+                            videoEnabled = streamControlsEnabled && isDash && hasVideo,
+                            audioEnabled = streamControlsEnabled && isDash && hasAudio,
+                            onOutputTypeChange = onOutputTypeChange,
+                        )
+                    }
+
+                    OptionsSection(title = stringResource(R.string.parse_stream_format)) {
+                        ConnectedFormatButtons(
+                            selected = state.format,
+                            enabled = formatEnabled,
+                            onFormatChange = onFormatChange,
+                        )
+                        StreamFormatHint()
+                    }
+
+                    QualityControls(
+                        state = state,
+                        isMultiSelect = isMultiSelect,
+                        resolutionModeEnabled = resolutionModeEnabled,
+                        bitrateModeEnabled = bitrateModeEnabled,
+                        resolutionEnabled = resolutionEnabled,
+                        codecEnabled = codecEnabled,
+                        bitrateEnabled = bitrateEnabled,
+                        onResolutionModeChange = onResolutionModeChange,
+                        onAudioBitrateModeChange = onAudioBitrateModeChange,
+                        onResolutionChange = onResolutionChange,
+                        onCodecChange = onCodecChange,
+                        onAudioBitrateChange = onAudioBitrateChange,
                     )
                 }
 
-                OptionsSection(title = stringResource(R.string.parse_stream_format)) {
-                    ConnectedFormatButtons(
-                        selected = state.format,
-                        enabled = formatEnabled,
-                        onFormatChange = onFormatChange,
-                    )
-                    StreamFormatHint()
+                if (mediaCapabilities.supportsOpusExport || mediaCapabilities.supportsPlaybackStream) {
+                    SectionDivider()
                 }
-
-                QualityControls(
-                    state = state,
-                    isMultiSelect = isMultiSelect,
-                    resolutionModeEnabled = resolutionModeEnabled,
-                    bitrateModeEnabled = bitrateModeEnabled,
-                    resolutionEnabled = resolutionEnabled,
-                    codecEnabled = codecEnabled,
-                    bitrateEnabled = bitrateEnabled,
-                    onResolutionModeChange = onResolutionModeChange,
-                    onAudioBitrateModeChange = onAudioBitrateModeChange,
-                    onResolutionChange = onResolutionChange,
-                    onCodecChange = onCodecChange,
-                    onAudioBitrateChange = onAudioBitrateChange,
-                )
-
-                SectionDivider()
                 OptionsSection(title = stringResource(R.string.parse_misc_label)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),

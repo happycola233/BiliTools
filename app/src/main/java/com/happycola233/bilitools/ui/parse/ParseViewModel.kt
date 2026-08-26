@@ -9,6 +9,8 @@ import com.happycola233.bilitools.core.BiliHttpException
 import com.happycola233.bilitools.core.DownloadNaming
 import com.happycola233.bilitools.core.NamingRenderContext
 import com.happycola233.bilitools.core.NfoGenerator
+import com.happycola233.bilitools.core.OpusAssetPlanner
+import com.happycola233.bilitools.core.OpusMarkdownRenderer
 import com.happycola233.bilitools.core.StringProvider
 import com.happycola233.bilitools.data.AuthRepository
 import com.happycola233.bilitools.data.DefaultDownloadVideoCodec
@@ -19,6 +21,10 @@ import com.happycola233.bilitools.data.DownloadQualityMode
 import com.happycola233.bilitools.data.ExportRepository
 import com.happycola233.bilitools.data.ExtrasRepository
 import com.happycola233.bilitools.data.MediaRepository
+import com.happycola233.bilitools.data.InvalidMediaInputException
+import com.happycola233.bilitools.data.OpusException
+import com.happycola233.bilitools.data.OpusFailure
+import com.happycola233.bilitools.data.OpusRepository
 import com.happycola233.bilitools.data.SettingsRepository
 import com.happycola233.bilitools.data.TopLevelFolderMode
 import com.happycola233.bilitools.data.model.AudioStream
@@ -33,25 +39,32 @@ import com.happycola233.bilitools.data.model.MediaSections
 import com.happycola233.bilitools.data.model.MediaStat
 import com.happycola233.bilitools.data.model.MediaType
 import com.happycola233.bilitools.data.model.OutputType
+import com.happycola233.bilitools.data.model.OpusDocument
+import com.happycola233.bilitools.data.model.capabilities
 import com.happycola233.bilitools.data.model.PlayUrlInfo
 import com.happycola233.bilitools.data.model.StreamFormat
 import com.happycola233.bilitools.data.model.SubtitleInfo
 import com.happycola233.bilitools.data.model.VideoCodec
 import com.happycola233.bilitools.data.model.VideoStream
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -104,6 +117,8 @@ private fun MediaItem.extrasTargetKey(): ExtrasTargetKey {
         epid != null -> "epid:$epid"
         cid != null -> "cid:$cid"
         !bvid.isNullOrBlank() -> "bvid:$bvid:index:$index"
+        cvid != null -> "cvid:$cvid"
+        !opid.isNullOrBlank() -> "opid:$opid"
         else -> "url:$url:index:$index"
     }
     return ExtrasTargetKey(type, resourceId)
@@ -223,7 +238,34 @@ sealed class ParseEvent {
     data class ShowSubtitleCopyDialog(val entries: List<SubtitleCopyEntry>) : ParseEvent()
     data class CopySingleAiSummary(val entry: AiSummaryCopyEntry) : ParseEvent()
     data class ShowAiSummaryCopyDialog(val entries: List<AiSummaryCopyEntry>) : ParseEvent()
+    data class DownloadQueued(val result: DownloadEnqueueResult) : ParseEvent()
 }
+
+data class DownloadEnqueueResult(
+    val queuedGroups: Int,
+    val failedItems: Int = 0,
+)
+
+internal data class DefaultParseContentSelection(
+    val outputType: OutputType?,
+    val opusContentEnabled: Boolean,
+    val opusImagesEnabled: Boolean,
+)
+
+internal fun defaultParseContentSelection(type: MediaType?): DefaultParseContentSelection {
+    val capabilities = type?.capabilities
+    val supportsOpus = capabilities?.supportsOpusExport == true
+    return DefaultParseContentSelection(
+        outputType = OutputType.AudioVideo.takeIf { capabilities?.supportsPlaybackStream == true },
+        opusContentEnabled = supportsOpus,
+        opusImagesEnabled = supportsOpus,
+    )
+}
+
+private data class PreparedDownloadTarget(
+    val item: MediaItem,
+    val opusDocument: OpusDocument?,
+)
 
 data class ParseUiState(
     val loading: Boolean = false,
@@ -272,11 +314,13 @@ data class ParseUiState(
     val danmakuHour: String = "",
     val imageOptions: List<ImageOption> = emptyList(),
     val selectedImageIds: Set<String> = emptySet(),
+    val opusContentEnabled: Boolean = false,
+    val opusImagesEnabled: Boolean = false,
+    val opusImagesAvailable: Boolean? = null,
     val warning: String? = null,
     // 行点击预览的条目索引：仅驱动信息卡片展示，不参与下载与导出参数的决策
     val previewItemIndex: Int? = null,
     val selectedItemStat: MediaStat? = null,
-    val lastDownload: DownloadItem? = null,
     val isLoggedIn: Boolean = false,
 ) {
     val hasSelectedDownloadContent: Boolean
@@ -287,7 +331,9 @@ data class ParseUiState(
             nfoSingleEnabled ||
             danmakuLiveEnabled ||
             danmakuHistoryEnabled ||
-            selectedImageIds.isNotEmpty()
+            selectedImageIds.isNotEmpty() ||
+            opusContentEnabled ||
+            opusImagesEnabled
 
     val isMultiSelect: Boolean
         get() = selectedItemIndices.size > 1
@@ -299,6 +345,7 @@ private fun defaultDate(): String {
 
 class ParseViewModel(
     private val mediaRepository: MediaRepository,
+    private val opusRepository: OpusRepository,
     private val extrasRepository: ExtrasRepository,
     private val downloadRepository: DownloadRepository,
     private val exportRepository: ExportRepository,
@@ -308,8 +355,8 @@ class ParseViewModel(
 ) : ViewModel() {
     private val _state = MutableStateFlow(applyDefaultDownloadQuality(ParseUiState()))
     val state: StateFlow<ParseUiState> = _state.asStateFlow()
-    private val _events = MutableSharedFlow<ParseEvent>(extraBufferCapacity = 1)
-    val events: SharedFlow<ParseEvent> = _events.asSharedFlow()
+    private val eventChannel = Channel<ParseEvent>(Channel.BUFFERED)
+    val events: Flow<ParseEvent> = eventChannel.receiveAsFlow()
     private val fullResolutionIds = listOf(127, 126, 125, 120, 116, 112, 80, 64, 32, 16, 6)
     private val fullAudioIds = AudioQualities.allIds
     private val offsetMap = mutableMapOf<Int, String>()
@@ -380,7 +427,7 @@ class ParseViewModel(
                 val allowRaw = _state.value.selectedMediaType != null
                 val parsed = mediaRepository.parseInput(input, allowRaw)
                 val resolvedType =
-                    _state.value.selectedMediaType ?: parsed.type ?: throw IllegalArgumentException("Invalid input")
+                    _state.value.selectedMediaType ?: parsed.type ?: throw InvalidMediaInputException()
                 val info = mediaRepository.getMediaInfo(
                     parsed.id,
                     resolvedType,
@@ -388,6 +435,9 @@ class ParseViewModel(
                 )
                 val defaultIndex =
                     info.list.indexOfFirst { it.isTarget }.takeIf { it >= 0 } ?: 0
+                val defaultItem = info.list.getOrNull(defaultIndex)
+                val defaultCapabilities = defaultItem?.type?.capabilities
+                val defaultContentSelection = defaultParseContentSelection(defaultItem?.type)
                 _state.update {
                     normalizeQualityModes(
                         applyDefaultDownloadQuality(
@@ -411,11 +461,14 @@ class ParseViewModel(
                                 selectedCodec = null,
                                 selectedAudioId = null,
                                 format = StreamFormat.Dash,
-                                outputType = OutputType.AudioVideo,
+                                outputType = defaultContentSelection.outputType,
+                                opusContentEnabled = defaultContentSelection.opusContentEnabled,
+                                opusImagesEnabled = defaultContentSelection.opusImagesEnabled,
+                                opusImagesAvailable = null,
                                 warning = null,
                                 previewItemIndex = null,
                                 selectedItemStat = info.list.getOrNull(defaultIndex)?.stat,
-                                streamLoading = info.list.isNotEmpty(),
+                                streamLoading = defaultCapabilities?.supportsPlaybackStream == true,
                                 isLoggedIn = authRepository.isLoggedIn(),
                             ),
                         ),
@@ -424,12 +477,16 @@ class ParseViewModel(
                 info.list.getOrNull(defaultIndex)?.let { item ->
                     refreshExtras(info, item)
                 }
-                if (info.type == MediaType.UserOpus && info.offset != null) {
+                if (info.type == MediaType.UserOpus) {
                     offsetMap[1] = ""
+                    val nextOffset = info.offset?.takeIf { info.hasMore != false }
+                    if (nextOffset != null) {
+                        offsetMap[2] = nextOffset
+                    }
                 }
             }.onFailure { err ->
                 // 输入无法识别属于表单校验问题，就地提示比顶部横幅更贴近出错位置。
-                if (err is IllegalArgumentException) {
+                if (err is InvalidMediaInputException) {
                     _state.update {
                         it.copy(
                             loading = false,
@@ -499,6 +556,7 @@ class ParseViewModel(
                     selectedItemIndices = selected,
                     selectedItemIndex = nextCurrent,
                     selectedItemStat = nextItem?.stat,
+                    opusImagesAvailable = null,
                     warning = streamWarningForPendingSelectionChange(it),
                 )
             } else {
@@ -569,7 +627,10 @@ class ParseViewModel(
         val targetSection = _state.value.selectedSectionId
         val collectionMode = _state.value.collectionMode
         val offset = if (info.type == MediaType.UserOpus) {
-            offsetMap[targetPage] ?: info.offset
+            offsetMap[targetPage] ?: run {
+                _state.update { it.copy(notice = strings.get(R.string.parse_notice_page_not_loaded)) }
+                return
+            }
         } else {
             null
         }
@@ -629,6 +690,7 @@ class ParseViewModel(
                             warning = null,
                             previewItemIndex = null,
                             selectedItemStat = updated.list.getOrNull(defaultIndex)?.stat,
+                            opusImagesAvailable = null,
                             streamLoading = updated.list.isNotEmpty() && it.outputType != null,
                         ),
                     )
@@ -636,11 +698,16 @@ class ParseViewModel(
                 updated.list.getOrNull(defaultIndex)?.let { item ->
                     refreshExtras(updated, item)
                 }
-                if (updated.type == MediaType.UserOpus && updated.offset != null) {
+                if (updated.type == MediaType.UserOpus) {
                     if (targetPage == 1) {
                         offsetMap[1] = ""
                     }
-                    offsetMap[targetPage + 1] = updated.offset
+                    val nextOffset = updated.offset?.takeIf { updated.hasMore != false }
+                    if (nextOffset != null) {
+                        offsetMap[targetPage + 1] = nextOffset
+                    } else {
+                        offsetMap.remove(targetPage + 1)
+                    }
                 }
             }.onFailure { err ->
                 setLoadingError(err)
@@ -703,6 +770,7 @@ class ParseViewModel(
                             warning = null,
                             previewItemIndex = null,
                             selectedItemStat = updated.list.getOrNull(defaultIndex)?.stat,
+                            opusImagesAvailable = null,
                             streamLoading = updated.list.isNotEmpty() && it.outputType != null,
                         ),
                     )
@@ -769,6 +837,7 @@ class ParseViewModel(
                             warning = null,
                             previewItemIndex = null,
                             selectedItemStat = updated.list.getOrNull(defaultIndex)?.stat,
+                            opusImagesAvailable = null,
                             streamLoading = updated.list.isNotEmpty() && it.outputType != null,
                         ),
                     )
@@ -920,6 +989,17 @@ class ParseViewModel(
         }
     }
 
+    fun setOpusContentEnabled(enabled: Boolean) {
+        _state.update { it.copy(opusContentEnabled = enabled) }
+    }
+
+    fun setOpusImagesEnabled(enabled: Boolean) {
+        _state.update { current ->
+            if (current.opusImagesAvailable == false && !current.isMultiSelect) current
+            else current.copy(opusImagesEnabled = enabled)
+        }
+    }
+
     private fun loadStream() {
         if (_state.value.mediaInfo == null) return
         val item = currentItem() ?: return
@@ -1047,295 +1127,488 @@ class ParseViewModel(
             _state.update { it.copy(error = strings.get(R.string.parse_error_no_stream)) }
             return
         }
+        val snapshot = state
         viewModelScope.launch {
             _state.update {
                 it.copy(
                     downloadStarting = true,
                     error = null,
                     notice = null,
-                    // External dialog watches lastDownload to decide when it can close.
-                    // Reset before a new attempt to avoid stale success signal.
-                    lastDownload = null,
                 )
             }
-            withContext(Dispatchers.IO) {
-                downloadRepository.ensureLoaded()
-            }
-            _state.update {
-                it.copy(
-                    downloadStarting = false,
-                    notice = strings.get(R.string.parse_notice_download_started),
-                )
-            }
-            val snapshot = state
-            viewModelScope.launch(Dispatchers.IO) {
-                val targets = buildDownloadTargets(snapshot, info, selectedIndices)
-                val selectionPolicy = subtitleSelectionPolicy(
-                    selectedItemCount = selectedIndices.size,
-                    languageSelection = snapshot.subtitleLanguageSelection,
-                )
-                val namingSession = createNamingSession(
-                    info = info,
-                    targets = targets,
-                )
-                var lastDownload: DownloadItem? = null
-                targets.items.forEach { rawItem ->
-                    val item = runCatching { mediaRepository.resolveItemForPlay(rawItem, rawItem.type) }
-                        .getOrDefault(rawItem)
-                    val playUrlResult = if (snapshot.outputType != null) {
-                        runCatching {
-                            mediaRepository.getPlayUrlInfo(item, item.type, snapshot.format)
-                        }
-                    } else {
-                        null
-                    }
-                    val playUrlInfo = playUrlResult?.getOrNull()
-                    val naming = resolveGroupNaming(
-                        info = info,
-                        item = item,
-                        isCollectionMode = targets.isCollectionMode,
-                        pageCountByBvid = targets.pageCountByBvid,
-                        videoTitleByBvid = targets.videoTitleByBvid,
+            val enqueueResult = runCatching {
+                withContext(Dispatchers.IO) {
+                    downloadRepository.ensureLoaded()
+                    val targets = buildDownloadTargets(snapshot, info, selectedIndices)
+                    val selectionPolicy = subtitleSelectionPolicy(
+                        selectedItemCount = selectedIndices.size,
+                        languageSelection = snapshot.subtitleLanguageSelection,
                     )
-
-                    val requestedGroupRelativePath = buildRequestedGroupRelativePath(
-                        info = info,
-                        item = item,
-                        naming = naming,
-                        namingSession = namingSession,
-                    )
-
-                    val groupId = downloadRepository.createGroup(
-                        naming.groupTitle,
-                        naming.groupSubtitle,
-                        item.bvid,
-                        item.coverUrl,
-                        relativePath = requestedGroupRelativePath,
-                    )
-                    val groupRelativePath = downloadRepository.groupRelativePath(groupId)
-
-                    val trackTotal = when {
-                        naming.useVideoNaming && naming.pageCount > 0 -> naming.pageCount
-                        !info.paged && info.list.size > 1 -> info.list.size
-                        else -> null
-                    }
-                    val embeddedMetadata = buildEmbeddedMetadata(
-                        info = info,
-                        item = item,
-                        fallbackAlbum = if (naming.useVideoNaming && naming.videoTitle.isNotBlank()) {
-                            naming.videoTitle
-                        } else {
-                            naming.groupTitle
-                        },
-                        trackTotal = trackTotal,
-                    )
-
-                    val outputType = snapshot.outputType
-                    if (outputType != null && playUrlInfo == null) {
-                        val streamError = playUrlResult?.exceptionOrNull()
-                        val message = streamError?.let(::mapError)
-                            ?: strings.get(R.string.parse_error_no_stream)
-                        AppLog.w(
-                            TAG,
-                            "[download] failed to resolve stream, type=${item.type}, title=${item.title}",
-                            streamError,
-                        )
-                        _state.update { it.copy(error = message) }
-                    }
-                    if (outputType != null && playUrlInfo != null) {
-                        val selectedVideo = selectVideoStream(
-                            playUrlInfo.video,
-                            snapshot.selectedResolutionId,
-                            snapshot.selectedCodec,
-                            snapshot.resolutionMode,
-                        )
-                        val mergeVideo = if (playUrlInfo.format == StreamFormat.Dash &&
-                            outputType == OutputType.AudioVideo) {
-                            selectVideoStreamForMerge(
-                                playUrlInfo.video,
-                                selectedVideo,
+                    var queuedGroups = 0
+                    var failedItems = 0
+                    var firstFailure: Throwable? = null
+                    val opusResults = resolveSelectedOpusDocuments(snapshot, targets.items)
+                    val preparedTargets = targets.items.zip(opusResults).mapNotNull { (rawItem, result) ->
+                        val error = result.exceptionOrNull()
+                        if (error != null) {
+                            failedItems += 1
+                            if (firstFailure == null) firstFailure = error
+                            AppLog.w(
+                                TAG,
+                                "[download] failed to resolve opus, title=${rawItem.title}",
+                                error,
                             )
-                        } else {
-                            selectedVideo
+                            return@mapNotNull null
                         }
-                        val selectedAudio = selectAudioStream(
-                            playUrlInfo.audio,
-                            snapshot.selectedAudioId,
-                            snapshot.audioBitrateMode,
+                        val document = result.getOrNull()?.withItemFallback(rawItem, info.nfo.upper)
+                        PreparedDownloadTarget(
+                            item = document?.let { rawItem.withOpusDocument(it) } ?: rawItem,
+                            opusDocument = document,
                         )
-                        val downloadTitle = when (outputType) {
-                            OutputType.AudioOnly -> strings.get(R.string.output_audio)
-                            OutputType.VideoOnly -> strings.get(R.string.output_video)
-                            OutputType.AudioVideo -> strings.get(R.string.output_audio_video)
+                    }
+                    if (preparedTargets.isEmpty()) {
+                        return@withContext DownloadEnqueueResult(
+                            queuedGroups = 0,
+                            failedItems = failedItems,
+                        ) to firstFailure
+                    }
+                    val namingSession = createNamingSession(
+                        info = info,
+                        targets = targets.copy(items = preparedTargets.map(PreparedDownloadTarget::item)),
+                    )
+                    preparedTargets.forEach { preparedTarget ->
+                        val opusDocument = preparedTarget.opusDocument
+                        val preparedItem = preparedTarget.item
+                        val item = runCatching { mediaRepository.resolveItemForPlay(preparedItem, preparedItem.type) }
+                            .getOrDefault(preparedItem)
+                        val playUrlResult = if (snapshot.outputType != null) {
+                            runCatching {
+                                mediaRepository.getPlayUrlInfo(item, item.type, snapshot.format)
+                            }
+                        } else {
+                            null
                         }
-                        val downloadTaskType = when (outputType) {
-                            OutputType.AudioOnly -> DownloadTaskType.Audio
-                            OutputType.VideoOnly -> DownloadTaskType.Video
-                            OutputType.AudioVideo -> DownloadTaskType.AudioVideo
+                        val playUrlInfo = playUrlResult?.getOrNull()
+                        val naming = resolveGroupNaming(
+                            info = info,
+                            item = item,
+                            isCollectionMode = targets.isCollectionMode,
+                            pageCountByBvid = targets.pageCountByBvid,
+                            videoTitleByBvid = targets.videoTitleByBvid,
+                        )
+
+                        val requestedGroupRelativePath = buildRequestedGroupRelativePath(
+                            info = info,
+                            item = item,
+                            naming = naming,
+                            namingSession = namingSession,
+                        )
+
+                        val groupId = downloadRepository.createGroup(
+                            naming.groupTitle,
+                            naming.groupSubtitle,
+                            item.bvid,
+                            item.coverUrl,
+                            relativePath = requestedGroupRelativePath,
+                        )
+                        val groupRelativePath = downloadRepository.groupRelativePath(groupId)
+
+                        val trackTotal = when {
+                            naming.useVideoNaming && naming.pageCount > 0 -> naming.pageCount
+                            !info.paged && info.list.size > 1 -> info.list.size
+                            else -> null
                         }
-                        val unavailableReason = when (outputType) {
-                            OutputType.AudioOnly -> if (selectedAudio == null) {
-                                strings.get(R.string.download_unavailable_audio)
+                        val embeddedMetadata = buildEmbeddedMetadata(
+                            info = info,
+                            item = item,
+                            fallbackAlbum = if (naming.useVideoNaming && naming.videoTitle.isNotBlank()) {
+                                naming.videoTitle
                             } else {
-                                null
-                            }
-                            OutputType.VideoOnly -> if (selectedVideo == null) {
-                                strings.get(R.string.download_unavailable_video)
-                            } else {
-                                null
-                            }
-                            OutputType.AudioVideo -> when {
-                                mergeVideo == null -> strings.get(R.string.download_unavailable_video)
-                                playUrlInfo.format == StreamFormat.Dash && selectedAudio == null ->
-                                    strings.get(R.string.download_unavailable_audio_video)
-                                else -> null
-                            }
+                                naming.groupTitle
+                            },
+                            trackTotal = trackTotal,
+                        )
+
+                        val outputType = snapshot.outputType
+                        if (outputType != null && playUrlInfo == null) {
+                            val streamError = playUrlResult?.exceptionOrNull()
+                            val message = streamError?.let(::mapError)
+                                ?: strings.get(R.string.parse_error_no_stream)
+                            AppLog.w(
+                                TAG,
+                                "[download] failed to resolve stream, type=${item.type}, title=${item.title}",
+                                streamError,
+                            )
+                            _state.update { it.copy(error = message) }
                         }
-                        if (unavailableReason == null) {
-                            val outputVideoCodec = when (outputType) {
-                                OutputType.AudioOnly -> null
-                                OutputType.VideoOnly -> selectedVideo?.codec ?: snapshot.selectedCodec
-                                OutputType.AudioVideo -> mergeVideo?.codec ?: selectedVideo?.codec ?: snapshot.selectedCodec
+                        if (outputType != null && playUrlInfo != null) {
+                            val selectedVideo = selectVideoStream(
+                                playUrlInfo.video,
+                                snapshot.selectedResolutionId,
+                                snapshot.selectedCodec,
+                                snapshot.resolutionMode,
+                            )
+                            val mergeVideo = if (playUrlInfo.format == StreamFormat.Dash &&
+                                outputType == OutputType.AudioVideo) {
+                                selectVideoStreamForMerge(
+                                    playUrlInfo.video,
+                                    selectedVideo,
+                                )
+                            } else {
+                                selectedVideo
                             }
-                            when (outputType) {
-                                OutputType.AudioOnly -> {
-                                    val mediaParams = buildMediaParams(null, null, selectedAudio)
-                                    val audioExtension = extensionForAudioStream(selectedAudio!!)
-                                    val audioNamingContext = buildNamingRenderContext(
-                                        info = info,
-                                        item = item,
-                                        naming = naming,
-                                        namingSession = namingSession,
-                                        taskType = DownloadTaskType.Audio,
-                                        taskLabel = downloadTitle,
-                                        mediaParams = mediaParams,
-                                        formatLabel = mapOutputExtensionLabel(audioExtension),
-                                    )
-                                    val audioName = resolveTemplateFileName(
-                                        taskType = DownloadTaskType.Audio,
-                                        namingSession = namingSession,
-                                        context = audioNamingContext,
-                                        extension = audioExtension,
-                                    )
-                                    lastDownload = downloadRepository.enqueue(
-                                        groupId,
-                                        DownloadTaskType.Audio,
-                                        downloadTitle,
-                                        audioName,
-                                        selectedAudio.url,
-                                        mediaParams,
-                                        embeddedMetadata = embeddedMetadata,
-                                    )
+                            val selectedAudio = selectAudioStream(
+                                playUrlInfo.audio,
+                                snapshot.selectedAudioId,
+                                snapshot.audioBitrateMode,
+                            )
+                            val downloadTitle = when (outputType) {
+                                OutputType.AudioOnly -> strings.get(R.string.output_audio)
+                                OutputType.VideoOnly -> strings.get(R.string.output_video)
+                                OutputType.AudioVideo -> strings.get(R.string.output_audio_video)
+                            }
+                            val downloadTaskType = when (outputType) {
+                                OutputType.AudioOnly -> DownloadTaskType.Audio
+                                OutputType.VideoOnly -> DownloadTaskType.Video
+                                OutputType.AudioVideo -> DownloadTaskType.AudioVideo
+                            }
+                            val unavailableReason = when (outputType) {
+                                OutputType.AudioOnly -> if (selectedAudio == null) {
+                                    strings.get(R.string.download_unavailable_audio)
+                                } else {
+                                    null
                                 }
-                                OutputType.VideoOnly -> {
-                                    val mediaParams = buildMediaParams(selectedVideo, outputVideoCodec, null)
-                                    val videoNamingContext = buildNamingRenderContext(
-                                        info = info,
-                                        item = item,
-                                        naming = naming,
-                                        namingSession = namingSession,
-                                        taskType = DownloadTaskType.Video,
-                                        taskLabel = downloadTitle,
-                                        mediaParams = mediaParams,
-                                        formatLabel = mapStreamFormatLabel(selectedVideo!!.format),
-                                    )
-                                    val videoName = resolveTemplateFileName(
-                                        taskType = DownloadTaskType.Video,
-                                        namingSession = namingSession,
-                                        context = videoNamingContext,
-                                        extension = extensionForVideoStream(selectedVideo),
-                                    )
-                                    lastDownload = downloadRepository.enqueue(
-                                        groupId,
-                                        DownloadTaskType.Video,
-                                        downloadTitle,
-                                        videoName,
-                                        selectedVideo.url,
-                                        mediaParams,
-                                        embeddedMetadata = embeddedMetadata,
-                                    )
+                                OutputType.VideoOnly -> if (selectedVideo == null) {
+                                    strings.get(R.string.download_unavailable_video)
+                                } else {
+                                    null
                                 }
-                                OutputType.AudioVideo -> {
-                                    if (playUrlInfo.format == StreamFormat.Dash && selectedAudio != null) {
-                                        val mediaParams = buildMediaParams(mergeVideo, outputVideoCodec, selectedAudio)
-                                        val mergedExtension = extensionForMergedOutput(selectedAudio)
-                                        val mergedNamingContext = buildNamingRenderContext(
+                                OutputType.AudioVideo -> when {
+                                    mergeVideo == null -> strings.get(R.string.download_unavailable_video)
+                                    playUrlInfo.format == StreamFormat.Dash && selectedAudio == null ->
+                                        strings.get(R.string.download_unavailable_audio_video)
+                                    else -> null
+                                }
+                            }
+                            if (unavailableReason == null) {
+                                val outputVideoCodec = when (outputType) {
+                                    OutputType.AudioOnly -> null
+                                    OutputType.VideoOnly -> selectedVideo?.codec ?: snapshot.selectedCodec
+                                    OutputType.AudioVideo -> mergeVideo?.codec ?: selectedVideo?.codec ?: snapshot.selectedCodec
+                                }
+                                when (outputType) {
+                                    OutputType.AudioOnly -> {
+                                        val mediaParams = buildMediaParams(null, null, selectedAudio)
+                                        val audioExtension = extensionForAudioStream(selectedAudio!!)
+                                        val audioNamingContext = buildNamingRenderContext(
                                             info = info,
                                             item = item,
                                             naming = naming,
                                             namingSession = namingSession,
-                                            taskType = DownloadTaskType.AudioVideo,
+                                            taskType = DownloadTaskType.Audio,
                                             taskLabel = downloadTitle,
                                             mediaParams = mediaParams,
-                                            formatLabel = mapOutputExtensionLabel(mergedExtension),
+                                            formatLabel = mapOutputExtensionLabel(audioExtension),
                                         )
-                                        val outputName = resolveTemplateFileName(
-                                            taskType = DownloadTaskType.AudioVideo,
+                                        val audioName = resolveTemplateFileName(
+                                            taskType = DownloadTaskType.Audio,
                                             namingSession = namingSession,
-                                            context = mergedNamingContext,
-                                            extension = mergedExtension,
+                                            context = audioNamingContext,
+                                            extension = audioExtension,
                                         )
-                                        lastDownload = downloadRepository.enqueueDashMerge(
+                                        downloadRepository.enqueue(
                                             groupId,
+                                            DownloadTaskType.Audio,
                                             downloadTitle,
-                                            outputName,
-                                            mergeVideo!!.url,
+                                            audioName,
                                             selectedAudio.url,
                                             mediaParams,
                                             embeddedMetadata = embeddedMetadata,
                                         )
-                                    } else {
-                                        val mediaParams = buildMediaParams(mergeVideo, outputVideoCodec, selectedAudio)
-                                        val mergedNamingContext = buildNamingRenderContext(
+                                    }
+                                    OutputType.VideoOnly -> {
+                                        val mediaParams = buildMediaParams(selectedVideo, outputVideoCodec, null)
+                                        val videoNamingContext = buildNamingRenderContext(
                                             info = info,
                                             item = item,
                                             naming = naming,
                                             namingSession = namingSession,
-                                            taskType = DownloadTaskType.AudioVideo,
+                                            taskType = DownloadTaskType.Video,
                                             taskLabel = downloadTitle,
                                             mediaParams = mediaParams,
-                                            formatLabel = mapStreamFormatLabel(mergeVideo!!.format),
+                                            formatLabel = mapStreamFormatLabel(selectedVideo!!.format),
                                         )
                                         val videoName = resolveTemplateFileName(
-                                            taskType = DownloadTaskType.AudioVideo,
+                                            taskType = DownloadTaskType.Video,
                                             namingSession = namingSession,
-                                            context = mergedNamingContext,
-                                            extension = extensionForVideoStream(mergeVideo),
+                                            context = videoNamingContext,
+                                            extension = extensionForVideoStream(selectedVideo),
                                         )
-                                        lastDownload = downloadRepository.enqueue(
+                                        downloadRepository.enqueue(
                                             groupId,
-                                            DownloadTaskType.AudioVideo,
+                                            DownloadTaskType.Video,
                                             downloadTitle,
                                             videoName,
-                                            mergeVideo.url,
+                                            selectedVideo.url,
                                             mediaParams,
                                             embeddedMetadata = embeddedMetadata,
                                         )
                                     }
+                                    OutputType.AudioVideo -> {
+                                        if (playUrlInfo.format == StreamFormat.Dash && selectedAudio != null) {
+                                            val mediaParams = buildMediaParams(mergeVideo, outputVideoCodec, selectedAudio)
+                                            val mergedExtension = extensionForMergedOutput(selectedAudio)
+                                            val mergedNamingContext = buildNamingRenderContext(
+                                                info = info,
+                                                item = item,
+                                                naming = naming,
+                                                namingSession = namingSession,
+                                                taskType = DownloadTaskType.AudioVideo,
+                                                taskLabel = downloadTitle,
+                                                mediaParams = mediaParams,
+                                                formatLabel = mapOutputExtensionLabel(mergedExtension),
+                                            )
+                                            val outputName = resolveTemplateFileName(
+                                                taskType = DownloadTaskType.AudioVideo,
+                                                namingSession = namingSession,
+                                                context = mergedNamingContext,
+                                                extension = mergedExtension,
+                                            )
+                                            downloadRepository.enqueueDashMerge(
+                                                groupId,
+                                                downloadTitle,
+                                                outputName,
+                                                mergeVideo!!.url,
+                                                selectedAudio.url,
+                                                mediaParams,
+                                                embeddedMetadata = embeddedMetadata,
+                                            )
+                                        } else {
+                                            val mediaParams = buildMediaParams(mergeVideo, outputVideoCodec, selectedAudio)
+                                            val mergedNamingContext = buildNamingRenderContext(
+                                                info = info,
+                                                item = item,
+                                                naming = naming,
+                                                namingSession = namingSession,
+                                                taskType = DownloadTaskType.AudioVideo,
+                                                taskLabel = downloadTitle,
+                                                mediaParams = mediaParams,
+                                                formatLabel = mapStreamFormatLabel(mergeVideo!!.format),
+                                            )
+                                            val videoName = resolveTemplateFileName(
+                                                taskType = DownloadTaskType.AudioVideo,
+                                                namingSession = namingSession,
+                                                context = mergedNamingContext,
+                                                extension = extensionForVideoStream(mergeVideo),
+                                            )
+                                            downloadRepository.enqueue(
+                                                groupId,
+                                                DownloadTaskType.AudioVideo,
+                                                downloadTitle,
+                                                videoName,
+                                                mergeVideo.url,
+                                                mediaParams,
+                                                embeddedMetadata = embeddedMetadata,
+                                            )
+                                        }
+                                    }
                                 }
+                            } else {
+                                downloadRepository.addUnavailableTask(
+                                    groupId = groupId,
+                                    type = downloadTaskType,
+                                    taskTitle = downloadTitle,
+                                    reason = unavailableReason,
+                                )
                             }
-                        } else {
-                            downloadRepository.addUnavailableTask(
+                        }
+
+                        if (opusDocument != null) {
+                            enqueueOpusTasks(
+                                snapshot = snapshot,
+                                info = info,
+                                item = item,
+                                document = opusDocument,
+                                naming = naming,
+                                namingSession = namingSession,
                                 groupId = groupId,
-                                type = downloadTaskType,
-                                taskTitle = downloadTitle,
-                                reason = unavailableReason,
+                                groupRelativePath = groupRelativePath,
+                            )
+                        }
+
+                        launchExtraTasksForItem(
+                            snapshot = snapshot,
+                            info = info,
+                            item = item,
+                            naming = naming,
+                            namingSession = namingSession,
+                            groupId = groupId,
+                            groupRelativePath = groupRelativePath,
+                            subtitleSelectionPolicy = selectionPolicy,
+                        )
+                        queuedGroups += 1
+                    }
+                    DownloadEnqueueResult(queuedGroups = queuedGroups, failedItems = failedItems) to firstFailure
+                }
+            }
+            enqueueResult.fold(
+                onSuccess = { (result, firstFailure) ->
+                    if (result.queuedGroups > 0) {
+                        val notice = if (result.failedItems > 0) {
+                            strings.get(R.string.parse_notice_download_started_partial, result.failedItems)
+                        } else {
+                            strings.get(R.string.parse_notice_download_started)
+                        }
+                        _state.update { it.copy(downloadStarting = false, notice = notice, error = null) }
+                        eventChannel.send(ParseEvent.DownloadQueued(result))
+                    } else {
+                        _state.update {
+                            it.copy(
+                                downloadStarting = false,
+                                error = firstFailure?.let(::mapError)
+                                    ?: strings.get(R.string.parse_error_failed),
                             )
                         }
                     }
+                },
+                onFailure = { error ->
+                    if (error is CancellationException) throw error
+                    _state.update { it.copy(downloadStarting = false, error = mapError(error)) }
+                },
+            )
+        }
+    }
 
-                    launchExtraTasksForItem(
-                        snapshot = snapshot,
-                        info = info,
-                        item = item,
-                        naming = naming,
-                        namingSession = namingSession,
+    private suspend fun resolveSelectedOpusDocuments(
+        snapshot: ParseUiState,
+        items: List<MediaItem>,
+    ): List<Result<OpusDocument?>> = coroutineScope {
+        val requestSemaphore = Semaphore(OPUS_DETAIL_DOWNLOAD_PARALLELISM)
+        items.map { item ->
+            async {
+                val requested = item.type.capabilities.supportsOpusExport &&
+                    (snapshot.opusContentEnabled || snapshot.opusImagesEnabled)
+                if (!requested) return@async Result.success(null)
+                try {
+                    Result.success(requestSemaphore.withPermit { opusRepository.getDocument(item) })
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Throwable) {
+                    Result.failure(error)
+                }
+            }
+        }.awaitAll()
+    }
+
+    private fun MediaItem.withOpusDocument(document: OpusDocument): MediaItem = copy(
+        title = document.title,
+        coverUrl = document.images.firstOrNull()?.url ?: coverUrl,
+        description = document.summary,
+        stat = document.stat,
+        url = document.sourceUrl,
+        pubTime = document.publishedAt ?: pubTime,
+        opid = document.id,
+        cvid = document.cvid ?: cvid,
+    )
+
+    private fun OpusDocument.withItemFallback(
+        item: MediaItem,
+        fallbackAuthor: com.happycola233.bilitools.data.model.MediaUpper?,
+    ): OpusDocument = copy(
+        cvid = cvid ?: item.cvid,
+        author = author?.takeIf { it.name.isNotBlank() } ?: fallbackAuthor ?: author,
+        publishedAt = publishedAt ?: item.pubTime.takeIf { it > 0L },
+        stat = MediaStat(
+            play = stat.play ?: item.stat?.play,
+            danmaku = stat.danmaku ?: item.stat?.danmaku,
+            reply = stat.reply ?: item.stat?.reply,
+            like = stat.like ?: item.stat?.like,
+            coin = stat.coin ?: item.stat?.coin,
+            favorite = stat.favorite ?: item.stat?.favorite,
+            share = stat.share ?: item.stat?.share,
+        ),
+    )
+
+    /**
+     * 先一次性确定 Markdown 与全部原图文件名，再注册任务。这样正文中的相对链接与
+     * MediaStore 中的最终目标始终使用同一份不可变资产清单。
+     */
+    private fun enqueueOpusTasks(
+        snapshot: ParseUiState,
+        info: MediaInfo,
+        item: MediaItem,
+        document: OpusDocument,
+        naming: GroupNaming,
+        namingSession: NamingSession,
+        groupId: Long,
+        groupRelativePath: String,
+    ) {
+        val contentTitle = strings.get(R.string.parse_opus_content)
+        val imageTitle = strings.get(R.string.parse_opus_images)
+        val imageContext = buildNamingRenderContext(
+            info = info,
+            item = item,
+            naming = naming,
+            namingSession = namingSession,
+            taskType = DownloadTaskType.OpusImage,
+            taskLabel = imageTitle,
+            mediaParams = null,
+        )
+        val imageTemplateName = resolveTemplateFileName(
+            taskType = DownloadTaskType.OpusImage,
+            namingSession = namingSession,
+            context = imageContext,
+            extension = "jpg",
+        )
+        val imageAssets = OpusAssetPlanner.plan(document, imageTemplateName)
+
+        if (snapshot.opusContentEnabled) {
+            val contentContext = buildNamingRenderContext(
+                info = info,
+                item = item,
+                naming = naming,
+                namingSession = namingSession,
+                taskType = DownloadTaskType.OpusContent,
+                taskLabel = contentTitle,
+                mediaParams = null,
+            )
+            val contentName = resolveTemplateFileName(
+                taskType = DownloadTaskType.OpusContent,
+                namingSession = namingSession,
+                context = contentContext,
+                extension = "md",
+            )
+            val localAssets = if (snapshot.opusImagesEnabled) imageAssets else emptyList()
+            saveTextTask(
+                groupId = groupId,
+                type = DownloadTaskType.OpusContent,
+                taskTitle = contentTitle,
+                fileName = contentName,
+                mimeType = "text/markdown",
+                relativePath = groupRelativePath,
+                contentProvider = { OpusMarkdownRenderer.render(document, localAssets) },
+                unavailableMessage = strings.get(R.string.parse_error_opus_invalid_response),
+            )
+        }
+
+        if (snapshot.opusImagesEnabled) {
+            if (imageAssets.isEmpty()) {
+                downloadRepository.addUnavailableTask(
+                    groupId = groupId,
+                    type = DownloadTaskType.OpusImage,
+                    taskTitle = imageTitle,
+                    reason = strings.get(R.string.download_unavailable_opus_images),
+                )
+            } else {
+                imageAssets.forEachIndexed { index, asset ->
+                    downloadRepository.enqueue(
                         groupId = groupId,
-                        groupRelativePath = groupRelativePath,
-                        subtitleSelectionPolicy = selectionPolicy,
+                        type = DownloadTaskType.OpusImage,
+                        taskTitle = "$imageTitle ${index + 1}/${imageAssets.size}",
+                        fileName = asset.fileName,
+                        url = asset.image.url,
                     )
                 }
-                _state.update { it.copy(lastDownload = lastDownload) }
             }
         }
     }
@@ -1770,10 +2043,10 @@ class ParseViewModel(
                     }
                     return@launch
                 }
-                _events.emit(ParseEvent.CopySingleSubtitle(entry))
+                eventChannel.send(ParseEvent.CopySingleSubtitle(entry))
                 return@launch
             }
-            _events.emit(ParseEvent.ShowSubtitleCopyDialog(entries))
+            eventChannel.send(ParseEvent.ShowSubtitleCopyDialog(entries))
         }
     }
 
@@ -1831,10 +2104,10 @@ class ParseViewModel(
                     }
                     return@launch
                 }
-                _events.emit(ParseEvent.CopySingleAiSummary(entry))
+                eventChannel.send(ParseEvent.CopySingleAiSummary(entry))
                 return@launch
             }
-            _events.emit(ParseEvent.ShowAiSummaryCopyDialog(entries))
+            eventChannel.send(ParseEvent.ShowAiSummaryCopyDialog(entries))
         }
     }
 
@@ -2386,6 +2659,8 @@ class ParseViewModel(
             DownloadTaskType.DanmakuHistory -> strings.get(R.string.parse_danmaku_history)
             DownloadTaskType.Cover -> strings.get(R.string.parse_image_option_cover)
             DownloadTaskType.CollectionCover -> strings.get(R.string.parse_image_label)
+            DownloadTaskType.OpusContent -> strings.get(R.string.download_task_opus_content)
+            DownloadTaskType.OpusImage -> strings.get(R.string.download_task_opus_image)
         }
     }
 
@@ -2454,6 +2729,16 @@ class ParseViewModel(
                 )
             }
         }
+        val isOpus = item.type.capabilities.supportsOpusExport
+        val opusDocument = if (isOpus) {
+            runCatching { opusRepository.getDocument(item) }
+                .getOrNull()
+                ?.withItemFallback(item, info.nfo.upper)
+        } else {
+            null
+        }
+        val opusImagesAvailable = opusDocument?.images?.isNotEmpty()
+        val resolvedItem = opusDocument?.let { document -> item.withOpusDocument(document) } ?: item
         val aid = item.aid
         val cid = item.cid
         val subtitles = if (aid != null && cid != null) {
@@ -2467,7 +2752,7 @@ class ParseViewModel(
             false
         }
         val collectionAvailable = isCollectionNfoAvailable(info)
-        val thumbs = info.nfo.thumbs.filter { it.url.isNotBlank() }
+        val thumbs = if (isOpus) emptyList() else info.nfo.thumbs.filter { it.url.isNotBlank() }
         val imageOptions = thumbs
             .distinctBy { it.id }
             .map { thumb -> ImageOption(thumb.id, mapImageLabel(thumb.id)) }
@@ -2489,7 +2774,20 @@ class ParseViewModel(
             val selectedImageIds =
                 current.selectedImageIds.filter { imageOptionIdSet.contains(it) }.toSet()
             val allowMissing = current.isMultiSelect
+            val selectedIndex = current.selectedItemIndex
+            val resolvedItems = if (opusDocument != null && selectedIndex in current.items.indices) {
+                current.items.toMutableList().also { items -> items[selectedIndex] = resolvedItem }
+            } else {
+                current.items
+            }
             current.copy(
+                items = resolvedItems,
+                mediaInfo = if (resolvedItems !== current.items) {
+                    current.mediaInfo?.copy(list = resolvedItems)
+                } else {
+                    current.mediaInfo
+                },
+                selectedItemStat = opusDocument?.stat ?: current.selectedItemStat,
                 subtitleList = subtitles,
                 subtitleLanguageSelection = selectedSubtitle,
                 subtitleEnabled = if (allowMissing) {
@@ -2522,10 +2820,12 @@ class ParseViewModel(
                 },
                 imageOptions = imageOptions,
                 selectedImageIds = selectedImageIds,
+                opusImagesAvailable = opusImagesAvailable,
+                opusImagesEnabled = isOpus && current.opusImagesEnabled,
             )
         }
         if (!applied) return
-        refreshItemPresentation(info, item, _state.value.selectedItemIndex, fromPreview = false)
+        refreshItemPresentation(info, resolvedItem, _state.value.selectedItemIndex, fromPreview = false)
     }
 
     private fun invalidateExtrasRefresh() {
@@ -2755,7 +3055,8 @@ class ParseViewModel(
             collectionModeLoading ||
             mediaInfo == null ||
             outputType == null ||
-            selectedItemIndices.isEmpty()
+            selectedItemIndices.isEmpty() ||
+            currentItem(this)?.type?.capabilities?.supportsPlaybackStream != true
         ) {
             return null
         }
@@ -3484,10 +3785,23 @@ class ParseViewModel(
 
     private fun mapError(err: Throwable): String {
         return when (err) {
-            is IllegalArgumentException -> strings.get(R.string.parse_error_invalid_input)
+            is InvalidMediaInputException -> strings.get(R.string.parse_error_invalid_input)
+            is OpusException -> when (err.failure) {
+                OpusFailure.InvalidReference -> strings.get(R.string.parse_error_invalid_input)
+                OpusFailure.RiskControl -> strings.get(R.string.parse_error_opus_risk_control)
+                OpusFailure.LoginRequired -> strings.get(R.string.parse_error_opus_login_required)
+                OpusFailure.PermissionDenied -> strings.get(R.string.parse_error_opus_permission_denied)
+                OpusFailure.NotFound -> strings.get(R.string.parse_error_opus_not_found)
+                OpusFailure.InvalidResponse -> strings.get(R.string.parse_error_opus_invalid_response)
+                OpusFailure.ApiError -> strings.get(R.string.parse_error_failed)
+            }
             is BiliHttpException -> strings.get(R.string.parse_error_failed)
-            else -> err.message ?: strings.get(R.string.common_error_unknown)
+            else -> err.message?.takeIf { it.isNotBlank() } ?: strings.get(R.string.common_error_unknown)
         }
+    }
+
+    companion object {
+        private const val OPUS_DETAIL_DOWNLOAD_PARALLELISM = 4
     }
 
     private fun setLoadingError(err: Throwable) {

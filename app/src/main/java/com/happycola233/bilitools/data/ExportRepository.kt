@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
 import com.happycola233.bilitools.core.DownloadNaming
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.absoluteValue
@@ -48,14 +49,24 @@ class ExportRepository(
             put(MediaStore.Downloads.IS_PENDING, 1)
         }
         val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-        if (uri != null) {
-            resolver.openOutputStream(uri)?.use { it.write(bytes) }
+            ?: return@withContext null
+        try {
+            val output = resolver.openOutputStream(uri) ?: error("无法打开目标文件")
+            output.use { it.write(bytes) }
             val update = ContentValues().apply {
                 put(MediaStore.Downloads.IS_PENDING, 0)
             }
-            resolver.update(uri, update, null, null)
+            if (resolver.update(uri, update, null, null) <= 0) {
+                error("无法完成目标文件写入")
+            }
+            uri
+        } catch (error: CancellationException) {
+            runCatching { resolver.delete(uri, null, null) }
+            throw error
+        } catch (_: Throwable) {
+            runCatching { resolver.delete(uri, null, null) }
+            null
         }
-        uri
     }
 
     private fun resolveOutputFileName(

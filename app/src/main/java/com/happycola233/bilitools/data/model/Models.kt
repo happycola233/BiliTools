@@ -144,7 +144,20 @@ enum class DownloadTaskType {
     DanmakuHistory,
     Cover,
     CollectionCover,
+    OpusContent,
+    OpusImage,
 }
+
+val DownloadTaskType.isManagedTransfer: Boolean
+    get() = when (this) {
+        DownloadTaskType.Video,
+        DownloadTaskType.Audio,
+        DownloadTaskType.AudioVideo,
+        DownloadTaskType.OpusImage,
+        -> true
+
+        else -> false
+    }
 
 data class DownloadItem(
     val id: Long,

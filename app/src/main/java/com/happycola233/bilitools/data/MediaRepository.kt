@@ -31,11 +31,12 @@ class MediaRepository(
     private val httpClient: BiliHttpClient,
     private val wbiSigner: WbiSigner,
     private val cookieStore: CookieStore,
+    private val opusRepository: OpusRepository,
 ) {
     suspend fun parseInput(input: String, allowRaw: Boolean): ParsedInput {
         val raw = input.trim()
         if (raw.isBlank()) {
-            throw IllegalArgumentException("Invalid input")
+            throw InvalidMediaInputException()
         }
         MediaInputClassifier.parseDirectId(raw)?.let { return it }
 
@@ -52,12 +53,12 @@ class MediaRepository(
             if (allowRaw) {
                 return ParsedInput(raw)
             }
-            throw IllegalArgumentException("Invalid input")
+            throw InvalidMediaInputException()
         }
 
         val host = url.host.lowercase()
-        if (!host.endsWith("bilibili.com") && host != "b23.tv") {
-            throw IllegalArgumentException("Invalid input")
+        if (host != "bilibili.com" && !host.endsWith(".bilibili.com") && host != "b23.tv") {
+            throw InvalidMediaInputException()
         }
 
         if (host == "b23.tv") {
@@ -97,7 +98,7 @@ class MediaRepository(
                     root.equals("bangumi", ignoreCase = true) -> parsedThird
                     root.equals("cheese", ignoreCase = true) ->
                         ParsedInput(parsedThird.id, MediaType.Lesson)
-                    else -> throw IllegalArgumentException("Invalid input")
+                    else -> throw InvalidMediaInputException()
                 }
                 MediaType.OpusList -> return parsedThird
                 else -> Unit
@@ -120,7 +121,7 @@ class MediaRepository(
         if (allowRaw) {
             return ParsedInput(raw)
         }
-        throw IllegalArgumentException("Invalid input")
+        throw InvalidMediaInputException()
     }
 
     suspend fun getMediaInfo(
@@ -761,7 +762,7 @@ class MediaRepository(
             listResp.data.list
         }.getOrNull()
 
-        val target = options.target ?: folderList?.firstOrNull()?.id?.toLong()
+        val target = options.target ?: folderList?.firstOrNull()?.id
         val targetId = target ?: idNum.toLongOrNull()
             ?: throw BiliHttpException("No favorite id provided", -1)
         // 请求页容量；服务端按这个宽度切窗口，medias 实际条数可以更少
@@ -815,7 +816,7 @@ class MediaRepository(
         val sections = folderList?.let { folders ->
             MediaSections(
                 target = targetId,
-                tabs = folders.map { MediaTab(it.id.toLong(), it.title) },
+                tabs = folders.map { MediaTab(it.id, it.title) },
             )
         }
         return MediaInfo(
@@ -844,74 +845,41 @@ class MediaRepository(
     }
 
     private suspend fun fetchOpusInfo(id: String): MediaInfo {
-        val idType = id.take(2).lowercase()
-        val previewId = if (idType == "cv") {
-            val resolved = httpClient.resolveUrl("https://www.bilibili.com/read/$id".toHttpUrl())
-            OPUS_ID_REGEX.find(resolved)?.groupValues?.getOrNull(1)
-                ?: throw BiliHttpException("Opus id not found", -1)
-        } else {
-            id
-        }
-        val body = httpClient.get(
-            buildUrl(
-                "https://api.bilibili.com/x/polymer/web-dynamic/v1/forward/preview",
-                mapOf("id" to previewId),
-            ),
-        )
-        val adapter = httpClient.adapter(OpusPreviewResponse::class.java)
-        val resp = adapter.fromJson(body) ?: throw BiliHttpException("Empty opus response", -1)
-        val item = resp.data?.item
-        if (resp.code != 0 || item == null) {
-            throw BiliHttpException(resp.message ?: "Opus error", resp.code)
-        }
-        val details = runCatching { fetchOpusDetails(id) }.getOrNull()
-        val titleFromCard =
-            item.commonCard.nodes.orEmpty().firstOrNull {
-                it.type == "RICH_TEXT_NODE_TYPE_TEXT"
-            }?.text
-        val title = titleFromCard?.takeIf { it.isNotBlank() }
-            ?: details?.title?.takeIf { it.isNotBlank() }
-            ?: throw BiliHttpException("Opus title missing", -1)
-        val upper = fetchUserUpper(item.user.mid)
-            ?: MediaUpper(item.user.name.orEmpty(), item.user.mid, null)
-        val opusUrl = "https://www.bilibili.com/opus/${item.id}"
-        val stat = details?.stat
-        val thumbs = buildList {
-            item.commonCard.cover?.takeIf { it.isNotBlank() }?.let {
-                add(MediaThumb("cover", normalizeCoverUrl(it)))
-            }
-        }
+        val cvid = id.takeIf { it.startsWith("cv", ignoreCase = true) }
+            ?.drop(2)
+            ?.toLongOrNull()
+        val document = opusRepository.getDocument(id, cvid)
+        val coverUrl = document.images.firstOrNull()?.url.orEmpty()
         val list = listOf(
             MediaItem(
-                title = title,
-                coverUrl = normalizeCoverUrl(item.commonCard.cover.orEmpty()),
-                description = title,
-                url = opusUrl,
+                title = document.title,
+                coverUrl = coverUrl,
+                description = document.summary,
+                stat = document.stat,
+                url = document.sourceUrl,
                 duration = 0,
-                pubTime = details?.author?.pubTs ?: 0,
+                pubTime = document.publishedAt ?: 0,
                 type = MediaType.Opus,
                 isTarget = true,
                 index = 0,
-                opid = item.id,
+                opid = document.id,
+                cvid = document.cvid,
             ),
         )
         return MediaInfo(
             type = MediaType.Opus,
             id = id,
             nfo = MediaNfo(
-                showTitle = title,
-                intro = title,
-                tags = emptyList(),
-                url = opusUrl,
-                stat = MediaStat(
-                    coin = stat?.coin,
-                    reply = stat?.comment,
-                    favorite = stat?.favorite,
-                    share = stat?.forward,
-                    like = stat?.like,
-                ),
-                thumbs = thumbs,
-                upper = upper,
+                showTitle = document.title,
+                intro = document.summary,
+                tags = document.tags,
+                url = document.sourceUrl,
+                stat = document.stat,
+                thumbs = document.images.firstOrNull()?.let {
+                    listOf(MediaThumb("cover", it.url))
+                }.orEmpty(),
+                premiered = document.publishedAt?.times(1000),
+                upper = document.author,
             ),
             list = list,
         )
@@ -940,17 +908,22 @@ class MediaRepository(
             listOf(MediaThumb("cover", normalizeCoverUrl(it)))
         }.orEmpty()
         val list = articles.mapIndexed { index, article ->
+            val articleUrl = article.dynId?.takeIf { it.isNotBlank() }
+                ?.let { "https://www.bilibili.com/opus/$it" }
+                ?: "https://www.bilibili.com/read/cv${article.id}"
             MediaItem(
                 title = article.title,
                 coverUrl = normalizeCoverUrl(article.imageUrls.firstOrNull().orEmpty()),
                 description = article.summary,
-                url = "https://www.bilibili.com/opus/${article.dynId}",
+                stat = article.stats?.toMediaStat(),
+                url = articleUrl,
                 duration = 0,
                 pubTime = article.publishTime,
                 type = MediaType.Opus,
                 isTarget = index == 0,
                 index = index,
                 opid = article.dynId,
+                cvid = article.id,
                 rlid = listInfo.id,
             )
         }
@@ -1172,7 +1145,7 @@ class MediaRepository(
         val idNum = id.filter { it.isDigit() }
         val params = mapOf(
             "host_mid" to idNum,
-            "page" to "1",
+            "page" to options.page.toString(),
             "offset" to (options.offset ?: ""),
             "type" to "all",
         )
@@ -1192,16 +1165,20 @@ class MediaRepository(
         val upper = fetchUserUpper(fallbackMid)
         val upperMid = upper?.mid ?: fallbackMid
         val url = "https://space.bilibili.com/$upperMid/upload/opus"
-        val cover = data.items.firstOrNull()?.cover?.url
-        val thumbs = cover?.takeIf { it.isNotBlank() }?.let {
-            listOf(MediaThumb("cover", normalizeCoverUrl(it)))
-        }.orEmpty()
         val list = data.items.mapIndexed { index, item ->
+            val itemUrl = item.jumpUrl?.takeIf { it.isNotBlank() }
+                ?.let(::normalizeCoverUrl)
+                ?: "https://www.bilibili.com/opus/${item.opusId}"
             MediaItem(
-                title = item.content,
+                title = item.content.trim().takeIf { it.isNotBlank() }
+                    ?: "图文_${item.opusId}",
                 coverUrl = normalizeCoverUrl(item.cover?.url.orEmpty()),
                 description = item.content,
-                url = url,
+                stat = MediaStat(
+                    play = item.stat?.view?.toLongOrNull(),
+                    like = item.stat?.like?.toLongOrNull(),
+                ),
+                url = itemUrl,
                 duration = 0,
                 pubTime = 0,
                 type = MediaType.Opus,
@@ -1215,12 +1192,14 @@ class MediaRepository(
             id = id,
             paged = true,
             offset = data.offset,
+            hasMore = data.hasMore,
             nfo = MediaNfo(
+                showTitle = upper?.name?.takeIf { it.isNotBlank() },
                 tags = emptyList(),
                 stat = MediaStat(),
                 upper = upper,
                 url = url,
-                thumbs = thumbs,
+                thumbs = emptyList(),
             ),
             list = list,
         )
@@ -1302,46 +1281,6 @@ class MediaRepository(
         return MediaUpper(name, resolvedMid, data.face)
     }
 
-    private suspend fun fetchOpusDetails(id: String): OpusDetails? {
-        val prefix = if (id.startsWith("cv", ignoreCase = true)) "read" else "opus"
-        val html = httpClient.get("https://www.bilibili.com/$prefix/$id".toHttpUrl())
-        val json = OPUS_INITIAL_STATE_REGEX.find(html)?.groupValues?.getOrNull(1) ?: return null
-        val root = JSONObject(json)
-        val detail = root.optJSONObject("detail") ?: return null
-        val modules = detail.optJSONArray("modules") ?: return null
-        var title: String? = null
-        var author: OpusAuthor? = null
-        var stat: OpusStat? = null
-        for (index in 0 until modules.length()) {
-            val module = modules.optJSONObject(index) ?: continue
-            when (module.optString("module_type")) {
-                "MODULE_TYPE_TITLE" -> {
-                    title = module.optJSONObject("module_title")?.optString("text")
-                }
-                "MODULE_TYPE_AUTHOR" -> {
-                    val authorObj = module.optJSONObject("module_author") ?: continue
-                    val authorMid = authorObj.optLongOrNull("mid") ?: continue
-                    author = OpusAuthor(
-                        mid = authorMid,
-                        name = authorObj.optString("name").takeIf { it.isNotBlank() },
-                        pubTs = authorObj.optLongOrNull("pub_ts"),
-                    )
-                }
-                "MODULE_TYPE_STAT" -> {
-                    val statObj = module.optJSONObject("module_stat") ?: continue
-                    stat = OpusStat(
-                        coin = statObj.optJSONObject("coin")?.optLongOrNull("count"),
-                        comment = statObj.optJSONObject("comment")?.optLongOrNull("count"),
-                        favorite = statObj.optJSONObject("favorite")?.optLongOrNull("count"),
-                        forward = statObj.optJSONObject("forward")?.optLongOrNull("count"),
-                        like = statObj.optJSONObject("like")?.optLongOrNull("count"),
-                    )
-                }
-            }
-        }
-        return OpusDetails(title, author, stat)
-    }
-
     private fun parseDurationText(text: String?): Int {
         if (text.isNullOrBlank()) return 0
         val parts = text.split(":").mapNotNull { it.toIntOrNull() }
@@ -1416,7 +1355,6 @@ class MediaRepository(
                 item.epid?.let { params["ep_id"] = it.toString() }
                 item.ssid?.let { params["season_id"] = it.toString() }
             }
-            else -> Unit
         }
         val cleaned = params.filterValues { it.isNotBlank() }
         val body = httpClient.get(wbiSigner.signedUrl(baseUrl, cleaned))
@@ -1796,6 +1734,15 @@ class MediaRepository(
         }
     }
 
+    private fun OpusListArticleStats.toMediaStat(): MediaStat = MediaStat(
+        play = view,
+        reply = reply,
+        like = like,
+        coin = coin,
+        favorite = favorite,
+        share = share,
+    )
+
     companion object {
         private val URL_CANDIDATE_REGEX =
             Regex("^(?:https?://)?(?:[\\w-]+\\.)*(?:bilibili\\.com|b23\\.tv)/.+$", RegexOption.IGNORE_CASE)
@@ -1803,12 +1750,6 @@ class MediaRepository(
             Regex("^[A-Za-z0-9\\-._~:/?#\\[\\]@!$&'()*+,;=%]+$")
         private val DOMAIN_ONLY_REGEX =
             Regex("\\.(bilibili\\.com|b23\\.tv)$", RegexOption.IGNORE_CASE)
-
-        private val OPUS_ID_REGEX = Regex("/opus/(\\d+)")
-        private val OPUS_INITIAL_STATE_REGEX = Regex(
-            "window\\.__INITIAL_STATE__\\s*=\\s*([\\s\\S]*?)(?=;\\(\\s*function)",
-            RegexOption.IGNORE_CASE,
-        )
 
     }
 }
@@ -2224,37 +2165,6 @@ private data class FavoriteMediaCntInfo(
     @Json(name = "like") val like: Long? = null,
 )
 
-private data class OpusPreviewResponse(
-    @Json(name = "code") val code: Int,
-    @Json(name = "message") val message: String?,
-    @Json(name = "data") val data: OpusPreviewData?,
-)
-
-private data class OpusPreviewData(
-    @Json(name = "item") val item: OpusPreviewItem?,
-)
-
-private data class OpusPreviewItem(
-    @Json(name = "id") val id: String,
-    @Json(name = "user") val user: OpusPreviewUser,
-    @Json(name = "common_card") val commonCard: OpusCommonCard,
-)
-
-private data class OpusPreviewUser(
-    @Json(name = "mid") val mid: Long,
-    @Json(name = "name") val name: String?,
-)
-
-private data class OpusCommonCard(
-    @Json(name = "cover") val cover: String?,
-    @Json(name = "nodes") val nodes: List<OpusCommonNode>?,
-)
-
-private data class OpusCommonNode(
-    @Json(name = "type") val type: String?,
-    @Json(name = "text") val text: String?,
-)
-
 private data class OpusListResponse(
     @Json(name = "code") val code: Int,
     @Json(name = "message") val message: String?,
@@ -2276,12 +2186,23 @@ private data class OpusListInfo(
 )
 
 private data class OpusListArticle(
+    @Json(name = "id") val id: Long,
     @Json(name = "title") val title: String,
     @Json(name = "publish_time") val publishTime: Long,
     @Json(name = "image_urls") val imageUrls: List<String>,
     @Json(name = "summary") val summary: String,
-    @Json(name = "dyn_id_str") val dynId: String,
+    @Json(name = "dyn_id_str") val dynId: String? = null,
     @Json(name = "categories") val categories: List<OpusListCategory>?,
+    @Json(name = "stats") val stats: OpusListArticleStats? = null,
+)
+
+private data class OpusListArticleStats(
+    @Json(name = "view") val view: Long? = null,
+    @Json(name = "favorite") val favorite: Long? = null,
+    @Json(name = "like") val like: Long? = null,
+    @Json(name = "reply") val reply: Long? = null,
+    @Json(name = "share") val share: Long? = null,
+    @Json(name = "coin") val coin: Long? = null,
 )
 
 private data class OpusListCategory(
@@ -2396,16 +2317,24 @@ private data class UserOpusResponse(
 private data class UserOpusData(
     @Json(name = "items") val items: List<UserOpusItem>,
     @Json(name = "offset") val offset: String?,
+    @Json(name = "has_more") val hasMore: Boolean? = null,
 )
 
 private data class UserOpusItem(
     @Json(name = "content") val content: String,
     @Json(name = "cover") val cover: UserOpusCover?,
     @Json(name = "opus_id") val opusId: String,
+    @Json(name = "jump_url") val jumpUrl: String? = null,
+    @Json(name = "stat") val stat: UserOpusStat? = null,
 )
 
 private data class UserOpusCover(
     @Json(name = "url") val url: String?,
+)
+
+private data class UserOpusStat(
+    @Json(name = "like") val like: String? = null,
+    @Json(name = "view") val view: String? = null,
 )
 
 private data class UserAudioResponse(
@@ -2429,26 +2358,6 @@ private data class SpaceUserInfoData(
     @Json(name = "mid") val mid: Long?,
     @Json(name = "name") val name: String?,
     @Json(name = "face") val face: String?,
-)
-
-private data class OpusDetails(
-    val title: String?,
-    val author: OpusAuthor?,
-    val stat: OpusStat?,
-)
-
-private data class OpusAuthor(
-    val mid: Long,
-    val name: String?,
-    val pubTs: Long?,
-)
-
-private data class OpusStat(
-    val coin: Long?,
-    val comment: Long?,
-    val favorite: Long?,
-    val forward: Long?,
-    val like: Long?,
 )
 
 private data class MusicPlayUrlResponse(

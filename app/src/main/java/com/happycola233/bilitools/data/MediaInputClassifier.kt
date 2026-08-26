@@ -4,6 +4,8 @@ import com.happycola233.bilitools.data.model.MediaType
 import com.happycola233.bilitools.data.model.ParsedInput
 import okhttp3.HttpUrl
 
+class InvalidMediaInputException : IllegalArgumentException("Invalid input")
+
 internal object MediaInputClassifier {
     fun parseDirectId(raw: String): ParsedInput? {
         if (raw.startsWith("uid", ignoreCase = true)) {
@@ -40,7 +42,8 @@ internal object MediaInputClassifier {
             else -> return null
         }
 
-        val mid = spaceSegments.getOrNull(0) ?: throw IllegalArgumentException("Invalid input")
+        val mid = spaceSegments.getOrNull(0) ?: throw InvalidMediaInputException()
+        if (mid.isEmpty() || mid.any { it !in '0'..'9' }) throw InvalidMediaInputException()
         val type = spaceSegments.getOrNull(1)
         if (type == "favlist") {
             val fid = url.queryParameter("fid")?.toLongOrNull()
@@ -64,7 +67,7 @@ internal object MediaInputClassifier {
         if (spaceSegments.getOrNull(2) == "audio" || type == "audio") {
             return ParsedInput(mid, MediaType.UserAudio)
         }
-        throw IllegalArgumentException("Invalid input")
+        throw InvalidMediaInputException()
     }
 
     private const val BV_ID_LENGTH = 12

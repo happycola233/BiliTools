@@ -101,6 +101,7 @@ import com.happycola233.bilitools.data.model.DownloadMediaParams
 import com.happycola233.bilitools.data.model.DownloadProgressRules
 import com.happycola233.bilitools.data.model.DownloadStatus
 import com.happycola233.bilitools.data.model.DownloadTaskType
+import com.happycola233.bilitools.data.model.isManagedTransfer
 import com.happycola233.bilitools.data.model.isResolvedWithoutFailure
 import com.happycola233.bilitools.ui.haptics.HapticThresholdGate
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
@@ -1676,12 +1677,7 @@ private fun resolveDownloadsTaskProgressVisualState(
 private fun isManagedTask(item: DownloadItem): Boolean = isManagedTask(item.taskType)
 
 private fun isManagedTask(taskType: DownloadTaskType): Boolean {
-    return when (taskType) {
-        DownloadTaskType.Video,
-        DownloadTaskType.Audio,
-        DownloadTaskType.AudioVideo -> true
-        else -> false
-    }
+    return taskType.isManagedTransfer
 }
 
 private fun formatBytes(bytes: Long): String {
