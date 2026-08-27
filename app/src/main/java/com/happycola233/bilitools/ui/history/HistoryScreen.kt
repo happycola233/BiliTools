@@ -5,9 +5,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -100,6 +98,7 @@ import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.AppSettings
 import com.happycola233.bilitools.data.model.HistoryItem
 import com.happycola233.bilitools.data.model.HistoryTab
+import com.happycola233.bilitools.ui.UserIdentityLabel
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import com.happycola233.bilitools.ui.theme.AppSurfaces
 import com.happycola233.bilitools.ui.theme.BiliToolsSettingsTheme
@@ -758,6 +757,14 @@ private fun HistoryItemCard(
     val canJumpDownload = !item.toParseUrl().isNullOrBlank()
     val authorClickable = item.authorMid != null
     val authorName = item.authorName.takeIf { it.isNotBlank() }
+    val onAuthorClick: (() -> Unit)? = if (authorClickable) {
+        {
+            haptics.tap()
+            onOpenAuthor()
+        }
+    } else {
+        null
+    }
     val viewAtText = formatHistoryTimestamp(item.viewAt)
 
     Column(modifier = modifier.fillMaxWidth()) {
@@ -814,14 +821,10 @@ private fun HistoryItemCard(
 
                 if (progressText != null) {
                     if (authorName != null) {
-                        HistoryAuthorLabel(
+                        UserIdentityLabel(
                             name = authorName,
                             avatarUrl = item.authorAvatarUrl,
-                            clickable = authorClickable,
-                            onClick = {
-                                haptics.tap()
-                                onOpenAuthor()
-                            },
+                            onClick = onAuthorClick,
                         )
                     }
 
@@ -847,14 +850,10 @@ private fun HistoryItemCard(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         if (authorName != null) {
-                            HistoryAuthorLabel(
+                            UserIdentityLabel(
                                 name = authorName,
                                 avatarUrl = item.authorAvatarUrl,
-                                clickable = authorClickable,
-                                onClick = {
-                                    haptics.tap()
-                                    onOpenAuthor()
-                                },
+                                onClick = onAuthorClick,
                                 modifier = Modifier.weight(1f),
                             )
                         } else {
@@ -891,51 +890,6 @@ private fun HistoryItemCard(
                 modifier = Modifier.padding(start = 126.dp),
             )
         }
-    }
-}
-
-@Composable
-private fun HistoryAuthorLabel(
-    name: String,
-    avatarUrl: String?,
-    clickable: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.then(
-            if (clickable) {
-                Modifier.clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onClick,
-                )
-            } else {
-                Modifier
-            }
-        ),
-    ) {
-        AsyncImage(
-            model = avatarUrl ?: R.drawable.default_avatar,
-            placeholder = painterResource(R.drawable.default_avatar),
-            error = painterResource(R.drawable.default_avatar),
-            fallback = painterResource(R.drawable.default_avatar),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(16.dp)
-                .clip(CircleShape),
-        )
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(
-            text = name,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f, fill = false),
-        )
     }
 }
 

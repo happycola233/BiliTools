@@ -313,7 +313,7 @@ class MediaRepository(
                 ),
                 thumbs = thumbs,
                 premiered = data.pubdate,
-                upper = data.owner?.let { MediaUpper(it.name, it.mid, it.face) },
+                upper = data.owner?.let { createMediaUpper(it.name, it.mid, it.face) },
             ),
             list = list,
             sections = sections,
@@ -456,7 +456,7 @@ class MediaRepository(
                 ),
                 thumbs = thumbs,
                 premiered = data.episodes.firstOrNull()?.pubTime,
-                upper = data.upInfo?.let { MediaUpper(it.uname, it.mid, it.avatar) },
+                upper = data.upInfo?.let { createMediaUpper(it.uname, it.mid, it.avatar) },
             ),
             list = list,
             sections = if (tabs.isNotEmpty()) MediaSections(resolvedTargetId, tabs) else null,
@@ -538,7 +538,7 @@ class MediaRepository(
                 stat = MediaStat(play = data.stat.play.toLong()),
                 thumbs = thumbs,
                 premiered = data.episodes.firstOrNull()?.releaseDate,
-                upper = data.upInfo?.let { MediaUpper(it.uname, it.mid, it.avatar) },
+                upper = data.upInfo?.let { createMediaUpper(it.uname, it.mid, it.avatar) },
             ),
             list = list,
         )
@@ -612,9 +612,11 @@ class MediaRepository(
                 ),
                 thumbs = listOf(MediaThumb("cover", normalizeCoverUrl(data.cover))),
                 premiered = data.passtime,
-                upper = upper?.let {
-                    MediaUpper(it.uname, it.uid, it.avater.takeIf { v -> v.isNotBlank() } ?: it.avatar)
-                },
+                upper = createMediaUpper(
+                    name = upper?.uname ?: data.uname,
+                    mid = upper?.uid ?: data.uid,
+                    avatar = upper?.avater?.takeIf { it.isNotBlank() } ?: upper?.avatar,
+                ),
             ),
             list = list,
         )
@@ -666,6 +668,7 @@ class MediaRepository(
                 duration = item.duration,
                 pubTime = item.passtime,
                 type = MediaType.Music,
+                upper = createMediaUpper(item.uname, item.uid, null),
                 isTarget = index == 0,
                 index = index,
             )
@@ -689,7 +692,7 @@ class MediaRepository(
                 ),
                 thumbs = listOf(MediaThumb("cover", normalizeCoverUrl(data.cover))),
                 premiered = data.ctime * 1000,
-                upper = MediaUpper(data.uname, data.uid, null),
+                upper = createMediaUpper(data.uname, data.uid, null),
             ),
             list = list,
         )
@@ -722,6 +725,7 @@ class MediaRepository(
                 duration = item.duration,
                 pubTime = item.pubdate,
                 type = MediaType.Video,
+                upper = item.owner?.let { createMediaUpper(it.name, it.mid, it.face) },
                 isTarget = index == 0,
                 index = baseIndex + index,
             )
@@ -807,7 +811,7 @@ class MediaRepository(
                 duration = item.duration,
                 pubTime = item.pubtime,
                 type = mapFavoriteType(item.type),
-                upper = item.upper?.toMediaUpper(),
+                upper = item.upper?.let { createMediaUpper(it.name, it.mid, it.face) },
                 isTarget = index == 0,
                 index = baseIndex + index,
                 fid = data.info.id,
@@ -838,7 +842,7 @@ class MediaRepository(
                 ),
                 thumbs = listOf(MediaThumb("cover", normalizeCoverUrl(resolvedInfo.cover))),
                 premiered = resolvedInfo.ctime * 1000,
-                upper = resolvedInfo.upper?.toMediaUpper(),
+                upper = resolvedInfo.upper?.let { createMediaUpper(it.name, it.mid, it.face) },
             ),
             list = list,
             sections = sections,
@@ -938,7 +942,7 @@ class MediaRepository(
                 url = url,
                 stat = MediaStat(play = listInfo.read?.toLong()),
                 thumbs = thumbs,
-                upper = author?.let { MediaUpper(it.name, it.mid, it.face) },
+                upper = author?.let { createMediaUpper(it.name, it.mid, it.face) },
             ),
             list = list,
         )
@@ -1279,7 +1283,7 @@ class MediaRepository(
         val data = resp.data
         val name = data.name.orEmpty()
         val resolvedMid = data.mid ?: mid
-        return MediaUpper(name, resolvedMid, data.face)
+        return createMediaUpper(name, resolvedMid, data.face)
     }
 
     private fun parseDurationText(text: String?): Int {
@@ -1726,6 +1730,14 @@ class MediaRepository(
         }
     }
 
+    private fun createMediaUpper(name: String, mid: Long, avatar: String?): MediaUpper {
+        val normalizedAvatar = avatar
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+            ?.let(::normalizeCoverUrl)
+        return MediaUpper(name = name, mid = mid, avatar = normalizedAvatar)
+    }
+
     private fun mapFavoriteType(raw: Int): MediaType {
         return when (raw) {
             2 -> MediaType.Video
@@ -2004,6 +2016,7 @@ private data class MusicInfoResponse(
 private data class MusicInfoData(
     @Json(name = "id") val id: Long,
     @Json(name = "uid") val uid: Long,
+    @Json(name = "uname") val uname: String,
     @Json(name = "title") val title: String,
     @Json(name = "cover") val cover: String,
     @Json(name = "intro") val intro: String,
@@ -2037,8 +2050,9 @@ private data class MusicUpperResponse(
 private data class MusicUpperData(
     @Json(name = "uid") val uid: Long,
     @Json(name = "uname") val uname: String,
-    @Json(name = "avater") val avater: String,
-    @Json(name = "avatar") val avatar: String,
+    // 当前接口使用拼写错误的 avater；同时兼容部分历史响应中的 avatar。
+    @Json(name = "avater") val avater: String? = null,
+    @Json(name = "avatar") val avatar: String? = null,
 )
 
 private data class MusicListResponse(
@@ -2088,6 +2102,7 @@ private data class WatchLaterItem(
     @Json(name = "aid") val aid: Long,
     @Json(name = "duration") val duration: Int,
     @Json(name = "pubdate") val pubdate: Long,
+    @Json(name = "owner") val owner: VideoOwner? = null,
 )
 
 private data class FavoriteListResponse(
@@ -2134,9 +2149,7 @@ private data class FavoriteUpper(
     @Json(name = "mid") val mid: Long,
     @Json(name = "name") val name: String,
     @Json(name = "face") val face: String,
-) {
-    fun toMediaUpper(): MediaUpper = MediaUpper(name, mid, face)
-}
+)
 
 private data class FavoriteCntInfo(
     @Json(name = "collect") val collect: Int,

@@ -150,12 +150,14 @@ import com.happycola233.bilitools.data.model.MediaInfo
 import com.happycola233.bilitools.data.model.MediaItem
 import com.happycola233.bilitools.data.model.MediaStat
 import com.happycola233.bilitools.data.model.MediaType
+import com.happycola233.bilitools.data.model.MediaUpper
 import com.happycola233.bilitools.data.model.OutputType
 import com.happycola233.bilitools.data.model.StreamFormat
 import com.happycola233.bilitools.data.model.VideoCodec
 import com.happycola233.bilitools.data.model.capabilities
 import com.happycola233.bilitools.ui.FloatingControlsDefaults
 import com.happycola233.bilitools.ui.TopErrorMessageHost
+import com.happycola233.bilitools.ui.UserIdentityLabel
 import com.happycola233.bilitools.ui.mainBottomBarBottomInset
 import com.happycola233.bilitools.ui.haptics.HapticTicker
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
@@ -1306,7 +1308,7 @@ private fun ParseResultCard(
     onCollectionModeChange: (Boolean) -> Unit,
     contentBelowSectionControls: @Composable ColumnScope.() -> Unit,
 ) {
-    val display = resolveVideoCardDisplay(state, info, selectedItem)
+    val display = resolveParseResultCardDisplay(state, info, selectedItem)
     val contentSizeSpec = tween<IntSize>(
         durationMillis = parseContentAnimationDurationMillis,
         easing = FastOutSlowInEasing,
@@ -1343,6 +1345,14 @@ private fun ParseResultCard(
                             style = ParseTextStyles.mediaTitle,
                             color = MaterialTheme.colorScheme.onSurface,
                         )
+                        animatedDisplay.upper
+                            ?.takeIf { it.name.isNotBlank() }
+                            ?.let { upper ->
+                                UserIdentityLabel(
+                                    name = upper.name.trim(),
+                                    avatarUrl = upper.avatar,
+                                )
+                            }
                         if (animatedDisplay.description.isNotBlank()) {
                             Text(
                                 text = animatedDisplay.description,
@@ -3764,11 +3774,12 @@ private data class StatDisplay(
     val value: Long,
 )
 
-private data class VideoCardDisplay(
+internal data class ParseResultCardDisplay(
     val title: String,
     val description: String,
     val coverUrl: String,
     val stat: MediaStat,
+    val upper: MediaUpper?,
 )
 
 private data class DropdownOption<T>(
@@ -3783,11 +3794,11 @@ private data class SegmentedOption<T>(
     val enabled: Boolean,
 )
 
-private fun resolveVideoCardDisplay(
+internal fun resolveParseResultCardDisplay(
     state: ParseUiState,
     info: MediaInfo,
     selectedItem: MediaItem?,
-): VideoCardDisplay {
+): ParseResultCardDisplay {
     val isCollectionVideo = state.collectionMode && info.type == MediaType.Video && info.collection
     val previewItem = state.previewItemIndex?.let { index -> state.items.getOrNull(index) }
 
@@ -3805,7 +3816,13 @@ private fun resolveVideoCardDisplay(
                 ?: ""
         }
         val stat = previewItem.stat ?: info.nfo.stat
-        return VideoCardDisplay(title, description, coverUrl, stat)
+        return ParseResultCardDisplay(
+            title = title,
+            description = description,
+            coverUrl = coverUrl,
+            stat = stat,
+            upper = previewItem.resolvedUpper(info),
+        )
     }
 
     if (isCollectionVideo) {
@@ -3818,11 +3835,12 @@ private fun resolveVideoCardDisplay(
         val coverUrl = info.nfo.thumbs.firstOrNull { it.id == "ugc" }?.url
             ?: info.nfo.thumbs.firstOrNull()?.url
             ?: selectedItem?.coverUrl.orEmpty()
-        return VideoCardDisplay(
+        return ParseResultCardDisplay(
             title = title,
             description = description,
             coverUrl = coverUrl,
             stat = selectedItem?.stat ?: state.selectedItemStat ?: info.nfo.stat,
+            upper = info.nfo.upper,
         )
     }
 
@@ -3834,7 +3852,13 @@ private fun resolveVideoCardDisplay(
         val coverUrl = selectedItem?.coverUrl?.ifBlank { null }
             ?: info.nfo.thumbs.firstOrNull()?.url
             ?: ""
-        return VideoCardDisplay(title, description, coverUrl, info.nfo.stat)
+        return ParseResultCardDisplay(
+            title = title,
+            description = description,
+            coverUrl = coverUrl,
+            stat = info.nfo.stat,
+            upper = selectedItem?.resolvedUpper(info) ?: info.nfo.upper,
+        )
     }
 
     // 非合集的列表类型（收藏夹、稍后再看、番剧等）：行点击预览的条目优先于当前项展示
@@ -3862,7 +3886,13 @@ private fun resolveVideoCardDisplay(
         -> displayItem?.stat ?: fallbackStat ?: MediaStat()
         else -> displayItem?.stat ?: fallbackStat ?: info.nfo.stat
     }
-    return VideoCardDisplay(title, description, coverUrl, stat)
+    return ParseResultCardDisplay(
+        title = title,
+        description = description,
+        coverUrl = coverUrl,
+        stat = stat,
+        upper = displayItem?.resolvedUpper(info) ?: info.nfo.upper,
+    )
 }
 
 private fun resolveNonCollectionVideoTitle(
