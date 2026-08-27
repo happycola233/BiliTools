@@ -1,8 +1,8 @@
 package com.happycola233.bilitools.ui.parse
 
 import android.Manifest
-import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -23,6 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -35,6 +36,8 @@ import com.happycola233.bilitools.core.appContainer
 import com.happycola233.bilitools.databinding.FragmentParseBinding
 import com.happycola233.bilitools.ui.AppViewModelFactory
 import com.happycola233.bilitools.ui.ExternalDownloadContract
+import com.happycola233.bilitools.ui.copyTextToClipboard
+import com.happycola233.bilitools.ui.copyTextWithFeedback
 import com.happycola233.bilitools.ui.normalizeHttpUrl
 import com.happycola233.bilitools.ui.theme.rememberAndroidThemeColorScheme
 import kotlinx.coroutines.launch
@@ -143,6 +146,8 @@ class ParseFragment : Fragment() {
                     onMediaTypeChange = viewModel::setMediaType,
                     onDownload = ::onDownloadClicked,
                     onSectionChange = viewModel::selectSection,
+                    onOpenUpper = ::openUpperSpace,
+                    onCopyResultContent = ::copyResultContent,
                     onSelectAllItems = viewModel::selectAllItems,
                     onClearSelectedItems = viewModel::clearSelectedItems,
                     onLoadPrevPage = viewModel::loadPrevPage,
@@ -321,7 +326,7 @@ class ParseFragment : Fragment() {
     private fun handleCopySingleSubtitle(entry: SubtitleCopyEntry) {
         val content = entry.content
         if (!content.isNullOrBlank()) {
-            copyTextToClipboard(
+            requireContext().copyTextToClipboard(
                 getString(R.string.parse_subtitle_copy_clip_label_single, entry.title),
                 content,
             )
@@ -342,7 +347,7 @@ class ParseFragment : Fragment() {
     private fun handleCopySingleAiSummary(entry: AiSummaryCopyEntry) {
         val content = entry.content
         if (!content.isNullOrBlank()) {
-            copyTextToClipboard(
+            requireContext().copyTextToClipboard(
                 getString(R.string.parse_ai_summary_copy_clip_label_single, entry.title),
                 content,
             )
@@ -360,9 +365,35 @@ class ParseFragment : Fragment() {
         }
     }
 
-    private fun copyTextToClipboard(label: String, content: String) {
-        val clipboard = requireContext().getSystemService(ClipboardManager::class.java) ?: return
-        clipboard.setPrimaryClip(ClipData.newPlainText(label, content))
+    private fun copyResultContent(target: ParseResultCopyTarget, content: String) {
+        val (clipLabelRes, feedbackRes) = when (target) {
+            ParseResultCopyTarget.Title -> R.string.common_title_clip_label to R.string.common_title_copied
+            ParseResultCopyTarget.Description -> {
+                R.string.parse_description_clip_label to R.string.parse_description_copied
+            }
+            ParseResultCopyTarget.CoverUrl -> {
+                R.string.parse_cover_url_clip_label to R.string.parse_cover_url_copied
+            }
+            ParseResultCopyTarget.UpperName -> {
+                R.string.common_upper_name_clip_label to R.string.common_upper_name_copied
+            }
+        }
+        requireContext().copyTextWithFeedback(
+            content = content,
+            clipLabelRes = clipLabelRes,
+            feedbackRes = feedbackRes,
+        )
+    }
+
+    private fun openUpperSpace(mid: Long) {
+        val intent = Intent(Intent.ACTION_VIEW, "https://space.bilibili.com/$mid".toUri())
+        runCatching { startActivity(intent) }.onFailure {
+            Toast.makeText(
+                requireContext(),
+                getString(R.string.common_open_link_failed),
+                Toast.LENGTH_SHORT,
+            ).show()
+        }
     }
 
     private fun handleCopyCurrentSubtitle(entry: SubtitleCopyEntry) {
@@ -375,7 +406,7 @@ class ParseFragment : Fragment() {
             ).show()
             return
         }
-        copyTextToClipboard(
+        requireContext().copyTextToClipboard(
             getString(R.string.parse_subtitle_copy_clip_label_single, entry.title),
             content,
         )
@@ -396,7 +427,10 @@ class ParseFragment : Fragment() {
             ).show()
             return
         }
-        copyTextToClipboard(getString(R.string.parse_subtitle_copy_clip_label_all), merged)
+        requireContext().copyTextToClipboard(
+            getString(R.string.parse_subtitle_copy_clip_label_all),
+            merged,
+        )
         Toast.makeText(
             requireContext(),
             getString(R.string.parse_subtitle_copy_all_done),
@@ -414,7 +448,7 @@ class ParseFragment : Fragment() {
             ).show()
             return
         }
-        copyTextToClipboard(
+        requireContext().copyTextToClipboard(
             getString(R.string.parse_ai_summary_copy_clip_label_single, entry.title),
             content,
         )
@@ -435,7 +469,10 @@ class ParseFragment : Fragment() {
             ).show()
             return
         }
-        copyTextToClipboard(getString(R.string.parse_ai_summary_copy_clip_label_all), merged)
+        requireContext().copyTextToClipboard(
+            getString(R.string.parse_ai_summary_copy_clip_label_all),
+            merged,
+        )
         Toast.makeText(
             requireContext(),
             getString(R.string.parse_ai_summary_copy_all_done),

@@ -158,6 +158,7 @@ import com.happycola233.bilitools.data.model.capabilities
 import com.happycola233.bilitools.ui.FloatingControlsDefaults
 import com.happycola233.bilitools.ui.TopErrorMessageHost
 import com.happycola233.bilitools.ui.UserIdentityLabel
+import com.happycola233.bilitools.ui.longPressAction
 import com.happycola233.bilitools.ui.mainBottomBarBottomInset
 import com.happycola233.bilitools.ui.haptics.HapticTicker
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
@@ -314,6 +315,8 @@ fun ParseScreenContent(
     onMediaTypeChange: (MediaType?) -> Unit,
     onDownload: () -> Unit,
     onSectionChange: (Long) -> Unit,
+    onOpenUpper: (Long) -> Unit,
+    onCopyResultContent: (ParseResultCopyTarget, String) -> Unit,
     onSelectAllItems: () -> Unit,
     onClearSelectedItems: () -> Unit,
     onLoadPrevPage: () -> Unit,
@@ -412,6 +415,8 @@ fun ParseScreenContent(
                         selectedItem = item,
                         onSectionChange = onSectionChange,
                         onCollectionModeChange = onCollectionModeChange,
+                        onOpenUpper = onOpenUpper,
+                        onCopyResultContent = onCopyResultContent,
                     ) {
                         if (showPageModule) {
                             SectionDivider()
@@ -1306,6 +1311,8 @@ private fun ParseResultCard(
     selectedItem: MediaItem?,
     onSectionChange: (Long) -> Unit,
     onCollectionModeChange: (Boolean) -> Unit,
+    onOpenUpper: (Long) -> Unit,
+    onCopyResultContent: (ParseResultCopyTarget, String) -> Unit,
     contentBelowSectionControls: @Composable ColumnScope.() -> Unit,
 ) {
     val display = resolveParseResultCardDisplay(state, info, selectedItem)
@@ -1321,7 +1328,12 @@ private fun ParseResultCard(
         Column(
             modifier = Modifier.animateContentSize(animationSpec = contentSizeSpec),
         ) {
-            CoverImage(display.coverUrl)
+            CoverImage(
+                coverUrl = display.coverUrl,
+                onCopy = { url ->
+                    onCopyResultContent(ParseResultCopyTarget.CoverUrl, url)
+                },
+            )
             Column(
                 modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -1334,13 +1346,18 @@ private fun ParseResultCard(
                     },
                     label = "ParseResultCardDisplay",
                 ) { animatedDisplay ->
+                    val displayTitle = animatedDisplay.title.ifBlank {
+                        stringResource(R.string.parse_section_result)
+                    }
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        Text(
-                            text = animatedDisplay.title.ifBlank {
-                                stringResource(R.string.parse_section_result)
+                        LongPressCopyText(
+                            text = displayTitle,
+                            copyActionLabel = stringResource(R.string.common_copy_title),
+                            onCopy = { text ->
+                                onCopyResultContent(ParseResultCopyTarget.Title, text)
                             },
                             style = ParseTextStyles.mediaTitle,
                             color = MaterialTheme.colorScheme.onSurface,
@@ -1348,14 +1365,24 @@ private fun ParseResultCard(
                         animatedDisplay.upper
                             ?.takeIf { it.name.isNotBlank() }
                             ?.let { upper ->
+                                val upperName = upper.name.trim()
                                 UserIdentityLabel(
-                                    name = upper.name.trim(),
+                                    name = upperName,
                                     avatarUrl = upper.avatar,
+                                    onClick = { onOpenUpper(upper.mid) },
+                                    onLongClickLabel = stringResource(R.string.common_copy_upper_name),
+                                    onLongClick = {
+                                        onCopyResultContent(ParseResultCopyTarget.UpperName, upperName)
+                                    },
                                 )
                             }
                         if (animatedDisplay.description.isNotBlank()) {
-                            Text(
+                            LongPressCopyText(
                                 text = animatedDisplay.description,
+                                copyActionLabel = stringResource(R.string.parse_copy_description),
+                                onCopy = { text ->
+                                    onCopyResultContent(ParseResultCopyTarget.Description, text)
+                                },
                                 style = ParseTextStyles.mediaDescription,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 3,
@@ -1378,7 +1405,35 @@ private fun ParseResultCard(
 }
 
 @Composable
-private fun CoverImage(coverUrl: String) {
+private fun LongPressCopyText(
+    text: String,
+    copyActionLabel: String,
+    onCopy: (String) -> Unit,
+    style: TextStyle,
+    color: Color,
+    modifier: Modifier = Modifier,
+    maxLines: Int = Int.MAX_VALUE,
+    overflow: TextOverflow = TextOverflow.Clip,
+) {
+    Text(
+        text = text,
+        style = style,
+        color = color,
+        maxLines = maxLines,
+        overflow = overflow,
+        modifier = modifier.longPressAction(
+            interactionKey = text,
+            actionLabel = copyActionLabel,
+            onLongPress = { onCopy(text) },
+        ),
+    )
+}
+
+@Composable
+private fun CoverImage(
+    coverUrl: String,
+    onCopy: (String) -> Unit,
+) {
     val context = LocalContext.current
     val targetCoverUrl = coverUrl.trim()
     var displayedCoverUrl by remember { mutableStateOf("") }
@@ -1426,7 +1481,18 @@ private fun CoverImage(coverUrl: String) {
         modifier = Modifier
             .fillMaxWidth()
             .height(204.dp)
-            .background(AppSurfaces.insetContainerColor),
+            .background(AppSurfaces.insetContainerColor)
+            .then(
+                if (targetCoverUrl.isNotBlank()) {
+                    Modifier.longPressAction(
+                        interactionKey = targetCoverUrl,
+                        actionLabel = stringResource(R.string.parse_copy_cover_url),
+                        onLongPress = { onCopy(targetCoverUrl) },
+                    )
+                } else {
+                    Modifier
+                },
+            ),
         contentAlignment = Alignment.Center,
     ) {
         if (displayedCoverUrl.isNotBlank()) {
@@ -3781,6 +3847,13 @@ internal data class ParseResultCardDisplay(
     val stat: MediaStat,
     val upper: MediaUpper?,
 )
+
+enum class ParseResultCopyTarget {
+    Title,
+    Description,
+    CoverUrl,
+    UpperName,
+}
 
 private data class DropdownOption<T>(
     val label: String,

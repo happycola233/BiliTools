@@ -1,5 +1,6 @@
 package com.happycola233.bilitools.ui
 
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Row
@@ -20,6 +21,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.happycola233.bilitools.R
+import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 
 /** 紧凑展示用户头像和昵称；头像只作身份辅助，昵称承担无障碍语义。 */
 @Composable
@@ -28,16 +30,35 @@ internal fun UserIdentityLabel(
     avatarUrl: String?,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    onLongClickLabel: String? = null,
+    onLongClick: (() -> Unit)? = null,
 ) {
+    val haptics = rememberAppHaptics()
     val interactionSource = remember { MutableInteractionSource() }
-    val interactionModifier = if (onClick != null) {
-        Modifier.clickable(
+    val interactionModifier = when {
+        onClick == null -> Modifier
+        onLongClick != null -> Modifier.combinedClickable(
             interactionSource = interactionSource,
             indication = null,
-            onClick = onClick,
+            onClick = {
+                haptics.tap()
+                onClick()
+            },
+            onLongClickLabel = onLongClickLabel,
+            onLongClick = {
+                haptics.longPress()
+                onLongClick()
+            },
+            hapticFeedbackEnabled = false,
         )
-    } else {
-        Modifier
+        else -> Modifier.clickable(
+            interactionSource = interactionSource,
+            indication = null,
+            onClick = {
+                haptics.tap()
+                onClick()
+            },
+        )
     }
 
     Row(

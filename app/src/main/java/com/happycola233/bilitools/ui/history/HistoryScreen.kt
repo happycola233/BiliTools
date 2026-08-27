@@ -100,6 +100,7 @@ import com.happycola233.bilitools.data.model.HistoryItem
 import com.happycola233.bilitools.data.model.HistoryTab
 import com.happycola233.bilitools.ui.UserIdentityLabel
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
+import com.happycola233.bilitools.ui.longPressAction
 import com.happycola233.bilitools.ui.theme.AppSurfaces
 import com.happycola233.bilitools.ui.theme.BiliToolsSettingsTheme
 import com.happycola233.bilitools.ui.theme.usesPureBlackSurfaces
@@ -129,6 +130,8 @@ fun BiliToolsHistoryContent(
     onApplyFilter: (HistoryFilter) -> Unit,
     onDownload: (HistoryItem) -> Unit,
     onOpenAuthor: (HistoryItem) -> Unit,
+    onCopyTitle: (String) -> Unit,
+    onCopyAuthorName: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BiliToolsSettingsTheme(settings = settings) {
@@ -321,6 +324,8 @@ fun BiliToolsHistoryContent(
                     innerPadding = innerPadding,
                     onDownload = onDownload,
                     onOpenAuthor = onOpenAuthor,
+                    onCopyTitle = onCopyTitle,
+                    onCopyAuthorName = onCopyAuthorName,
                 )
             }
 
@@ -443,6 +448,8 @@ private fun HistoryBody(
     innerPadding: PaddingValues,
     onDownload: (HistoryItem) -> Unit,
     onOpenAuthor: (HistoryItem) -> Unit,
+    onCopyTitle: (String) -> Unit,
+    onCopyAuthorName: (String) -> Unit,
 ) {
     val listState = rememberLazyListState()
 
@@ -514,6 +521,8 @@ private fun HistoryBody(
                         item = item,
                         onDownload = { onDownload(item) },
                         onOpenAuthor = { onOpenAuthor(item) },
+                        onCopyTitle = onCopyTitle,
+                        onCopyAuthorName = onCopyAuthorName,
                         showDivider = index != state.items.lastIndex,
                     )
                 }
@@ -719,6 +728,8 @@ private fun HistoryItemCard(
     item: HistoryItem,
     onDownload: () -> Unit,
     onOpenAuthor: () -> Unit,
+    onCopyTitle: (String) -> Unit,
+    onCopyAuthorName: (String) -> Unit,
     showDivider: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -756,12 +767,14 @@ private fun HistoryItemCard(
     }
     val canJumpDownload = !item.toParseUrl().isNullOrBlank()
     val authorClickable = item.authorMid != null
-    val authorName = item.authorName.takeIf { it.isNotBlank() }
+    val authorName = item.authorName.trim().takeIf { it.isNotEmpty() }
     val onAuthorClick: (() -> Unit)? = if (authorClickable) {
-        {
-            haptics.tap()
-            onOpenAuthor()
-        }
+        onOpenAuthor
+    } else {
+        null
+    }
+    val onAuthorLongClick: (() -> Unit)? = if (authorClickable && authorName != null) {
+        { onCopyAuthorName(authorName) }
     } else {
         null
     }
@@ -817,6 +830,15 @@ private fun HistoryItemCard(
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = if (displayTitle.isNotBlank()) {
+                        Modifier.longPressAction(
+                            interactionKey = displayTitle,
+                            actionLabel = stringResource(R.string.common_copy_title),
+                            onLongPress = { onCopyTitle(displayTitle) },
+                        )
+                    } else {
+                        Modifier
+                    },
                 )
 
                 if (progressText != null) {
@@ -825,6 +847,8 @@ private fun HistoryItemCard(
                             name = authorName,
                             avatarUrl = item.authorAvatarUrl,
                             onClick = onAuthorClick,
+                            onLongClickLabel = stringResource(R.string.common_copy_upper_name),
+                            onLongClick = onAuthorLongClick,
                         )
                     }
 
@@ -854,6 +878,8 @@ private fun HistoryItemCard(
                                 name = authorName,
                                 avatarUrl = item.authorAvatarUrl,
                                 onClick = onAuthorClick,
+                                onLongClickLabel = stringResource(R.string.common_copy_upper_name),
+                                onLongClick = onAuthorLongClick,
                                 modifier = Modifier.weight(1f),
                             )
                         } else {

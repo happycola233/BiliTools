@@ -5,6 +5,13 @@
     <string name="nav_me">我</string>
     <string name="common_copy_message">复制消息</string>
     <string name="common_dismiss_message">关闭消息</string>
+    <string name="common_open_link_failed">无法打开链接</string>
+    <string name="common_copy_title">复制标题</string>
+    <string name="common_title_clip_label">BiliTools 标题</string>
+    <string name="common_title_copied">标题已复制到剪贴板</string>
+    <string name="common_copy_upper_name">复制 UP 主名称</string>
+    <string name="common_upper_name_clip_label">BiliTools UP 主名称</string>
+    <string name="common_upper_name_copied">UP 主名称已复制到剪贴板</string>
 
     <string name="login_title">登录</string>
     <string name="login_qr_desc">登录二维码</string>
@@ -63,6 +70,12 @@
     <string name="parse_cover_desc">视频封面</string>
     <string name="parse_section_input">输入链接</string>
     <string name="parse_section_result">解析结果</string>
+    <string name="parse_copy_description">复制简介</string>
+    <string name="parse_copy_cover_url">复制封面链接</string>
+    <string name="parse_description_clip_label">BiliTools 视频简介</string>
+    <string name="parse_cover_url_clip_label">BiliTools 封面链接</string>
+    <string name="parse_description_copied">简介已复制到剪贴板</string>
+    <string name="parse_cover_url_copied">封面链接已复制到剪贴板</string>
     <string name="parse_section_options">下载与导出</string>
     <string name="parse_page_label">选择分P</string>
     <string name="parse_page_hint">请选择条目</string>
@@ -441,7 +454,6 @@
     <string name="history_filter_device_phone">手机</string>
     <string name="history_filter_device_pad">平板</string>
     <string name="history_filter_device_tv">TV</string>
-    <string name="history_open_failed">无法打开链接</string>
     <string name="parse_warning_dash">DASH 将自动合并音视频为单文件</string>
     <string name="parse_warning_stream_format_fallback">%1$s 当前不可用，已使用 %2$s</string>
 
