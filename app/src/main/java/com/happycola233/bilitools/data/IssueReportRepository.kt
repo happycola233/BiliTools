@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Environment
 import com.happycola233.bilitools.BiliToolsApp
 import com.happycola233.bilitools.core.AppLog
+import com.happycola233.bilitools.core.naming.NamingTemplateScope
 import com.happycola233.bilitools.core.DiagnosticLogSnapshot
 import com.happycola233.bilitools.core.DiagnosticLogStats
 import com.happycola233.bilitools.core.DiagnosticLogStore
@@ -266,17 +267,20 @@ class IssueReportRepository(
             settings.naming.overwriteExistingFiles.toString(),
         )
         appendKeyValue(
-            "naming.topLevelFolderTemplate",
-            settings.naming.topLevelFolderTemplate,
+            "naming.cleanSeparators",
+            settings.naming.cleanSeparators.toString(),
         )
         appendKeyValue(
-            "naming.itemFolderTemplate",
-            settings.naming.itemFolderTemplate,
+            "naming.showSinglePageNumber",
+            settings.naming.showSinglePageNumber.toString(),
         )
-        appendKeyValue(
-            "naming.fileTemplate",
-            settings.naming.fileTemplate,
-        )
+        settings.naming.overrides.forEach { (shape, templates) ->
+            NamingTemplateScope.entries.forEach { scope ->
+                templates[scope]?.let { template ->
+                    appendKeyValue("naming.template.${shape.value}.${scope.value}", template)
+                }
+            }
+        }
         appendKeyValue("ignoredUpdateVersion", settings.ignoredUpdateVersion ?: "null")
     }
 

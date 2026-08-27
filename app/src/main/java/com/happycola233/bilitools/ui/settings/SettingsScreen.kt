@@ -27,6 +27,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -124,6 +125,7 @@ import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
@@ -137,12 +139,15 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.AudioQualities
-import com.happycola233.bilitools.core.DownloadNaming
-import com.happycola233.bilitools.core.NamingPreviewSegment
-import com.happycola233.bilitools.core.NamingRenderContext
-import com.happycola233.bilitools.core.NamingTemplateScope
-import com.happycola233.bilitools.core.NamingToken
-import com.happycola233.bilitools.core.NamingTokenGroup
+import com.happycola233.bilitools.core.naming.NamingContext
+import com.happycola233.bilitools.core.naming.NamingPreviewSegment
+import com.happycola233.bilitools.core.naming.NamingRenderer
+import com.happycola233.bilitools.core.naming.NamingSegmentKind
+import com.happycola233.bilitools.core.naming.NamingShape
+import com.happycola233.bilitools.core.naming.NamingTemplateScope
+import com.happycola233.bilitools.core.naming.NamingTemplateSource
+import com.happycola233.bilitools.core.naming.NamingToken
+import com.happycola233.bilitools.core.naming.NamingTokenGroup
 import com.happycola233.bilitools.data.AppSettings
 import com.happycola233.bilitools.data.AppThemeColor
 import com.happycola233.bilitools.data.AppThemeMode
@@ -198,9 +203,9 @@ fun BiliToolsSettingsContent(
     onNamingTopLevelFolderModeChange: (TopLevelFolderMode) -> Unit,
     onNamingOverwriteExistingFilesChange: (Boolean) -> Unit,
     onNamingCleanSeparatorsChange: (Boolean) -> Unit,
-    onNamingTopLevelFolderTemplateChange: (String) -> Unit,
-    onNamingItemFolderTemplateChange: (String) -> Unit,
-    onNamingFileTemplateChange: (String) -> Unit,
+    onNamingShowSinglePageNumberChange: (Boolean) -> Unit,
+    onNamingTemplateChange: (NamingShape, NamingTemplateScope, String) -> Unit,
+    onNamingTemplateReset: (NamingShape, NamingTemplateScope) -> Unit,
     onRestoreNamingDefaults: () -> Unit,
     onBlackThemeChange: (Boolean) -> Unit,
     onLaunchSplashAnimationChange: (Boolean) -> Unit,
@@ -281,9 +286,9 @@ fun BiliToolsSettingsContent(
                         onTopLevelFolderModeChange = onNamingTopLevelFolderModeChange,
                         onOverwriteExistingFilesChange = onNamingOverwriteExistingFilesChange,
                         onCleanSeparatorsChange = onNamingCleanSeparatorsChange,
-                        onTopLevelFolderTemplateChange = onNamingTopLevelFolderTemplateChange,
-                        onItemFolderTemplateChange = onNamingItemFolderTemplateChange,
-                        onFileTemplateChange = onNamingFileTemplateChange,
+                        onShowSinglePageNumberChange = onNamingShowSinglePageNumberChange,
+                        onTemplateChange = onNamingTemplateChange,
+                        onTemplateReset = onNamingTemplateReset,
                         onRestoreDefaults = onRestoreNamingDefaults,
                         onBack = onNavigateBack,
                         modifier = modifier,
@@ -811,16 +816,26 @@ private fun NamingSettingsScreen(
     onTopLevelFolderModeChange: (TopLevelFolderMode) -> Unit,
     onOverwriteExistingFilesChange: (Boolean) -> Unit,
     onCleanSeparatorsChange: (Boolean) -> Unit,
-    onTopLevelFolderTemplateChange: (String) -> Unit,
-    onItemFolderTemplateChange: (String) -> Unit,
-    onFileTemplateChange: (String) -> Unit,
+    onShowSinglePageNumberChange: (Boolean) -> Unit,
+    onTemplateChange: (NamingShape, NamingTemplateScope, String) -> Unit,
+    onTemplateReset: (NamingShape, NamingTemplateScope) -> Unit,
     onRestoreDefaults: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-    val previewContext = rememberNamingPreviewContext()
+    val previewContexts = rememberNamingPreviewContexts()
     var showRestoreDefaultsConfirmDialog by rememberSaveable { mutableStateOf(false) }
+    var selectedShapeName by rememberSaveable { mutableStateOf(NamingShape.Common.name) }
+
+    val showTopLevelFolderTemplate =
+        settings.naming.topLevelFolderMode != TopLevelFolderMode.Disabled
+    val shapeOptions = remember(showTopLevelFolderTemplate) {
+        NamingShape.entries.filter { showTopLevelFolderTemplate || it != NamingShape.Listing }
+    }
+    val selectedShape = shapeOptions
+        .firstOrNull { it.name == selectedShapeName }
+        ?: NamingShape.Common
 
     if (showRestoreDefaultsConfirmDialog) {
         AlertDialog(
@@ -856,9 +871,6 @@ private fun NamingSettingsScreen(
         scrollBehavior = scrollBehavior,
         modifier = modifier,
     ) { innerPadding ->
-        val showTopLevelFolderTemplate =
-            settings.naming.topLevelFolderMode != TopLevelFolderMode.Disabled
-        val topLevelFolderGroupItems = if (showTopLevelFolderTemplate) 2 else 1
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = innerPadding,
@@ -869,83 +881,84 @@ private fun NamingSettingsScreen(
             item { Spacer(Modifier.height(14.dp)) }
 
             item {
-                ExpressiveSwitchListItem(
-                    checked = settings.naming.overwriteExistingFiles,
-                    iconRes = R.drawable.ic_file_save_24,
-                    title = stringResource(R.string.settings_naming_overwrite_existing),
-                    description = stringResource(R.string.settings_naming_overwrite_existing_desc),
-                    items = 1,
-                    index = 0,
-                    onCheckedChange = onOverwriteExistingFilesChange,
-                )
-            }
-
-            item {
-                ExpressiveSwitchListItem(
-                    checked = settings.naming.cleanSeparators,
-                    iconRes = R.drawable.ic_wand_shine_24,
-                    title = stringResource(R.string.settings_naming_clean_separators),
-                    description = stringResource(R.string.settings_naming_clean_separators_desc),
-                    items = 1,
-                    index = 0,
-                    onCheckedChange = onCleanSeparatorsChange,
-                )
-            }
-
-            item {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    TopLevelFolderModeListItem(
-                        mode = settings.naming.topLevelFolderMode,
-                        items = topLevelFolderGroupItems,
+                    ExpressiveSwitchListItem(
+                        checked = settings.naming.overwriteExistingFiles,
+                        iconRes = R.drawable.ic_file_save_24,
+                        title = stringResource(R.string.settings_naming_overwrite_existing),
+                        description = stringResource(R.string.settings_naming_overwrite_existing_desc),
+                        items = 3,
                         index = 0,
-                        onModeChange = onTopLevelFolderModeChange,
+                        onCheckedChange = onOverwriteExistingFilesChange,
                     )
-                    if (showTopLevelFolderTemplate) {
-                        NamingTemplateEditorPanel(
-                            iconRes = R.drawable.ic_folder_special_24,
-                            title = stringResource(R.string.settings_naming_top_level_folder_template),
-                            description = stringResource(R.string.settings_naming_top_level_folder_template_desc),
-                            value = settings.naming.topLevelFolderTemplate,
-                            scope = NamingTemplateScope.TopFolder,
-                            previewContext = previewContext,
-                            previewExtension = null,
-                            cleanSeparators = settings.naming.cleanSeparators,
-                            shape = SettingsExpressiveShapes.groupShape(
-                                index = 1,
-                                items = topLevelFolderGroupItems,
-                            ),
-                            onValueChange = onTopLevelFolderTemplateChange,
-                        )
-                    }
+                    ExpressiveSwitchListItem(
+                        checked = settings.naming.cleanSeparators,
+                        iconRes = R.drawable.ic_wand_shine_24,
+                        title = stringResource(R.string.settings_naming_clean_separators),
+                        description = stringResource(R.string.settings_naming_clean_separators_desc),
+                        items = 3,
+                        index = 1,
+                        onCheckedChange = onCleanSeparatorsChange,
+                    )
+                    ExpressiveSwitchListItem(
+                        checked = settings.naming.showSinglePageNumber,
+                        iconRes = R.drawable.ic_checklist_rounded_24,
+                        title = stringResource(R.string.settings_naming_single_page_number),
+                        description = stringResource(R.string.settings_naming_single_page_number_desc),
+                        items = 3,
+                        index = 2,
+                        onCheckedChange = onShowSinglePageNumberChange,
+                    )
                 }
             }
 
             item {
-                NamingTemplateEditorPanel(
-                    iconRes = R.drawable.ic_bookmark_manager_24,
-                    title = stringResource(R.string.settings_naming_item_folder_template),
-                    description = stringResource(R.string.settings_naming_item_folder_template_desc),
-                    value = settings.naming.itemFolderTemplate,
-                    scope = NamingTemplateScope.ItemFolder,
-                    previewContext = previewContext,
-                    previewExtension = null,
-                    cleanSeparators = settings.naming.cleanSeparators,
-                    onValueChange = onItemFolderTemplateChange,
+                TopLevelFolderModeListItem(
+                    mode = settings.naming.topLevelFolderMode,
+                    items = 1,
+                    index = 0,
+                    onModeChange = onTopLevelFolderModeChange,
                 )
             }
 
+            // 形态选择器与它控制的三层模板串成一组，视觉上是同一块内容。
             item {
-                NamingTemplateEditorPanel(
-                    iconRes = R.drawable.ic_save_as_24,
-                    title = stringResource(R.string.settings_naming_file_template),
-                    description = stringResource(R.string.settings_naming_file_template_desc),
-                    value = settings.naming.fileTemplate,
-                    scope = NamingTemplateScope.File,
-                    previewContext = previewContext,
-                    previewExtension = "mp4",
-                    cleanSeparators = settings.naming.cleanSeparators,
-                    onValueChange = onFileTemplateChange,
-                )
+                val scopes = buildList {
+                    if (showTopLevelFolderTemplate) add(NamingTemplateScope.TopFolder)
+                    if (NamingTemplateScope.ItemFolder in selectedShape.supportedScopes) {
+                        add(NamingTemplateScope.ItemFolder)
+                    }
+                    if (NamingTemplateScope.File in selectedShape.supportedScopes) {
+                        add(NamingTemplateScope.File)
+                    }
+                }
+                val groupItems = scopes.size + 1
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    NamingShapeSelectorCard(
+                        shapes = shapeOptions,
+                        selected = selectedShape,
+                        customizedShapes = settings.naming.overrides.keys,
+                        onSelect = { selectedShapeName = it.name },
+                        containerShape = SettingsExpressiveShapes.groupShape(0, groupItems),
+                    )
+                    scopes.fastForEachIndexed { index, scope ->
+                        NamingTemplateEditorPanel(
+                            shape = selectedShape,
+                            scope = scope,
+                            value = settings.naming.template(selectedShape, scope),
+                            source = settings.naming.templateSource(selectedShape, scope),
+                            previewContext = previewContexts.getValue(selectedShape),
+                            previewExtension = namingPreviewExtension(selectedShape, scope),
+                            cleanSeparators = settings.naming.cleanSeparators,
+                            containerShape = SettingsExpressiveShapes.groupShape(
+                                index = index + 1,
+                                items = groupItems,
+                            ),
+                            onValueChange = { onTemplateChange(selectedShape, scope, it) },
+                            onReset = { onTemplateReset(selectedShape, scope) },
+                        )
+                    }
+                }
             }
 
             item {
@@ -1043,23 +1056,127 @@ private fun TopLevelFolderModeListItem(
     }
 }
 
+/** 形态选择器：切换正在编辑哪一类资源的模板，同时标出哪些类型已经被单独设置过。 */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun NamingShapeSelectorCard(
+    shapes: List<NamingShape>,
+    selected: NamingShape,
+    customizedShapes: Set<NamingShape>,
+    onSelect: (NamingShape) -> Unit,
+    containerShape: CornerBasedShape,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        color = AppSurfaces.cardContainerColor,
+        shape = containerShape,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Column {
+            ListItem(
+                leadingContent = { SettingsItemIcon(R.drawable.ic_tune_24) },
+                headlineContent = {
+                    SettingsItemTitle(stringResource(R.string.settings_naming_shape_title))
+                },
+                supportingContent = {
+                    Text(namingShapeDescription(selected))
+                },
+                colors = SettingsExpressiveDefaults.listItemColors,
+            )
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
+            ) {
+                items(shapes, key = { it.name }) { shape ->
+                    NamingShapeChip(
+                        text = namingShapeLabel(shape),
+                        selected = shape == selected,
+                        customized = shape in customizedShapes,
+                        onClick = { onSelect(shape) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun NamingShapeChip(
+    text: String,
+    selected: Boolean,
+    customized: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val haptics = rememberAppHaptics()
+    val interactionSource = remember { MutableInteractionSource() }
+    val progress by animateFloatAsState(
+        targetValue = if (selected) 1f else 0f,
+        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
+        label = "namingShapeChipProgress",
+    )
+    val scheme = MaterialTheme.colorScheme
+    val containerColor = lerp(scheme.surfaceContainerHigh, scheme.primaryContainer, progress)
+    val contentColor = lerp(scheme.onSurfaceVariant, scheme.onPrimaryContainer, progress)
+    val borderColor = lerp(scheme.outlineVariant, scheme.primary.copy(alpha = 0.5f), progress)
+
+    Surface(
+        color = containerColor,
+        shape = MaterialTheme.shapes.large,
+        border = BorderStroke(1.dp, borderColor),
+        modifier = modifier.clickable(
+            interactionSource = interactionSource,
+            indication = null,
+            role = Role.RadioButton,
+            onClick = {
+                haptics.select()
+                onClick()
+            },
+        ),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelLarge,
+                color = contentColor,
+                maxLines = 1,
+            )
+            if (customized) {
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(
+                            if (selected) contentColor else MaterialTheme.colorScheme.primary,
+                        ),
+                )
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun NamingTemplateEditorPanel(
-    @DrawableRes iconRes: Int,
-    title: String,
-    description: String,
-    value: String,
+    shape: NamingShape,
     scope: NamingTemplateScope,
-    previewContext: NamingRenderContext,
+    value: String,
+    source: NamingTemplateSource,
+    previewContext: NamingContext,
     previewExtension: String?,
     cleanSeparators: Boolean,
+    containerShape: CornerBasedShape,
     onValueChange: (String) -> Unit,
-    shape: CornerBasedShape = SettingsExpressiveShapes.cardShape,
+    onReset: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var expanded by rememberSaveable(scope.name) { mutableStateOf(false) }
-    var textFieldValue by remember {
+    var textFieldValue by remember(shape, scope) {
         mutableStateOf(
             TextFieldValue(
                 text = value,
@@ -1077,7 +1194,7 @@ private fun NamingTemplateEditorPanel(
         }
     }
     val previewSegments = remember(textFieldValue.text) {
-        DownloadNaming.previewSegments(textFieldValue.text)
+        NamingRenderer.previewSegments(textFieldValue.text)
     }
     val previewValue = remember(
         textFieldValue.text,
@@ -1085,13 +1202,13 @@ private fun NamingTemplateEditorPanel(
         previewExtension,
         cleanSeparators,
     ) {
-        val rendered = DownloadNaming.renderComponent(
+        val rendered = NamingRenderer.renderComponent(
             template = textFieldValue.text,
             context = previewContext,
             cleanSeparators = cleanSeparators,
         )
         previewExtension?.let {
-            DownloadNaming.appendExtension(
+            NamingRenderer.appendExtension(
                 baseName = rendered,
                 extension = it,
                 cleanSeparators = cleanSeparators,
@@ -1099,7 +1216,7 @@ private fun NamingTemplateEditorPanel(
         } ?: rendered
     }
     val previewLabel = stringResource(R.string.settings_naming_preview_value, "")
-    val tokenSections = remember(scope) { namingTokenSections(scope) }
+    val tokenSections = remember(shape, scope) { namingTokenSections(shape, scope) }
     val interactionSource = remember { MutableInteractionSource() }
     val expandedRotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
@@ -1109,28 +1226,27 @@ private fun NamingTemplateEditorPanel(
         ),
         label = "${scope.name}ChevronRotation",
     )
-    val previewColor by animateColorAsState(
-        targetValue = if (expanded) {
-            MaterialTheme.colorScheme.primary
-        } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
-        },
-        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
-        label = "${scope.name}PreviewColor",
-    )
 
     Surface(
         color = AppSurfaces.cardContainerColor,
-        shape = shape,
+        shape = containerShape,
         modifier = modifier.fillMaxWidth(),
     ) {
         Column {
             ListItem(
-                leadingContent = { SettingsItemIcon(iconRes) },
-                headlineContent = { SettingsItemTitle(title) },
+                leadingContent = { SettingsItemIcon(namingScopeIcon(scope)) },
+                headlineContent = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        SettingsItemTitle(stringResource(namingScopeTitleRes(scope)))
+                        NamingTemplateSourceBadge(shape = shape, source = source)
+                    }
+                },
                 supportingContent = {
                     Text(
-                        text = description,
+                        text = stringResource(namingScopeDescriptionRes(scope)),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -1219,13 +1335,48 @@ private fun NamingTemplateEditorPanel(
                         modifier = Modifier.fillMaxWidth(),
                     )
 
-                    Spacer(Modifier.height(14.dp))
-                    tokenSections.fastForEachIndexed { index, section ->
-                        if (index > 0) {
-                            Spacer(Modifier.height(12.dp))
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                            Spacer(Modifier.height(12.dp))
+                    if (source == NamingTemplateSource.Custom) {
+                        Spacer(Modifier.height(4.dp))
+                        TextButton(onClick = onReset) {
+                            Text(
+                                stringResource(
+                                    if (shape == NamingShape.Common) {
+                                        R.string.settings_naming_clear_custom
+                                    } else {
+                                        R.string.settings_naming_clear_shape_custom
+                                    },
+                                ),
+                            )
                         }
+                    }
+
+                    Spacer(Modifier.height(14.dp))
+                    Text(
+                        text = stringResource(R.string.settings_naming_group_optional),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(R.string.settings_naming_group_optional_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    NamingTokenChip(
+                        text = stringResource(R.string.settings_naming_optional_chip),
+                        accent = true,
+                        onClick = {
+                            val wrapped = wrapSelectionAsOptional(textFieldValue)
+                            textFieldValue = wrapped
+                            onValueChange(wrapped.text)
+                        },
+                    )
+
+                    tokenSections.forEach { section ->
+                        Spacer(Modifier.height(12.dp))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        Spacer(Modifier.height(12.dp))
                         Text(
                             text = namingTokenGroupLabel(section.group),
                             style = MaterialTheme.typography.labelLarge,
@@ -1257,12 +1408,49 @@ private fun NamingTemplateEditorPanel(
     }
 }
 
+@Composable
+private fun NamingTemplateSourceBadge(
+    shape: NamingShape,
+    source: NamingTemplateSource,
+    modifier: Modifier = Modifier,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val (containerColor, contentColor) = when (source) {
+        NamingTemplateSource.Custom -> scheme.primaryContainer to scheme.onPrimaryContainer
+        NamingTemplateSource.Common -> scheme.tertiaryContainer to scheme.onTertiaryContainer
+        NamingTemplateSource.Default -> scheme.surfaceContainerHighest to scheme.onSurfaceVariant
+    }
+    val labelRes = when (source) {
+        NamingTemplateSource.Custom -> if (shape == NamingShape.Common) {
+            R.string.settings_naming_source_custom
+        } else {
+            R.string.settings_naming_source_shape_custom
+        }
+        NamingTemplateSource.Common -> R.string.settings_naming_source_common
+        NamingTemplateSource.Default -> R.string.settings_naming_source_default
+    }
+    Surface(
+        color = containerColor,
+        shape = MaterialTheme.shapes.small,
+        modifier = modifier,
+    ) {
+        Text(
+            text = stringResource(labelRes),
+            style = MaterialTheme.typography.labelSmall,
+            color = contentColor,
+            maxLines = 1,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun NamingTokenChip(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    accent: Boolean = false,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -1271,11 +1459,21 @@ private fun NamingTokenChip(
         animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
         label = "namingTokenChipScale",
     )
+    val restingContainer = if (accent) {
+        MaterialTheme.colorScheme.tertiaryContainer
+    } else {
+        MaterialTheme.colorScheme.secondaryContainer
+    }
+    val restingContent = if (accent) {
+        MaterialTheme.colorScheme.onTertiaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSecondaryContainer
+    }
     val containerColor by animateColorAsState(
         targetValue = if (isPressed) {
             MaterialTheme.colorScheme.primaryContainer
         } else {
-            MaterialTheme.colorScheme.secondaryContainer
+            restingContainer
         },
         animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
         label = "namingTokenChipContainer",
@@ -1284,7 +1482,7 @@ private fun NamingTokenChip(
         targetValue = if (isPressed) {
             MaterialTheme.colorScheme.onPrimaryContainer
         } else {
-            MaterialTheme.colorScheme.onSecondaryContainer
+            restingContent
         },
         animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
         label = "namingTokenChipContent",
@@ -1339,40 +1537,55 @@ private fun NamingTemplateRichPreview(
             val bodyStyle = MaterialTheme.typography.bodyMedium
             val previewLineHeight = 2.5.em
             val normalColor = MaterialTheme.colorScheme.onSurfaceVariant
+            val optionalColor = MaterialTheme.colorScheme.tertiary
             val tokenContainerColor = MaterialTheme.colorScheme.secondaryContainer
             val tokenContentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            val optionalContainerColor = MaterialTheme.colorScheme.tertiaryContainer
+            val optionalContentColor = MaterialTheme.colorScheme.onTertiaryContainer
             val invalidContainerColor = MaterialTheme.colorScheme.errorContainer
             val invalidContentColor = MaterialTheme.colorScheme.onErrorContainer
             val annotatedText = buildAnnotatedString {
                 segments.fastForEachIndexed { index, segment ->
-                    val token = segment.token
-                    val isTokenLiteral = segment.raw.startsWith("{") && segment.raw.endsWith("}")
-                    when {
-                        token != null -> {
-                            appendInlineContent(
-                                id = "naming_preview_$index",
-                                alternateText = namingTokenPreviewLabel(token),
-                            )
-                        }
+                    when (segment.kind) {
+                        NamingSegmentKind.Token,
+                        NamingSegmentKind.Unknown,
+                        -> appendInlineContent(
+                            id = "naming_preview_$index",
+                            alternateText = segment.token
+                                ?.let { namingTokenPreviewLabel(it) }
+                                ?: segment.raw,
+                        )
 
-                        isTokenLiteral -> {
-                            appendInlineContent(
-                                id = "naming_preview_$index",
-                                alternateText = segment.raw,
-                            )
-                        }
+                        NamingSegmentKind.OptionalStart -> withStyle(
+                            SpanStyle(color = optionalColor, fontWeight = FontWeight.Bold),
+                        ) { append("⟨") }
 
-                        else -> append(segment.raw)
+                        NamingSegmentKind.OptionalEnd -> withStyle(
+                            SpanStyle(color = optionalColor, fontWeight = FontWeight.Bold),
+                        ) { append("⟩") }
+
+                        NamingSegmentKind.Literal -> append(segment.raw)
                     }
                 }
             }
             val inlineContent = buildMap<String, InlineTextContent> {
                 segments.fastForEachIndexed { index, segment ->
-                    val token = segment.token
-                    val isTokenLiteral = segment.raw.startsWith("{") && segment.raw.endsWith("}")
-                    if (token == null && !isTokenLiteral) return@fastForEachIndexed
-                    val label = token?.let { namingTokenPreviewLabel(it) } ?: segment.raw
-                    val isError = token == null && isTokenLiteral
+                    if (segment.kind != NamingSegmentKind.Token &&
+                        segment.kind != NamingSegmentKind.Unknown
+                    ) {
+                        return@fastForEachIndexed
+                    }
+                    val label = segment.token?.let { namingTokenPreviewLabel(it) } ?: segment.raw
+                    val container = when {
+                        segment.kind == NamingSegmentKind.Unknown -> invalidContainerColor
+                        segment.optional -> optionalContainerColor
+                        else -> tokenContainerColor
+                    }
+                    val content = when {
+                        segment.kind == NamingSegmentKind.Unknown -> invalidContentColor
+                        segment.optional -> optionalContentColor
+                        else -> tokenContentColor
+                    }
                     put(
                         key = "naming_preview_$index",
                         value = InlineTextContent(
@@ -1384,16 +1597,8 @@ private fun NamingTemplateRichPreview(
                         ) { _ ->
                             NamingPreviewInlineChip(
                                 text = label,
-                                containerColor = if (isError) {
-                                    invalidContainerColor
-                                } else {
-                                    tokenContainerColor
-                                },
-                                contentColor = if (isError) {
-                                    invalidContentColor
-                                } else {
-                                    tokenContentColor
-                                },
+                                containerColor = container,
+                                contentColor = content,
                             )
                         },
                     )
@@ -1459,50 +1664,14 @@ private data class NamingTokenSection(
     val tokens: List<NamingToken>,
 )
 
-private fun namingTokenSections(scope: NamingTemplateScope): List<NamingTokenSection> {
-    return listOf(
-        NamingTokenGroup.General,
-        NamingTokenGroup.Time,
-        NamingTokenGroup.Ids,
-        NamingTokenGroup.Stream,
-    ).mapNotNull { group ->
-        val tokens = DownloadNaming.tokensForScope(scope)
-            .filter { it.group == group }
-            .sortedBy(::namingTokenDisplayOrder)
-        if (tokens.isEmpty()) {
-            null
-        } else {
-            NamingTokenSection(group = group, tokens = tokens)
-        }
-    }
-}
-
-private fun namingTokenDisplayOrder(token: NamingToken): Int {
-    return when (token) {
-        NamingToken.VideoTitle -> 0
-        NamingToken.CollectionTitle -> 1
-        NamingToken.Title -> 2
-        NamingToken.P -> 3
-        NamingToken.Container -> 4
-        NamingToken.MediaType -> 5
-        NamingToken.TaskType -> 6
-        NamingToken.Index -> 10
-        NamingToken.PubTime -> 11
-        NamingToken.DownTime -> 12
-        NamingToken.Upper -> 20
-        NamingToken.UpperId -> 21
-        NamingToken.Aid -> 22
-        NamingToken.Bvid -> 23
-        NamingToken.Sid -> 24
-        NamingToken.Fid -> 25
-        NamingToken.Cid -> 26
-        NamingToken.Epid -> 27
-        NamingToken.Ssid -> 28
-        NamingToken.Opid -> 29
-        NamingToken.Res -> 30
-        NamingToken.Abr -> 31
-        NamingToken.Enc -> 32
-        NamingToken.Fmt -> 33
+private fun namingTokenSections(
+    shape: NamingShape,
+    scope: NamingTemplateScope,
+): List<NamingTokenSection> {
+    val available = NamingToken.forEditor(shape, scope)
+    return NamingTokenGroup.entries.mapNotNull { group ->
+        val tokens = available.filter { it.group == group }
+        if (tokens.isEmpty()) null else NamingTokenSection(group = group, tokens = tokens)
     }
 }
 
@@ -1518,65 +1687,214 @@ private fun insertTokenAtSelection(
         append(insertion)
         append(current.text.substring(end))
     }
-    val cursor = start + insertion.length
     return TextFieldValue(
         text = next,
-        selection = TextRange(cursor),
+        selection = TextRange(start + insertion.length),
+    )
+}
+
+/** 把选中内容包成可选片段；没有选中时插入一对空标记并把光标停在里面。 */
+private fun wrapSelectionAsOptional(current: TextFieldValue): TextFieldValue {
+    val start = minOf(current.selection.start, current.selection.end)
+    val end = maxOf(current.selection.start, current.selection.end)
+    val selected = current.text.substring(start, end)
+    val next = buildString {
+        append(current.text.substring(0, start))
+        append(NamingRenderer.wrapAsOptional(selected))
+        append(current.text.substring(end))
+    }
+    return TextFieldValue(
+        text = next,
+        selection = TextRange(start + 2 + selected.length),
     )
 }
 
 @Composable
-private fun rememberNamingPreviewContext(): NamingRenderContext {
-    val videoTitle = stringResource(R.string.settings_naming_preview_video_title)
-    val collectionTitle = stringResource(R.string.settings_naming_preview_collection_title)
-    val title = stringResource(R.string.settings_naming_preview_item_title)
-    val container = stringResource(R.string.parse_media_type_video)
-    val mediaType = stringResource(R.string.parse_media_type_video)
-    val taskType = stringResource(R.string.output_audio_video)
+private fun rememberNamingPreviewContexts(): Map<NamingShape, NamingContext> {
+    val videoWork = stringResource(R.string.settings_naming_preview_video_title)
+    val videoPart = stringResource(R.string.settings_naming_preview_item_title)
+    val videoCollection = stringResource(R.string.settings_naming_preview_collection_title)
+    val videoSection = stringResource(R.string.settings_naming_preview_section)
+    val episodeSeason = stringResource(R.string.settings_naming_preview_episode_season)
+    val episodeTitle = stringResource(R.string.settings_naming_preview_episode_title)
+    val trackTitle = stringResource(R.string.settings_naming_preview_track_title)
+    val trackCollection = stringResource(R.string.settings_naming_preview_track_collection)
+    val trackArtist = stringResource(R.string.settings_naming_preview_track_artist)
+    val opusTitle = stringResource(R.string.settings_naming_preview_opus_title)
+    val opusCollection = stringResource(R.string.settings_naming_preview_opus_collection)
+    val listCollection = stringResource(R.string.settings_naming_preview_list_collection)
+    val upper = stringResource(R.string.settings_naming_preview_upper)
+    val videoLabel = stringResource(R.string.parse_media_type_video)
+    val bangumiLabel = stringResource(R.string.parse_media_type_bangumi)
+    val musicLabel = stringResource(R.string.parse_media_type_music)
+    val musicListLabel = stringResource(R.string.parse_media_type_music_list)
+    val opusLabel = stringResource(R.string.parse_media_type_opus)
+    val favoriteLabel = stringResource(R.string.parse_media_type_favorite)
+    val audioVideoTask = stringResource(R.string.output_audio_video)
+    val audioTask = stringResource(R.string.output_audio)
+    val opusImageTask = stringResource(R.string.download_task_opus_image)
     val resolution = stringResource(R.string.parse_resolution_1080)
     val codec = stringResource(R.string.parse_codec_avc)
     val audioBitrate = stringResource(R.string.parse_bitrate_192)
     val format = stringResource(R.string.format_mp4)
-    val upper = stringResource(R.string.settings_naming_preview_upper)
-    return remember(
-        videoTitle,
-        collectionTitle,
-        title,
-        container,
-        mediaType,
-        taskType,
-        resolution,
-        codec,
-        audioBitrate,
-        format,
-    ) {
-        NamingRenderContext(
-            videoTitle = videoTitle,
-            collectionTitle = collectionTitle,
-            title = title,
-            p = "1",
-            container = container,
-            mediaType = mediaType,
-            taskType = taskType,
+
+    return remember(videoWork, episodeSeason, trackTitle, opusTitle, listCollection) {
+        val pubTime = 1_719_331_200L
+        val downTime = 1_744_412_800L
+        val video = NamingContext(
+            title = videoPart,
+            work = videoWork,
+            collection = videoCollection,
+            p = "2",
+            section = videoSection,
+            container = videoLabel,
+            mediaType = videoLabel,
+            taskType = audioVideoTask,
             index = 1,
-            pubTimeEpochSeconds = 1_719_331_200L,
-            downTimeEpochSeconds = 1_744_412_800L,
+            pubTimeEpochSeconds = pubTime,
+            downTimeEpochSeconds = downTime,
             upper = upper,
-            upperId = "2333333",
+            upperId = "946974",
+            id = "BV1xx411c7mD",
             aid = "123456789",
-            sid = "10001",
-            fid = "556677",
-            cid = "99887766",
             bvid = "BV1xx411c7mD",
-            epid = "20001",
-            ssid = "30001",
-            opid = "opus-42",
+            cid = "99887766",
+            fid = "556677",
             res = resolution,
             abr = audioBitrate,
             enc = codec,
             fmt = format,
         )
+        mapOf(
+            NamingShape.Common to video,
+            NamingShape.Video to video,
+            NamingShape.Episode to NamingContext(
+                title = episodeTitle,
+                work = episodeSeason,
+                collection = episodeSeason,
+                ep = "01",
+                longTitle = episodeTitle,
+                section = videoSection,
+                container = bangumiLabel,
+                mediaType = bangumiLabel,
+                taskType = audioVideoTask,
+                index = 1,
+                pubTimeEpochSeconds = pubTime,
+                downTimeEpochSeconds = downTime,
+                upper = upper,
+                upperId = "946974",
+                id = "ep606591",
+                aid = "555940677",
+                bvid = "BV1xx411c7mD",
+                cid = "772096113",
+                epid = "606591",
+                ssid = "44227",
+                res = resolution,
+                abr = audioBitrate,
+                enc = codec,
+                fmt = format,
+            ),
+            NamingShape.Track to NamingContext(
+                title = trackTitle,
+                work = trackTitle,
+                collection = trackCollection,
+                container = musicListLabel,
+                mediaType = musicLabel,
+                taskType = audioTask,
+                index = 1,
+                pubTimeEpochSeconds = pubTime,
+                downTimeEpochSeconds = downTime,
+                upper = upper,
+                upperId = "946974",
+                artist = trackArtist,
+                id = "au10001",
+                sid = "10001",
+                amid = "20002",
+                abr = audioBitrate,
+                fmt = format,
+            ),
+            NamingShape.Opus to NamingContext(
+                title = opusTitle,
+                work = opusTitle,
+                collection = opusCollection,
+                img = "01",
+                container = opusLabel,
+                mediaType = opusLabel,
+                taskType = opusImageTask,
+                index = 1,
+                pubTimeEpochSeconds = pubTime,
+                downTimeEpochSeconds = downTime,
+                upper = upper,
+                upperId = "946974",
+                id = "cv12345",
+                opid = "889900112233",
+                cvid = "12345",
+            ),
+            NamingShape.Listing to NamingContext(
+                collection = listCollection,
+                container = favoriteLabel,
+                index = 1,
+                pubTimeEpochSeconds = pubTime,
+                downTimeEpochSeconds = downTime,
+                upper = upper,
+                upperId = "946974",
+                fid = "556677",
+            ),
+        )
     }
+}
+
+private fun namingPreviewExtension(
+    shape: NamingShape,
+    scope: NamingTemplateScope,
+): String? {
+    if (scope != NamingTemplateScope.File) return null
+    return when (shape) {
+        NamingShape.Track -> "flac"
+        NamingShape.Opus -> "jpg"
+        else -> "mp4"
+    }
+}
+
+@DrawableRes
+private fun namingScopeIcon(scope: NamingTemplateScope): Int = when (scope) {
+    NamingTemplateScope.TopFolder -> R.drawable.ic_folder_special_24
+    NamingTemplateScope.ItemFolder -> R.drawable.ic_bookmark_manager_24
+    NamingTemplateScope.File -> R.drawable.ic_save_as_24
+}
+
+@StringRes
+private fun namingScopeTitleRes(scope: NamingTemplateScope): Int = when (scope) {
+    NamingTemplateScope.TopFolder -> R.string.settings_naming_top_level_folder_template
+    NamingTemplateScope.ItemFolder -> R.string.settings_naming_item_folder_template
+    NamingTemplateScope.File -> R.string.settings_naming_file_template
+}
+
+@StringRes
+private fun namingScopeDescriptionRes(scope: NamingTemplateScope): Int = when (scope) {
+    NamingTemplateScope.TopFolder -> R.string.settings_naming_top_level_folder_template_desc
+    NamingTemplateScope.ItemFolder -> R.string.settings_naming_item_folder_template_desc
+    NamingTemplateScope.File -> R.string.settings_naming_file_template_desc
+}
+
+@Composable
+private fun namingShapeLabel(shape: NamingShape): String = when (shape) {
+    NamingShape.Common -> stringResource(R.string.settings_naming_shape_common)
+    NamingShape.Video -> stringResource(R.string.settings_naming_shape_video)
+    NamingShape.Episode -> stringResource(R.string.settings_naming_shape_episode)
+    NamingShape.Track -> stringResource(R.string.settings_naming_shape_track)
+    NamingShape.Opus -> stringResource(R.string.settings_naming_shape_opus)
+    NamingShape.Listing -> stringResource(R.string.settings_naming_shape_listing)
+}
+
+@Composable
+private fun namingShapeDescription(shape: NamingShape): String = when (shape) {
+    NamingShape.Common -> stringResource(R.string.settings_naming_shape_common_desc)
+    NamingShape.Video -> stringResource(R.string.settings_naming_shape_video_desc)
+    NamingShape.Episode -> stringResource(R.string.settings_naming_shape_episode_desc)
+    NamingShape.Track -> stringResource(R.string.settings_naming_shape_track_desc)
+    NamingShape.Opus -> stringResource(R.string.settings_naming_shape_opus_desc)
+    NamingShape.Listing -> stringResource(R.string.settings_naming_shape_listing_desc)
 }
 
 @Composable
@@ -1616,26 +1934,34 @@ private fun namingTokenButtonLabel(token: NamingToken): String {
 @Composable
 private fun namingTokenPreviewLabel(token: NamingToken): String {
     return when (token) {
-        NamingToken.VideoTitle -> stringResource(R.string.settings_naming_token_video_title)
-        NamingToken.CollectionTitle -> stringResource(R.string.settings_naming_token_collection_title)
         NamingToken.Title -> stringResource(R.string.settings_naming_token_title)
+        NamingToken.Work -> stringResource(R.string.settings_naming_token_work)
+        NamingToken.Collection -> stringResource(R.string.settings_naming_token_collection)
         NamingToken.P -> stringResource(R.string.settings_naming_token_p)
+        NamingToken.Ep -> stringResource(R.string.settings_naming_token_ep)
+        NamingToken.LongTitle -> stringResource(R.string.settings_naming_token_long_title)
+        NamingToken.Section -> stringResource(R.string.settings_naming_token_section)
+        NamingToken.Img -> stringResource(R.string.settings_naming_token_img)
         NamingToken.Container -> stringResource(R.string.settings_naming_token_container)
         NamingToken.MediaType -> stringResource(R.string.settings_naming_token_media_type)
         NamingToken.TaskType -> stringResource(R.string.settings_naming_token_task_type)
         NamingToken.Index -> stringResource(R.string.settings_naming_token_index)
         NamingToken.PubTime -> stringResource(R.string.settings_naming_token_pub_time)
         NamingToken.DownTime -> stringResource(R.string.settings_naming_token_down_time)
+        NamingToken.Id -> stringResource(R.string.settings_naming_token_id)
         NamingToken.Upper -> stringResource(R.string.settings_naming_token_upper)
         NamingToken.UpperId -> stringResource(R.string.settings_naming_token_upper_id)
+        NamingToken.Artist -> stringResource(R.string.settings_naming_token_artist)
         NamingToken.Aid -> stringResource(R.string.settings_naming_token_aid)
-        NamingToken.Sid -> stringResource(R.string.settings_naming_token_sid)
-        NamingToken.Fid -> stringResource(R.string.settings_naming_token_fid)
-        NamingToken.Cid -> stringResource(R.string.settings_naming_token_cid)
         NamingToken.Bvid -> stringResource(R.string.settings_naming_token_bvid)
+        NamingToken.Cid -> stringResource(R.string.settings_naming_token_cid)
         NamingToken.Epid -> stringResource(R.string.settings_naming_token_epid)
         NamingToken.Ssid -> stringResource(R.string.settings_naming_token_ssid)
+        NamingToken.Sid -> stringResource(R.string.settings_naming_token_sid)
+        NamingToken.Amid -> stringResource(R.string.settings_naming_token_amid)
+        NamingToken.Fid -> stringResource(R.string.settings_naming_token_fid)
         NamingToken.Opid -> stringResource(R.string.settings_naming_token_opid)
+        NamingToken.Cvid -> stringResource(R.string.settings_naming_token_cvid)
         NamingToken.Res -> stringResource(R.string.settings_naming_token_res)
         NamingToken.Abr -> stringResource(R.string.settings_naming_token_abr)
         NamingToken.Enc -> stringResource(R.string.settings_naming_token_enc)

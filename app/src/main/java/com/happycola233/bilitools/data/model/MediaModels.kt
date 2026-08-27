@@ -81,12 +81,27 @@ data class MediaItem(
     val upper: MediaUpper? = null,
     val isTarget: Boolean,
     val index: Int,
+    // 官方分 P 号与分 P 总数，只有稿件视频有；列表里的稿件不展开分 P，因此为空。
+    val page: Int? = null,
+    val pageCount: Int? = null,
+    /** 所属作品标题：稿件标题、番剧季名、课程名、歌名、图文标题。 */
+    val workTitle: String? = null,
+    /** 集号：番剧 title（"1"、"SP"），课程 index。 */
+    val episode: String? = null,
+    /** 番剧单集完整标题 long_title。 */
+    val longTitle: String? = null,
+    /** 分区：番剧的正片/PV/特典，UGC 合集的分部。 */
+    val sectionTitle: String? = null,
+    /** 音频作者，常与 UP 主不同。 */
+    val artist: String? = null,
     val aid: Long? = null,
     val bvid: String? = null,
     val cid: Long? = null,
     val epid: Long? = null,
     val ssid: Long? = null,
     val sid: Long? = null,
+    /** 歌单号 menuId。 */
+    val amid: Long? = null,
     val fid: Long? = null,
     val opid: String? = null,
     val cvid: Long? = null,

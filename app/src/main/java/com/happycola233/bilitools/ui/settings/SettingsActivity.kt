@@ -176,9 +176,9 @@ class SettingsActivity : AppCompatActivity() {
                 onNamingTopLevelFolderModeChange = viewModel::setNamingTopLevelFolderMode,
                 onNamingOverwriteExistingFilesChange = viewModel::setNamingOverwriteExistingFiles,
                 onNamingCleanSeparatorsChange = viewModel::setNamingCleanSeparators,
-                onNamingTopLevelFolderTemplateChange = viewModel::setNamingTopLevelFolderTemplate,
-                onNamingItemFolderTemplateChange = viewModel::setNamingItemFolderTemplate,
-                onNamingFileTemplateChange = viewModel::setNamingFileTemplate,
+                onNamingShowSinglePageNumberChange = viewModel::setNamingShowSinglePageNumber,
+                onNamingTemplateChange = viewModel::setNamingTemplate,
+                onNamingTemplateReset = viewModel::clearNamingTemplate,
                 onRestoreNamingDefaults = {
                     viewModel.restoreNamingDefaults()
                     Toast.makeText(

@@ -185,6 +185,19 @@ class MediaRepository(
         val data = resp.data
         val listLink = "https://www.bilibili.com/video/"
 
+        val ugcSeason = data.ugcSeason
+        val hasCollection = ugcSeason != null
+        val allEpisodes = ugcSeason?.sections?.flatMap { it.episodes }.orEmpty()
+        val targetEpisode = allEpisodes.firstOrNull { ep ->
+            options.target?.let { t -> ep.id == t } ?: (ep.aid == data.aid)
+        }
+        val sectionOfTarget = targetEpisode?.let { ep ->
+            ugcSeason?.sections?.firstOrNull { it.id == ep.sectionId }
+        }
+        // 合集里的单集标题和稿件标题可以不同，命名用的是合集里展示的那个。
+        val workTitle = targetEpisode?.title?.takeIf { it.isNotBlank() } ?: data.title
+        val basePageCount = data.pages?.size ?: 1
+
         val baseList = data.pages?.mapIndexed { index, page ->
             MediaItem(
                 title = page.part?.takeIf { it.isNotBlank() } ?: data.title,
@@ -199,6 +212,10 @@ class MediaRepository(
                 type = MediaType.Video,
                 isTarget = index == 0,
                 index = index,
+                page = page.page,
+                pageCount = basePageCount,
+                workTitle = workTitle,
+                sectionTitle = sectionOfTarget?.title,
             )
         } ?: listOf(
             MediaItem(
@@ -214,71 +231,69 @@ class MediaRepository(
                 type = MediaType.Video,
                 isTarget = true,
                 index = 0,
+                page = 1,
+                pageCount = 1,
+                workTitle = workTitle,
+                sectionTitle = sectionOfTarget?.title,
             ),
         )
 
         var list = baseList
         var sections: MediaSections? = null
 
-        val ugcSeason = data.ugcSeason
-        val hasCollection = ugcSeason != null
-        if (ugcSeason != null && ugcSeason.sections.isNotEmpty()) {
-            val allEpisodes = ugcSeason.sections.flatMap { it.episodes }
-            val targetEpisodeId = options.target?.takeIf { t -> allEpisodes.any { it.id == t } }
-            val mapEpisode: (Int, UgcEpisodeInfo) -> MediaItem = { index, ep ->
-                MediaItem(
-                    title = ep.title,
-                    coverUrl = normalizeCoverUrl(ep.arc.pic),
-                    description = ep.arc.desc,
-                    url = listLink + ep.bvid,
-                    aid = ep.aid,
-                    bvid = ep.bvid,
-                    cid = ep.cid,
-                    duration = ep.page.duration,
-                    pubTime = ep.arc.pubdate,
-                    type = MediaType.Video,
-                    isTarget = targetEpisodeId?.let { ep.id == it } ?: (ep.aid == data.aid),
-                    index = index,
-                )
-            }
-            val targetEpisode = allEpisodes.firstOrNull { ep ->
-                options.target?.let { t -> ep.id == t } ?: (ep.aid == data.aid)
-            }
-            if (targetEpisode != null) {
-                if (options.collection) {
-                    list = allEpisodes.mapIndexed(mapEpisode)
-                    sections = null
-                } else if ((data.pages?.size ?: 0) > 1) {
-                    val section = ugcSeason.sections.firstOrNull { it.id == targetEpisode.sectionId }
-                    if (section != null) {
-                        list = targetEpisode.pages.mapIndexed { index, page ->
-                            MediaItem(
-                                title = page.part?.takeIf { it.isNotBlank() } ?: targetEpisode.title,
-                                coverUrl = normalizeCoverUrl(targetEpisode.arc.pic),
-                                description = targetEpisode.arc.desc,
-                                url = listLink + targetEpisode.bvid,
-                                aid = targetEpisode.aid,
-                                bvid = targetEpisode.bvid,
-                                cid = page.cid,
-                                duration = page.duration,
-                                pubTime = targetEpisode.arc.pubdate,
-                                type = MediaType.Video,
-                                isTarget = index == 0,
-                                index = index,
-                            )
-                        }
-                        val targetId =
-                            options.target?.takeIf { t -> section.episodes.any { it.id == t } }
-                                ?: targetEpisode.id
-                        sections = MediaSections(
-                            target = targetId,
-                            tabs = section.episodes.map { MediaTab(it.id, it.title) },
-                        )
-                    }
-                } else {
-                    // Default to current video info for single-page videos in a collection.
-                    // Collection list is only shown when collection mode is enabled.
+        if (targetEpisode != null) {
+            if (options.collection) {
+                val targetEpisodeId = options.target?.takeIf { t -> allEpisodes.any { it.id == t } }
+                list = allEpisodes.mapIndexed { index, ep ->
+                    MediaItem(
+                        title = ep.title,
+                        coverUrl = normalizeCoverUrl(ep.arc.pic),
+                        description = ep.arc.desc,
+                        url = listLink + ep.bvid,
+                        aid = ep.aid,
+                        bvid = ep.bvid,
+                        cid = ep.cid,
+                        duration = ep.page.duration,
+                        pubTime = ep.arc.pubdate,
+                        type = MediaType.Video,
+                        isTarget = targetEpisodeId?.let { ep.id == it } ?: (ep.aid == data.aid),
+                        index = index,
+                        pageCount = ep.pages.size.takeIf { it > 0 },
+                        workTitle = ep.title,
+                        sectionTitle = ugcSeason?.sections
+                            ?.firstOrNull { it.id == ep.sectionId }
+                            ?.title,
+                    )
                 }
+            } else if (basePageCount > 1 && sectionOfTarget != null) {
+                list = targetEpisode.pages.mapIndexed { index, page ->
+                    val pageNumber = page.page ?: (index + 1)
+                    MediaItem(
+                        title = page.part?.takeIf { it.isNotBlank() } ?: targetEpisode.title,
+                        coverUrl = normalizeCoverUrl(targetEpisode.arc.pic),
+                        description = targetEpisode.arc.desc,
+                        url = listLink + targetEpisode.bvid,
+                        aid = targetEpisode.aid,
+                        bvid = targetEpisode.bvid,
+                        cid = page.cid,
+                        duration = page.duration,
+                        pubTime = targetEpisode.arc.pubdate,
+                        type = MediaType.Video,
+                        isTarget = index == 0,
+                        index = index,
+                        page = pageNumber,
+                        pageCount = targetEpisode.pages.size,
+                        workTitle = targetEpisode.title,
+                        sectionTitle = sectionOfTarget.title,
+                    )
+                }
+                val targetId = options.target
+                    ?.takeIf { t -> sectionOfTarget.episodes.any { it.id == t } }
+                    ?: targetEpisode.id
+                sections = MediaSections(
+                    target = targetId,
+                    tabs = sectionOfTarget.episodes.map { MediaTab(it.id, it.title) },
+                )
             }
         }
 
@@ -372,6 +387,11 @@ class MediaRepository(
             !data.section.isNullOrEmpty() -> data.section.firstOrNull()?.episodes.orEmpty()
             else -> emptyList()
         }
+        val tabs = buildList {
+            add(MediaTab(data.positive.id, data.positive.title))
+            data.section?.forEach { add(MediaTab(it.id, it.title)) }
+        }
+        val sectionTitle = tabs.firstOrNull { it.id == targetSectionId }?.name
         val list = listSource.mapIndexed { index, ep ->
             val isTargetEpisode = if (idType == "ep" && inputEpisodeId != null) {
                 ep.epId == inputEpisodeId || ep.id == inputEpisodeId
@@ -396,11 +416,11 @@ class MediaRepository(
                 type = MediaType.Bangumi,
                 isTarget = isTargetEpisode,
                 index = index,
+                workTitle = data.seasonTitle,
+                episode = ep.title,
+                longTitle = ep.longTitle,
+                sectionTitle = sectionTitle,
             )
-        }
-        val tabs = buildList {
-            add(MediaTab(data.positive.id, data.positive.title))
-            data.section?.forEach { add(MediaTab(it.id, it.title)) }
         }
         val resolvedTargetId = tabs.firstOrNull { it.id == targetSectionId }?.id ?: data.positive.id
         val thumbs = runCatching {
@@ -496,6 +516,8 @@ class MediaRepository(
                 type = MediaType.Lesson,
                 isTarget = index == 0,
                 index = index,
+                workTitle = data.title,
+                episode = (ep.index ?: (index + 1)).toString(),
             )
         }
         val intro = listOfNotNull(
@@ -594,6 +616,8 @@ class MediaRepository(
                 type = MediaType.Music,
                 isTarget = true,
                 index = 0,
+                workTitle = data.title,
+                artist = data.author,
             ),
         )
         return MediaInfo(
@@ -671,6 +695,9 @@ class MediaRepository(
                 upper = createMediaUpper(item.uname, item.uid, null),
                 isTarget = index == 0,
                 index = index,
+                workTitle = item.title,
+                artist = item.author,
+                amid = data.menuId,
             )
         }
         return MediaInfo(
@@ -728,6 +755,7 @@ class MediaRepository(
                 upper = item.owner?.let { createMediaUpper(it.name, it.mid, it.face) },
                 isTarget = index == 0,
                 index = baseIndex + index,
+                workTitle = item.title,
             )
         }
         return MediaInfo(
@@ -814,6 +842,7 @@ class MediaRepository(
                 upper = item.upper?.let { createMediaUpper(it.name, it.mid, it.face) },
                 isTarget = index == 0,
                 index = baseIndex + index,
+                workTitle = item.title,
                 fid = data.info.id,
             )
         }
@@ -867,6 +896,7 @@ class MediaRepository(
                 type = MediaType.Opus,
                 isTarget = true,
                 index = 0,
+                workTitle = document.title,
                 opid = document.id,
                 cvid = document.cvid,
             ),
@@ -927,6 +957,7 @@ class MediaRepository(
                 type = MediaType.Opus,
                 isTarget = index == 0,
                 index = index,
+                workTitle = article.title,
                 opid = article.dynId,
                 cvid = article.id,
                 rlid = listInfo.id,
@@ -1061,6 +1092,7 @@ class MediaRepository(
                     type = MediaType.Video,
                     isTarget = index == 0,
                     index = index,
+                    workTitle = item.title,
                 )
             }
             return MediaInfo(
@@ -1121,6 +1153,7 @@ class MediaRepository(
                 type = MediaType.Video,
                 isTarget = index == 0,
                 index = index,
+                workTitle = item.title,
             )
         }
         return MediaInfo(
@@ -1189,6 +1222,7 @@ class MediaRepository(
                 type = MediaType.Opus,
                 isTarget = index == 0,
                 index = index,
+                workTitle = item.content.trim().takeIf { it.isNotBlank() },
                 opid = item.opusId,
             )
         }
@@ -1249,6 +1283,8 @@ class MediaRepository(
                 type = MediaType.Music,
                 isTarget = index == 0,
                 index = index,
+                workTitle = item.title,
+                artist = item.author,
             )
         }
         return MediaInfo(
@@ -1559,6 +1595,9 @@ class MediaRepository(
                 pubTime = page.ctime ?: item.pubTime,
                 isTarget = index == 0,
                 index = pageIndex,
+                page = page.page,
+                pageCount = resp.data.size,
+                workTitle = item.workTitle ?: item.title,
             )
         }
     }
@@ -1857,6 +1896,7 @@ private data class UgcEpisodeArc(
 
 private data class UgcEpisodePage(
     @Json(name = "cid") val cid: Long,
+    @Json(name = "page") val page: Int? = null,
     @Json(name = "part") val part: String?,
     @Json(name = "duration") val duration: Int,
 )
@@ -1937,6 +1977,7 @@ private data class BangumiEpisode(
     @Json(name = "share_url") val shareUrl: String? = null,
     @Json(name = "show_title") val showTitle: String?,
     @Json(name = "title") val title: String?,
+    @Json(name = "long_title") val longTitle: String? = null,
 )
 
 private data class BangumiStat(
@@ -1988,6 +2029,7 @@ private data class LessonEpisode(
     @Json(name = "cover") val cover: String,
     @Json(name = "duration") val duration: Int,
     @Json(name = "id") val id: Long,
+    @Json(name = "index") val index: Int? = null,
     @Json(name = "release_date") val releaseDate: Long,
     @Json(name = "title") val title: String,
 )
@@ -2017,6 +2059,7 @@ private data class MusicInfoData(
     @Json(name = "id") val id: Long,
     @Json(name = "uid") val uid: Long,
     @Json(name = "uname") val uname: String,
+    @Json(name = "author") val author: String? = null,
     @Json(name = "title") val title: String,
     @Json(name = "cover") val cover: String,
     @Json(name = "intro") val intro: String,

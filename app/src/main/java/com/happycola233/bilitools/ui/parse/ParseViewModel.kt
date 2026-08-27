@@ -6,16 +6,22 @@ import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.AppLog
 import com.happycola233.bilitools.core.AudioQualities
 import com.happycola233.bilitools.core.BiliHttpException
-import com.happycola233.bilitools.core.DownloadNaming
-import com.happycola233.bilitools.core.NamingRenderContext
 import com.happycola233.bilitools.core.NfoGenerator
 import com.happycola233.bilitools.core.OpusAssetPlanner
 import com.happycola233.bilitools.core.OpusMarkdownRenderer
 import com.happycola233.bilitools.core.StringProvider
+import com.happycola233.bilitools.core.naming.NamingContext
+import com.happycola233.bilitools.core.naming.NamingContextFactory
+import com.happycola233.bilitools.core.naming.NamingLabels
+import com.happycola233.bilitools.core.naming.NamingRenderer
+import com.happycola233.bilitools.core.naming.NamingShape
+import com.happycola233.bilitools.core.naming.NamingStreamInfo
+import com.happycola233.bilitools.core.naming.NamingTemplateScope
 import com.happycola233.bilitools.data.AuthRepository
 import com.happycola233.bilitools.data.DefaultDownloadVideoCodec
 import com.happycola233.bilitools.data.DanmakuLiveProgress
 import com.happycola233.bilitools.data.DanmakuLiveProgressPhase
+import com.happycola233.bilitools.data.DownloadNamingSettings
 import com.happycola233.bilitools.data.DownloadRepository
 import com.happycola233.bilitools.data.DownloadQualityMode
 import com.happycola233.bilitools.data.ExportRepository
@@ -125,36 +131,24 @@ private fun MediaItem.extrasTargetKey(): ExtrasTargetKey {
     return ExtrasTargetKey(type, resourceId)
 }
 
-private data class DownloadTargets(
-    val isCollectionMode: Boolean,
-    val items: List<MediaItem>,
-    val pageCountByBvid: Map<String, Int>,
-    val videoTitleByBvid: Map<String, String>,
-)
-
 private data class ExtraTaskProgress(
     val progress: Int,
     val statusDetail: String? = null,
     val progressIndeterminate: Boolean = false,
 )
 
-private data class GroupNaming(
-    val groupTitle: String,
-    val groupSubtitle: String?,
-    val baseName: String,
-    val useVideoNaming: Boolean,
-    val pageCount: Int,
-    val videoTitle: String,
+/** 下载列表里展示的分组标题，与写盘命名互不影响。 */
+private data class DownloadGroupLabel(
+    val title: String,
+    val subtitle: String?,
 )
 
+/** 一次下载操作内共享的命名状态：设置快照、批次时间戳、已确定的顶层文件夹。 */
 private data class NamingSession(
-    val useTopLevelFolder: Boolean,
-    val topLevelFolderTemplate: String,
-    val itemFolderTemplate: String,
-    val fileTemplate: String,
-    val cleanSeparators: Boolean,
+    val settings: DownloadNamingSettings,
     val downTimeEpochSeconds: Long,
-    val topLevelFolderName: String?,
+    val useTopLevelFolder: Boolean = false,
+    val topLevelFolderName: String? = null,
 )
 
 enum class QualityMode {
@@ -1240,8 +1234,8 @@ class ParseViewModel(
                     var queuedGroups = 0
                     var failedItems = 0
                     var firstFailure: Throwable? = null
-                    val opusResults = resolveSelectedOpusDocuments(snapshot, targets.items)
-                    val preparedTargets = targets.items.zip(opusResults).mapNotNull { (rawItem, result) ->
+                    val opusResults = resolveSelectedOpusDocuments(snapshot, targets)
+                    val preparedTargets = targets.zip(opusResults).mapNotNull { (rawItem, result) ->
                         val error = result.exceptionOrNull()
                         if (error != null) {
                             failedItems += 1
@@ -1267,9 +1261,10 @@ class ParseViewModel(
                     }
                     val namingSession = createNamingSession(
                         info = info,
-                        targets = targets.copy(items = preparedTargets.map(PreparedDownloadTarget::item)),
+                        items = preparedTargets.map(PreparedDownloadTarget::item),
                     )
-                    preparedTargets.forEach { preparedTarget ->
+                    preparedTargets.forEachIndexed { batchIndex, preparedTarget ->
+                        val batchOrdinal = batchIndex + 1
                         val opusDocument = preparedTarget.opusDocument
                         val preparedItem = preparedTarget.item
                         val item = runCatching { mediaRepository.resolveItemForPlay(preparedItem, preparedItem.type) }
@@ -1282,24 +1277,17 @@ class ParseViewModel(
                             null
                         }
                         val playUrlInfo = playUrlResult?.getOrNull()
-                        val naming = resolveGroupNaming(
-                            info = info,
-                            item = item,
-                            isCollectionMode = targets.isCollectionMode,
-                            pageCountByBvid = targets.pageCountByBvid,
-                            videoTitleByBvid = targets.videoTitleByBvid,
-                        )
+                        val groupLabel = resolveGroupLabel(info = info, item = item)
 
                         val requestedGroupRelativePath = buildRequestedGroupRelativePath(
                             info = info,
                             item = item,
-                            naming = naming,
                             namingSession = namingSession,
                         )
 
                         val groupId = downloadRepository.createGroup(
-                            naming.groupTitle,
-                            naming.groupSubtitle,
+                            groupLabel.title,
+                            groupLabel.subtitle,
                             item.displayContentId(),
                             item.coverUrl,
                             relativePath = requestedGroupRelativePath,
@@ -1307,18 +1295,15 @@ class ParseViewModel(
                         val groupRelativePath = downloadRepository.groupRelativePath(groupId)
 
                         val trackTotal = when {
-                            naming.useVideoNaming && naming.pageCount > 0 -> naming.pageCount
+                            (item.pageCount ?: 0) > 0 -> item.pageCount
                             !info.paged && info.list.size > 1 -> info.list.size
                             else -> null
                         }
                         val embeddedMetadata = buildEmbeddedMetadata(
                             info = info,
                             item = item,
-                            fallbackAlbum = if (naming.useVideoNaming && naming.videoTitle.isNotBlank()) {
-                                naming.videoTitle
-                            } else {
-                                naming.groupTitle
-                            },
+                            fallbackAlbum = item.workTitle?.takeIf { it.isNotBlank() }
+                                ?: groupLabel.title,
                             trackTotal = trackTotal,
                         )
 
@@ -1393,18 +1378,18 @@ class ParseViewModel(
                                     OutputType.AudioOnly -> {
                                         val mediaParams = buildMediaParams(null, null, selectedAudio)
                                         val audioExtension = extensionForAudioStream(selectedAudio!!)
-                                        val audioNamingContext = buildNamingRenderContext(
+                                        val audioNamingContext = buildNamingContext(
                                             info = info,
                                             item = item,
-                                            naming = naming,
                                             namingSession = namingSession,
+                                            batchIndex = batchOrdinal,
                                             taskType = DownloadTaskType.Audio,
                                             taskLabel = downloadTitle,
                                             mediaParams = mediaParams,
                                             formatLabel = mapOutputExtensionLabel(audioExtension),
                                         )
                                         val audioName = resolveTemplateFileName(
-                                            taskType = DownloadTaskType.Audio,
+                                            item = item,
                                             namingSession = namingSession,
                                             context = audioNamingContext,
                                             extension = audioExtension,
@@ -1421,18 +1406,18 @@ class ParseViewModel(
                                     }
                                     OutputType.VideoOnly -> {
                                         val mediaParams = buildMediaParams(selectedVideo, outputVideoCodec, null)
-                                        val videoNamingContext = buildNamingRenderContext(
+                                        val videoNamingContext = buildNamingContext(
                                             info = info,
                                             item = item,
-                                            naming = naming,
                                             namingSession = namingSession,
+                                            batchIndex = batchOrdinal,
                                             taskType = DownloadTaskType.Video,
                                             taskLabel = downloadTitle,
                                             mediaParams = mediaParams,
                                             formatLabel = mapStreamFormatLabel(selectedVideo!!.format),
                                         )
                                         val videoName = resolveTemplateFileName(
-                                            taskType = DownloadTaskType.Video,
+                                            item = item,
                                             namingSession = namingSession,
                                             context = videoNamingContext,
                                             extension = extensionForVideoStream(selectedVideo),
@@ -1451,18 +1436,18 @@ class ParseViewModel(
                                         if (playUrlInfo.format == StreamFormat.Dash && selectedAudio != null) {
                                             val mediaParams = buildMediaParams(mergeVideo, outputVideoCodec, selectedAudio)
                                             val mergedExtension = extensionForMergedOutput(selectedAudio)
-                                            val mergedNamingContext = buildNamingRenderContext(
+                                            val mergedNamingContext = buildNamingContext(
                                                 info = info,
                                                 item = item,
-                                                naming = naming,
                                                 namingSession = namingSession,
+                                                batchIndex = batchOrdinal,
                                                 taskType = DownloadTaskType.AudioVideo,
                                                 taskLabel = downloadTitle,
                                                 mediaParams = mediaParams,
                                                 formatLabel = mapOutputExtensionLabel(mergedExtension),
                                             )
                                             val outputName = resolveTemplateFileName(
-                                                taskType = DownloadTaskType.AudioVideo,
+                                                item = item,
                                                 namingSession = namingSession,
                                                 context = mergedNamingContext,
                                                 extension = mergedExtension,
@@ -1478,18 +1463,18 @@ class ParseViewModel(
                                             )
                                         } else {
                                             val mediaParams = buildMediaParams(mergeVideo, outputVideoCodec, selectedAudio)
-                                            val mergedNamingContext = buildNamingRenderContext(
+                                            val mergedNamingContext = buildNamingContext(
                                                 info = info,
                                                 item = item,
-                                                naming = naming,
                                                 namingSession = namingSession,
+                                                batchIndex = batchOrdinal,
                                                 taskType = DownloadTaskType.AudioVideo,
                                                 taskLabel = downloadTitle,
                                                 mediaParams = mediaParams,
                                                 formatLabel = mapStreamFormatLabel(mergeVideo!!.format),
                                             )
                                             val videoName = resolveTemplateFileName(
-                                                taskType = DownloadTaskType.AudioVideo,
+                                                item = item,
                                                 namingSession = namingSession,
                                                 context = mergedNamingContext,
                                                 extension = extensionForVideoStream(mergeVideo),
@@ -1522,8 +1507,8 @@ class ParseViewModel(
                                 info = info,
                                 item = item,
                                 document = opusDocument,
-                                naming = naming,
                                 namingSession = namingSession,
+                                batchOrdinal = batchOrdinal,
                                 groupId = groupId,
                                 groupRelativePath = groupRelativePath,
                             )
@@ -1533,8 +1518,8 @@ class ParseViewModel(
                             snapshot = snapshot,
                             info = info,
                             item = item,
-                            naming = naming,
                             namingSession = namingSession,
+                            batchOrdinal = batchOrdinal,
                             groupId = groupId,
                             groupRelativePath = groupRelativePath,
                             subtitleSelectionPolicy = selectionPolicy,
@@ -1631,42 +1616,41 @@ class ParseViewModel(
         info: MediaInfo,
         item: MediaItem,
         document: OpusDocument,
-        naming: GroupNaming,
         namingSession: NamingSession,
+        batchOrdinal: Int,
         groupId: Long,
         groupRelativePath: String,
     ) {
         val contentTitle = strings.get(R.string.parse_opus_content)
         val imageTitle = strings.get(R.string.parse_opus_images)
-        val imageContext = buildNamingRenderContext(
-            info = info,
-            item = item,
-            naming = naming,
-            namingSession = namingSession,
-            taskType = DownloadTaskType.OpusImage,
-            taskLabel = imageTitle,
-            mediaParams = null,
-        )
-        val imageTemplateName = resolveTemplateFileName(
-            taskType = DownloadTaskType.OpusImage,
-            namingSession = namingSession,
-            context = imageContext,
-            extension = "jpg",
-        )
-        val imageAssets = OpusAssetPlanner.plan(document, imageTemplateName)
+        // 图片序号进模板，模板里写不写 {img} 都由 OpusAssetPlanner 保证文件名不撞。
+        val imageAssets = OpusAssetPlanner.plan(document) { index, total ->
+            resolveTemplateBaseName(
+                item = item,
+                namingSession = namingSession,
+                context = buildNamingContext(
+                    info = info,
+                    item = item,
+                    namingSession = namingSession,
+                    batchIndex = batchOrdinal,
+                    taskType = DownloadTaskType.OpusImage,
+                    taskLabel = imageTitle,
+                    imageOrdinal = OpusAssetPlanner.imageOrdinal(index, total),
+                ),
+            )
+        }
 
         if (snapshot.opusContentEnabled) {
-            val contentContext = buildNamingRenderContext(
+            val contentContext = buildNamingContext(
                 info = info,
                 item = item,
-                naming = naming,
                 namingSession = namingSession,
+                batchIndex = batchOrdinal,
                 taskType = DownloadTaskType.OpusContent,
                 taskLabel = contentTitle,
-                mediaParams = null,
             )
             val contentName = resolveTemplateFileName(
-                taskType = DownloadTaskType.OpusContent,
+                item = item,
                 namingSession = namingSession,
                 context = contentContext,
                 extension = "md",
@@ -1713,8 +1697,8 @@ class ParseViewModel(
         snapshot: ParseUiState,
         info: MediaInfo,
         item: MediaItem,
-        naming: GroupNaming,
         namingSession: NamingSession,
+        batchOrdinal: Int,
         groupId: Long,
         groupRelativePath: String,
         subtitleSelectionPolicy: SubtitleSelectionPolicy,
@@ -1733,17 +1717,17 @@ class ParseViewModel(
                     strings.get(R.string.parse_error_no_subtitle),
                 )
             } else {
-                val subtitleContext = buildNamingRenderContext(
+                val subtitleContext = buildNamingContext(
                     info = info,
                     item = item,
-                    naming = naming,
                     namingSession = namingSession,
+                    batchIndex = batchOrdinal,
                     taskType = DownloadTaskType.Subtitle,
                     taskLabel = subtitleTitle,
                     mediaParams = null,
                 )
                 val initialName = resolveTemplateFileName(
-                    taskType = DownloadTaskType.Subtitle,
+                    item = item,
                     namingSession = namingSession,
                     context = subtitleContext,
                     extension = if (subtitleSelectionPolicy == SubtitleSelectionPolicy.SelectedLanguage) {
@@ -1773,7 +1757,7 @@ class ParseViewModel(
                         val firstSubtitle = selectedSubtitles.firstOrNull()
                             ?: return@saveBytesTask null
                         val firstSubtitleName = resolveTemplateFileName(
-                            taskType = DownloadTaskType.Subtitle,
+                            item = item,
                             namingSession = namingSession,
                             context = subtitleContext,
                             extension = "${firstSubtitle.lan}.srt",
@@ -1789,6 +1773,7 @@ class ParseViewModel(
                             if (!saveSubtitleTask(
                                 parentTaskId = task.id,
                                 groupId = groupId,
+                                item = item,
                                 subtitle = subtitle,
                                 subtitleTitle = subtitleTitle,
                                 subtitleContext = subtitleContext,
@@ -1819,17 +1804,17 @@ class ParseViewModel(
                 )
             } else {
                 val summaryTitle = info.nfo.showTitle?.ifBlank { item.title } ?: item.title
-                val aiSummaryContext = buildNamingRenderContext(
+                val aiSummaryContext = buildNamingContext(
                     info = info,
                     item = item,
-                    naming = naming,
                     namingSession = namingSession,
+                    batchIndex = batchOrdinal,
                     taskType = DownloadTaskType.AiSummary,
                     taskLabel = taskTitle,
                     mediaParams = null,
                 )
                 val name = resolveTemplateFileName(
-                    taskType = DownloadTaskType.AiSummary,
+                    item = item,
                     namingSession = namingSession,
                     context = aiSummaryContext,
                     extension = "md",
@@ -1874,17 +1859,17 @@ class ParseViewModel(
 
         if (snapshot.nfoSingleEnabled && capabilities.supportsNfoExport) {
             val taskTitle = strings.get(R.string.parse_nfo_single)
-            val nfoContext = buildNamingRenderContext(
+            val nfoContext = buildNamingContext(
                 info = info,
                 item = item,
-                naming = naming,
                 namingSession = namingSession,
+                batchIndex = batchOrdinal,
                 taskType = DownloadTaskType.NfoSingle,
                 taskLabel = taskTitle,
                 mediaParams = null,
             )
             val name = resolveTemplateFileName(
-                taskType = DownloadTaskType.NfoSingle,
+                item = item,
                 namingSession = namingSession,
                 context = nfoContext,
                 extension = "nfo",
@@ -1907,17 +1892,17 @@ class ParseViewModel(
             val cid = item.cid
             val duration = item.duration
             val taskTitle = strings.get(R.string.parse_danmaku_live)
-            val danmakuLiveContext = buildNamingRenderContext(
+            val danmakuLiveContext = buildNamingContext(
                 info = info,
                 item = item,
-                naming = naming,
                 namingSession = namingSession,
+                batchIndex = batchOrdinal,
                 taskType = DownloadTaskType.DanmakuLive,
                 taskLabel = taskTitle,
                 mediaParams = null,
             )
             val name = resolveTemplateFileName(
-                taskType = DownloadTaskType.DanmakuLive,
+                item = item,
                 namingSession = namingSession,
                 context = danmakuLiveContext,
                 extension = if (convertXmlDanmakuToAss) "ass" else "xml",
@@ -1966,17 +1951,17 @@ class ParseViewModel(
                     strings.get(R.string.parse_error_no_danmaku),
                 )
             } else {
-                val danmakuHistoryContext = buildNamingRenderContext(
+                val danmakuHistoryContext = buildNamingContext(
                     info = info,
                     item = item,
-                    naming = naming,
                     namingSession = namingSession,
+                    batchIndex = batchOrdinal,
                     taskType = DownloadTaskType.DanmakuHistory,
                     taskLabel = taskTitle,
                     mediaParams = null,
                 )
                 val name = resolveTemplateFileName(
-                    taskType = DownloadTaskType.DanmakuHistory,
+                    item = item,
                     namingSession = namingSession,
                     context = danmakuHistoryContext,
                     extension = if (convertXmlDanmakuToAss) "ass" else "xml",
@@ -2019,17 +2004,16 @@ class ParseViewModel(
                     label
                 }
                 val taskType = imageDownloadTaskType(thumb.id)
-                val imageContext = buildNamingRenderContext(
+                val imageContext = buildNamingContext(
                     info = info,
                     item = item,
-                    naming = naming,
                     namingSession = namingSession,
                     taskType = taskType,
                     taskLabel = fileLabel,
                     mediaParams = null,
                 )
                 val name = resolveTemplateFileName(
-                    taskType = taskType,
+                    item = item,
                     namingSession = namingSession,
                     context = imageContext,
                     extension = extensionFromUrl(thumb.url),
@@ -2064,14 +2048,15 @@ class ParseViewModel(
     private fun saveSubtitleTask(
         parentTaskId: Long,
         groupId: Long,
+        item: MediaItem,
         subtitle: SubtitleInfo,
         subtitleTitle: String,
-        subtitleContext: NamingRenderContext,
+        subtitleContext: NamingContext,
         namingSession: NamingSession,
         groupRelativePath: String,
     ): Boolean {
         val fileName = resolveTemplateFileName(
-            taskType = DownloadTaskType.Subtitle,
+            item = item,
             namingSession = namingSession,
             context = subtitleContext,
             extension = "${subtitle.lan}.srt",
@@ -2235,16 +2220,10 @@ class ParseViewModel(
             selectedItemCount = selectedIndices.size,
             languageSelection = snapshot.subtitleLanguageSelection,
         )
-        return targets.items.flatMap { rawItem ->
+        return targets.flatMap { rawItem ->
             val item = runCatching { mediaRepository.resolveItemForPlay(rawItem, rawItem.type) }
                 .getOrDefault(rawItem)
-            val naming = resolveGroupNaming(
-                info = info,
-                item = item,
-                isCollectionMode = targets.isCollectionMode,
-                pageCountByBvid = targets.pageCountByBvid,
-                videoTitleByBvid = targets.videoTitleByBvid,
-            )
+            val groupLabel = resolveGroupLabel(info = info, item = item)
             val aid = item.aid
             val cid = item.cid
             val subtitles = if (aid != null && cid != null) {
@@ -2257,7 +2236,7 @@ class ParseViewModel(
                 languageSelection = snapshot.subtitleLanguageSelection,
                 policy = selectionPolicy,
             )
-            val title = buildSubtitleEntryTitle(naming.groupTitle, naming.groupSubtitle)
+            val title = buildSubtitleEntryTitle(groupLabel.title, groupLabel.subtitle)
             if (selectedSubtitles.isEmpty()) {
                 listOf(
                     SubtitleCopyEntry(
@@ -2297,17 +2276,11 @@ class ParseViewModel(
         selectedIndices: List<Int>,
     ): List<AiSummaryCopyEntry> {
         val targets = buildDownloadTargets(snapshot, info, selectedIndices)
-        return targets.items.map { rawItem ->
+        return targets.map { rawItem ->
             val item = runCatching { mediaRepository.resolveItemForPlay(rawItem, rawItem.type) }
                 .getOrDefault(rawItem)
-            val naming = resolveGroupNaming(
-                info = info,
-                item = item,
-                isCollectionMode = targets.isCollectionMode,
-                pageCountByBvid = targets.pageCountByBvid,
-                videoTitleByBvid = targets.videoTitleByBvid,
-            )
-            val title = buildSubtitleEntryTitle(naming.groupTitle, naming.groupSubtitle)
+            val groupLabel = resolveGroupLabel(info = info, item = item)
+            val title = buildSubtitleEntryTitle(groupLabel.title, groupLabel.subtitle)
             val aid = item.aid
             val cid = item.cid
             val bvid = item.bvid
@@ -2342,310 +2315,93 @@ class ParseViewModel(
         snapshot: ParseUiState,
         info: MediaInfo,
         selectedIndices: List<Int>,
-    ): DownloadTargets {
-        val isCollectionMode = snapshot.collectionMode && info.type == MediaType.Video
-        val pageCountByBvid = mutableMapOf<String, Int>()
-        val videoTitleByBvid = mutableMapOf<String, String>()
-        val collectionTitlesByBvid = if (!isCollectionMode &&
-            info.type == MediaType.Video &&
-            info.collection
-        ) {
-            runCatching {
-                mediaRepository.getMediaInfo(
-                    info.id,
-                    info.type,
-                    com.happycola233.bilitools.data.model.MediaQueryOptions(collection = true),
-                ).list.mapNotNull { item ->
-                    val bvid = item.bvid?.trim().orEmpty()
-                    val title = item.title.trim()
-                    if (bvid.isNotBlank() && title.isNotBlank()) bvid to title else null
-                }.toMap()
-            }.getOrDefault(emptyMap())
-        } else {
-            emptyMap()
-        }
-        val defaultVideoTitle = if (info.type == MediaType.Video) {
-            val sectionTitle = info.sections?.let { sections ->
-                sections.tabs.firstOrNull { it.id == sections.target }?.name
-            }?.trim().orEmpty()
-            when {
-                sectionTitle.isNotBlank() -> sectionTitle
-                !info.collection -> info.nfo.showTitle?.trim().orEmpty()
-                else -> ""
-            }
-        } else {
-            ""
-        }
+    ): List<MediaItem> {
         val selectedItems = selectedIndices.mapNotNull { snapshot.items.getOrNull(it) }
-        val items = if (isCollectionMode) {
-            selectedItems.flatMap { episode ->
-                val pages = runCatching { mediaRepository.getVideoPages(episode) }
-                    .getOrDefault(listOf(episode))
-                val episodeTitle = episode.title.trim().ifBlank { defaultVideoTitle }
-                val episodeBvid = episode.bvid?.trim().orEmpty()
-                if (episodeBvid.isNotBlank()) {
-                    pageCountByBvid[episodeBvid] = pages.size
-                    if (episodeTitle.isNotBlank()) {
-                        videoTitleByBvid[episodeBvid] = episodeTitle
-                    }
-                }
-                if (pages.size <= 1) {
-                    val page = pages.firstOrNull() ?: episode
-                    listOf(page.copy(title = episode.title))
-                } else {
-                    pages.map { page ->
-                        val title = page.title.ifBlank { episode.title }
-                        page.copy(title = title)
-                    }
-                }
-            }
-        } else {
-            if (info.type == MediaType.Video) {
-                val fallbackTitle = if (defaultVideoTitle.isNotBlank()) {
-                    defaultVideoTitle
-                } else {
-                    snapshot.items.firstOrNull()?.title?.trim().orEmpty()
-                }
-                snapshot.items
-                    .asSequence()
-                    .mapNotNull { item -> item.bvid?.trim()?.takeIf { it.isNotBlank() } }
-                    .distinct()
-                    .forEach { bvid ->
-                        pageCountByBvid[bvid] = snapshot.items.count { it.bvid == bvid }
-                        val mappedTitle = collectionTitlesByBvid[bvid].orEmpty()
-                        val finalTitle = when {
-                            mappedTitle.isNotBlank() -> mappedTitle
-                            fallbackTitle.isNotBlank() -> fallbackTitle
-                            else -> ""
-                        }
-                        if (finalTitle.isNotBlank()) {
-                            videoTitleByBvid[bvid] = finalTitle
-                        }
-                    }
-            }
-            selectedItems
+        if (!snapshot.collectionMode || info.type != MediaType.Video) return selectedItems
+        // 合集模式下每一集都是独立稿件，要各自展开分 P 才能拿到真正的下载单元。
+        return selectedItems.flatMap { episode ->
+            runCatching { mediaRepository.getVideoPages(episode) }
+                .getOrDefault(listOf(episode))
+                .map { page -> page.copy(title = page.title.ifBlank { episode.title }) }
         }
-        return DownloadTargets(
-            isCollectionMode = isCollectionMode,
-            items = items,
-            pageCountByBvid = pageCountByBvid,
-            videoTitleByBvid = videoTitleByBvid,
-        )
     }
 
-    private fun resolveGroupNaming(
-        info: MediaInfo,
-        item: MediaItem,
-        isCollectionMode: Boolean,
-        pageCountByBvid: Map<String, Int>,
-        videoTitleByBvid: Map<String, String>,
-    ): GroupNaming {
+    /** 下载列表的分组标题：给人看的，和写盘模板无关。 */
+    private fun resolveGroupLabel(info: MediaInfo, item: MediaItem): DownloadGroupLabel {
         val parentTitle = info.nfo.showTitle?.trim().orEmpty()
         val itemTitle = item.title.trim()
-        val groupTitle: String
-        val groupSubtitle: String?
-        if (isCollectionMode) {
-            groupTitle = when {
-                itemTitle.isNotBlank() -> itemTitle
-                parentTitle.isNotBlank() -> parentTitle
-                else -> "BiliTools"
-            }
-            groupSubtitle = null
-        } else {
-            val useParentTitle =
-                (info.type == MediaType.Video && !info.collection) ||
-                    info.type == MediaType.Bangumi ||
-                    info.type == MediaType.Lesson
-            groupTitle = when {
-                useParentTitle && parentTitle.isNotBlank() -> parentTitle
-                itemTitle.isNotBlank() -> itemTitle
-                parentTitle.isNotBlank() -> parentTitle
-                else -> "BiliTools"
-            }
-            groupSubtitle = when {
-                useParentTitle && parentTitle.isNotBlank() && itemTitle.isNotBlank() &&
-                    itemTitle != parentTitle -> itemTitle
-                !useParentTitle && parentTitle.isNotBlank() && parentTitle != itemTitle -> parentTitle
-                else -> null
-            }
+        // 直接解析稿件时以「稿件标题（+分P号）」为准，分P标题单独拿出来信息量太低。
+        if (info.type == MediaType.Video) {
+            val workTitle = item.workTitle?.trim().orEmpty().ifBlank { itemTitle }
+            val pageSuffix = item.page
+                ?.takeIf { (item.pageCount ?: 1) > 1 }
+                ?.let { " - P$it" }
+                .orEmpty()
+            return DownloadGroupLabel(
+                title = (workTitle + pageSuffix).ifBlank { "BiliTools" },
+                subtitle = null,
+            )
         }
-        val bvid = item.bvid?.trim().orEmpty()
-        val pageCount = if (bvid.isNotBlank()) pageCountByBvid[bvid] ?: 0 else 0
-        val videoTitle = if (bvid.isNotBlank()) videoTitleByBvid[bvid].orEmpty() else ""
-        val useVideoNaming = info.type == MediaType.Video && videoTitle.isNotBlank()
-        val pageName = if (useVideoNaming && pageCount > 1) {
-            "${videoTitle} - P${item.index + 1}"
-        } else if (useVideoNaming) {
-            videoTitle
-        } else {
-            ""
+        val useParentTitle = info.type == MediaType.Bangumi || info.type == MediaType.Lesson
+        val title = when {
+            useParentTitle && parentTitle.isNotBlank() -> parentTitle
+            itemTitle.isNotBlank() -> itemTitle
+            parentTitle.isNotBlank() -> parentTitle
+            else -> "BiliTools"
         }
-        val effectiveGroupTitle = if (useVideoNaming) pageName else groupTitle
-        val effectiveGroupSubtitle = if (useVideoNaming) null else groupSubtitle
-        val baseNameSource = if (effectiveGroupSubtitle.isNullOrBlank()) {
-            effectiveGroupTitle
-        } else {
-            "$effectiveGroupTitle-$effectiveGroupSubtitle"
-        }
-        return GroupNaming(
-            groupTitle = effectiveGroupTitle,
-            groupSubtitle = effectiveGroupSubtitle,
-            baseName = sanitizeFileName(baseNameSource.ifBlank { "BiliTools" }),
-            useVideoNaming = useVideoNaming,
-            pageCount = pageCount,
-            videoTitle = videoTitle,
-        )
-    }
-
-    private fun resolveNamingCollectionTitle(info: MediaInfo): String? {
-        val parentTitle = info.nfo.showTitle?.trim()?.takeIf { it.isNotBlank() } ?: return null
-        return when (info.type) {
-            MediaType.Video -> parentTitle.takeIf { info.collection }
-            MediaType.Bangumi,
-            MediaType.Lesson,
-            MediaType.MusicList,
-            MediaType.Favorite,
-            MediaType.OpusList,
-            MediaType.UserVideo,
-            -> parentTitle
+        val subtitle = when {
+            useParentTitle && parentTitle.isNotBlank() && itemTitle.isNotBlank() &&
+                itemTitle != parentTitle -> itemTitle
+            !useParentTitle && parentTitle.isNotBlank() && parentTitle != itemTitle -> parentTitle
             else -> null
         }
-    }
-
-    private fun resolveNamingVideoTitle(
-        info: MediaInfo,
-        item: MediaItem?,
-        groupedVideoTitle: String? = null,
-    ): String? {
-        val resolvedGroupedTitle = groupedVideoTitle?.trim()?.takeIf { it.isNotBlank() }
-        if (resolvedGroupedTitle != null) {
-            return resolvedGroupedTitle
-        }
-        if (info.type == MediaType.Video && !info.collection) {
-            info.nfo.showTitle?.trim()?.takeIf { it.isNotBlank() }?.let { return it }
-        }
-        item?.title?.trim()?.takeIf { it.isNotBlank() }?.let { return it }
-        return when (info.type) {
-            MediaType.Music,
-            MediaType.Opus,
-            -> info.nfo.showTitle?.trim()?.takeIf { it.isNotBlank() }
-            else -> null
-        }
+        return DownloadGroupLabel(title = title, subtitle = subtitle)
     }
 
     private fun createNamingSession(
         info: MediaInfo,
-        targets: DownloadTargets,
+        items: List<MediaItem>,
     ): NamingSession {
-        val namingSettings = settingsRepository.currentNamingSettings()
-        val downTimeEpochSeconds = System.currentTimeMillis() / 1000L
-        val baseNamingSession = NamingSession(
-            useTopLevelFolder = false,
-            topLevelFolderTemplate = namingSettings.topLevelFolderTemplate,
-            itemFolderTemplate = namingSettings.itemFolderTemplate,
-            fileTemplate = namingSettings.fileTemplate,
-            cleanSeparators = namingSettings.cleanSeparators,
-            downTimeEpochSeconds = downTimeEpochSeconds,
-            topLevelFolderName = null,
+        val session = NamingSession(
+            settings = settingsRepository.currentNamingSettings(),
+            downTimeEpochSeconds = System.currentTimeMillis() / 1000L,
         )
-        val itemFolderCount = targets.items
-            .map { item ->
-                val naming = resolveGroupNaming(
-                    info = info,
-                    item = item,
-                    isCollectionMode = targets.isCollectionMode,
-                    pageCountByBvid = targets.pageCountByBvid,
-                    videoTitleByBvid = targets.videoTitleByBvid,
-                )
-                val context = buildNamingRenderContext(
-                    info = info,
-                    item = item,
-                    naming = naming,
-                    namingSession = baseNamingSession,
-                    taskType = null,
-                    taskLabel = null,
-                    mediaParams = null,
-                )
-                DownloadNaming.renderComponent(
-                    template = namingSettings.itemFolderTemplate,
-                    context = context,
-                    cleanSeparators = namingSettings.cleanSeparators,
-                )
-            }
+        val itemFolderCount = items
+            .map { item -> resolveItemFolderName(info, item, session) }
             .filter { it.isNotBlank() }
             .distinct()
             .size
-        val useTopLevelFolder = when (namingSettings.topLevelFolderMode) {
+        val useTopLevelFolder = when (session.settings.topLevelFolderMode) {
             TopLevelFolderMode.Auto -> itemFolderCount > 1
             TopLevelFolderMode.Enabled -> true
             TopLevelFolderMode.Disabled -> false
         }
-        val representativeItem = targets.items.firstOrNull()
-        val representativeGroupedTitle = representativeItem?.bvid
-            ?.trim()
-            ?.takeIf { it.isNotBlank() }
-            ?.let { targets.videoTitleByBvid[it] }
-        val videoTitle = resolveNamingVideoTitle(
+        if (!useTopLevelFolder) return session
+
+        val entryShape = NamingShape.ofEntry(info.type)
+        val context = NamingContextFactory.forEntry(
             info = info,
-            item = representativeItem,
-            groupedVideoTitle = representativeGroupedTitle,
+            representative = items.firstOrNull(),
+            shape = entryShape,
+            labels = NamingLabels(container = mapMediaTypeLabel(info.type)),
+            downTimeEpochSeconds = session.downTimeEpochSeconds,
         )
-        val collectionTitle = resolveNamingCollectionTitle(info)
-        val containerLabel = mapMediaTypeLabel(info.type)
-        val namingUpper = representativeItem?.resolvedUpper(info) ?: info.nfo.upper
-        val topContext = NamingRenderContext(
-            videoTitle = videoTitle,
-            collectionTitle = collectionTitle,
-            container = containerLabel,
-            pubTimeEpochSeconds = representativeItem?.pubTime?.takeIf { it > 0L }
-                ?: info.nfo.premiered,
-            downTimeEpochSeconds = downTimeEpochSeconds,
-            upper = namingUpper?.name,
-            upperId = namingUpper?.mid?.toString(),
-            aid = representativeItem?.aid?.toString(),
-            sid = representativeItem?.sid?.toString(),
-            fid = representativeItem?.fid?.toString(),
-            cid = representativeItem?.cid?.toString(),
-            bvid = representativeItem?.bvid,
-            epid = representativeItem?.epid?.toString(),
-            ssid = representativeItem?.ssid?.toString(),
-            opid = representativeItem?.opid,
-        )
-        val topLevelFolderName = if (useTopLevelFolder) {
-            DownloadNaming.renderComponent(
-                template = namingSettings.topLevelFolderTemplate,
-                context = topContext,
-                cleanSeparators = namingSettings.cleanSeparators,
-            )
-        } else {
-            null
-        }
-        return baseNamingSession.copy(
-            useTopLevelFolder = useTopLevelFolder,
-            topLevelFolderName = topLevelFolderName,
+        return session.copy(
+            useTopLevelFolder = true,
+            topLevelFolderName = renderComponent(
+                shape = entryShape,
+                scope = NamingTemplateScope.TopFolder,
+                context = context,
+                session = session,
+            ),
         )
     }
 
     private fun buildRequestedGroupRelativePath(
         info: MediaInfo,
         item: MediaItem,
-        naming: GroupNaming,
         namingSession: NamingSession,
     ): String {
-        val context = buildNamingRenderContext(
-            info = info,
-            item = item,
-            naming = naming,
-            namingSession = namingSession,
-            taskType = null,
-            taskLabel = null,
-            mediaParams = null,
-        )
-        val itemFolderName = DownloadNaming.renderComponent(
-            template = namingSession.itemFolderTemplate,
-            context = context,
-            cleanSeparators = namingSession.cleanSeparators,
-        )
         val segments = buildList {
             add(settingsRepository.downloadRootRelativePath().replace('\\', '/').trim().trim('/'))
             if (namingSession.useTopLevelFolder) {
@@ -2654,78 +2410,99 @@ class ParseViewModel(
                     ?.takeIf { it.isNotBlank() }
                     ?.let(::add)
             }
-            add(itemFolderName)
+            add(resolveItemFolderName(info, item, namingSession))
         }.filter { it.isNotBlank() }
         return segments.joinToString("/")
     }
 
-    private fun buildNamingRenderContext(
+    private fun resolveItemFolderName(
         info: MediaInfo,
         item: MediaItem,
-        naming: GroupNaming,
         namingSession: NamingSession,
-        taskType: DownloadTaskType?,
-        taskLabel: String?,
-        mediaParams: DownloadMediaParams?,
+    ): String {
+        return renderComponent(
+            shape = NamingShape.ofItem(item.type),
+            scope = NamingTemplateScope.ItemFolder,
+            context = buildNamingContext(
+                info = info,
+                item = item,
+                namingSession = namingSession,
+            ),
+            session = namingSession,
+        )
+    }
+
+    private fun buildNamingContext(
+        info: MediaInfo,
+        item: MediaItem,
+        namingSession: NamingSession,
+        taskType: DownloadTaskType? = null,
+        taskLabel: String? = null,
+        mediaParams: DownloadMediaParams? = null,
         formatLabel: String? = null,
-    ): NamingRenderContext {
-        val containerLabel = mapMediaTypeLabel(info.type)
-        val mediaTypeLabel = mapMediaTypeLabel(item.type)
-        val videoTitle = resolveNamingVideoTitle(
+        batchIndex: Int? = null,
+        imageOrdinal: String? = null,
+    ): NamingContext {
+        return NamingContextFactory.forItem(
             info = info,
             item = item,
-            groupedVideoTitle = naming.videoTitle,
-        )
-        val collectionTitle = resolveNamingCollectionTitle(info)
-        val resolvedTaskLabel = taskLabel ?: taskType?.let(::mapTaskTypeLabel)
-        val namingUpper = item.resolvedUpper(info)
-        return NamingRenderContext(
-            videoTitle = videoTitle,
-            collectionTitle = collectionTitle,
-            title = item.title.trim().takeIf { it.isNotBlank() },
-            p = if (naming.useVideoNaming) {
-                (item.index + 1).toString()
-            } else {
-                null
-            },
-            container = containerLabel,
-            mediaType = mediaTypeLabel,
-            taskType = resolvedTaskLabel,
-            index = item.index + 1,
-            pubTimeEpochSeconds = item.pubTime.takeIf { it > 0L } ?: info.nfo.premiered,
+            shape = NamingShape.ofItem(item.type),
+            labels = NamingLabels(
+                container = mapMediaTypeLabel(info.type),
+                mediaType = mapMediaTypeLabel(item.type),
+                taskType = taskLabel ?: taskType?.let(::mapTaskTypeLabel),
+                format = formatLabel,
+            ),
             downTimeEpochSeconds = namingSession.downTimeEpochSeconds,
-            upper = namingUpper?.name,
-            upperId = namingUpper?.mid?.toString(),
-            aid = item.aid?.toString(),
-            sid = item.sid?.toString(),
-            fid = item.fid?.toString(),
-            cid = item.cid?.toString(),
-            bvid = item.bvid?.trim()?.takeIf { it.isNotBlank() },
-            epid = item.epid?.toString(),
-            ssid = item.ssid?.toString(),
-            opid = item.opid?.trim()?.takeIf { it.isNotBlank() },
-            res = mediaParams?.resolution,
-            abr = mediaParams?.audioBitrate,
-            enc = mediaParams?.codec,
-            fmt = formatLabel,
+            batchIndex = batchIndex,
+            showSinglePageNumber = namingSession.settings.showSinglePageNumber,
+            stream = mediaParams?.let {
+                NamingStreamInfo(
+                    resolution = it.resolution,
+                    audioBitrate = it.audioBitrate,
+                    codec = it.codec,
+                )
+            },
+            imageOrdinal = imageOrdinal,
         )
     }
 
     private fun resolveTemplateFileName(
-        taskType: DownloadTaskType,
+        item: MediaItem,
         namingSession: NamingSession,
-        context: NamingRenderContext,
+        context: NamingContext,
         extension: String,
     ): String {
-        val baseName = DownloadNaming.renderComponent(
-            template = namingSession.fileTemplate,
-            context = context,
-            cleanSeparators = namingSession.cleanSeparators,
-        )
-        return DownloadNaming.appendExtension(
-            baseName = baseName,
+        return NamingRenderer.appendExtension(
+            baseName = resolveTemplateBaseName(item, namingSession, context),
             extension = extension,
-            cleanSeparators = namingSession.cleanSeparators,
+            cleanSeparators = namingSession.settings.cleanSeparators,
+        )
+    }
+
+    private fun resolveTemplateBaseName(
+        item: MediaItem,
+        namingSession: NamingSession,
+        context: NamingContext,
+    ): String {
+        return renderComponent(
+            shape = NamingShape.ofItem(item.type),
+            scope = NamingTemplateScope.File,
+            context = context,
+            session = namingSession,
+        )
+    }
+
+    private fun renderComponent(
+        shape: NamingShape,
+        scope: NamingTemplateScope,
+        context: NamingContext,
+        session: NamingSession,
+    ): String {
+        return NamingRenderer.renderComponent(
+            template = session.settings.template(shape, scope),
+            context = context,
+            cleanSeparators = session.settings.cleanSeparators,
         )
     }
 
@@ -3869,12 +3646,6 @@ class ParseViewModel(
 
     private fun sanitizeFileName(name: String): String {
         return name.replace(Regex("[\\\\/:*?\"<>|]"), "_")
-    }
-
-    private fun prefixedName(prefix: String, base: String): String {
-        val safePrefix = prefix.trim()
-        val safeBase = base.trim()
-        return if (safePrefix.isBlank()) safeBase else "$safePrefix - $safeBase"
     }
 
     private fun extensionFromUrl(url: String): String {

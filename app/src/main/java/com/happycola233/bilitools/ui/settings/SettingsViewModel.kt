@@ -4,6 +4,8 @@ import android.net.Uri
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import androidx.navigation3.runtime.NavKey
+import com.happycola233.bilitools.core.naming.NamingShape
+import com.happycola233.bilitools.core.naming.NamingTemplateScope
 import com.happycola233.bilitools.data.AppThemeColor
 import com.happycola233.bilitools.data.AppThemeMode
 import com.happycola233.bilitools.data.DefaultDownloadQualitySettings
@@ -135,16 +137,20 @@ class SettingsViewModel(
         settingsRepository.setNamingCleanSeparators(enabled)
     }
 
-    fun setNamingTopLevelFolderTemplate(template: String) {
-        settingsRepository.setNamingTopLevelFolderTemplate(template)
+    fun setNamingShowSinglePageNumber(enabled: Boolean) {
+        settingsRepository.setNamingShowSinglePageNumber(enabled)
     }
 
-    fun setNamingItemFolderTemplate(template: String) {
-        settingsRepository.setNamingItemFolderTemplate(template)
+    fun setNamingTemplate(
+        shape: NamingShape,
+        scope: NamingTemplateScope,
+        template: String,
+    ) {
+        settingsRepository.setNamingTemplate(shape, scope, template)
     }
 
-    fun setNamingFileTemplate(template: String) {
-        settingsRepository.setNamingFileTemplate(template)
+    fun clearNamingTemplate(shape: NamingShape, scope: NamingTemplateScope) {
+        settingsRepository.clearNamingTemplate(shape, scope)
     }
 
     fun restoreNamingDefaults() {

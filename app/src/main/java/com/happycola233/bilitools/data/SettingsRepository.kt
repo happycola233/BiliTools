@@ -6,7 +6,11 @@ import android.os.Environment
 import android.provider.DocumentsContract
 import androidx.appcompat.app.AppCompatDelegate
 import com.happycola233.bilitools.core.AudioQualities
-import com.happycola233.bilitools.core.DownloadNaming
+import com.happycola233.bilitools.core.naming.NamingShape
+import com.happycola233.bilitools.core.naming.NamingTemplateScope
+import com.happycola233.bilitools.core.naming.NamingTemplateSet
+import com.happycola233.bilitools.core.naming.NamingTemplateSource
+import com.happycola233.bilitools.core.naming.NamingTemplates
 import com.happycola233.bilitools.notification.isLiveUpdateSupported
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,10 +25,24 @@ data class DownloadNamingSettings(
     val topLevelFolderMode: TopLevelFolderMode = TopLevelFolderMode.Auto,
     val overwriteExistingFiles: Boolean = false,
     val cleanSeparators: Boolean = true,
-    val topLevelFolderTemplate: String = SettingsRepository.DEFAULT_TOP_LEVEL_FOLDER_TEMPLATE,
-    val itemFolderTemplate: String = SettingsRepository.DEFAULT_ITEM_FOLDER_TEMPLATE,
-    val fileTemplate: String = SettingsRepository.DEFAULT_FILE_TEMPLATE,
-)
+    /** 单 P 稿件默认不写分 P 编号，打开后 P1 也会出现在命名里。 */
+    val showSinglePageNumber: Boolean = false,
+    /** 用户单独设置过的模板；没有条目就走内置默认。 */
+    val overrides: Map<NamingShape, NamingTemplateSet> = emptyMap(),
+) {
+    fun template(shape: NamingShape, scope: NamingTemplateScope): String =
+        NamingTemplates.resolve(overrides, shape, scope)
+
+    fun templateSource(shape: NamingShape, scope: NamingTemplateScope): NamingTemplateSource =
+        NamingTemplates.sourceOf(overrides, shape, scope)
+
+    /** 不含本形态自身覆盖时会取到的模板，用于判断一次编辑是否真的偏离了继承值。 */
+    fun inheritedTemplate(shape: NamingShape, scope: NamingTemplateScope): String =
+        NamingTemplates.resolve(overrides - shape, shape, scope)
+
+    val hasCustomTemplates: Boolean
+        get() = overrides.values.any { !it.isEmpty }
+}
 
 data class DefaultDownloadQualitySettings(
     val resolutionMode: DownloadQualityMode = DownloadQualityMode.Highest,
@@ -464,56 +482,54 @@ class SettingsRepository(context: Context) {
         )
     }
 
-    fun setNamingTopLevelFolderTemplate(template: String) {
-        updateNamingTemplate(
-            currentValue = _settings.value.naming.topLevelFolderTemplate,
-            nextValue = template,
-            key = KEY_NAMING_TOP_LEVEL_FOLDER_TEMPLATE,
-        ) { naming, next ->
-            naming.copy(topLevelFolderTemplate = next)
-        }
+    fun setNamingShowSinglePageNumber(enabled: Boolean) {
+        val current = _settings.value
+        if (current.naming.showSinglePageNumber == enabled) return
+        prefs.edit().putBoolean(KEY_NAMING_SHOW_SINGLE_PAGE_NUMBER, enabled).apply()
+        _settings.value = current.copy(
+            naming = current.naming.copy(showSinglePageNumber = enabled),
+        )
     }
 
-    fun setNamingItemFolderTemplate(template: String) {
-        updateNamingTemplate(
-            currentValue = _settings.value.naming.itemFolderTemplate,
-            nextValue = template,
-            key = KEY_NAMING_ITEM_FOLDER_TEMPLATE,
-        ) { naming, next ->
-            naming.copy(itemFolderTemplate = next)
+    /**
+     * 模板与继承值一致时不落盘，这样「改回原样」等同于没改过，
+     * 该形态会继续跟随通用模板或内置默认。
+     */
+    fun setNamingTemplate(
+        shape: NamingShape,
+        scope: NamingTemplateScope,
+        template: String,
+    ) {
+        val current = _settings.value
+        val naming = current.naming
+        val nextValue = template.takeIf { it != naming.inheritedTemplate(shape, scope) }
+        val existing = naming.overrides[shape] ?: NamingTemplateSet()
+        if (existing[scope] == nextValue) return
+        val updated = existing.with(scope, nextValue)
+        val overrides = if (updated.isEmpty) {
+            naming.overrides - shape
+        } else {
+            naming.overrides + (shape to updated)
         }
+        writeTemplatePref(shape, scope, nextValue)
+        _settings.value = current.copy(naming = naming.copy(overrides = overrides))
     }
 
-    fun setNamingFileTemplate(template: String) {
-        updateNamingTemplate(
-            currentValue = _settings.value.naming.fileTemplate,
-            nextValue = template,
-            key = KEY_NAMING_FILE_TEMPLATE,
-        ) { naming, next ->
-            naming.copy(fileTemplate = next)
-        }
+    fun clearNamingTemplate(shape: NamingShape, scope: NamingTemplateScope) {
+        setNamingTemplate(shape, scope, _settings.value.naming.inheritedTemplate(shape, scope))
     }
 
     fun restoreNamingDefaults() {
         val current = _settings.value
-        val defaults = DownloadNamingSettings()
-        val templatesAlreadyDefault =
-            current.naming.topLevelFolderTemplate == defaults.topLevelFolderTemplate &&
-                current.naming.itemFolderTemplate == defaults.itemFolderTemplate &&
-                current.naming.fileTemplate == defaults.fileTemplate
-        if (templatesAlreadyDefault) return
-        prefs.edit()
-            .putString(KEY_NAMING_TOP_LEVEL_FOLDER_TEMPLATE, defaults.topLevelFolderTemplate)
-            .putString(KEY_NAMING_ITEM_FOLDER_TEMPLATE, defaults.itemFolderTemplate)
-            .putString(KEY_NAMING_FILE_TEMPLATE, defaults.fileTemplate)
-            .apply()
-        _settings.value = current.copy(
-            naming = current.naming.copy(
-                topLevelFolderTemplate = defaults.topLevelFolderTemplate,
-                itemFolderTemplate = defaults.itemFolderTemplate,
-                fileTemplate = defaults.fileTemplate,
-            ),
-        )
+        if (current.naming.overrides.isEmpty()) return
+        val editor = prefs.edit()
+        NamingShape.entries.forEach { shape ->
+            NamingTemplateScope.entries.forEach { scope ->
+                editor.remove(templatePrefKey(shape, scope))
+            }
+        }
+        editor.apply()
+        _settings.value = current.copy(naming = current.naming.copy(overrides = emptyMap()))
     }
 
     fun shouldIgnoreUpdate(version: String): Boolean {
@@ -673,18 +689,11 @@ class SettingsRepository(context: Context) {
                     KEY_NAMING_CLEAN_SEPARATORS,
                     true,
                 ),
-                topLevelFolderTemplate = prefs.getString(
-                    KEY_NAMING_TOP_LEVEL_FOLDER_TEMPLATE,
-                    DEFAULT_TOP_LEVEL_FOLDER_TEMPLATE,
-                ) ?: DEFAULT_TOP_LEVEL_FOLDER_TEMPLATE,
-                itemFolderTemplate = prefs.getString(
-                    KEY_NAMING_ITEM_FOLDER_TEMPLATE,
-                    DEFAULT_ITEM_FOLDER_TEMPLATE,
-                ) ?: DEFAULT_ITEM_FOLDER_TEMPLATE,
-                fileTemplate = prefs.getString(
-                    KEY_NAMING_FILE_TEMPLATE,
-                    DEFAULT_FILE_TEMPLATE,
-                ) ?: DEFAULT_FILE_TEMPLATE,
+                showSinglePageNumber = prefs.getBoolean(
+                    KEY_NAMING_SHOW_SINGLE_PAGE_NUMBER,
+                    false,
+                ),
+                overrides = loadNamingOverrides(),
             ),
             issueReportDetailedLoggingEnabled = prefs.getBoolean(
                 KEY_ISSUE_REPORT_DETAILED_LOGGING_ENABLED,
@@ -817,19 +826,34 @@ class SettingsRepository(context: Context) {
         )
     }
 
-    private fun updateNamingTemplate(
-        currentValue: String,
-        nextValue: String,
-        key: String,
-        update: (DownloadNamingSettings, String) -> DownloadNamingSettings,
-    ) {
-        if (currentValue == nextValue) return
-        val current = _settings.value
-        prefs.edit().putString(key, nextValue).apply()
-        _settings.value = current.copy(
-            naming = update(current.naming, nextValue),
-        )
+    private fun loadNamingOverrides(): Map<NamingShape, NamingTemplateSet> {
+        if (LEGACY_NAMING_TEMPLATE_KEYS.any(prefs::contains)) {
+            val editor = prefs.edit()
+            LEGACY_NAMING_TEMPLATE_KEYS.forEach(editor::remove)
+            editor.apply()
+        }
+        return NamingShape.entries.mapNotNull { shape ->
+            var set = NamingTemplateSet()
+            shape.supportedScopes.forEach { scope ->
+                set = set.with(scope, prefs.getString(templatePrefKey(shape, scope), null))
+            }
+            if (set.isEmpty) null else shape to set
+        }.toMap()
     }
+
+    private fun writeTemplatePref(
+        shape: NamingShape,
+        scope: NamingTemplateScope,
+        template: String?,
+    ) {
+        val editor = prefs.edit()
+        val key = templatePrefKey(shape, scope)
+        if (template == null) editor.remove(key) else editor.putString(key, template)
+        editor.apply()
+    }
+
+    private fun templatePrefKey(shape: NamingShape, scope: NamingTemplateScope): String =
+        "naming_template_${shape.value}_${scope.value}"
 
     companion object {
         // Keep this a true compile-time constant for default values.
@@ -850,9 +874,6 @@ class SettingsRepository(context: Context) {
         val DEFAULT_DOWNLOAD_RESOLUTION_IDS = listOf(127, 126, 125, 120, 116, 112, 80, 64, 32, 16, 6)
         const val DEFAULT_DOWNLOAD_RESOLUTION_ID = 127
         const val DEFAULT_DOWNLOAD_AUDIO_BITRATE_ID = AudioQualities.LOSSLESS_FLAC
-        const val DEFAULT_TOP_LEVEL_FOLDER_TEMPLATE = DownloadNaming.DEFAULT_TOP_FOLDER_TEMPLATE
-        const val DEFAULT_ITEM_FOLDER_TEMPLATE = DownloadNaming.DEFAULT_ITEM_FOLDER_TEMPLATE
-        const val DEFAULT_FILE_TEMPLATE = DownloadNaming.DEFAULT_FILE_TEMPLATE
 
         private const val PREFS_NAME = "app_settings"
         private const val KEY_ADD_METADATA = "add_metadata"
@@ -893,9 +914,14 @@ class SettingsRepository(context: Context) {
         private const val KEY_NAMING_TOP_LEVEL_FOLDER_MODE = "naming_top_level_folder_mode"
         private const val KEY_NAMING_OVERWRITE_EXISTING_FILES = "naming_overwrite_existing_files"
         private const val KEY_NAMING_CLEAN_SEPARATORS = "naming_clean_separators"
-        private const val KEY_NAMING_TOP_LEVEL_FOLDER_TEMPLATE = "naming_top_level_folder_template"
-        private const val KEY_NAMING_ITEM_FOLDER_TEMPLATE = "naming_item_folder_template"
-        private const val KEY_NAMING_FILE_TEMPLATE = "naming_file_template"
+        private const val KEY_NAMING_SHOW_SINGLE_PAGE_NUMBER = "naming_show_single_page_number"
+
+        // 旧版只有一套「视频视角」模板，无法表达番剧、音乐、图文的命名差异，升级后直接丢弃。
+        private val LEGACY_NAMING_TEMPLATE_KEYS = listOf(
+            "naming_top_level_folder_template",
+            "naming_item_folder_template",
+            "naming_file_template",
+        )
         private const val KEY_ISSUE_REPORT_DETAILED_LOGGING_ENABLED =
             "issue_report_detailed_logging_enabled"
         private const val KEY_ISSUE_REPORT_DETAILED_LOGGING_STARTED_AT =

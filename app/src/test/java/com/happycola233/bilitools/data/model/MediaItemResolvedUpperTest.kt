@@ -1,8 +1,8 @@
 package com.happycola233.bilitools.data.model
 
-import com.happycola233.bilitools.core.DownloadNaming
 import com.happycola233.bilitools.core.NfoGenerator
-import com.happycola233.bilitools.core.NamingRenderContext
+import com.happycola233.bilitools.core.naming.NamingContext
+import com.happycola233.bilitools.core.naming.NamingRenderer
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -41,9 +41,9 @@ class MediaItemResolvedUpperTest {
         val info = favoriteInfo(MediaUpper("登录用户", 10001L))
         val item = videoItem(upper = MediaUpper("稿件UP", 20002L))
         val upper = item.resolvedUpper(info)
-        val rendered = DownloadNaming.renderComponent(
+        val rendered = NamingRenderer.renderComponent(
             template = "{upper}-{upperid}",
-            context = NamingRenderContext(
+            context = NamingContext(
                 upper = upper?.name,
                 upperId = upper?.mid?.toString(),
             ),

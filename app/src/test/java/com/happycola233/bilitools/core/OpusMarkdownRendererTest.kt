@@ -44,7 +44,7 @@ class OpusMarkdownRendererTest {
             ),
         )
 
-        val assets = OpusAssetPlanner.plan(document, "示例 - 图文图片.jpg")
+        val assets = OpusAssetPlanner.plan(document) { _, _ -> "示例 - 图文图片" }
 
         assertEquals(
             listOf(
@@ -89,7 +89,7 @@ class OpusMarkdownRendererTest {
                 OpusBlock.Divider,
             ),
         )
-        val assets = OpusAssetPlanner.plan(document, "示例 图文图片.jpg")
+        val assets = OpusAssetPlanner.plan(document) { _, _ -> "示例 图文图片" }
 
         val markdown = OpusMarkdownRenderer.render(document, assets)
 

@@ -1,5 +1,6 @@
 package com.happycola233.bilitools.core
 
+import com.happycola233.bilitools.core.naming.NamingRenderer
 import com.happycola233.bilitools.data.model.OpusAssetPlan
 import com.happycola233.bilitools.data.model.OpusBlock
 import com.happycola233.bilitools.data.model.OpusDocument
@@ -14,22 +15,36 @@ import kotlin.math.max
 object OpusAssetPlanner {
     private val supportedExtensions = setOf("jpg", "jpeg", "png", "gif", "webp", "avif", "bmp")
 
-    fun plan(document: OpusDocument, requestedBaseName: String): List<OpusAssetPlan> {
+    /**
+     * [baseNameFor] 按图片序号给出不带扩展名的基础名。模板里带 `{img}` 时每张图天然不同；
+     * 不带时所有图片会重名，这里再统一补上序号兜底。
+     */
+    fun plan(
+        document: OpusDocument,
+        baseNameFor: (index: Int, total: Int) -> String,
+    ): List<OpusAssetPlan> {
         if (document.images.isEmpty()) return emptyList()
-        val sanitizedBaseName = DownloadNaming.sanitizeComponent(requestedBaseName)
-        val safeBaseName = sanitizedBaseName
-            .substringBeforeLast('.', sanitizedBaseName)
-            .ifBlank { "图文图片" }
-        val digits = max(2, document.images.size.toString().length)
+        val total = document.images.size
+        val digits = max(2, total.toString().length)
+        val baseNames = document.images.indices.map { index ->
+            NamingRenderer.sanitizeComponent(baseNameFor(index, total)).ifBlank { "图文图片" }
+        }
+        val needsOrdinal = baseNames.distinct().size < baseNames.size
         return document.images.mapIndexed { index, image ->
             val extension = extensionFromUrl(image.url)
+            val ordinal = (index + 1).toString().padStart(digits, '0')
+            val baseName = if (needsOrdinal) "${baseNames[index]} - $ordinal" else baseNames[index]
             OpusAssetPlan(
                 image = image,
-                fileName = "$safeBaseName - ${(index + 1).toString().padStart(digits, '0')}.$extension",
+                fileName = "$baseName.$extension",
                 mimeType = mimeTypeFor(extension),
             )
         }
     }
+
+    /** 图片序号按总数补零，保证文件管理器里按名称排序即为原文顺序。 */
+    fun imageOrdinal(index: Int, total: Int): String =
+        (index + 1).toString().padStart(max(2, total.toString().length), '0')
 
     fun normalizeImageUrl(rawUrl: String): String {
         val withScheme = normalizeWebUrl(rawUrl)

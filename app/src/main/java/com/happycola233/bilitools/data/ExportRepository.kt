@@ -6,7 +6,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
-import com.happycola233.bilitools.core.DownloadNaming
+import com.happycola233.bilitools.core.naming.NamingRenderer
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -74,7 +74,7 @@ class ExportRepository(
         relativePath: String,
         overwrite: Boolean,
     ): String {
-        val normalized = DownloadNaming.sanitizeComponent(fileName).ifBlank { "BiliTools" }
+        val normalized = NamingRenderer.sanitizeComponent(fileName).ifBlank { "BiliTools" }
         if (overwrite) {
             deleteExistingOutputs(normalized, relativePath)
             return normalized
