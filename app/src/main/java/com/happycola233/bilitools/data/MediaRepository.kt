@@ -24,7 +24,6 @@ import com.happycola233.bilitools.data.model.VideoStream
 import com.squareup.moshi.Json
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.json.JSONObject
 
 class MediaRepository(
@@ -40,15 +39,7 @@ class MediaRepository(
         }
         MediaInputClassifier.parseDirectId(raw)?.let { return it }
 
-        val picked = raw.split(Regex("\\s+")).firstOrNull { token ->
-            URL_CANDIDATE_REGEX.matches(token) && URL_SAFE_REGEX.matches(token)
-        }
-        val urlString = when {
-            picked != null -> if (picked.startsWith("http", ignoreCase = true)) picked else "https://$picked"
-            DOMAIN_ONLY_REGEX.containsMatchIn(raw) -> "https://$raw"
-            else -> raw
-        }
-        val url = urlString.toHttpUrlOrNull()
+        val url = MediaInputUrlParser.parse(raw)
         if (url == null) {
             if (allowRaw) {
                 return ParsedInput(raw)
@@ -56,12 +47,11 @@ class MediaRepository(
             throw InvalidMediaInputException()
         }
 
-        val host = url.host.lowercase()
-        if (host != "bilibili.com" && !host.endsWith(".bilibili.com") && host != "b23.tv") {
+        if (!url.isBiliMediaHost()) {
             throw InvalidMediaInputException()
         }
 
-        if (host == "b23.tv") {
+        if (url.host == "b23.tv") {
             val resolved = httpClient.resolveUrl(url)
             return parseInput(resolved, allowRaw)
         }
@@ -1799,15 +1789,6 @@ class MediaRepository(
         share = share,
     )
 
-    companion object {
-        private val URL_CANDIDATE_REGEX =
-            Regex("^(?:https?://)?(?:[\\w-]+\\.)*(?:bilibili\\.com|b23\\.tv)/.+$", RegexOption.IGNORE_CASE)
-        private val URL_SAFE_REGEX =
-            Regex("^[A-Za-z0-9\\-._~:/?#\\[\\]@!$&'()*+,;=%]+$")
-        private val DOMAIN_ONLY_REGEX =
-            Regex("\\.(bilibili\\.com|b23\\.tv)$", RegexOption.IGNORE_CASE)
-
-    }
 }
 
 private data class VideoViewResponse(
