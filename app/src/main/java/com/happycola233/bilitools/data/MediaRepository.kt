@@ -828,17 +828,21 @@ class MediaRepository(
                     favorite = cnt.collect,
                 )
             } ?: MediaStat()
+            // 收藏夹条目的 id 随内容类型改变含义：稿件是 avid，音频是 auid，剧集是 season_id。
+            val itemType = mapFavoriteType(item.type)
             MediaItem(
                 title = item.title,
                 coverUrl = normalizeCoverUrl(item.cover),
                 description = item.intro?.takeIf { it.isNotBlank() } ?: "",
                 stat = itemStat,
                 url = "https://www.bilibili.com/video/${item.bvid}",
-                aid = item.id,
+                aid = item.id.takeIf { itemType == MediaType.Video },
                 bvid = item.bvid,
+                sid = item.id.takeIf { itemType == MediaType.Music },
+                ssid = item.id.takeIf { itemType == MediaType.Bangumi },
                 duration = item.duration,
                 pubTime = item.pubtime,
-                type = mapFavoriteType(item.type),
+                type = itemType,
                 upper = item.upper?.let { createMediaUpper(it.name, it.mid, it.face) },
                 isTarget = index == 0,
                 index = baseIndex + index,

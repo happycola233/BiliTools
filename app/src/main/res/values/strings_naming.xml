@@ -16,13 +16,11 @@
     <string name="settings_naming_single_page_number_desc">开启后，只有一个分 P 的稿件也会写上 P1。关闭时只有多 P 稿件才带编号。</string>
 
     <string name="settings_naming_shape_title">命名模板</string>
-    <string name="settings_naming_shape_common">通用</string>
     <string name="settings_naming_shape_video">稿件视频</string>
     <string name="settings_naming_shape_episode">番剧 · 课程</string>
     <string name="settings_naming_shape_track">音乐</string>
     <string name="settings_naming_shape_opus">图文</string>
     <string name="settings_naming_shape_listing">列表入口</string>
-    <string name="settings_naming_shape_common_desc">在这里改一次，所有没有单独设置的类型都会跟着变。</string>
     <string name="settings_naming_shape_video_desc">稿件视频，以及收藏夹、稍后再看、用户投稿里的视频。</string>
     <string name="settings_naming_shape_episode_desc">番剧、国创、影视与课程的单集。</string>
     <string name="settings_naming_shape_track_desc">音频单曲，以及歌单、用户音频里的歌曲。</string>
@@ -30,11 +28,8 @@
     <string name="settings_naming_shape_listing_desc">收藏夹、稍后再看、用户空间等入口的顶层文件夹。</string>
 
     <string name="settings_naming_source_default">默认</string>
-    <string name="settings_naming_source_common">跟随通用</string>
     <string name="settings_naming_source_custom">已自定义</string>
-    <string name="settings_naming_source_shape_custom">已单独设置</string>
-    <string name="settings_naming_clear_custom">清除自定义</string>
-    <string name="settings_naming_clear_shape_custom">清除单独设置</string>
+    <string name="settings_naming_clear_custom">恢复本项默认</string>
 
     <string name="settings_naming_top_level_folder_template">顶层文件夹模板</string>
     <string name="settings_naming_top_level_folder_template_desc">适合放合集标题、资源分类、下载时间等批次级信息。</string>
@@ -82,7 +77,6 @@
     <string name="settings_naming_token_collection">合集标题</string>
     <string name="settings_naming_token_p">分P编号</string>
     <string name="settings_naming_token_ep">集号</string>
-    <string name="settings_naming_token_long_title">单集完整标题</string>
     <string name="settings_naming_token_section">分区</string>
     <string name="settings_naming_token_img">图片序号</string>
     <string name="settings_naming_token_container">资源分类</string>

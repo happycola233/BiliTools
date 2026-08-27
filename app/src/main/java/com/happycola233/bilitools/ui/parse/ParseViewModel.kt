@@ -1283,6 +1283,7 @@ class ParseViewModel(
                             info = info,
                             item = item,
                             namingSession = namingSession,
+                            batchOrdinal = batchOrdinal,
                         )
 
                         val groupId = downloadRepository.createGroup(
@@ -2367,7 +2368,7 @@ class ParseViewModel(
             downTimeEpochSeconds = System.currentTimeMillis() / 1000L,
         )
         val itemFolderCount = items
-            .map { item -> resolveItemFolderName(info, item, session) }
+            .mapIndexed { index, item -> resolveItemFolderName(info, item, session, index + 1) }
             .filter { it.isNotBlank() }
             .distinct()
             .size
@@ -2401,6 +2402,7 @@ class ParseViewModel(
         info: MediaInfo,
         item: MediaItem,
         namingSession: NamingSession,
+        batchOrdinal: Int,
     ): String {
         val segments = buildList {
             add(settingsRepository.downloadRootRelativePath().replace('\\', '/').trim().trim('/'))
@@ -2410,7 +2412,7 @@ class ParseViewModel(
                     ?.takeIf { it.isNotBlank() }
                     ?.let(::add)
             }
-            add(resolveItemFolderName(info, item, namingSession))
+            add(resolveItemFolderName(info, item, namingSession, batchOrdinal))
         }.filter { it.isNotBlank() }
         return segments.joinToString("/")
     }
@@ -2419,6 +2421,7 @@ class ParseViewModel(
         info: MediaInfo,
         item: MediaItem,
         namingSession: NamingSession,
+        batchOrdinal: Int,
     ): String {
         return renderComponent(
             shape = NamingShape.ofItem(item.type),
@@ -2427,6 +2430,7 @@ class ParseViewModel(
                 info = info,
                 item = item,
                 namingSession = namingSession,
+                batchIndex = batchOrdinal,
             ),
             session = namingSession,
         )

@@ -40,7 +40,6 @@ object NamingContextFactory {
             collection = collectionTitle(info),
             p = pageNumber(item, shape, showSinglePageNumber),
             ep = episodeNumber(item),
-            longTitle = item.longTitle.normalized(),
             section = item.sectionTitle.normalized(),
             img = imageOrdinal.normalized(),
             container = labels.container.normalized(),
@@ -53,16 +52,16 @@ object NamingContextFactory {
             upperId = upper?.mid?.toString(),
             artist = item.artist.normalized(),
             id = contentId(item, shape),
-            aid = item.aid?.toString(),
+            aid = item.aid.normalizedId(),
             bvid = item.bvid.normalized(),
-            cid = item.cid?.toString(),
-            epid = item.epid?.toString(),
-            ssid = item.ssid?.toString(),
-            sid = item.sid?.toString(),
-            amid = item.amid?.toString(),
-            fid = item.fid?.toString(),
+            cid = item.cid.normalizedId(),
+            epid = item.epid.normalizedId(),
+            ssid = item.ssid.normalizedId(),
+            sid = item.sid.normalizedId(),
+            amid = item.amid.normalizedId(),
+            fid = item.fid.normalizedId(),
             opid = item.opid.normalized(),
-            cvid = item.cvid?.toString(),
+            cvid = item.cvid.normalizedId(),
             res = stream?.resolution.normalized(),
             abr = stream?.audioBitrate.normalized(),
             enc = stream?.codec.normalized(),
@@ -93,20 +92,23 @@ object NamingContextFactory {
             upperId = upper?.mid?.toString(),
             artist = representative?.artist.normalized(),
             id = representative?.let { contentId(it, shape) },
-            aid = representative?.aid?.toString(),
+            aid = representative?.aid.normalizedId(),
             bvid = representative?.bvid.normalized(),
-            cid = representative?.cid?.toString(),
-            epid = representative?.epid?.toString(),
-            ssid = representative?.ssid?.toString(),
-            sid = representative?.sid?.toString(),
-            amid = representative?.amid?.toString(),
-            fid = representative?.fid?.toString(),
+            cid = representative?.cid.normalizedId(),
+            epid = representative?.epid.normalizedId(),
+            ssid = representative?.ssid.normalizedId(),
+            sid = representative?.sid.normalizedId(),
+            amid = representative?.amid.normalizedId(),
+            fid = representative?.fid.normalizedId(),
             opid = representative?.opid.normalized(),
-            cvid = representative?.cvid?.toString(),
+            cvid = representative?.cvid.normalizedId(),
         )
     }
 
-    /** 番剧的展示标题往往只是「1」这样的集号，真正的单集名在 long_title 里。 */
+    /**
+     * 番剧单集的展示标题是「第1话 瞒天过海！罪犯新选组」，其中「第1话」已经由 `{ep}` 单独提供，
+     * 因此叶子标题优先取 long_title 的纯集名；PV、预告这类没有集名的条目回落到展示标题。
+     */
     private fun leafTitle(item: MediaItem, shape: NamingShape): String? {
         if (shape == NamingShape.Episode) {
             item.longTitle.normalized()?.let { return it }
@@ -153,13 +155,26 @@ object NamingContextFactory {
         return if (fraction.isEmpty()) padded else "$padded.$fraction"
     }
 
-    private fun contentId(item: MediaItem, shape: NamingShape): String? = when (shape) {
-        NamingShape.Episode -> item.epid?.let { "ep$it" }
-        // 音频的关联稿件不能当主键：没有关联稿件时 aid/bvid 会是 0 / 空。
-        NamingShape.Track -> item.sid?.let { "au$it" }
-        NamingShape.Opus -> item.cvid?.let { "cv$it" } ?: item.opid.normalized()
-        else -> item.bvid.normalized() ?: item.aid?.let { "av$it" }
+    /**
+     * 公开内容号。先取本形态的主键，取不到再回落到稿件号——
+     * 收藏夹里的番剧、音频条目只带稿件号，留空反而会让文件名少掉唯一标识。
+     */
+    private fun contentId(item: MediaItem, shape: NamingShape): String? {
+        val primary = when (shape) {
+            NamingShape.Episode -> item.epid.normalizedId()?.let { "ep$it" }
+                ?: item.ssid.normalizedId()?.let { "ss$it" }
+            // 音频的关联稿件不能当主键：没有关联稿件时 aid/bvid 会是 0 / 空。
+            NamingShape.Track -> item.sid.normalizedId()?.let { "au$it" }
+            NamingShape.Opus -> item.cvid.normalizedId()?.let { "cv$it" } ?: item.opid.normalized()
+            NamingShape.Video, NamingShape.Listing -> null
+        }
+        return primary
+            ?: item.bvid.normalized()
+            ?: item.aid.normalizedId()?.let { "av$it" }
     }
 
     private fun String?.normalized(): String? = this?.trim()?.takeIf { it.isNotEmpty() }
+
+    /** 接口在「没有关联资源」时给的是 0 而不是缺字段，按空处理才不会写出 ` - 0`。 */
+    private fun Long?.normalizedId(): String? = this?.takeIf { it > 0L }?.toString()
 }

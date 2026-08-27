@@ -15,6 +15,8 @@ enum class NamingTokenGroup {
  *
  * [shapes] 为 null 表示所有形态都能用；否则只在列出的形态里出现在设置界面上。
  * 这只影响「插入变量」的按钮，渲染时任何变量都合法，取不到值即为空。
+ *
+ * 各形态的变量表互相独立，不存在一个「什么都能用」的形态。
  */
 enum class NamingToken(
     val key: String,
@@ -47,12 +49,6 @@ enum class NamingToken(
     ),
     Ep(
         key = "ep",
-        scopes = setOf(NamingTemplateScope.ItemFolder, NamingTemplateScope.File),
-        group = NamingTokenGroup.General,
-        shapes = setOf(NamingShape.Episode),
-    ),
-    LongTitle(
-        key = "longtitle",
         scopes = setOf(NamingTemplateScope.ItemFolder, NamingTemplateScope.File),
         group = NamingTokenGroup.General,
         shapes = setOf(NamingShape.Episode),
@@ -209,10 +205,7 @@ enum class NamingToken(
     ),
     ;
 
-    /** 「通用」槽位对所有形态生效，因此展示全部变量。 */
-    fun isVisibleIn(shape: NamingShape): Boolean {
-        return shape == NamingShape.Common || shapes == null || shape in shapes
-    }
+    fun isVisibleIn(shape: NamingShape): Boolean = shapes == null || shape in shapes
 
     companion object {
         fun fromKey(key: String): NamingToken? = entries.firstOrNull { it.key == key }

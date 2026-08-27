@@ -27,7 +27,6 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -57,6 +56,7 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.foundation.shape.CornerBasedShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.Image
@@ -71,6 +71,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialShapes
@@ -86,6 +87,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.toShape
@@ -826,7 +828,7 @@ private fun NamingSettingsScreen(
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val previewContexts = rememberNamingPreviewContexts()
     var showRestoreDefaultsConfirmDialog by rememberSaveable { mutableStateOf(false) }
-    var selectedShapeName by rememberSaveable { mutableStateOf(NamingShape.Common.name) }
+    var selectedShapeName by rememberSaveable { mutableStateOf(NamingShape.Video.name) }
 
     val showTopLevelFolderTemplate =
         settings.naming.topLevelFolderMode != TopLevelFolderMode.Disabled
@@ -835,7 +837,7 @@ private fun NamingSettingsScreen(
     }
     val selectedShape = shapeOptions
         .firstOrNull { it.name == selectedShapeName }
-        ?: NamingShape.Common
+        ?: NamingShape.Video
 
     if (showRestoreDefaultsConfirmDialog) {
         AlertDialog(
@@ -902,7 +904,7 @@ private fun NamingSettingsScreen(
                     )
                     ExpressiveSwitchListItem(
                         checked = settings.naming.showSinglePageNumber,
-                        iconRes = R.drawable.ic_checklist_rounded_24,
+                        iconRes = R.drawable.ic_lists_24,
                         title = stringResource(R.string.settings_naming_single_page_number),
                         description = stringResource(R.string.settings_naming_single_page_number_desc),
                         items = 3,
@@ -1092,7 +1094,7 @@ private fun NamingShapeSelectorCard(
                         text = namingShapeLabel(shape),
                         selected = shape == selected,
                         customized = shape in customizedShapes,
-                        onClick = { onSelect(shape) },
+                        onSelect = { onSelect(shape) },
                     )
                 }
             }
@@ -1100,62 +1102,42 @@ private fun NamingShapeSelectorCard(
     }
 }
 
+private val NAMING_SHAPE_CHIP_HEIGHT = 44.dp
+
+/** 按压时圆角收成方角、松开弹回，是 M3 Expressive 里给选择器的标准反馈。 */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun NamingShapeChip(
     text: String,
     selected: Boolean,
     customized: Boolean,
-    onClick: () -> Unit,
+    onSelect: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val haptics = rememberAppHaptics()
-    val interactionSource = remember { MutableInteractionSource() }
-    val progress by animateFloatAsState(
-        targetValue = if (selected) 1f else 0f,
-        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
-        label = "namingShapeChipProgress",
-    )
-    val scheme = MaterialTheme.colorScheme
-    val containerColor = lerp(scheme.surfaceContainerHigh, scheme.primaryContainer, progress)
-    val contentColor = lerp(scheme.onSurfaceVariant, scheme.onPrimaryContainer, progress)
-    val borderColor = lerp(scheme.outlineVariant, scheme.primary.copy(alpha = 0.5f), progress)
-
-    Surface(
-        color = containerColor,
-        shape = MaterialTheme.shapes.large,
-        border = BorderStroke(1.dp, borderColor),
-        modifier = modifier.clickable(
-            interactionSource = interactionSource,
-            indication = null,
-            role = Role.RadioButton,
-            onClick = {
+    ToggleButton(
+        checked = selected,
+        onCheckedChange = { checked ->
+            if (checked) {
                 haptics.select()
-                onClick()
-            },
-        ),
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
-        ) {
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelLarge,
-                color = contentColor,
-                maxLines = 1,
-            )
-            if (customized) {
-                Box(
-                    modifier = Modifier
-                        .size(6.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(
-                            if (selected) contentColor else MaterialTheme.colorScheme.primary,
-                        ),
-                )
+                onSelect()
             }
+        },
+        shapes = ToggleButtonDefaults.shapesFor(NAMING_SHAPE_CHIP_HEIGHT),
+        contentPadding = PaddingValues(horizontal = 18.dp),
+        modifier = modifier
+            .height(NAMING_SHAPE_CHIP_HEIGHT)
+            .semantics { role = Role.RadioButton },
+    ) {
+        Text(text = text, maxLines = 1)
+        if (customized) {
+            Spacer(Modifier.width(6.dp))
+            Box(
+                modifier = Modifier
+                    .size(6.dp)
+                    .clip(CircleShape)
+                    .background(LocalContentColor.current),
+            )
         }
     }
 }
@@ -1241,7 +1223,7 @@ private fun NamingTemplateEditorPanel(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         SettingsItemTitle(stringResource(namingScopeTitleRes(scope)))
-                        NamingTemplateSourceBadge(shape = shape, source = source)
+                        NamingTemplateSourceBadge(source = source)
                     }
                 },
                 supportingContent = {
@@ -1338,15 +1320,7 @@ private fun NamingTemplateEditorPanel(
                     if (source == NamingTemplateSource.Custom) {
                         Spacer(Modifier.height(4.dp))
                         TextButton(onClick = onReset) {
-                            Text(
-                                stringResource(
-                                    if (shape == NamingShape.Common) {
-                                        R.string.settings_naming_clear_custom
-                                    } else {
-                                        R.string.settings_naming_clear_shape_custom
-                                    },
-                                ),
-                            )
+                            Text(stringResource(R.string.settings_naming_clear_custom))
                         }
                     }
 
@@ -1410,23 +1384,16 @@ private fun NamingTemplateEditorPanel(
 
 @Composable
 private fun NamingTemplateSourceBadge(
-    shape: NamingShape,
     source: NamingTemplateSource,
     modifier: Modifier = Modifier,
 ) {
     val scheme = MaterialTheme.colorScheme
     val (containerColor, contentColor) = when (source) {
         NamingTemplateSource.Custom -> scheme.primaryContainer to scheme.onPrimaryContainer
-        NamingTemplateSource.Common -> scheme.tertiaryContainer to scheme.onTertiaryContainer
         NamingTemplateSource.Default -> scheme.surfaceContainerHighest to scheme.onSurfaceVariant
     }
     val labelRes = when (source) {
-        NamingTemplateSource.Custom -> if (shape == NamingShape.Common) {
-            R.string.settings_naming_source_custom
-        } else {
-            R.string.settings_naming_source_shape_custom
-        }
-        NamingTemplateSource.Common -> R.string.settings_naming_source_common
+        NamingTemplateSource.Custom -> R.string.settings_naming_source_custom
         NamingTemplateSource.Default -> R.string.settings_naming_source_default
     }
     Surface(
@@ -1459,11 +1426,13 @@ private fun NamingTokenChip(
         animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
         label = "namingTokenChipScale",
     )
-    val restingContainer = if (accent) {
-        MaterialTheme.colorScheme.tertiaryContainer
-    } else {
-        MaterialTheme.colorScheme.secondaryContainer
-    }
+    val restingContainer = AppSurfaces.softTintedContainerColor(
+        if (accent) {
+            MaterialTheme.colorScheme.tertiaryContainer
+        } else {
+            MaterialTheme.colorScheme.secondaryContainer
+        },
+    )
     val restingContent = if (accent) {
         MaterialTheme.colorScheme.onTertiaryContainer
     } else {
@@ -1538,9 +1507,11 @@ private fun NamingTemplateRichPreview(
             val previewLineHeight = 2.5.em
             val normalColor = MaterialTheme.colorScheme.onSurfaceVariant
             val optionalColor = MaterialTheme.colorScheme.tertiary
-            val tokenContainerColor = MaterialTheme.colorScheme.secondaryContainer
+            val tokenContainerColor =
+                AppSurfaces.softTintedContainerColor(MaterialTheme.colorScheme.secondaryContainer)
             val tokenContentColor = MaterialTheme.colorScheme.onSecondaryContainer
-            val optionalContainerColor = MaterialTheme.colorScheme.tertiaryContainer
+            val optionalContainerColor =
+                AppSurfaces.softTintedContainerColor(MaterialTheme.colorScheme.tertiaryContainer)
             val optionalContentColor = MaterialTheme.colorScheme.onTertiaryContainer
             val invalidContainerColor = MaterialTheme.colorScheme.errorContainer
             val invalidContentColor = MaterialTheme.colorScheme.onErrorContainer
@@ -1766,14 +1737,12 @@ private fun rememberNamingPreviewContexts(): Map<NamingShape, NamingContext> {
             fmt = format,
         )
         mapOf(
-            NamingShape.Common to video,
             NamingShape.Video to video,
             NamingShape.Episode to NamingContext(
                 title = episodeTitle,
                 work = episodeSeason,
                 collection = episodeSeason,
                 ep = "01",
-                longTitle = episodeTitle,
                 section = videoSection,
                 container = bangumiLabel,
                 mediaType = bangumiLabel,
@@ -1879,7 +1848,6 @@ private fun namingScopeDescriptionRes(scope: NamingTemplateScope): Int = when (s
 
 @Composable
 private fun namingShapeLabel(shape: NamingShape): String = when (shape) {
-    NamingShape.Common -> stringResource(R.string.settings_naming_shape_common)
     NamingShape.Video -> stringResource(R.string.settings_naming_shape_video)
     NamingShape.Episode -> stringResource(R.string.settings_naming_shape_episode)
     NamingShape.Track -> stringResource(R.string.settings_naming_shape_track)
@@ -1889,7 +1857,6 @@ private fun namingShapeLabel(shape: NamingShape): String = when (shape) {
 
 @Composable
 private fun namingShapeDescription(shape: NamingShape): String = when (shape) {
-    NamingShape.Common -> stringResource(R.string.settings_naming_shape_common_desc)
     NamingShape.Video -> stringResource(R.string.settings_naming_shape_video_desc)
     NamingShape.Episode -> stringResource(R.string.settings_naming_shape_episode_desc)
     NamingShape.Track -> stringResource(R.string.settings_naming_shape_track_desc)
@@ -1939,7 +1906,6 @@ private fun namingTokenPreviewLabel(token: NamingToken): String {
         NamingToken.Collection -> stringResource(R.string.settings_naming_token_collection)
         NamingToken.P -> stringResource(R.string.settings_naming_token_p)
         NamingToken.Ep -> stringResource(R.string.settings_naming_token_ep)
-        NamingToken.LongTitle -> stringResource(R.string.settings_naming_token_long_title)
         NamingToken.Section -> stringResource(R.string.settings_naming_token_section)
         NamingToken.Img -> stringResource(R.string.settings_naming_token_img)
         NamingToken.Container -> stringResource(R.string.settings_naming_token_container)

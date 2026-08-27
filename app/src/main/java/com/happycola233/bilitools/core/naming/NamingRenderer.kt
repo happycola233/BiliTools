@@ -220,7 +220,6 @@ object NamingRenderer {
             NamingToken.Collection -> context.collection
             NamingToken.P -> context.p
             NamingToken.Ep -> context.ep
-            NamingToken.LongTitle -> context.longTitle
             NamingToken.Section -> context.section
             NamingToken.Img -> context.img
             NamingToken.Container -> context.container

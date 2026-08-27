@@ -10,13 +10,15 @@ class NamingTemplatesTest {
     @Test
     fun `每种形态的默认文件名模板都能扛住空变量`() {
         val emptyContext = NamingContext(taskType = "音视频", title = "标题")
-        NamingShape.entries.forEach { shape ->
-            val rendered = NamingRenderer.renderComponent(
-                template = NamingTemplates.default(shape, NamingTemplateScope.File),
-                context = emptyContext,
-            )
-            assertEquals("音视频 - 标题", rendered)
-        }
+        NamingShape.entries
+            .filter { NamingTemplateScope.File in it.supportedScopes }
+            .forEach { shape ->
+                val rendered = NamingRenderer.renderComponent(
+                    template = NamingTemplates.default(shape, NamingTemplateScope.File),
+                    context = emptyContext,
+                )
+                assertEquals("音视频 - 标题", rendered)
+            }
     }
 
     @Test
@@ -49,29 +51,8 @@ class NamingTemplatesTest {
     }
 
     @Test
-    fun `通用覆盖会接管所有未单独设置的形态`() {
+    fun `自定义只影响被改的那一格`() {
         val overrides = mapOf(
-            NamingShape.Common to NamingTemplateSet(file = "{title}"),
-        )
-        assertEquals(
-            "{title}",
-            NamingTemplates.resolve(overrides, NamingShape.Episode, NamingTemplateScope.File),
-        )
-        assertEquals(
-            NamingTemplateSource.Common,
-            NamingTemplates.sourceOf(overrides, NamingShape.Episode, NamingTemplateScope.File),
-        )
-        // 未被覆盖的层级仍然是各自的默认值
-        assertEquals(
-            NamingTemplates.default(NamingShape.Episode, NamingTemplateScope.ItemFolder),
-            NamingTemplates.resolve(overrides, NamingShape.Episode, NamingTemplateScope.ItemFolder),
-        )
-    }
-
-    @Test
-    fun `形态覆盖优先于通用覆盖`() {
-        val overrides = mapOf(
-            NamingShape.Common to NamingTemplateSet(file = "{title}"),
             NamingShape.Episode to NamingTemplateSet(file = "EP{ep}"),
         )
         assertEquals(
@@ -81,6 +62,20 @@ class NamingTemplatesTest {
         assertEquals(
             NamingTemplateSource.Custom,
             NamingTemplates.sourceOf(overrides, NamingShape.Episode, NamingTemplateScope.File),
+        )
+        // 同形态的其它层级不受影响
+        assertEquals(
+            NamingTemplates.default(NamingShape.Episode, NamingTemplateScope.ItemFolder),
+            NamingTemplates.resolve(overrides, NamingShape.Episode, NamingTemplateScope.ItemFolder),
+        )
+        // 别的形态更不受影响
+        assertEquals(
+            NamingTemplates.default(NamingShape.Video, NamingTemplateScope.File),
+            NamingTemplates.resolve(overrides, NamingShape.Video, NamingTemplateScope.File),
+        )
+        assertEquals(
+            NamingTemplateSource.Default,
+            NamingTemplates.sourceOf(overrides, NamingShape.Video, NamingTemplateScope.File),
         )
     }
 

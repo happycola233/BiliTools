@@ -4,6 +4,7 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 
 /**
@@ -51,6 +52,18 @@ internal object AppSurfaces {
                 else -> surfaceContainer
             }
         }
+
+    /**
+     * 密集小色块（成排的变量胶囊）的底色。浅色配色下强调容器色本身饱和度偏高，
+     * 十几个挨在一起会糊成一片，这里往卡片底色上压一压换取通透；
+     * 深色配色的容器色已经足够沉，原样返回。
+     */
+    @Composable
+    fun softTintedContainerColor(container: Color): Color {
+        val scheme = MaterialTheme.colorScheme
+        if (scheme.usesDarkSurfaces()) return container
+        return lerp(container, scheme.surfaceBright, 0.55f)
+    }
 }
 
 /** 判断当前是否为纯黑深色模式。配色由 XML 主题叠加而来，这里以最终颜色值反推，保证 View 层与 Compose 层判定一致。 */

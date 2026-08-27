@@ -103,6 +103,55 @@ class NamingContextFactoryTest {
         assertEquals("au10001", trackContext.id)
         assertEquals("吴青峰", trackContext.artist)
         assertEquals("深夜歌单", trackContext.collection)
+        // 接口用 0 表示「没有关联稿件」，不能当成取到了值
+        assertNull(trackContext.aid)
+        assertNull(trackContext.bvid)
+    }
+
+    @Test
+    fun `缺少本形态主键时内容号回退到稿件号`() {
+        // 收藏夹里的番剧条目只带季号，没有单集 epid
+        val season = NamingContextFactory.forItem(
+            info = infoOf(MediaType.Favorite, showTitle = "学习资料"),
+            item = MediaItem(
+                title = "进击的巨人",
+                coverUrl = "",
+                description = "",
+                url = "",
+                duration = 0,
+                pubTime = 0,
+                type = MediaType.Bangumi,
+                isTarget = true,
+                index = 0,
+                workTitle = "进击的巨人",
+                ssid = 44227,
+            ),
+            shape = NamingShape.Episode,
+            labels = NamingLabels(),
+            downTimeEpochSeconds = 0,
+        )
+        assertEquals("ss44227", season.id)
+
+        // 连季号都没有时退到稿件号，好过留空
+        val archiveOnly = NamingContextFactory.forItem(
+            info = infoOf(MediaType.Favorite, showTitle = "学习资料"),
+            item = MediaItem(
+                title = "某集",
+                coverUrl = "",
+                description = "",
+                url = "",
+                duration = 0,
+                pubTime = 0,
+                type = MediaType.Bangumi,
+                isTarget = true,
+                index = 0,
+                bvid = "BV1xx411c7mD",
+            ),
+            shape = NamingShape.Episode,
+            labels = NamingLabels(),
+            downTimeEpochSeconds = 0,
+        )
+        assertEquals("BV1xx411c7mD", archiveOnly.id)
     }
 
     @Test

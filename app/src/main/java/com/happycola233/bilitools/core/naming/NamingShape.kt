@@ -8,10 +8,9 @@ import com.happycola233.bilitools.data.model.MediaType
  * 收藏夹、稍后再看、用户投稿里的条目仍然是 [Video]，因为它们的命名诉求和普通稿件完全一致；
  * 只有真正结构不同的资源（番剧单集、音频单曲、图文）才各自成形态。
  *
- * [Common] 不会由任何资源解析得到，只作为「未单独设置的形态共用」的模板槽位。
+ * 每个形态各自带一套内置默认模板，形态之间不共享、不继承：改一个不会波及其它形态。
  */
 enum class NamingShape(val value: String) {
-    Common("common"),
     Video("video"),
     Episode("episode"),
     Track("track"),

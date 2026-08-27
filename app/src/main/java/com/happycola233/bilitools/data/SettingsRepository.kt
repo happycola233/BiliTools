@@ -36,9 +36,9 @@ data class DownloadNamingSettings(
     fun templateSource(shape: NamingShape, scope: NamingTemplateScope): NamingTemplateSource =
         NamingTemplates.sourceOf(overrides, shape, scope)
 
-    /** 不含本形态自身覆盖时会取到的模板，用于判断一次编辑是否真的偏离了继承值。 */
-    fun inheritedTemplate(shape: NamingShape, scope: NamingTemplateScope): String =
-        NamingTemplates.resolve(overrides - shape, shape, scope)
+    /** 本形态的内置默认模板，用于判断一次编辑是否真的偏离了默认值。 */
+    fun defaultTemplate(shape: NamingShape, scope: NamingTemplateScope): String =
+        NamingTemplates.default(shape, scope)
 
     val hasCustomTemplates: Boolean
         get() = overrides.values.any { !it.isEmpty }
@@ -491,10 +491,7 @@ class SettingsRepository(context: Context) {
         )
     }
 
-    /**
-     * 模板与继承值一致时不落盘，这样「改回原样」等同于没改过，
-     * 该形态会继续跟随通用模板或内置默认。
-     */
+    /** 模板与内置默认一致时不落盘，这样「改回原样」等同于没改过。 */
     fun setNamingTemplate(
         shape: NamingShape,
         scope: NamingTemplateScope,
@@ -502,7 +499,7 @@ class SettingsRepository(context: Context) {
     ) {
         val current = _settings.value
         val naming = current.naming
-        val nextValue = template.takeIf { it != naming.inheritedTemplate(shape, scope) }
+        val nextValue = template.takeIf { it != naming.defaultTemplate(shape, scope) }
         val existing = naming.overrides[shape] ?: NamingTemplateSet()
         if (existing[scope] == nextValue) return
         val updated = existing.with(scope, nextValue)
@@ -516,7 +513,7 @@ class SettingsRepository(context: Context) {
     }
 
     fun clearNamingTemplate(shape: NamingShape, scope: NamingTemplateScope) {
-        setNamingTemplate(shape, scope, _settings.value.naming.inheritedTemplate(shape, scope))
+        setNamingTemplate(shape, scope, _settings.value.naming.defaultTemplate(shape, scope))
     }
 
     fun restoreNamingDefaults() {

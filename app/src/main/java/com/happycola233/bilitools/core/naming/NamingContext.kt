@@ -5,7 +5,7 @@ package com.happycola233.bilitools.core.naming
  * 由模板决定要不要用，渲染器不做跨层级的兜底替换。
  */
 data class NamingContext(
-    /** 叶子标题：分 P 标题、单集完整标题、歌名、图文标题。 */
+    /** 叶子标题：分 P 标题、单集名、歌名、图文标题。 */
     val title: String? = null,
     /** 所属作品：稿件标题、番剧季名、课程名、歌名、图文标题。 */
     val work: String? = null,
@@ -15,8 +15,6 @@ data class NamingContext(
     val p: String? = null,
     /** 集号：番剧 title、课程分集数。 */
     val ep: String? = null,
-    /** 番剧单集完整标题。 */
-    val longTitle: String? = null,
     /** 分区：番剧的正片/PV/特典，UGC 合集的分部。 */
     val section: String? = null,
     /** 图文内的图片序号。 */
