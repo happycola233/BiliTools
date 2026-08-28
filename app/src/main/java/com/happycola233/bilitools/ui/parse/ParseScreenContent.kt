@@ -115,6 +115,7 @@ import androidx.compose.ui.node.DelegatableNode
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -533,7 +534,7 @@ private fun SubtitleCopyPreviewDialog(
     onCopyCurrent: (SubtitleCopyEntry) -> Unit,
     onCopyAll: (List<SubtitleCopyEntry>) -> Unit,
 ) {
-    val context = LocalContext.current
+    val resources = LocalResources.current
     CopyPreviewDialog(
         title = stringResource(R.string.parse_subtitle_copy_dialog_title),
         subtitle = stringResource(R.string.parse_subtitle_copy_dialog_subtitle),
@@ -550,7 +551,7 @@ private fun SubtitleCopyPreviewDialog(
                 .orEmpty()
             val base = "${entry.title}$subtitlePart"
             if (entry.content.isNullOrBlank()) {
-                context.getString(R.string.parse_subtitle_copy_item_unavailable, base)
+                resources.getString(R.string.parse_subtitle_copy_item_unavailable, base)
             } else {
                 base
             }
@@ -559,15 +560,15 @@ private fun SubtitleCopyPreviewDialog(
             if (!entry.content.isNullOrBlank()) {
                 val subtitleName = entry.subtitleName
                     ?.takeIf { it.isNotBlank() }
-                    ?: context.getString(R.string.parse_subtitle_label)
-                context.getString(R.string.parse_subtitle_copy_status_ready, subtitleName)
+                    ?: resources.getString(R.string.parse_subtitle_label)
+                resources.getString(R.string.parse_subtitle_copy_status_ready, subtitleName)
             } else {
-                entry.error ?: context.getString(R.string.parse_subtitle_copy_unavailable)
+                entry.error ?: resources.getString(R.string.parse_subtitle_copy_unavailable)
             }
         },
         previewForEntry = { entry ->
             entry.content?.takeIf { it.isNotBlank() }
-                ?: context.getString(R.string.parse_subtitle_copy_preview_empty)
+                ?: resources.getString(R.string.parse_subtitle_copy_preview_empty)
         },
         onDismiss = onDismiss,
         onCopyCurrent = onCopyCurrent,
@@ -582,7 +583,7 @@ private fun AiSummaryCopyPreviewDialog(
     onCopyCurrent: (AiSummaryCopyEntry) -> Unit,
     onCopyAll: (List<AiSummaryCopyEntry>) -> Unit,
 ) {
-    val context = LocalContext.current
+    val resources = LocalResources.current
     CopyPreviewDialog(
         title = stringResource(R.string.parse_ai_summary_copy_dialog_title),
         subtitle = stringResource(R.string.parse_ai_summary_copy_dialog_subtitle),
@@ -594,21 +595,21 @@ private fun AiSummaryCopyPreviewDialog(
         hasContent = { entry -> !entry.content.isNullOrBlank() },
         labelForEntry = { entry ->
             if (entry.content.isNullOrBlank()) {
-                context.getString(R.string.parse_ai_summary_copy_item_unavailable, entry.title)
+                resources.getString(R.string.parse_ai_summary_copy_item_unavailable, entry.title)
             } else {
                 entry.title
             }
         },
         statusForEntry = { entry ->
             if (!entry.content.isNullOrBlank()) {
-                context.getString(R.string.parse_ai_summary_copy_status_ready)
+                resources.getString(R.string.parse_ai_summary_copy_status_ready)
             } else {
-                entry.error ?: context.getString(R.string.parse_ai_summary_copy_unavailable)
+                entry.error ?: resources.getString(R.string.parse_ai_summary_copy_unavailable)
             }
         },
         previewForEntry = { entry ->
             entry.content?.takeIf { it.isNotBlank() }
-                ?: context.getString(R.string.parse_ai_summary_copy_preview_empty)
+                ?: resources.getString(R.string.parse_ai_summary_copy_preview_empty)
         },
         onDismiss = onDismiss,
         onCopyCurrent = onCopyCurrent,

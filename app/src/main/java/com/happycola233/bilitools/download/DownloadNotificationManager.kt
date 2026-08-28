@@ -14,6 +14,7 @@ import com.happycola233.bilitools.data.DownloadNotificationState
 import com.happycola233.bilitools.data.DownloadOutcomeSummary
 import com.happycola233.bilitools.data.model.DownloadStatus
 import com.happycola233.bilitools.notification.applyPromotedOngoing
+import com.happycola233.bilitools.notification.notifyIfAllowed
 import com.happycola233.bilitools.ui.MainActivity
 import java.util.Locale
 
@@ -203,9 +204,7 @@ internal class DownloadNotificationManager(
     }
 
     fun notifyProgress(notification: Notification) {
-        runCatching {
-            manager.notify(NOTIFICATION_ID_PROGRESS, notification)
-        }
+        manager.notifyIfAllowed(context, NOTIFICATION_ID_PROGRESS, notification)
     }
 
     fun showCompletion(summary: DownloadOutcomeSummary) {
@@ -233,9 +232,7 @@ internal class DownloadNotificationManager(
             .setContentIntent(contentPendingIntent())
             .build()
 
-        runCatching {
-            manager.notify(NOTIFICATION_ID_COMPLETION, notification)
-        }
+        manager.notifyIfAllowed(context, NOTIFICATION_ID_COMPLETION, notification)
     }
 
     private fun contentPendingIntent(): PendingIntent {

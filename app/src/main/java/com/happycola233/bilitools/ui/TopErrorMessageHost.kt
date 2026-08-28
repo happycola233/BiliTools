@@ -196,6 +196,7 @@ private fun TopErrorMessage(
     shadowElevation: Dp,
 ) {
     val context = LocalContext.current
+    val copyMessageLabel = stringResource(R.string.common_copy_message)
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = ErrorMessageShape,
@@ -233,12 +234,12 @@ private fun TopErrorMessage(
                         val clipboardManager = context.getSystemService(ClipboardManager::class.java)
                         clipboardManager?.setPrimaryClip(
                             ClipData.newPlainText(
-                                context.getString(R.string.common_copy_message),
+                                copyMessageLabel,
                                 message,
                             ),
                         )
                     },
-                    contentDescription = stringResource(R.string.common_copy_message),
+                    contentDescription = copyMessageLabel,
                     iconRes = R.drawable.ic_content_copy_24,
                 )
                 CompactMessageIconButton(

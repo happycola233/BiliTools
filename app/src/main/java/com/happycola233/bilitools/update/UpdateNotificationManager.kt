@@ -11,6 +11,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.happycola233.bilitools.R
+import com.happycola233.bilitools.notification.notifyIfAllowed
 import java.util.Locale
 
 internal class UpdateNotificationManager(
@@ -84,9 +85,7 @@ internal class UpdateNotificationManager(
     }
 
     fun notifyProgress(notification: Notification) {
-        runCatching {
-            manager.notify(NOTIFICATION_ID_PROGRESS, notification)
-        }
+        manager.notifyIfAllowed(context, NOTIFICATION_ID_PROGRESS, notification)
     }
 
     fun showReadyToInstall(
@@ -117,9 +116,7 @@ internal class UpdateNotificationManager(
             )
             .build()
 
-        runCatching {
-            manager.notify(NOTIFICATION_ID_RESULT, notification)
-        }
+        manager.notifyIfAllowed(context, NOTIFICATION_ID_RESULT, notification)
     }
 
     fun showFailure(
@@ -156,9 +153,7 @@ internal class UpdateNotificationManager(
             )
             .build()
 
-        runCatching {
-            manager.notify(NOTIFICATION_ID_RESULT, notification)
-        }
+        manager.notifyIfAllowed(context, NOTIFICATION_ID_RESULT, notification)
     }
 
     private fun formatBytes(bytes: Long): String {
