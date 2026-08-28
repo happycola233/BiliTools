@@ -55,6 +55,8 @@ data class DefaultDownloadQualitySettings(
 data class AppSettings(
     val addMetadata: Boolean = true,
     val convertXmlDanmakuToAss: Boolean = true,
+    val convertAudioToMp3: Boolean = false,
+    val convertVideoToMp4: Boolean = false,
     val themeMode: AppThemeMode = AppThemeMode.System,
     val themeColor: AppThemeColor = AppThemeColor.Dynamic,
     val darkModePureBlack: Boolean = false,
@@ -228,6 +230,20 @@ class SettingsRepository(context: Context) {
         if (current.convertXmlDanmakuToAss == enabled) return
         prefs.edit().putBoolean(KEY_CONVERT_XML_DANMAKU_TO_ASS, enabled).apply()
         _settings.value = current.copy(convertXmlDanmakuToAss = enabled)
+    }
+
+    fun setConvertAudioToMp3(enabled: Boolean) {
+        val current = _settings.value
+        if (current.convertAudioToMp3 == enabled) return
+        prefs.edit().putBoolean(KEY_CONVERT_AUDIO_TO_MP3, enabled).apply()
+        _settings.value = current.copy(convertAudioToMp3 = enabled)
+    }
+
+    fun setConvertVideoToMp4(enabled: Boolean) {
+        val current = _settings.value
+        if (current.convertVideoToMp4 == enabled) return
+        prefs.edit().putBoolean(KEY_CONVERT_VIDEO_TO_MP4, enabled).apply()
+        _settings.value = current.copy(convertVideoToMp4 = enabled)
     }
 
     fun setThemeMode(mode: AppThemeMode, applyImmediately: Boolean = true) {
@@ -559,6 +575,8 @@ class SettingsRepository(context: Context) {
         return AppSettings(
             addMetadata = prefs.getBoolean(KEY_ADD_METADATA, true),
             convertXmlDanmakuToAss = prefs.getBoolean(KEY_CONVERT_XML_DANMAKU_TO_ASS, true),
+            convertAudioToMp3 = prefs.getBoolean(KEY_CONVERT_AUDIO_TO_MP3, false),
+            convertVideoToMp4 = prefs.getBoolean(KEY_CONVERT_VIDEO_TO_MP4, false),
             themeMode = AppThemeMode.fromValue(
                 prefs.getString(KEY_THEME_MODE, AppThemeMode.System.value),
             ),
@@ -875,6 +893,8 @@ class SettingsRepository(context: Context) {
         private const val PREFS_NAME = "app_settings"
         private const val KEY_ADD_METADATA = "add_metadata"
         private const val KEY_CONVERT_XML_DANMAKU_TO_ASS = "convert_xml_danmaku_to_ass"
+        private const val KEY_CONVERT_AUDIO_TO_MP3 = "convert_audio_to_mp3"
+        private const val KEY_CONVERT_VIDEO_TO_MP4 = "convert_video_to_mp4"
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_THEME_COLOR = "theme_color"
         private const val KEY_DARK_MODE_PURE_BLACK = "dark_mode_pure_black"

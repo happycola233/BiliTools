@@ -395,6 +395,8 @@
     <string name="download_failure_save">文件保存失败，请检查下载位置和剩余空间</string>
     <string name="download_failure_download_unknown">下载过程中发生未知错误</string>
     <string name="download_failure_merge">音视频合并失败</string>
+    <string name="download_failure_convert_audio">音频转 MP3 失败</string>
+    <string name="download_failure_convert_video">视频转 MP4 失败</string>
     <string name="download_failure_resume_data_missing">续传数据已丢失，请重新下载</string>
     <string name="download_failure_extra">%1$s处理失败：%2$s</string>
     <string name="login_user_guest">未登录</string>
@@ -404,8 +406,10 @@
     <string name="login_user_level_unknown">等级：--</string>
     <string name="login_user_vip">会员：%1$s</string>
     <string name="login_avatar_desc">头像</string>
-    <string name="download_status_merging">合并中</string>
+    <string name="download_status_merging">处理中</string>
     <string name="download_detail_merging">正在合并音视频</string>
+    <string name="download_detail_converting_audio">正在转换为 MP3 格式</string>
+    <string name="download_detail_converting_video">正在转换为 MP4 格式</string>
     <string name="login_section_account">我的账号</string>
     <string name="history_title">历史记录</string>
     <string name="history_entry_desc">浏览观看足迹。</string>
@@ -491,7 +495,7 @@
     <string name="settings_download_title">下载</string>
     <string name="settings_appearance_title">外观</string>
     <string name="settings_general_summary">默认下载质量、实时活动通知</string>
-    <string name="settings_download_summary">下载位置、元数据、弹幕、移动网络、系统相册</string>
+    <string name="settings_download_summary">下载位置、元数据、格式转换、移动网络、系统相册</string>
     <string name="settings_appearance_summary">主题、配色、纯黑主题、液态玻璃底栏、启动动画</string>
     <string name="settings_about_summary">版本、更新、日志导出、开源协议、免责声明</string>
     <string name="settings_download_behavior">下载行为</string>
@@ -499,6 +503,10 @@
     <string name="settings_add_metadata_desc">下载音频或视频完成后自动写入标题、封面等元信息。</string>
     <string name="settings_convert_xml_danmaku_to_ass">将弹幕转为 ASS 格式</string>
     <string name="settings_convert_xml_danmaku_to_ass_desc">若启用，则会在下载弹幕时将 XML 转换为 ASS 格式。</string>
+    <string name="settings_convert_audio_to_mp3">将音频转换为 MP3 格式</string>
+    <string name="settings_convert_audio_to_mp3_desc">下载音频后转换为 MP3 格式；音质可能因有损编码而降低，音视频不受影响。</string>
+    <string name="settings_convert_video_to_mp4">将视频转换为 MP4 格式</string>
+    <string name="settings_convert_video_to_mp4_desc">下载视频后转换为 MP4 格式，并将其中的音频转换为 AAC。</string>
     <string name="settings_confirm_cellular">移动网络下载前确认</string>
     <string name="settings_confirm_cellular_desc">使用移动网络时，点击下载会先弹出确认提示。</string>
     <string name="settings_hide_download_video_in_system_album">在系统相册隐藏下载的视频</string>

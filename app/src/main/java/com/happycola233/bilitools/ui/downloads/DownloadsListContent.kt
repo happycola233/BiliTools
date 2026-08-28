@@ -1481,7 +1481,8 @@ private fun buildTaskDetailText(
         DownloadStatus.Paused -> context.getString(R.string.download_status_paused, progress)
         DownloadStatus.Failed -> context.getString(R.string.download_status_failed)
         DownloadStatus.Unavailable -> context.getString(R.string.download_status_unavailable)
-        DownloadStatus.Merging -> context.getString(R.string.download_status_merging)
+        DownloadStatus.Merging -> item.statusDetail?.takeIf { it.isNotBlank() }
+            ?: context.getString(R.string.download_detail_merging)
         DownloadStatus.Success -> if (item.outputMissing) {
             context.getString(R.string.download_status_missing)
         } else {

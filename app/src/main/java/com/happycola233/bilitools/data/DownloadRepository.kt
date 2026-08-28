@@ -13,7 +13,7 @@ import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.AudioQualities
 import com.happycola233.bilitools.core.AppLog as Log
 import com.happycola233.bilitools.core.BiliHttpClient
-import com.happycola233.bilitools.core.MediaMergeEngine
+import com.happycola233.bilitools.core.MediaProcessingEngine
 import com.happycola233.bilitools.data.model.AudioStream
 import com.happycola233.bilitools.core.CookieStore
 import com.happycola233.bilitools.core.createHttpDiagnosticLoggingInterceptor
@@ -281,12 +281,14 @@ class DownloadRepository(
         embeddedMetadata: DownloadEmbeddedMetadata? = null,
     ): DownloadItem {
         val id = downloadIds.incrementAndGet()
+        val conversionTarget = resolveMediaConversionTarget(type)
+        val outputFileName = MediaConversionPolicy.outputFileName(fileName, conversionTarget)
         val item = buildItem(
             id,
             groupId,
             type,
             taskTitle,
-            fileName,
+            outputFileName,
             url,
             mediaParams = mediaParams,
             embeddedMetadata = embeddedMetadata,
@@ -296,6 +298,7 @@ class DownloadRepository(
             url = url,
             fileName = fileName,
             tempFile = tempFileFor(id, fileName),
+            conversionTarget = conversionTarget,
         )
         downloadStates[id] = state
         schedulePersist()
@@ -313,6 +316,11 @@ class DownloadRepository(
         mediaParams: com.happycola233.bilitools.data.model.DownloadMediaParams? = null,
         embeddedMetadata: DownloadEmbeddedMetadata? = null,
     ): DownloadItem {
+        val conversionTarget = resolveMediaConversionTarget(DownloadTaskType.AudioVideo)
+        val resolvedOutputFileName = MediaConversionPolicy.outputFileName(
+            outputFileName,
+            conversionTarget,
+        )
         val baseName = outputFileName.substringBeforeLast('.')
         val videoName = "$baseName-video.m4s"
         val audioName = "$baseName-audio.m4s"
@@ -321,7 +329,7 @@ class DownloadRepository(
         val task = MergedDownload(
             id = mergeId,
             title = requestTitle,
-            outputName = outputFileName,
+            outputName = resolvedOutputFileName,
             video = ResumablePart(
                 url = videoUrl,
                 fileName = videoName,
@@ -332,6 +340,7 @@ class DownloadRepository(
                 fileName = audioName,
                 tempFile = tempFileFor(mergeId, audioName),
             ),
+            conversionTarget = conversionTarget,
         )
         mergeTasks[mergeId] = task
         schedulePersist()
@@ -340,7 +349,7 @@ class DownloadRepository(
             groupId,
             DownloadTaskType.AudioVideo,
             taskTitle,
-            outputFileName,
+            resolvedOutputFileName,
             videoUrl,
             mediaParams = mediaParams,
             embeddedMetadata = embeddedMetadata,
@@ -604,6 +613,7 @@ class DownloadRepository(
                 speedBytesPerSec = 0,
                 etaSeconds = null,
                 userPaused = true,
+                statusDetail = null,
             ),
         )
     }
@@ -624,6 +634,7 @@ class DownloadRepository(
                 etaSeconds = null,
                 userPaused = false,
                 errorMessage = null,
+                statusDetail = null,
             ),
         )
         startDownload(id)
@@ -654,7 +665,12 @@ class DownloadRepository(
             return
         }
         downloadJobs.remove(id)?.cancel()
-        downloadStates.remove(id)?.tempFile?.delete()
+        val downloadState = downloadStates.remove(id)
+        downloadState?.tempFile?.delete()
+        downloadState?.let { state ->
+            tempFilesForCleanup(id, state.fileName).forEach { it.delete() }
+        }
+        tempFilesForCleanup(id, target.fileName).forEach { it.delete() }
         schedulePersist()
         updateTask(
             target.copy(
@@ -662,6 +678,7 @@ class DownloadRepository(
                 speedBytesPerSec = 0,
                 etaSeconds = null,
                 userPaused = false,
+                statusDetail = null,
             ),
         )
     }
@@ -842,6 +859,7 @@ class DownloadRepository(
                 etaSeconds = null,
                 userPaused = false,
                 errorMessage = null,
+                statusDetail = null,
             ),
         )
         downloadToTemp(state.url, state) { downloaded, total, speed, eta ->
@@ -861,32 +879,49 @@ class DownloadRepository(
                 ),
             )
         }
-        val finalizedTemp = prepareFinalTempFile(state.id, state.fileName, state.tempFile)
+        val finalizedSource = prepareFinalTempFile(state.id, state.fileName, state.tempFile)
+        val processedTemp = try {
+            convertDownloadedMediaIfNeeded(
+                item = startItem,
+                inputFile = finalizedSource,
+                conversionTarget = state.conversionTarget,
+            )
+        } catch (err: Throwable) {
+            if (finalizedSource != state.tempFile) {
+                runCatching { finalizedSource.delete() }
+            }
+            throw err
+        }
         tasks[id]?.let { item ->
-            applyEmbeddedMetadataIfPossible(item, finalizedTemp)
+            applyEmbeddedMetadataIfPossible(item, processedTemp)
         }
         val relativePath = groupRelativePath(startItem.groupId)
         Log.d(
             TAG,
-            "[save-chain] start save managed download, taskId=$id, groupId=${startItem.groupId}, file=${state.fileName}, temp=${finalizedTemp.absolutePath}, tempExists=${finalizedTemp.exists()}, tempSize=${finalizedTemp.length()}, relativePath=$relativePath",
+            "[save-chain] start save managed download, taskId=$id, groupId=${startItem.groupId}, file=${startItem.fileName}, temp=${processedTemp.absolutePath}, tempExists=${processedTemp.exists()}, tempSize=${processedTemp.length()}, relativePath=$relativePath",
         )
-        var uri = saveToDownloads(finalizedTemp, state.fileName, relativePath)
+        var uri = saveToDownloads(processedTemp, startItem.fileName, relativePath)
         if (uri == null) {
             Log.w(
                 TAG,
-                "[save-chain] saveToDownloads returned null, fallback search in-group first, taskId=$id, file=${state.fileName}, groupId=${startItem.groupId}",
+                "[save-chain] saveToDownloads returned null, fallback search in-group first, taskId=$id, file=${startItem.fileName}, groupId=${startItem.groupId}",
             )
-            uri = findAccessibleDownload(state.fileName, startItem.groupId)
-                ?: findAccessibleDownloadAnywhere(state.fileName)
+            uri = findAccessibleDownload(startItem.fileName, startItem.groupId)
+                ?: findAccessibleDownloadAnywhere(startItem.fileName)
         }
         Log.d(
             TAG,
-            "[save-chain] save+fallback resolved, taskId=$id, file=${state.fileName}, resolvedUri=$uri",
+            "[save-chain] save+fallback resolved, taskId=$id, file=${startItem.fileName}, resolvedUri=$uri",
         )
-        if (uri != null && finalizedTemp != state.tempFile) {
+        if (uri != null && processedTemp != finalizedSource) {
+            runCatching { finalizedSource.delete() }
+        } else if (uri == null && processedTemp != finalizedSource) {
+            runCatching { processedTemp.delete() }
+        }
+        if (uri != null && finalizedSource != state.tempFile) {
             runCatching { state.tempFile.delete() }
-        } else if (uri == null && finalizedTemp != state.tempFile) {
-            runCatching { finalizedTemp.delete() }
+        } else if (uri == null && finalizedSource != state.tempFile) {
+            runCatching { finalizedSource.delete() }
         }
         val current = tasks[id] ?: return
         if (uri != null) {
@@ -901,13 +936,14 @@ class DownloadRepository(
                     localUri = uri,
                     userPaused = false,
                     errorMessage = null,
+                    statusDetail = null,
                 ),
             )
             downloadStates.remove(id)
             persistState()
             Log.i(
                 TAG,
-                "[save-chain] managed download marked success, taskId=$id, file=${state.fileName}, localUri=$uri",
+                "[save-chain] managed download marked success, taskId=$id, file=${startItem.fileName}, localUri=$uri",
             )
         } else {
             updateTask(
@@ -917,15 +953,66 @@ class DownloadRepository(
                     etaSeconds = null,
                     userPaused = false,
                     errorMessage = context.getString(R.string.download_failure_save),
+                    statusDetail = null,
                 ),
             )
             schedulePersist()
             Log.e(
                 TAG,
-                "[save-chain] managed download failed to resolve output uri after save and fallback, taskId=$id, file=${state.fileName}, groupId=${startItem.groupId}",
+                "[save-chain] managed download failed to resolve output uri after save and fallback, taskId=$id, file=${startItem.fileName}, groupId=${startItem.groupId}",
             )
         }
         downloadJobs.remove(id)
+    }
+
+    private suspend fun convertDownloadedMediaIfNeeded(
+        item: DownloadItem,
+        inputFile: File,
+        conversionTarget: MediaConversionTarget?,
+    ): File {
+        if (conversionTarget == null) return inputFile
+
+        val outputFile = processingTempFileFor(item.id, item.fileName)
+        runCatching { outputFile.delete() }
+        val statusDetail = when (conversionTarget) {
+            MediaConversionTarget.MP3 ->
+                context.getString(R.string.download_detail_converting_audio)
+            MediaConversionTarget.MP4 ->
+                context.getString(R.string.download_detail_converting_video)
+        }
+        tasks[item.id]?.let { current ->
+            updateTask(
+                current.copy(
+                    status = DownloadStatus.Merging,
+                    progress = 99,
+                    speedBytesPerSec = 0,
+                    etaSeconds = null,
+                    statusDetail = statusDetail,
+                ),
+            )
+        }
+
+        try {
+            when (conversionTarget) {
+                MediaConversionTarget.MP3 ->
+                    MediaProcessingEngine.convertAudioToMp3(inputFile, outputFile)
+                MediaConversionTarget.MP4 ->
+                    MediaProcessingEngine.convertVideoToMp4(inputFile, outputFile)
+            }
+        } catch (err: CancellationException) {
+            runCatching { outputFile.delete() }
+            throw err
+        } catch (err: Throwable) {
+            runCatching { outputFile.delete() }
+            val message = when (conversionTarget) {
+                MediaConversionTarget.MP3 ->
+                    context.getString(R.string.download_failure_convert_audio)
+                MediaConversionTarget.MP4 ->
+                    context.getString(R.string.download_failure_convert_video)
+            }
+            throw IllegalStateException(message, err)
+        }
+        return outputFile
     }
 
     private fun handleDownloadFailure(id: Long, err: Throwable) {
@@ -945,6 +1032,7 @@ class DownloadRepository(
                 userPaused = false,
                 errorMessage = err.message?.takeIf { it.isNotBlank() }
                     ?: context.getString(R.string.download_failure_download_unknown),
+                statusDetail = null,
             ),
         )
         downloadJobs.remove(id)
@@ -1073,12 +1161,14 @@ class DownloadRepository(
         if (!isManagedTask(target) || target.status != DownloadStatus.Failed) return
         val prepared = refreshManagedUrlIfPossible(target) ?: target
         val latest = tasks[id] ?: prepared
-        val tempFile = tempFileFor(id, latest.fileName)
+        val existingState = downloadStates[id]
+        val sourceFileName = existingState?.fileName ?: latest.fileName
+        val tempFile = existingState?.tempFile ?: tempFileFor(id, sourceFileName)
         val existing = if (tempFile.exists()) tempFile.length() else 0L
-        val state = downloadStates[id] ?: ResumableState(
+        val state = existingState ?: ResumableState(
             id = id,
             url = latest.url,
-            fileName = latest.fileName,
+            fileName = sourceFileName,
             tempFile = tempFile,
             downloadedBytes = existing,
             totalBytes = latest.totalBytes,
@@ -1098,6 +1188,7 @@ class DownloadRepository(
                 etaSeconds = null,
                 userPaused = false,
                 errorMessage = null,
+                statusDetail = null,
             ),
         )
         startDownload(id)
@@ -1297,7 +1388,8 @@ class DownloadRepository(
         if (item.taskType == DownloadTaskType.Audio) {
             return StreamFormat.Dash
         }
-        return when (item.fileName.substringAfterLast('.', "").lowercase(Locale.US)) {
+        val sourceFileName = downloadStates[item.id]?.fileName ?: item.fileName
+        return when (sourceFileName.substringAfterLast('.', "").lowercase(Locale.US)) {
             "m4s" -> StreamFormat.Dash
             "flv" -> StreamFormat.Flv
             else -> StreamFormat.Mp4
@@ -1666,7 +1758,15 @@ class DownloadRepository(
 
         val downloadStateSnapshot = downloadStates.values.toList()
         downloadStates.clear()
-        downloadStateSnapshot.forEach { it.tempFile.delete() }
+        downloadStateSnapshot.forEach { state ->
+            state.tempFile.delete()
+            tempFilesForCleanup(state.id, state.fileName).forEach { it.delete() }
+        }
+
+        val taskSnapshot = synchronized(lock) { tasks.values.toList() }
+        taskSnapshot.forEach { item ->
+            tempFilesForCleanup(item.id, item.fileName).forEach { it.delete() }
+        }
 
         val mergeTaskSnapshot = mergeTasks.values.toList()
         mergeTasks.clear()
@@ -1757,7 +1857,12 @@ class DownloadRepository(
     private fun cleanupTaskResources(item: DownloadItem, deleteFile: Boolean) {
         downloadJobs.remove(item.id)?.cancel()
         extraJobs.remove(item.id)?.cancel()
-        downloadStates.remove(item.id)?.tempFile?.delete()
+        val downloadState = downloadStates.remove(item.id)
+        downloadState?.tempFile?.delete()
+        downloadState?.let { state ->
+            tempFilesForCleanup(item.id, state.fileName).forEach { it.delete() }
+        }
+        tempFilesForCleanup(item.id, item.fileName).forEach { it.delete() }
         mergeJobs.remove(item.id)?.cancel()
         mergeTasks.remove(item.id)?.let { merge ->
             merge.video.job?.cancel()
@@ -2040,6 +2145,7 @@ class DownloadRepository(
                     totalBytes = state.totalBytes,
                     etag = state.etag,
                     lastModified = state.lastModified,
+                    conversionTarget = state.conversionTarget,
                 )
             },
             mergeStates = mergeTasks.values.map { task ->
@@ -2062,6 +2168,7 @@ class DownloadRepository(
                         lastModified = task.audio.lastModified,
                         completed = task.audio.completed,
                     ),
+                    conversionTarget = task.conversionTarget,
                 )
             },
         )
@@ -2123,7 +2230,9 @@ class DownloadRepository(
                     else -> minMergeId = minOf(minMergeId ?: task.id, task.id)
                 }
 
-                if (task.taskType == DownloadTaskType.AudioVideo) {
+                if (task.taskType == DownloadTaskType.AudioVideo &&
+                    task.id in (EXTRA_TASK_ID_START + 1)..-1L
+                ) {
                     val restored = restoreMergedTask(task, mergeById[task.id])
                     restoredTasks[task.id] = restored.item
                     completedTempFiles += restored.cleanupTempFiles
@@ -2212,8 +2321,12 @@ class DownloadRepository(
         item: DownloadItem,
         snapshot: ResumableStateSnapshot?,
     ): ManagedRestoreResult {
-        val tempFile = tempFileFor(item.id, item.fileName)
-        val cleanupTempFiles = tempFilesForCleanup(item.id, item.fileName)
+        val sourceFileName = snapshot?.fileName ?: item.fileName
+        val tempFile = tempFileFor(item.id, sourceFileName)
+        val cleanupTempFiles = (
+            tempFilesForCleanup(item.id, sourceFileName) +
+                tempFilesForCleanup(item.id, item.fileName)
+            ).distinctBy { it.absolutePath }
         val downloaded = if (tempFile.exists()) tempFile.length() else 0L
         val total = if (snapshot != null && snapshot.totalBytes > 0) {
             snapshot.totalBytes
@@ -2226,6 +2339,7 @@ class DownloadRepository(
         var errorMessage = item.errorMessage
         val shouldCheckExisting = status == DownloadStatus.Pending ||
             status == DownloadStatus.Running ||
+            status == DownloadStatus.Merging ||
             (status == DownloadStatus.Paused && !item.userPaused)
         if (shouldCheckExisting) {
             Log.d(
@@ -2290,6 +2404,7 @@ class DownloadRepository(
             autoResume = true
             errorMessage = null
         } else if (status == DownloadStatus.Running ||
+            status == DownloadStatus.Merging ||
             (status == DownloadStatus.Paused && !item.userPaused)) {
             // Preserve the temp file so retry can continue from the breakpoint when possible.
             status = DownloadStatus.Failed
@@ -2318,12 +2433,13 @@ class DownloadRepository(
             ResumableState(
                 id = item.id,
                 url = snapshot?.url ?: item.url,
-                fileName = item.fileName,
+                fileName = sourceFileName,
                 tempFile = tempFile,
                 downloadedBytes = downloaded,
                 totalBytes = total,
                 etag = snapshot?.etag,
                 lastModified = snapshot?.lastModified,
+                conversionTarget = snapshot?.conversionTarget,
             )
         } else {
             null
@@ -2545,6 +2661,7 @@ class DownloadRepository(
             completed = false,
             failed = status == DownloadStatus.Failed,
             outputUri = item.localUri,
+            conversionTarget = snapshot.conversionTarget,
         )
         return MergedRestoreResult(
             item = finalItem,
@@ -2557,6 +2674,15 @@ class DownloadRepository(
 
     private fun isManagedTask(item: DownloadItem): Boolean {
         return item.taskType.isManagedTransfer
+    }
+
+    private fun resolveMediaConversionTarget(taskType: DownloadTaskType): MediaConversionTarget? {
+        val settings = settingsRepository.currentSettings()
+        return MediaConversionPolicy.targetFor(
+            taskType = taskType,
+            convertAudioToMp3 = settings.convertAudioToMp3,
+            convertVideoToMp4 = settings.convertVideoToMp4,
+        )
     }
 
     private fun startMerge(task: MergedDownload) {
@@ -2717,7 +2843,23 @@ class DownloadRepository(
         var merged = false
         try {
             currentCoroutineContext().ensureActive()
-            MediaMergeEngine.merge(videoFile, audioFile, outputTemp)
+            try {
+                MediaProcessingEngine.merge(
+                    videoFile = videoFile,
+                    audioFile = audioFile,
+                    outputFile = outputTemp,
+                    transcodeAudioToAac = task.conversionTarget == MediaConversionTarget.MP4,
+                )
+            } catch (err: CancellationException) {
+                throw err
+            } catch (err: Throwable) {
+                val message = if (task.conversionTarget == MediaConversionTarget.MP4) {
+                    context.getString(R.string.download_failure_convert_video)
+                } else {
+                    context.getString(R.string.download_failure_merge)
+                }
+                throw IllegalStateException(message, err)
+            }
             currentCoroutineContext().ensureActive()
             merged = true
             Log.d(
@@ -3656,6 +3798,22 @@ class DownloadRepository(
         return File(tempDir, newName)
     }
 
+    private fun processingTempFileFor(id: Long, fileName: String): File {
+        val safeName = fileName.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+        val extension = safeName.substringAfterLast('.', "")
+        val baseName = if (extension.isNotBlank()) {
+            safeName.removeSuffix(".$extension")
+        } else {
+            safeName
+        }
+        val processingName = if (extension.isNotBlank()) {
+            "$id-$baseName.processing.$extension"
+        } else {
+            "$id-$baseName.processing"
+        }
+        return File(tempDir, processingName)
+    }
+
     private fun prepareFinalTempFile(id: Long, fileName: String, tempFile: File): File {
         val expectedExt = fileName.substringAfterLast('.', "").lowercase(Locale.US)
         if (expectedExt.isBlank()) return tempFile
@@ -3681,6 +3839,7 @@ class DownloadRepository(
         return listOf(
             tempLegacyFileFor(id, fileName),
             tempFileForNewSchema(id, fileName),
+            processingTempFileFor(id, fileName),
         ).distinctBy { it.absolutePath }
     }
 
@@ -4144,6 +4303,7 @@ class DownloadRepository(
         override var etag: String? = null,
         override var lastModified: String? = null,
         override var speedBytesPerSec: Long = 0,
+        val conversionTarget: MediaConversionTarget? = null,
     ) : ResumableTarget
 
     private data class ResumablePart(
@@ -4172,6 +4332,7 @@ class DownloadRepository(
         var failed: Boolean = false,
         var outputUri: String? = null,
         var lastProgressTimeMs: Long = 0,
+        val conversionTarget: MediaConversionTarget? = null,
     )
 
     private data class GroupInfo(
@@ -4229,6 +4390,7 @@ class DownloadRepository(
         val totalBytes: Long,
         val etag: String?,
         val lastModified: String?,
+        val conversionTarget: MediaConversionTarget? = null,
     )
 
     private data class ResumablePartSnapshot(
@@ -4245,6 +4407,7 @@ class DownloadRepository(
         val outputName: String,
         val video: ResumablePartSnapshot,
         val audio: ResumablePartSnapshot,
+        val conversionTarget: MediaConversionTarget? = null,
     )
 
     companion object {

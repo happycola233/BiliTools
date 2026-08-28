@@ -73,6 +73,14 @@ class SettingsViewModel(
         settingsRepository.setConvertXmlDanmakuToAss(enabled)
     }
 
+    fun setConvertAudioToMp3(enabled: Boolean) {
+        settingsRepository.setConvertAudioToMp3(enabled)
+    }
+
+    fun setConvertVideoToMp4(enabled: Boolean) {
+        settingsRepository.setConvertVideoToMp4(enabled)
+    }
+
     fun setThemeMode(mode: AppThemeMode, applyImmediately: Boolean = true) {
         settingsRepository.setThemeMode(mode, applyImmediately)
     }

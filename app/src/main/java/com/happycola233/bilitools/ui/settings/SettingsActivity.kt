@@ -171,6 +171,8 @@ class SettingsActivity : AppCompatActivity() {
                 onDefaultDownloadQualityChange = viewModel::setDefaultDownloadQuality,
                 onAddMetadataChange = viewModel::setAddMetadata,
                 onConvertXmlDanmakuToAssChange = viewModel::setConvertXmlDanmakuToAss,
+                onConvertAudioToMp3Change = viewModel::setConvertAudioToMp3,
+                onConvertVideoToMp4Change = viewModel::setConvertVideoToMp4,
                 onConfirmCellularChange = viewModel::setConfirmCellularDownload,
                 onHideInAlbumChange = viewModel::setHideDownloadedVideosInSystemAlbum,
                 onNamingTopLevelFolderModeChange = viewModel::setNamingTopLevelFolderMode,

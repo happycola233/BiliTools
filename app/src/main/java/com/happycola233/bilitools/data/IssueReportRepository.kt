@@ -220,6 +220,8 @@ class IssueReportRepository(
     private fun StringBuilder.appendSettingsSummary(settings: AppSettings) {
         appendKeyValue("addMetadata", settings.addMetadata.toString())
         appendKeyValue("convertXmlDanmakuToAss", settings.convertXmlDanmakuToAss.toString())
+        appendKeyValue("convertAudioToMp3", settings.convertAudioToMp3.toString())
+        appendKeyValue("convertVideoToMp4", settings.convertVideoToMp4.toString())
         appendKeyValue("themeMode", settings.themeMode.value)
         appendKeyValue("themeColor", settings.themeColor.value)
         appendKeyValue("darkModePureBlack", settings.darkModePureBlack.toString())
