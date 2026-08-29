@@ -84,7 +84,6 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
@@ -3079,15 +3078,6 @@ private fun ColorSchemePickerListItem(
                         onCheckedChange = {
                             onColorChange(if (it) AppThemeColor.Dynamic else AppThemeColor.Sakura)
                         },
-                        thumbContent = {
-                            Icon(
-                                painter = painterResource(
-                                    if (checked) R.drawable.ic_check_rounded_24 else R.drawable.ic_close_rounded_24,
-                                ),
-                                contentDescription = null,
-                                modifier = Modifier.size(SwitchDefaults.IconSize),
-                            )
-                        },
                         colors = AppAccents.switchColors(),
                     )
                 },
@@ -3312,15 +3302,6 @@ private fun ExpressiveSwitchListItem(
                     onCheckedChange(next)
                 },
                 enabled = enabled,
-                thumbContent = {
-                    Icon(
-                        painter = painterResource(
-                            if (checked) R.drawable.ic_check_rounded_24 else R.drawable.ic_close_rounded_24,
-                        ),
-                        contentDescription = null,
-                        modifier = Modifier.size(SwitchDefaults.IconSize),
-                    )
-                },
                 colors = AppAccents.switchColors(),
             )
         },
