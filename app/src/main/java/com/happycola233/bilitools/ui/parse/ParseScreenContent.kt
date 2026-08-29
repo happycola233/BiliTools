@@ -73,7 +73,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
@@ -1591,14 +1590,14 @@ private fun SectionControls(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         if (showSections) {
-            DropdownField(
+            CompactSelectionField(
                 label = sectionLabel,
-                value = sections?.tabs
-                    ?.firstOrNull { it.id == state.selectedSectionId }
+                value = sections.tabs
+                    .firstOrNull { it.id == state.selectedSectionId }
                     ?.name
                     .orEmpty(),
                 enabled = controlsEnabled,
-                options = sections?.tabs.orEmpty().map { DropdownOption(it.name, it) },
+                options = sections.tabs.map { DropdownOption(it.name, it) },
                 onOptionSelected = { option -> onSectionChange(option.value.id) },
             )
         }
@@ -3316,63 +3315,6 @@ private fun QuickActionFab(
             contentDescription = stringResource(R.string.parse_download),
             modifier = Modifier.graphicsLayer(alpha = if (enabled) 1f else 0.42f),
         )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun <T> DropdownField(
-    label: String,
-    value: String,
-    enabled: Boolean,
-    options: List<DropdownOption<T>>,
-    onOptionSelected: (DropdownOption<T>) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val haptics = rememberAppHaptics()
-    var expanded by remember { mutableStateOf(false) }
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { if (enabled && options.isNotEmpty()) expanded = it },
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = {},
-            readOnly = true,
-            enabled = enabled,
-            label = {
-                Text(
-                    text = label,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = ParseTextStyles.controlLabel,
-                )
-            },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-            modifier = Modifier
-                .fillMaxWidth()
-                .menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable),
-            shape = RoundedCornerShape(controlCornerRadius),
-            textStyle = ParseTextStyles.body,
-            singleLine = true,
-        )
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-        ) {
-            options.forEach { option ->
-                DropdownMenuItem(
-                    text = { Text(option.label, style = ParseTextStyles.body) },
-                    onClick = {
-                        expanded = false
-                        haptics.select()
-                        onOptionSelected(option)
-                    },
-                )
-            }
-        }
     }
 }
 
