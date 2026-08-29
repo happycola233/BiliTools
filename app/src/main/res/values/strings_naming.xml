@@ -42,10 +42,11 @@
     <string name="settings_naming_restore_defaults_confirm_message">确定要恢复默认模板吗？所有类型上自定义的模板都会被清除。</string>
     <string name="settings_naming_restore_defaults_confirm_action">确认恢复</string>
     <string name="settings_naming_restore_defaults_done">已恢复默认模板</string>
-    <string name="settings_naming_rich_preview">富预览</string>
     <string name="settings_naming_empty_template_hint">输入模板，或点击下面的变量按钮快速插入。</string>
     <string name="settings_naming_template_editor_label">模板内容</string>
-    <string name="settings_naming_preview_value">预览：%1$s</string>
+    <string name="settings_naming_preview_structure">模板结构</string>
+    <string name="settings_naming_preview_result">命名效果</string>
+    <string name="settings_naming_token_usage_hint">点击下方按钮即可插入变量。当前内容没有对应信息时，该变量会留空。</string>
     <string name="settings_naming_expand_template">展开模板设置</string>
     <string name="settings_naming_collapse_template">收起模板设置</string>
 
@@ -54,6 +55,7 @@
     <string name="settings_naming_optional_chip">⟨ 包成可选片段 ⟩</string>
     <string name="settings_naming_group_general">通用变量</string>
     <string name="settings_naming_group_time">时间变量</string>
+    <string name="settings_naming_group_time_desc">可设置时间格式，例如 {pubtime:YYYY-MM-DD_HH-mm-ss}；写成 {pubtime:ts} 则是时间戳。</string>
     <string name="settings_naming_group_ids">标识变量</string>
     <string name="settings_naming_group_stream">流信息</string>
     <string name="settings_naming_token_button_format">%1$s · {%2$s}</string>

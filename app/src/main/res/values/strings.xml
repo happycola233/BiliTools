@@ -495,9 +495,9 @@
     <string name="settings_general_title">通用</string>
     <string name="settings_download_title">下载</string>
     <string name="settings_appearance_title">外观</string>
-    <string name="settings_general_summary">默认下载质量、实时活动通知</string>
+    <string name="settings_general_summary">默认下载质量、实时活动通知、触感反馈、启动动画</string>
     <string name="settings_download_summary">并发数量、下载位置、元数据、格式转换、移动网络、系统相册</string>
-    <string name="settings_appearance_summary">主题、配色、纯黑主题、液态玻璃底栏、启动动画</string>
+    <string name="settings_appearance_summary">主题、配色、纯黑主题、液态玻璃底栏</string>
     <string name="settings_about_summary">版本、更新、日志导出、开源协议、免责声明</string>
     <string name="settings_download_behavior">下载行为</string>
     <string name="settings_add_metadata">为下载文件添加元数据</string>

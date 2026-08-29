@@ -61,6 +61,7 @@ import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.Image
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -77,6 +78,7 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -257,6 +259,7 @@ fun BiliToolsSettingsContent(
                         liveUpdateSupported = liveUpdateSupported,
                         onLiveActivityStyleNotificationChange = onLiveActivityStyleNotificationChange,
                         onHapticFeedbackLevelChange = onHapticFeedbackLevelChange,
+                        onLaunchSplashAnimationChange = onLaunchSplashAnimationChange,
                         onNavigate = onNavigate,
                         onBack = onNavigateBack,
                         modifier = modifier,
@@ -309,7 +312,6 @@ fun BiliToolsSettingsContent(
                         onThemeModeChange = onThemeModeChange,
                         onThemeColorChange = onThemeColorChange,
                         onBlackThemeChange = onBlackThemeChange,
-                        onLaunchSplashAnimationChange = onLaunchSplashAnimationChange,
                         onLiquidBottomTabsChange = onLiquidBottomTabsChange,
                         onLiquidBarWidthChange = onLiquidBarWidthChange,
                         onGlassDebugChange = onGlassDebugChange,
@@ -508,6 +510,7 @@ private fun GeneralSettingsScreen(
     liveUpdateSupported: Boolean,
     onLiveActivityStyleNotificationChange: (Boolean) -> Unit,
     onHapticFeedbackLevelChange: (HapticFeedbackLevel) -> Unit,
+    onLaunchSplashAnimationChange: (Boolean) -> Unit,
     onNavigate: (SettingsDestination) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -536,7 +539,7 @@ private fun GeneralSettingsScreen(
             item { Spacer(Modifier.height(14.dp)) }
             item {
                 ClickableListItem(
-                    items = 3,
+                    items = 4,
                     index = 0,
                     leadingContent = { SettingsItemIcon(R.drawable.ic_high_quality_24) },
                     headlineContent = {
@@ -562,7 +565,7 @@ private fun GeneralSettingsScreen(
                     title = stringResource(R.string.settings_live_activity_style_notification),
                     description = liveUpdateDescription,
                     enabled = liveUpdateSupported,
-                    items = 3,
+                    items = 4,
                     index = 1,
                     onCheckedChange = onLiveActivityStyleNotificationChange,
                 )
@@ -570,9 +573,20 @@ private fun GeneralSettingsScreen(
             item {
                 HapticFeedbackPickerListItem(
                     level = settings.hapticFeedbackLevel,
-                    items = 3,
+                    items = 4,
                     index = 2,
                     onLevelChange = onHapticFeedbackLevelChange,
+                )
+            }
+            item {
+                ExpressiveSwitchListItem(
+                    checked = settings.launchSplashAnimationEnabled,
+                    iconRes = R.drawable.ic_animation_24,
+                    title = stringResource(R.string.settings_launch_splash_animation),
+                    description = stringResource(R.string.settings_launch_splash_animation_desc),
+                    items = 4,
+                    index = 3,
+                    onCheckedChange = onLaunchSplashAnimationChange,
                 )
             }
             item { Spacer(Modifier.height(12.dp)) }
@@ -788,7 +802,6 @@ private fun AppearanceSettingsScreen(
     onThemeModeChange: (AppThemeMode) -> Unit,
     onThemeColorChange: (AppThemeColor) -> Unit,
     onBlackThemeChange: (Boolean) -> Unit,
-    onLaunchSplashAnimationChange: (Boolean) -> Unit,
     onLiquidBottomTabsChange: (Boolean) -> Unit,
     onLiquidBarWidthChange: (Float) -> Unit,
     onGlassDebugChange: (Boolean) -> Unit,
@@ -815,7 +828,7 @@ private fun AppearanceSettingsScreen(
             item {
                 ThemePickerListItem(
                     mode = settings.themeMode,
-                    items = 4,
+                    items = 3,
                     index = 0,
                     onThemeChange = onThemeModeChange,
                 )
@@ -824,7 +837,7 @@ private fun AppearanceSettingsScreen(
             item {
                 ColorSchemePickerListItem(
                     color = settings.themeColor,
-                    items = 4,
+                    items = 3,
                     index = 1,
                     onColorChange = onThemeColorChange,
                 )
@@ -836,21 +849,9 @@ private fun AppearanceSettingsScreen(
                     iconRes = R.drawable.ic_contrast_24,
                     title = stringResource(R.string.settings_black_theme_title),
                     description = stringResource(R.string.settings_black_theme_desc),
-                    items = 4,
+                    items = 3,
                     index = 2,
                     onCheckedChange = onBlackThemeChange,
-                )
-            }
-
-            item {
-                ExpressiveSwitchListItem(
-                    checked = settings.launchSplashAnimationEnabled,
-                    iconRes = R.drawable.ic_animation_24,
-                    title = stringResource(R.string.settings_launch_splash_animation),
-                    description = stringResource(R.string.settings_launch_splash_animation_desc),
-                    items = 4,
-                    index = 3,
-                    onCheckedChange = onLaunchSplashAnimationChange,
                 )
             }
 
@@ -1004,7 +1005,7 @@ private fun NamingSettingsScreen(
                     )
                     ExpressiveSwitchListItem(
                         checked = settings.naming.showSinglePageNumber,
-                        iconRes = R.drawable.ic_lists_24,
+                        iconRes = R.drawable.ic_format_list_bulleted_24,
                         title = stringResource(R.string.settings_naming_single_page_number),
                         description = stringResource(R.string.settings_naming_single_page_number_desc),
                         items = 3,
@@ -1297,7 +1298,6 @@ private fun NamingTemplateEditorPanel(
             )
         } ?: rendered
     }
-    val previewLabel = stringResource(R.string.settings_naming_preview_value, "")
     val tokenSections = remember(shape, scope) { namingTokenSections(shape, scope) }
     val interactionSource = remember { MutableInteractionSource() }
     val expandedRotation by animateFloatAsState(
@@ -1379,20 +1379,7 @@ private fun NamingTemplateEditorPanel(
                     ),
             ) {
                 Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     Spacer(Modifier.height(14.dp))
-                    Text(
-                        text = stringResource(R.string.settings_naming_rich_preview),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    NamingTemplateRichPreview(
-                        segments = previewSegments,
-                        emptyHint = stringResource(R.string.settings_naming_empty_template_hint),
-                    )
-
-                    Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
                         value = textFieldValue,
                         onValueChange = {
@@ -1402,29 +1389,43 @@ private fun NamingTemplateEditorPanel(
                         label = {
                             Text(stringResource(R.string.settings_naming_template_editor_label))
                         },
-                        supportingText = {
-                            Text(
-                                buildAnnotatedString {
-                                    pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
-                                    append(previewLabel)
-                                    pop()
-                                    append(previewValue)
-                                },
-                            )
-                        },
                         minLines = 2,
                         maxLines = 4,
                         modifier = Modifier.fillMaxWidth(),
                     )
 
+                    Spacer(Modifier.height(12.dp))
+                    NamingTemplatePreviewCard(
+                        segments = previewSegments,
+                        renderedName = previewValue,
+                        emptyHint = stringResource(R.string.settings_naming_empty_template_hint),
+                    )
+
                     if (source == NamingTemplateSource.Custom) {
-                        Spacer(Modifier.height(4.dp))
-                        TextButton(onClick = onReset) {
+                        Spacer(Modifier.height(12.dp))
+                        OutlinedButton(
+                            onClick = onReset,
+                            shapes = ButtonDefaults.shapes(),
+                            contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_refresh_24),
+                                contentDescription = null,
+                                modifier = Modifier.size(ButtonDefaults.IconSize),
+                            )
+                            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                             Text(stringResource(R.string.settings_naming_clear_custom))
                         }
                     }
 
                     Spacer(Modifier.height(14.dp))
+                    Text(
+                        text = stringResource(R.string.settings_naming_token_usage_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+
+                    Spacer(Modifier.height(20.dp))
                     Text(
                         text = stringResource(R.string.settings_naming_group_optional),
                         style = MaterialTheme.typography.labelLarge,
@@ -1448,14 +1449,20 @@ private fun NamingTemplateEditorPanel(
                     )
 
                     tokenSections.forEach { section ->
-                        Spacer(Modifier.height(12.dp))
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        Spacer(Modifier.height(12.dp))
+                        Spacer(Modifier.height(24.dp))
                         Text(
                             text = namingTokenGroupLabel(section.group),
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.primary,
                         )
+                        namingTokenGroupDescription(section.group)?.let { description ->
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                         Spacer(Modifier.height(8.dp))
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1583,15 +1590,18 @@ private fun NamingTokenChip(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+/**
+ * 模板的两种预览合并成一张卡片：上半部分展示模板结构，下半部分展示套用示例数据后的实际名称。
+ */
 @Composable
-private fun NamingTemplateRichPreview(
+private fun NamingTemplatePreviewCard(
     segments: List<NamingPreviewSegment>,
+    renderedName: String,
     emptyHint: String,
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = AppSurfaces.insetContainerColor,
         shape = MaterialTheme.shapes.large,
         modifier = modifier.fillMaxWidth(),
     ) {
@@ -1600,92 +1610,132 @@ private fun NamingTemplateRichPreview(
                 text = emptyHint,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(12.dp),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
             )
         } else {
-            val bodyStyle = MaterialTheme.typography.bodyMedium
-            val previewLineHeight = 2.5.em
-            val normalColor = MaterialTheme.colorScheme.onSurfaceVariant
-            val optionalColor = MaterialTheme.colorScheme.tertiary
-            val tokenContainerColor =
-                AppSurfaces.softTintedContainerColor(MaterialTheme.colorScheme.secondaryContainer)
-            val tokenContentColor = MaterialTheme.colorScheme.onSecondaryContainer
-            val optionalContainerColor =
-                AppSurfaces.softTintedContainerColor(MaterialTheme.colorScheme.tertiaryContainer)
-            val optionalContentColor = MaterialTheme.colorScheme.onTertiaryContainer
-            val invalidContainerColor = MaterialTheme.colorScheme.errorContainer
-            val invalidContentColor = MaterialTheme.colorScheme.onErrorContainer
-            val annotatedText = buildAnnotatedString {
-                segments.fastForEachIndexed { index, segment ->
-                    when (segment.kind) {
-                        NamingSegmentKind.Token,
-                        NamingSegmentKind.Unknown,
-                        -> appendInlineContent(
-                            id = "naming_preview_$index",
-                            alternateText = segment.token
-                                ?.let { namingTokenPreviewLabel(it) }
-                                ?: segment.raw,
-                        )
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+                NamingPreviewSectionLabel(
+                    text = stringResource(R.string.settings_naming_preview_structure),
+                )
+                Spacer(Modifier.height(6.dp))
+                NamingTemplateStructurePreview(segments = segments)
 
-                        NamingSegmentKind.OptionalStart -> withStyle(
-                            SpanStyle(color = optionalColor, fontWeight = FontWeight.Bold),
-                        ) { append("⟨") }
+                Spacer(Modifier.height(12.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Spacer(Modifier.height(12.dp))
 
-                        NamingSegmentKind.OptionalEnd -> withStyle(
-                            SpanStyle(color = optionalColor, fontWeight = FontWeight.Bold),
-                        ) { append("⟩") }
-
-                        NamingSegmentKind.Literal -> append(segment.raw)
-                    }
-                }
+                NamingPreviewSectionLabel(
+                    text = stringResource(R.string.settings_naming_preview_result),
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = renderedName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
             }
-            val inlineContent = buildMap<String, InlineTextContent> {
-                segments.fastForEachIndexed { index, segment ->
-                    if (segment.kind != NamingSegmentKind.Token &&
-                        segment.kind != NamingSegmentKind.Unknown
-                    ) {
-                        return@fastForEachIndexed
-                    }
-                    val label = segment.token?.let { namingTokenPreviewLabel(it) } ?: segment.raw
-                    val container = when {
-                        segment.kind == NamingSegmentKind.Unknown -> invalidContainerColor
-                        segment.optional -> optionalContainerColor
-                        else -> tokenContainerColor
-                    }
-                    val content = when {
-                        segment.kind == NamingSegmentKind.Unknown -> invalidContentColor
-                        segment.optional -> optionalContentColor
-                        else -> tokenContentColor
-                    }
-                    put(
-                        key = "naming_preview_$index",
-                        value = InlineTextContent(
-                            placeholder = Placeholder(
-                                width = namingPreviewChipWidthEm(label).em,
-                                height = 1.9.em,
-                                placeholderVerticalAlign = PlaceholderVerticalAlign.Center,
-                            ),
-                        ) { _ ->
-                            NamingPreviewInlineChip(
-                                text = label,
-                                containerColor = container,
-                                contentColor = content,
-                            )
-                        },
+        }
+    }
+}
+
+@Composable
+private fun NamingPreviewSectionLabel(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier,
+    )
+}
+
+/** 把模板拆成一串彩色标签，直观地看出哪些位置会被变量替换、哪些片段是可选的。 */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun NamingTemplateStructurePreview(
+    segments: List<NamingPreviewSegment>,
+    modifier: Modifier = Modifier,
+) {
+    val optionalColor = MaterialTheme.colorScheme.tertiary
+    val tokenContainerColor =
+        AppSurfaces.softTintedContainerColor(MaterialTheme.colorScheme.secondaryContainer)
+    val tokenContentColor = MaterialTheme.colorScheme.onSecondaryContainer
+    val optionalContainerColor =
+        AppSurfaces.softTintedContainerColor(MaterialTheme.colorScheme.tertiaryContainer)
+    val optionalContentColor = MaterialTheme.colorScheme.onTertiaryContainer
+    val invalidContainerColor = MaterialTheme.colorScheme.errorContainer
+    val invalidContentColor = MaterialTheme.colorScheme.onErrorContainer
+    val annotatedText = buildAnnotatedString {
+        segments.fastForEachIndexed { index, segment ->
+            when (segment.kind) {
+                NamingSegmentKind.Token,
+                NamingSegmentKind.Unknown,
+                -> appendInlineContent(
+                    id = "naming_preview_$index",
+                    alternateText = segment.token
+                        ?.let { namingTokenPreviewLabel(it) }
+                        ?: segment.raw,
+                )
+
+                NamingSegmentKind.OptionalStart -> withStyle(
+                    SpanStyle(color = optionalColor, fontWeight = FontWeight.Bold),
+                ) { append("⟨") }
+
+                NamingSegmentKind.OptionalEnd -> withStyle(
+                    SpanStyle(color = optionalColor, fontWeight = FontWeight.Bold),
+                ) { append("⟩") }
+
+                NamingSegmentKind.Literal -> append(segment.raw)
+            }
+        }
+    }
+    val inlineContent = buildMap<String, InlineTextContent> {
+        segments.fastForEachIndexed { index, segment ->
+            if (segment.kind != NamingSegmentKind.Token &&
+                segment.kind != NamingSegmentKind.Unknown
+            ) {
+                return@fastForEachIndexed
+            }
+            val label = segment.token?.let { namingTokenPreviewLabel(it) } ?: segment.raw
+            val container = when {
+                segment.kind == NamingSegmentKind.Unknown -> invalidContainerColor
+                segment.optional -> optionalContainerColor
+                else -> tokenContainerColor
+            }
+            val content = when {
+                segment.kind == NamingSegmentKind.Unknown -> invalidContentColor
+                segment.optional -> optionalContentColor
+                else -> tokenContentColor
+            }
+            put(
+                key = "naming_preview_$index",
+                value = InlineTextContent(
+                    placeholder = Placeholder(
+                        width = namingPreviewChipWidthEm(label).em,
+                        height = 1.7.em,
+                        placeholderVerticalAlign = PlaceholderVerticalAlign.Center,
+                    ),
+                ) { _ ->
+                    NamingPreviewInlineChip(
+                        text = label,
+                        containerColor = container,
+                        contentColor = content,
                     )
-                }
-            }
-            BasicText(
-                text = annotatedText,
-                inlineContent = inlineContent,
-                style = bodyStyle.copy(
-                    color = normalColor,
-                    lineHeight = previewLineHeight,
-                ),
-                modifier = Modifier.padding(12.dp),
+                },
             )
         }
     }
+    BasicText(
+        text = annotatedText,
+        inlineContent = inlineContent,
+        style = MaterialTheme.typography.bodyMedium.copy(
+            color = MaterialTheme.colorScheme.onSurface,
+            lineHeight = 2.0.em,
+        ),
+        modifier = modifier.fillMaxWidth(),
+    )
 }
 
 @Composable
@@ -1704,7 +1754,7 @@ private fun NamingPreviewInlineChip(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 10.dp, vertical = 4.dp),
+                .padding(horizontal = NAMING_PREVIEW_CHIP_HORIZONTAL_PADDING, vertical = 3.dp),
         ) {
             Text(
                 text = text,
@@ -1717,18 +1767,27 @@ private fun NamingPreviewInlineChip(
     }
 }
 
+/**
+ * 估算内联胶囊要占的宽度。占位宽度以正文字号为 1em，而胶囊里的文字用的是更小的 labelMedium，
+ * 因此每个字符按两者的字号比例折算，避免留出多余的空白。
+ */
 private fun namingPreviewChipWidthEm(text: String): Float {
-    var width = 2.4f
+    var width = NAMING_PREVIEW_CHIP_PADDING_EM
     text.forEach { char ->
         width += when {
-            char.isWhitespace() -> 0.35f
-            char.code in 0x4E00..0x9FFF -> 1.0f
-            char.isLetterOrDigit() -> 0.62f
-            else -> 0.5f
+            char.isWhitespace() -> 0.28f
+            char.code in 0x4E00..0x9FFF -> 0.9f
+            char.isLetterOrDigit() -> 0.55f
+            else -> 0.42f
         }
     }
-    return max(width, 4.5f)
+    return max(width, 3.2f)
 }
+
+/** 胶囊左右内边距（[NAMING_PREVIEW_CHIP_HORIZONTAL_PADDING] 的两倍）换算成 em，另留一点点余量防止文字被截断。 */
+private const val NAMING_PREVIEW_CHIP_PADDING_EM = 1.5f
+
+private val NAMING_PREVIEW_CHIP_HORIZONTAL_PADDING = 8.dp
 
 private data class NamingTokenSection(
     val group: NamingTokenGroup,
@@ -1986,6 +2045,15 @@ private fun namingTokenGroupLabel(group: NamingTokenGroup): String {
         NamingTokenGroup.Time -> stringResource(R.string.settings_naming_group_time)
         NamingTokenGroup.Ids -> stringResource(R.string.settings_naming_group_ids)
         NamingTokenGroup.Stream -> stringResource(R.string.settings_naming_group_stream)
+    }
+}
+
+/** 只有时间变量需要额外解释格式写法，其余分组看名字即可。 */
+@Composable
+private fun namingTokenGroupDescription(group: NamingTokenGroup): String? {
+    return when (group) {
+        NamingTokenGroup.Time -> stringResource(R.string.settings_naming_group_time_desc)
+        else -> null
     }
 }
 
