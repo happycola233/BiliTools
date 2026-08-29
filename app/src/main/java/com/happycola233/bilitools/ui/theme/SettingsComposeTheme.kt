@@ -29,6 +29,15 @@ import com.happycola233.bilitools.data.AppThemeColor
 import com.happycola233.bilitools.data.AppThemeMode
 import com.happycola233.bilitools.ui.overlayStyleResOrNull
 
+/**
+ * 设置页专用主题。它自己按 [AppSettings] 拼一个带配色 overlay 的 Context 再取色，
+ * 所以用户在设置页里改配色能立刻看到变化，不必等 `recreate()`。
+ *
+ * 代价是它与 Activity 主题是两套来源，其他页面一律用 [rememberAndroidThemeColorScheme]。
+ * 同一屏里混用两者会出现一半即时刷新、一半等 `recreate()` 的分批变色。
+ *
+ * **新增角色时这里和 `ComposeTheme.kt` 必须同步补齐**，理由见那边的说明。
+ */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun BiliToolsSettingsTheme(
@@ -169,6 +178,55 @@ private fun Context.resolveThemeColorScheme(darkTheme: Boolean): ColorScheme {
         com.google.android.material.R.attr.colorOnTertiaryContainer,
         baseScheme.onTertiaryContainer,
     )
+    // fixed 色组在深浅模式下取值相同，按钮、选中胶囊这类填充面用它来保持两个模式一致
+    val primaryFixed = resolveThemeColor(
+        com.google.android.material.R.attr.colorPrimaryFixed,
+        baseScheme.primaryFixed,
+    )
+    val primaryFixedDim = resolveThemeColor(
+        com.google.android.material.R.attr.colorPrimaryFixedDim,
+        baseScheme.primaryFixedDim,
+    )
+    val onPrimaryFixed = resolveThemeColor(
+        com.google.android.material.R.attr.colorOnPrimaryFixed,
+        baseScheme.onPrimaryFixed,
+    )
+    val onPrimaryFixedVariant = resolveThemeColor(
+        com.google.android.material.R.attr.colorOnPrimaryFixedVariant,
+        baseScheme.onPrimaryFixedVariant,
+    )
+    val secondaryFixed = resolveThemeColor(
+        com.google.android.material.R.attr.colorSecondaryFixed,
+        baseScheme.secondaryFixed,
+    )
+    val secondaryFixedDim = resolveThemeColor(
+        com.google.android.material.R.attr.colorSecondaryFixedDim,
+        baseScheme.secondaryFixedDim,
+    )
+    val onSecondaryFixed = resolveThemeColor(
+        com.google.android.material.R.attr.colorOnSecondaryFixed,
+        baseScheme.onSecondaryFixed,
+    )
+    val onSecondaryFixedVariant = resolveThemeColor(
+        com.google.android.material.R.attr.colorOnSecondaryFixedVariant,
+        baseScheme.onSecondaryFixedVariant,
+    )
+    val tertiaryFixed = resolveThemeColor(
+        com.google.android.material.R.attr.colorTertiaryFixed,
+        baseScheme.tertiaryFixed,
+    )
+    val tertiaryFixedDim = resolveThemeColor(
+        com.google.android.material.R.attr.colorTertiaryFixedDim,
+        baseScheme.tertiaryFixedDim,
+    )
+    val onTertiaryFixed = resolveThemeColor(
+        com.google.android.material.R.attr.colorOnTertiaryFixed,
+        baseScheme.onTertiaryFixed,
+    )
+    val onTertiaryFixedVariant = resolveThemeColor(
+        com.google.android.material.R.attr.colorOnTertiaryFixedVariant,
+        baseScheme.onTertiaryFixedVariant,
+    )
     val background = resolveThemeColor(android.R.attr.colorBackground, baseScheme.background)
     val onBackground = resolveThemeColor(
         com.google.android.material.R.attr.colorOnBackground,
@@ -236,6 +294,26 @@ private fun Context.resolveThemeColorScheme(darkTheme: Boolean): ColorScheme {
         com.google.android.material.R.attr.colorSurfaceContainerLowest,
         baseScheme.surfaceContainerLowest,
     )
+    val surfaceBright = resolveThemeColor(
+        com.google.android.material.R.attr.colorSurfaceBright,
+        baseScheme.surfaceBright,
+    )
+    val surfaceDim = resolveThemeColor(
+        com.google.android.material.R.attr.colorSurfaceDim,
+        baseScheme.surfaceDim,
+    )
+    val inverseSurface = resolveThemeColor(
+        com.google.android.material.R.attr.colorSurfaceInverse,
+        baseScheme.inverseSurface,
+    )
+    val inverseOnSurface = resolveThemeColor(
+        com.google.android.material.R.attr.colorOnSurfaceInverse,
+        baseScheme.inverseOnSurface,
+    )
+    val inversePrimary = resolveThemeColor(
+        com.google.android.material.R.attr.colorPrimaryInverse,
+        baseScheme.inversePrimary,
+    )
     return baseScheme.copy(
         primary = primary,
         onPrimary = onPrimary,
@@ -249,6 +327,18 @@ private fun Context.resolveThemeColorScheme(darkTheme: Boolean): ColorScheme {
         onTertiary = onTertiary,
         tertiaryContainer = tertiaryContainer,
         onTertiaryContainer = onTertiaryContainer,
+        primaryFixed = primaryFixed,
+        primaryFixedDim = primaryFixedDim,
+        onPrimaryFixed = onPrimaryFixed,
+        onPrimaryFixedVariant = onPrimaryFixedVariant,
+        secondaryFixed = secondaryFixed,
+        secondaryFixedDim = secondaryFixedDim,
+        onSecondaryFixed = onSecondaryFixed,
+        onSecondaryFixedVariant = onSecondaryFixedVariant,
+        tertiaryFixed = tertiaryFixed,
+        tertiaryFixedDim = tertiaryFixedDim,
+        onTertiaryFixed = onTertiaryFixed,
+        onTertiaryFixedVariant = onTertiaryFixedVariant,
         background = background,
         onBackground = onBackground,
         surface = surface,
@@ -267,12 +357,12 @@ private fun Context.resolveThemeColorScheme(darkTheme: Boolean): ColorScheme {
         surfaceContainerHighest = surfaceContainerHighest,
         surfaceContainerLow = surfaceContainerLow,
         surfaceContainerLowest = surfaceContainerLowest,
-    ).let { scheme ->
-        scheme.copy(
-            surfaceBright = deriveSurfaceBright(darkTheme, scheme),
-            surfaceDim = deriveSurfaceDim(darkTheme, scheme),
-        )
-    }
+        surfaceBright = surfaceBright,
+        surfaceDim = surfaceDim,
+        inverseSurface = inverseSurface,
+        inverseOnSurface = inverseOnSurface,
+        inversePrimary = inversePrimary,
+    )
 }
 
 private fun Context.resolveThemeColor(

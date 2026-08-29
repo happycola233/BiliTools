@@ -12,6 +12,18 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import com.google.android.material.color.MaterialColors
 
+/**
+ * 把 Activity 当前的 View 主题（基础主题 + 配色 overlay + 纯黑 overlay）翻译成 Compose 的
+ * [ColorScheme]，让同一屏里的 View 控件与 Compose 内容取到完全一致的颜色。
+ *
+ * 因为读的是 Activity 主题，切换配色需要 `recreate()` 才会生效。设置页用的是
+ * [BiliToolsSettingsTheme]，它由 `AppSettings` 驱动、改完即时刷新，两者不要混用：
+ * 同一屏里一半即时刷新、一半等 `recreate()`，会看到明显的分批变色。
+ *
+ * **新增角色时这里和 `SettingsComposeTheme.kt` 必须同步补齐。** 没覆盖的角色会静默停在
+ * `lightColorScheme()` / `darkColorScheme()` 的基线紫，当下没组件用到就发现不了
+ * （`inverseSurface` 一族就这样漏了很久），等哪天加个 Snackbar 才会突然蹦出来。
+ */
 @Composable
 fun rememberAndroidThemeColorScheme(): ColorScheme {
     val view = LocalView.current
@@ -68,6 +80,55 @@ fun rememberAndroidThemeColorScheme(): ColorScheme {
                 com.google.android.material.R.attr.colorOnTertiaryContainer,
                 baseScheme.onTertiaryContainer,
             ),
+            // fixed 色组在深浅模式下取值相同，按钮、选中胶囊这类填充面用它来保持两个模式一致
+            primaryFixed = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorPrimaryFixed,
+                baseScheme.primaryFixed,
+            ),
+            primaryFixedDim = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorPrimaryFixedDim,
+                baseScheme.primaryFixedDim,
+            ),
+            onPrimaryFixed = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorOnPrimaryFixed,
+                baseScheme.onPrimaryFixed,
+            ),
+            onPrimaryFixedVariant = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorOnPrimaryFixedVariant,
+                baseScheme.onPrimaryFixedVariant,
+            ),
+            secondaryFixed = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorSecondaryFixed,
+                baseScheme.secondaryFixed,
+            ),
+            secondaryFixedDim = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorSecondaryFixedDim,
+                baseScheme.secondaryFixedDim,
+            ),
+            onSecondaryFixed = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorOnSecondaryFixed,
+                baseScheme.onSecondaryFixed,
+            ),
+            onSecondaryFixedVariant = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorOnSecondaryFixedVariant,
+                baseScheme.onSecondaryFixedVariant,
+            ),
+            tertiaryFixed = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorTertiaryFixed,
+                baseScheme.tertiaryFixed,
+            ),
+            tertiaryFixedDim = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorTertiaryFixedDim,
+                baseScheme.tertiaryFixedDim,
+            ),
+            onTertiaryFixed = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorOnTertiaryFixed,
+                baseScheme.onTertiaryFixed,
+            ),
+            onTertiaryFixedVariant = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorOnTertiaryFixedVariant,
+                baseScheme.onTertiaryFixedVariant,
+            ),
             background = view.resolveThemeColor(android.R.attr.colorBackground, baseScheme.background),
             onBackground = view.resolveThemeColor(
                 com.google.android.material.R.attr.colorOnBackground,
@@ -92,6 +153,18 @@ fun rememberAndroidThemeColorScheme(): ColorScheme {
             surfaceTint = view.resolveThemeColor(
                 androidx.appcompat.R.attr.colorPrimary,
                 baseScheme.surfaceTint,
+            ),
+            inverseSurface = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorSurfaceInverse,
+                baseScheme.inverseSurface,
+            ),
+            inverseOnSurface = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorOnSurfaceInverse,
+                baseScheme.inverseOnSurface,
+            ),
+            inversePrimary = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorPrimaryInverse,
+                baseScheme.inversePrimary,
             ),
             // Material 主题不会把 colorError 映射到平台的 android:colorError，
             // 读平台属性会穿透到 ROM 的系统强调色，必须读 AppCompat 声明的那个
@@ -139,26 +212,16 @@ fun rememberAndroidThemeColorScheme(): ColorScheme {
                 com.google.android.material.R.attr.colorSurfaceContainerLowest,
                 baseScheme.surfaceContainerLowest,
             ),
-        ).let { scheme ->
-            scheme.copy(
-                surfaceBright = deriveSurfaceBright(isDarkTheme, scheme),
-                surfaceDim = deriveSurfaceDim(isDarkTheme, scheme),
-            )
-        }
+            surfaceBright = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorSurfaceBright,
+                baseScheme.surfaceBright,
+            ),
+            surfaceDim = view.resolveThemeColor(
+                com.google.android.material.R.attr.colorSurfaceDim,
+                baseScheme.surfaceDim,
+            ),
+        )
     }
-}
-
-/**
- * 自定义配色的 XML 主题只声明了 surface 与 surfaceContainer* 色阶，没有 colorSurfaceBright / colorSurfaceDim，
- * 直接读属性会拿到 Material 基线调色板的紫色，与应用配色不符。这里按 M3 的色阶关系推导，
- * 供「读 View 主题」与「按设置项自建主题」两条路径共用，确保两者算出的卡片底色完全一致。
- */
-internal fun deriveSurfaceBright(darkTheme: Boolean, scheme: ColorScheme): Color {
-    return if (darkTheme) scheme.surfaceContainerHighest else scheme.surface
-}
-
-internal fun deriveSurfaceDim(darkTheme: Boolean, scheme: ColorScheme): Color {
-    return if (darkTheme) scheme.surface else scheme.surfaceContainerHighest
 }
 
 private fun View.resolveThemeColor(

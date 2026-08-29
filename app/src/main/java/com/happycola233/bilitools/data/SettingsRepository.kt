@@ -145,25 +145,38 @@ enum class AppThemeMode(val value: String) {
     }
 }
 
+/** 按色相环顺序排列，设置页的色块也按这个顺序展示 */
 enum class AppThemeColor(val value: String) {
     Dynamic("dynamic"),
+    Sakura("sakura"),
     Coral("coral"),
-    Rose("rose"),
-    Orchid("orchid"),
-    Periwinkle("periwinkle"),
-    Sky("sky"),
-    Cyan("cyan"),
-    Turquoise("turquoise"),
-    Leaf("leaf"),
-    Lime("lime"),
-    Olive("olive"),
-    Gold("gold"),
     Apricot("apricot"),
+    Sand("sand"),
+    Matcha("matcha"),
+    Mint("mint"),
+    Seafoam("seafoam"),
+    Lagoon("lagoon"),
+    Sky("sky"),
+    Iris("iris"),
+    Periwinkle("periwinkle"),
+    Lilac("lilac"),
+    Orchid("orchid"),
     ;
 
     companion object {
+        /** 配色方案重做前留在本地的色号，按色相就近迁移，避免升级后配色被重置 */
+        private val LEGACY_VALUES = mapOf(
+            "rose" to Sakura,
+            "gold" to Sand,
+            "olive" to Matcha,
+            "lime" to Matcha,
+            "leaf" to Mint,
+            "turquoise" to Seafoam,
+            "cyan" to Lagoon,
+        )
+
         fun fromValue(value: String?): AppThemeColor {
-            return entries.firstOrNull { it.value == value } ?: Dynamic
+            return entries.firstOrNull { it.value == value } ?: LEGACY_VALUES[value] ?: Dynamic
         }
     }
 }

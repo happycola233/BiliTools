@@ -71,6 +71,8 @@ fun MainLiquidBottomBar(
             onTabSelected = onTabSelected,
             backdrop = backdrop,
             tabsCount = MainLiquidTabs.size,
+            // 气泡本身是透明玻璃透镜，这个颜色着色的是选中项的图标与文字，
+            // 属于前景角色，必须用压得够深的 primary，浅色填充色在玻璃上读不出来
             accentColor = MaterialTheme.colorScheme.primary,
             containerColor = (if (isLightTheme) Color.White else Color.Black)
                 .copy(alpha = surfaceAlpha.coerceIn(0f, 1f)),

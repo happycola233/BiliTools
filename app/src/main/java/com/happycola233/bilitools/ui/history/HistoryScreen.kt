@@ -101,6 +101,7 @@ import com.happycola233.bilitools.data.model.HistoryTab
 import com.happycola233.bilitools.ui.UserIdentityLabel
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import com.happycola233.bilitools.ui.longPressAction
+import com.happycola233.bilitools.ui.theme.AppAccents
 import com.happycola233.bilitools.ui.theme.AppSurfaces
 import com.happycola233.bilitools.ui.theme.BiliToolsSettingsTheme
 import com.happycola233.bilitools.ui.theme.usesPureBlackSurfaces
@@ -368,6 +369,7 @@ fun BiliToolsHistoryContent(
                                 )
                                 showDateRangePicker = false
                             },
+                            colors = AppAccents.filledButtonColors(),
                         ) {
                             Text(text = stringResource(android.R.string.ok))
                         }
@@ -1126,6 +1128,7 @@ private fun HistoryFilterBottomSheet(
                 }
                 Button(
                     onClick = onApply,
+                    colors = AppAccents.filledButtonColors(),
                     modifier = Modifier.weight(1f),
                 ) {
                     Text(text = stringResource(R.string.history_filter_apply))
@@ -1146,8 +1149,8 @@ private fun <T> HistoryFilterToggleSection(
     val toggleColors = ToggleButtonDefaults.toggleButtonColors(
         containerColor = HistoryExpressiveDefaults.toggleContainerColor,
         contentColor = MaterialTheme.colorScheme.onSurface,
-        checkedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-        checkedContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        checkedContainerColor = AppAccents.fill,
+        checkedContentColor = AppAccents.onFill,
     )
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

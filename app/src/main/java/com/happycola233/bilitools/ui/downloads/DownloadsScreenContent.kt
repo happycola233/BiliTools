@@ -31,7 +31,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
@@ -94,6 +93,7 @@ import com.happycola233.bilitools.data.model.DownloadItem
 import com.happycola233.bilitools.ui.FloatingControlsDefaults
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import com.happycola233.bilitools.ui.mainBottomBarBottomInset
+import com.happycola233.bilitools.ui.theme.AppAccents
 import com.happycola233.bilitools.ui.theme.AppSurfaces
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
@@ -477,7 +477,7 @@ private fun DownloadsDeleteDialog(
                         Checkbox(
                             checked = deleteFileChecked,
                             onCheckedChange = { checked -> deleteFileChecked = checked },
-                            colors = CheckboxDefaults.colors(),
+                            colors = AppAccents.checkboxColors(),
                         )
                         Text(
                             text = stringResource(R.string.download_delete_with_file),
@@ -528,6 +528,13 @@ private fun DownloadsManageFab(
 ) {
     val haptics = rememberAppHaptics()
     var expanded by remember { mutableStateOf(false) }
+    // 悬浮按钮浮在页面底色之上，必须用深浅同值的浅填充色才能在两个模式下都浮得起来。
+    //
+    // 图标的 tint 必须显式给：ToggleFloatingActionButton 只做了加阴影、画容器、调 content()
+    // 三件事，既不提供 LocalContentColor，也不会自动套 animateIcon，不写 tint 的 Icon 会
+    // 回落到 Compose 库默认的纯黑，与配色方案彻底脱钩。
+    val fabContainerColor = AppAccents.fill
+    val fabContentColor = AppAccents.onFill
 
     FloatingActionButtonMenu(
         expanded = expanded,
@@ -538,6 +545,7 @@ private fun DownloadsManageFab(
                     haptics.toggle(next)
                     expanded = next
                 },
+                containerColor = { fabContainerColor },
             ) {
                 val imageVector = if (checkedProgress > 0.5f) {
                     R.drawable.ic_close_rounded_24
@@ -547,6 +555,7 @@ private fun DownloadsManageFab(
                 Icon(
                     painter = painterResource(imageVector),
                     contentDescription = stringResource(R.string.downloads_actions_menu),
+                    tint = fabContentColor,
                 )
             }
         },
@@ -558,26 +567,36 @@ private fun DownloadsManageFab(
             onClick = { expanded = false; haptics.confirm(); onClearAll() },
             icon = { Icon(painter = painterResource(R.drawable.ic_delete_24), contentDescription = null) },
             text = { Text(text = stringResource(R.string.downloads_clear_all)) },
+            containerColor = fabContainerColor,
+            contentColor = fabContentColor,
         )
         FloatingActionButtonMenuItem(
             onClick = { expanded = false; haptics.confirm(); onClearCompleted() },
             icon = { Icon(painter = painterResource(R.drawable.ic_delete_sweep_24), contentDescription = null) },
             text = { Text(text = stringResource(R.string.downloads_clear_completed)) },
+            containerColor = fabContainerColor,
+            contentColor = fabContentColor,
         )
         FloatingActionButtonMenuItem(
             onClick = { expanded = false; haptics.confirm(); onPauseAll() },
             icon = { Icon(painter = painterResource(R.drawable.ic_pause_24), contentDescription = null) },
             text = { Text(text = stringResource(R.string.downloads_pause_all_with_count, pauseAllCount)) },
+            containerColor = fabContainerColor,
+            contentColor = fabContentColor,
         )
         FloatingActionButtonMenuItem(
             onClick = { expanded = false; haptics.confirm(); onResumeAll() },
             icon = { Icon(painter = painterResource(R.drawable.ic_play_arrow_24), contentDescription = null) },
             text = { Text(text = stringResource(R.string.downloads_resume_all_with_count, resumeAllCount)) },
+            containerColor = fabContainerColor,
+            contentColor = fabContentColor,
         )
         FloatingActionButtonMenuItem(
             onClick = { expanded = false; haptics.confirm(); onBatchManage() },
             icon = { Icon(painter = painterResource(R.drawable.ic_checklist_rounded_24), contentDescription = null) },
             text = { Text(text = stringResource(R.string.downloads_multi_manage)) },
+            containerColor = fabContainerColor,
+            contentColor = fabContentColor,
         )
     }
 }

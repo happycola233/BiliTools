@@ -4,7 +4,6 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -34,12 +33,9 @@ class MeFragment : Fragment(R.layout.fragment_me) {
             ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed,
         )
         binding.meCompose.setContent {
-            val settingsRepository = remember { requireContext().appContainer.settingsRepository }
-            val settings by settingsRepository.settings.collectAsState()
             val loginState by viewModel.state.collectAsState()
 
             BiliToolsMeContent(
-                settings = settings,
                 loginState = loginState,
                 onOpenLogin = {
                     startActivity(Intent(requireContext(), LoginActivity::class.java))

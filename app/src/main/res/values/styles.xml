@@ -1,6 +1,8 @@
 <resources>
     <style name="Widget.BiliTools.BottomNavigation" parent="Widget.Material3Expressive.BottomNavigationView">
         <item name="itemActiveIndicatorStyle">@style/Widget.BiliTools.BottomNavigation.ActiveIndicator</item>
+        <item name="itemIconTint">@color/bottom_nav_item_tint</item>
+        <item name="itemTextColor">@color/bottom_nav_item_tint</item>
         <item name="itemIconSize">24dp</item>
         <item name="android:minHeight">80dp</item>
         <item name="itemPaddingTop">12dp</item>
@@ -11,7 +13,8 @@
         parent="Widget.Material3Expressive.BottomNavigationView.ActiveIndicator">
         <item name="android:width">64dp</item>
         <item name="android:height">32dp</item>
-        <item name="android:color">?attr/colorSecondaryContainer</item>
+        <!-- 选中气泡是填充面，与 Compose 侧的主按钮、选中胶囊同色 -->
+        <item name="android:color">?attr/colorPrimaryFixedDim</item>
         <item name="shapeAppearance">@style/ShapeAppearance.BiliTools.Indicator</item>
     </style>
 

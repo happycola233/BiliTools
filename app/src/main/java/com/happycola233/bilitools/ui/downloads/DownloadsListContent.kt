@@ -45,7 +45,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
@@ -105,6 +104,7 @@ import com.happycola233.bilitools.data.model.isManagedTransfer
 import com.happycola233.bilitools.data.model.isResolvedWithoutFailure
 import com.happycola233.bilitools.ui.haptics.HapticThresholdGate
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
+import com.happycola233.bilitools.ui.theme.AppAccents
 import com.happycola233.bilitools.ui.theme.AppSurfaces
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -746,10 +746,7 @@ private fun DownloadsGroupCard(
                                 haptics.toggle(next)
                                 onToggleSelection()
                             },
-                            colors = CheckboxDefaults.colors(
-                                checkedColor = MaterialTheme.colorScheme.primary,
-                                uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            ),
+                            colors = AppAccents.checkboxColors(),
                             modifier = Modifier.padding(end = 6.dp),
                         )
                     }

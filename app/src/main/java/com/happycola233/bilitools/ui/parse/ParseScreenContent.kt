@@ -162,6 +162,7 @@ import com.happycola233.bilitools.ui.longPressAction
 import com.happycola233.bilitools.ui.mainBottomBarBottomInset
 import com.happycola233.bilitools.ui.haptics.HapticTicker
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
+import com.happycola233.bilitools.ui.theme.AppAccents
 import com.happycola233.bilitools.ui.theme.AppSurfaces
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -681,7 +682,8 @@ private fun <T> CopyPreviewDialog(
                     .padding(horizontal = copyDialogHorizontalMargin),
                 shape = RoundedCornerShape(copyDialogCornerRadius),
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                tonalElevation = 6.dp,
+                // 层次由投影表达；tonalElevation 会额外叠一层 surfaceTint（即 primary），
+                // 让弹窗底色偏离配色方案里的表面色阶
                 shadowElevation = 18.dp,
             ) {
                 Column(
@@ -1634,6 +1636,7 @@ private fun SectionControls(
                         onCollectionModeChange(enabled)
                     },
                     enabled = controlsEnabled,
+                    colors = AppAccents.switchColors(),
                     modifier = Modifier.padding(end = 2.dp),
                 )
             }
@@ -2447,6 +2450,7 @@ private fun PageItemRow(
                     haptics.toggle(next)
                     onCheckedChange(next)
                 },
+                colors = AppAccents.checkboxColors(),
             )
             Text(
                 text = (index + 1).toString(),
@@ -3101,6 +3105,7 @@ private fun <T> ConnectedToggleRow(
                             options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
                             else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                         },
+                        colors = AppAccents.toggleButtonColors(),
                         contentPadding = PaddingValues(horizontal = 10.dp),
                     ) {
                         option.iconRes?.let { iconRes ->
@@ -3198,12 +3203,12 @@ private fun ExpressiveActionButton(
     val loadingContainerColor = if (tonal) {
         MaterialTheme.colorScheme.secondaryContainer
     } else {
-        MaterialTheme.colorScheme.primary
+        AppAccents.fill
     }
     val loadingContentColor = if (tonal) {
         MaterialTheme.colorScheme.onSecondaryContainer
     } else {
-        MaterialTheme.colorScheme.onPrimary
+        AppAccents.onFill
     }
 
     val clickWithHaptics: () -> Unit = {
@@ -3261,12 +3266,12 @@ private fun ExpressiveActionButton(
             interactionSource = interactionSource,
             contentPadding = PaddingValues(horizontal = 14.dp),
             colors = if (loading) {
-                ButtonDefaults.buttonColors(
+                AppAccents.filledButtonColors().copy(
                     disabledContainerColor = loadingContainerColor,
                     disabledContentColor = loadingContentColor,
                 )
             } else {
-                ButtonDefaults.buttonColors()
+                AppAccents.filledButtonColors()
             },
         ) {
             content()
@@ -3305,8 +3310,10 @@ private fun QuickActionFab(
                 scaleX = scale
                 scaleY = scale
             },
-        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        // 深浅同值的浅填充色，才能同时在浅色页面与深色页面上浮起来；
+        // secondaryContainer 在深色下是暗色，压在深色页底上会看不见
+        containerColor = AppAccents.fill,
+        contentColor = AppAccents.onFill,
         shape = FloatingActionButtonDefaults.shape,
         interactionSource = interactionSource,
     ) {
@@ -3631,6 +3638,7 @@ private fun CheckOption(
             checked = checked,
             onCheckedChange = toggle,
             enabled = enabled,
+            colors = AppAccents.checkboxColors(),
         )
         Text(
             text = text,

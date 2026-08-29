@@ -84,7 +84,6 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchColors
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -122,6 +121,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.Placeholder
@@ -164,6 +164,10 @@ import com.happycola233.bilitools.data.SettingsRepository
 import com.happycola233.bilitools.data.TopLevelFolderMode
 import com.happycola233.bilitools.ui.BiliTvLaunchMotion
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
+import com.happycola233.bilitools.ui.displayNameRes
+import com.happycola233.bilitools.ui.overlayStyleResOrNull
+import com.happycola233.bilitools.ui.resolveOverlaySwatch
+import com.happycola233.bilitools.ui.theme.AppAccents
 import com.happycola233.bilitools.ui.theme.AppSurfaces
 import com.happycola233.bilitools.ui.theme.BiliToolsFonts
 import com.happycola233.bilitools.ui.theme.BiliToolsSettingsTheme
@@ -393,7 +397,8 @@ private data class TopLevelFolderModeOption(
 
 private data class ColorSchemeOption(
     val themeColor: AppThemeColor,
-    val seedColor: Color,
+    val fillColor: Color,
+    val onFillColor: Color,
 )
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -784,6 +789,7 @@ private fun MaxConcurrentDownloadsListItem(
                         options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
                         else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                     },
+                    colors = AppAccents.toggleButtonColors(),
                     modifier = Modifier
                         .weight(1f)
                         .semantics { role = Role.RadioButton },
@@ -1147,6 +1153,7 @@ private fun TopLevelFolderModeListItem(
                         options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
                         else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                     },
+                    colors = AppAccents.toggleButtonColors(),
                 ) {
                     Text(
                         text = stringResource(option.labelRes),
@@ -1225,6 +1232,7 @@ private fun NamingShapeChip(
             }
         },
         shapes = ToggleButtonDefaults.shapesFor(NAMING_SHAPE_CHIP_HEIGHT),
+        colors = AppAccents.toggleButtonColors(),
         contentPadding = PaddingValues(horizontal = 18.dp),
         modifier = modifier
             .height(NAMING_SHAPE_CHIP_HEIGHT)
@@ -1533,13 +1541,11 @@ private fun NamingTokenChip(
         animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
         label = "namingTokenChipScale",
     )
-    val restingContainer = AppSurfaces.softTintedContainerColor(
-        if (accent) {
-            MaterialTheme.colorScheme.tertiaryContainer
-        } else {
-            MaterialTheme.colorScheme.secondaryContainer
-        },
-    )
+    val restingContainer = if (accent) {
+        MaterialTheme.colorScheme.tertiaryContainer
+    } else {
+        MaterialTheme.colorScheme.secondaryContainer
+    }
     val restingContent = if (accent) {
         MaterialTheme.colorScheme.onTertiaryContainer
     } else {
@@ -1659,11 +1665,9 @@ private fun NamingTemplateStructurePreview(
     modifier: Modifier = Modifier,
 ) {
     val optionalColor = MaterialTheme.colorScheme.tertiary
-    val tokenContainerColor =
-        AppSurfaces.softTintedContainerColor(MaterialTheme.colorScheme.secondaryContainer)
+    val tokenContainerColor = MaterialTheme.colorScheme.secondaryContainer
     val tokenContentColor = MaterialTheme.colorScheme.onSecondaryContainer
-    val optionalContainerColor =
-        AppSurfaces.softTintedContainerColor(MaterialTheme.colorScheme.tertiaryContainer)
+    val optionalContainerColor = MaterialTheme.colorScheme.tertiaryContainer
     val optionalContentColor = MaterialTheme.colorScheme.onTertiaryContainer
     val invalidContainerColor = MaterialTheme.colorScheme.errorContainer
     val invalidContentColor = MaterialTheme.colorScheme.onErrorContainer
@@ -2824,6 +2828,7 @@ private fun <T> ConnectedToggleButtons(
                     .weight(1f)
                     .semantics { role = Role.RadioButton },
                 shapes = connectedButtonShapes(index, options.lastIndex),
+                colors = AppAccents.toggleButtonColors(),
             ) {
                 label(option)
             }
@@ -2853,6 +2858,7 @@ private fun <T> HorizontalConnectedToggleButtons(
                     .widthIn(min = 112.dp)
                     .semantics { role = Role.RadioButton },
                 shapes = connectedButtonShapes(index, options.lastIndex),
+                colors = AppAccents.toggleButtonColors(),
             ) {
                 label(option)
             }
@@ -2957,6 +2963,7 @@ private fun ThemePickerListItem(
                         options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
                         else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                     },
+                    colors = AppAccents.toggleButtonColors(),
                 ) {
                     Text(
                         text = stringResource(option.labelRes),
@@ -3041,21 +3048,15 @@ private fun ColorSchemePickerListItem(
     onColorChange: (AppThemeColor) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val options = remember {
-        listOf(
-            ColorSchemeOption(AppThemeColor.Coral, Color(0xFFFEB4A7)),
-            ColorSchemeOption(AppThemeColor.Rose, Color(0xFFFFB3C0)),
-            ColorSchemeOption(AppThemeColor.Orchid, Color(0xFFFCAAFF)),
-            ColorSchemeOption(AppThemeColor.Periwinkle, Color(0xFFB9C3FF)),
-            ColorSchemeOption(AppThemeColor.Sky, Color(0xFF62D3FF)),
-            ColorSchemeOption(AppThemeColor.Cyan, Color(0xFF44D9F1)),
-            ColorSchemeOption(AppThemeColor.Turquoise, Color(0xFF52DBC9)),
-            ColorSchemeOption(AppThemeColor.Leaf, Color(0xFF78DD77)),
-            ColorSchemeOption(AppThemeColor.Lime, Color(0xFF9FD75C)),
-            ColorSchemeOption(AppThemeColor.Olive, Color(0xFFC1D02D)),
-            ColorSchemeOption(AppThemeColor.Gold, Color(0xFFFABD00)),
-            ColorSchemeOption(AppThemeColor.Apricot, Color(0xFFFFB86E)),
-        )
+    // 色块直接取自各配色 overlay，与实际按钮同色，改配色表时这里无需同步
+    val context = LocalContext.current
+    val options = remember(context) {
+        AppThemeColor.entries.mapNotNull { themeColor ->
+            themeColor.overlayStyleResOrNull()?.let { overlayStyleRes ->
+                val swatch = context.resolveOverlaySwatch(overlayStyleRes)
+                ColorSchemeOption(themeColor, Color(swatch.fill), Color(swatch.onFill))
+            }
+        }
     }
     val zeroCorner = remember { CornerSize(0) }
 
@@ -3076,7 +3077,7 @@ private fun ColorSchemePickerListItem(
                     Switch(
                         checked = checked,
                         onCheckedChange = {
-                            onColorChange(if (it) AppThemeColor.Dynamic else AppThemeColor.Lime)
+                            onColorChange(if (it) AppThemeColor.Dynamic else AppThemeColor.Sakura)
                         },
                         thumbContent = {
                             Icon(
@@ -3087,7 +3088,7 @@ private fun ColorSchemePickerListItem(
                                 modifier = Modifier.size(SwitchDefaults.IconSize),
                             )
                         },
-                        colors = SettingsExpressiveDefaults.switchColors,
+                        colors = AppAccents.switchColors(),
                     )
                 },
                 colors = SettingsExpressiveDefaults.listItemColors,
@@ -3103,17 +3104,7 @@ private fun ColorSchemePickerListItem(
             headlineContent = {
                 SettingsItemTitle(stringResource(R.string.settings_color_scheme_title))
             },
-            supportingContent = {
-                Text(
-                    stringResource(
-                        if (color == AppThemeColor.Dynamic) {
-                            R.string.settings_color_scheme_dynamic
-                        } else {
-                            R.string.settings_color_scheme_custom
-                        }
-                    )
-                )
-            },
+            supportingContent = { Text(stringResource(color.displayNameRes())) },
             colors = SettingsExpressiveDefaults.listItemColors,
             modifier = Modifier.clip(
                 RoundedCornerShape(
@@ -3140,7 +3131,12 @@ private fun ColorSchemePickerListItem(
             ) {
                 items(options) { option ->
                     ColorPickerButton(
-                        color = option.seedColor,
+                        color = option.fillColor,
+                        checkColor = option.onFillColor,
+                        name = stringResource(
+                            R.string.settings_color_scheme_swatch_desc,
+                            stringResource(option.themeColor.displayNameRes()),
+                        ),
                         isSelected = option.themeColor == color,
                         modifier = Modifier.padding(4.dp),
                         onClick = { onColorChange(option.themeColor) },
@@ -3155,6 +3151,8 @@ private fun ColorSchemePickerListItem(
 @Composable
 private fun ColorPickerButton(
     color: Color,
+    checkColor: Color,
+    name: String,
     isSelected: Boolean,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
@@ -3162,15 +3160,20 @@ private fun ColorPickerButton(
     IconButton(
         shapes = IconButtonDefaults.shapes(),
         colors = IconButtonDefaults.iconButtonColors(containerColor = color),
-        modifier = modifier.size(48.dp),
+        modifier = modifier
+            .size(48.dp)
+            .semantics {
+                contentDescription = name
+                selected = isSelected
+            },
         onClick = onClick,
     ) {
-        AnimatedContent(targetState = isSelected) { selected ->
-            if (selected) {
+        AnimatedContent(targetState = isSelected) { showCheck ->
+            if (showCheck) {
                 Icon(
                     painter = painterResource(R.drawable.ic_check_24),
                     contentDescription = null,
-                    tint = Color.Black,
+                    tint = checkColor,
                 )
             }
         }
@@ -3226,10 +3229,11 @@ private fun ExpressiveSliderListItem(
             }
         },
         supportingContent = {
-            val sliderColors = SliderDefaults.colors()
+            val sliderColors = AppAccents.sliderColors()
             Column {
                 Text(description)
                 Slider(
+                    colors = sliderColors,
                     value = position.value,
                     onValueChange = { raw ->
                         dragging = true
@@ -3251,6 +3255,7 @@ private fun ExpressiveSliderListItem(
                         // 这里去掉轨道末端的停止指示点，并自绘各档位圆点（滑块附近的点隐去）
                         SliderDefaults.Track(
                             sliderState = sliderState,
+                            colors = sliderColors,
                             drawStopIndicator = null,
                             modifier = Modifier.drawWithContent {
                                 drawContent()
@@ -3316,7 +3321,7 @@ private fun ExpressiveSwitchListItem(
                         modifier = Modifier.size(SwitchDefaults.IconSize),
                     )
                 },
-                colors = SettingsExpressiveDefaults.switchColors,
+                colors = AppAccents.switchColors(),
             )
         },
         colors = SettingsExpressiveDefaults.listItemColors,
@@ -3650,11 +3655,6 @@ private object SettingsExpressiveDefaults {
             containerColor = AppSurfaces.cardContainerColor,
         )
 
-    val switchColors: SwitchColors
-        @Composable
-        get() = SwitchDefaults.colors(
-            checkedIconColor = MaterialTheme.colorScheme.primary,
-        )
 }
 
 private object SettingsExpressiveShapes {

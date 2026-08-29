@@ -47,6 +47,8 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
@@ -89,6 +91,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import coil.decode.DataSource
 import coil.decode.SvgDecoder
 import coil.load
 import com.happycola233.bilitools.R
@@ -100,9 +103,11 @@ import com.happycola233.bilitools.ui.login.LoginTab
 import com.happycola233.bilitools.ui.mainBottomBarBottomInset
 import com.happycola233.bilitools.ui.login.LoginUiState
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
+import com.happycola233.bilitools.ui.theme.AppAccents
 import com.happycola233.bilitools.ui.theme.AppSurfaces
 import com.happycola233.bilitools.ui.theme.BiliToolsFonts
 import com.happycola233.bilitools.ui.theme.BiliToolsSettingsTheme
+import com.happycola233.bilitools.ui.theme.rememberAndroidThemeColorScheme
 import java.util.Locale
 import kotlin.math.abs
 import androidx.core.text.HtmlCompat
@@ -132,10 +137,16 @@ private data class RemoteImageRequest(
     val fadeInDurationMillis: Int,
 )
 
+/**
+ * 配色取自宿主 Activity 的主题，与解析页、下载页以及主界面顶栏同源。
+ *
+ * 这里刻意不用 `BiliToolsSettingsTheme`：那套主题直接由 settings 驱动、切换配色时立刻生效，
+ * 而顶栏是 View 体系、必须等 Activity 重建才换色，两者混用会让「我」页出现
+ * 内容已变色、顶栏还是旧色的割裂感。
+ */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun BiliToolsMeContent(
-    settings: AppSettings,
     loginState: LoginUiState,
     onOpenLogin: () -> Unit,
     onOpenHistory: () -> Unit,
@@ -145,7 +156,10 @@ fun BiliToolsMeContent(
     onLogout: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    BiliToolsSettingsTheme(settings = settings) {
+    MaterialExpressiveTheme(
+        colorScheme = rememberAndroidThemeColorScheme(),
+        motionScheme = MotionScheme.expressive(),
+    ) {
         MeOverviewScreen(
             loginState = loginState,
             onNavigateToLogin = onOpenLogin,
@@ -810,6 +824,7 @@ private fun PasswordLoginPanel(
         Button(
             onClick = onLogin,
             shapes = ButtonDefaults.shapes(),
+            colors = AppAccents.filledButtonColors(),
             enabled = enabled,
             modifier = Modifier.fillMaxWidth(),
         ) {
@@ -971,6 +986,7 @@ private fun SmsLoginPanel(
         Button(
             onClick = onLogin,
             shapes = ButtonDefaults.shapes(),
+            colors = AppAccents.filledButtonColors(),
             enabled = !state.isLoggingIn,
             modifier = Modifier.fillMaxWidth(),
         ) {
@@ -1291,8 +1307,11 @@ private fun RemoteImage(
                             onError = { _, _ ->
                                 imageView.alpha = 1f
                             },
-                            onSuccess = { _, _ ->
-                                if (fadeInOnLoad) {
+                            onSuccess = { _, result ->
+                                // 内存缓存命中说明图已经在手上，淡入只会让 Activity 重建后
+                                // 本该原地复原的画面凭空闪一下
+                                val fromMemory = result.dataSource == DataSource.MEMORY_CACHE
+                                if (fadeInOnLoad && !fromMemory) {
                                     imageView.animate()
                                         .alpha(1f)
                                         .setDuration(fadeInDurationMillis.toLong())
