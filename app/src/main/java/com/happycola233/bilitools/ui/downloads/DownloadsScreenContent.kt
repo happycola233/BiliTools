@@ -528,13 +528,11 @@ private fun DownloadsManageFab(
 ) {
     val haptics = rememberAppHaptics()
     var expanded by remember { mutableStateOf(false) }
-    // 悬浮按钮浮在页面底色之上，必须用深浅同值的浅填充色才能在两个模式下都浮得起来。
-    //
     // 图标的 tint 必须显式给：ToggleFloatingActionButton 只做了加阴影、画容器、调 content()
     // 三件事，既不提供 LocalContentColor，也不会自动套 animateIcon，不写 tint 的 Icon 会
     // 回落到 Compose 库默认的纯黑，与配色方案彻底脱钩。
-    val fabContainerColor = AppAccents.fill
-    val fabContentColor = AppAccents.onFill
+    val fabContainerColor = AppAccents.floatingActionContainer
+    val fabContentColor = AppAccents.onFloatingActionContainer
 
     FloatingActionButtonMenu(
         expanded = expanded,

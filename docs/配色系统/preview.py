@@ -126,12 +126,14 @@ def draw_mock():
             tick = fill if dark else on_fill
             d.ellipse([cx - rr, cy - rr, cx + rr, cy + rr], fill=thumb)
             d.line([(cx - 6, cy + 1), (cx - 2, cy + 5), (cx + 6, cy - 4)], fill=tick, width=3)
-            # 悬浮按钮：浮在页面底上，两个模式都用填充面
+            # 悬浮按钮：浅色与次级按钮同色，深色改用固定填充色保证能浮出页面底
+            fab_fill = fill if dark else t['colorSecondaryContainer']
+            on_fab_fill = on_fill if dark else t['colorOnSecondaryContainer']
             bx, by, bs = ox + panel_w - 96, oy + 220, 40
-            d.rounded_rectangle([bx, by, bx + bs, by + bs], radius=13, fill=fill)
+            d.rounded_rectangle([bx, by, bx + bs, by + bs], radius=13, fill=fab_fill)
             for k in (-6, 0, 6):
                 d.line([(bx + 11, by + bs // 2 + k), (bx + bs - 11, by + bs // 2 + k)],
-                       fill=on_fill, width=2)
+                       fill=on_fab_fill, width=2)
 
     path = os.path.join(OUT_DIR, 'mock.png')
     img.save(path)

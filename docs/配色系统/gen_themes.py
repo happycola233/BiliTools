@@ -81,8 +81,8 @@ def scheme(h, dark):
             ('colorPrimary', c(h, 28, 84)), ('colorOnPrimary', c(h, 24, 22)),
             ('colorPrimaryContainer', c(h, 18, 32)), ('colorOnPrimaryContainer', c(h, 14, 92)),
             ('colorSecondary', c(h, 12, 82)), ('colorOnSecondary', c(h, 10, 24)),
-            # secondaryContainer 是次级按钮（复制、浮动按钮）的底色，
-            # 要比卡片底亮一档且带得出色相，才能既像按钮又不抢主按钮
+            # secondaryContainer 是普通次级按钮（复制等）的底色，要比卡片底亮一档且带得出色相，
+            # 才能既像按钮又不抢主按钮；深色悬浮按钮另用 fixed 色组，避免暗色容器糊进页面底
             ('colorSecondaryContainer', c(h, 17, 34)), ('colorOnSecondaryContainer', c(h, 12, 92)),
             ('colorTertiary', c(t3, 22, 82)), ('colorOnTertiary', c(t3, 18, 24)),
             ('colorTertiaryContainer', c(t3, 16, 32)), ('colorOnTertiaryContainer', c(t3, 12, 92)),

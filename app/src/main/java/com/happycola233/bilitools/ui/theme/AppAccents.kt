@@ -31,9 +31,9 @@ import androidx.compose.ui.graphics.Color
  * 液态玻璃底栏是个容易看错的例子：它的选中气泡是透明玻璃透镜而非色块，被着色的其实是
  * 选中项的图标与文字，所以那里也要用前景色，不是 [fill]。
  *
- * 悬浮按钮（FAB）必须用 [fill]：它浮在页面底之上，而 [fill] 深浅同值、始终是浅色，
- * 两个模式下都浮得起来。深色模式下若改用 `secondaryContainer` 或 `primaryContainer`
- * 这类容器色，它们本身是暗色，会直接糊进深色页面里（实测只有 1.88:1）。
+ * 悬浮按钮（FAB）浅色模式使用 [floatingActionContainer]，与次级操作保持同一强调层级；
+ * 深色模式则回到 [fill]，避免 `secondaryContainer` 或 `primaryContainer` 这类暗色容器
+ * 糊进深色页面里（实测只有 1.88:1）。
  *
  * 完整的参数取值、色域约束与实测对比度见 `docs/配色系统/README.md`。
  */
@@ -43,6 +43,22 @@ internal object AppAccents {
 
     val onFill: Color
         @Composable get() = MaterialTheme.colorScheme.onPrimaryFixed
+
+    /**
+     * 悬浮操作配色：浅色下与“复制字幕”等次级操作同色，深色下使用高对比度的固定填充色。
+     * 深浅判定必须基于最终 [androidx.compose.material3.ColorScheme]，以兼容应用内主题覆盖系统设置。
+     */
+    val floatingActionContainer: Color
+        @Composable
+        get() = with(MaterialTheme.colorScheme) {
+            if (usesDarkSurfaces()) primaryFixedDim else secondaryContainer
+        }
+
+    val onFloatingActionContainer: Color
+        @Composable
+        get() = with(MaterialTheme.colorScheme) {
+            if (usesDarkSurfaces()) onPrimaryFixed else onSecondaryContainer
+        }
 
     /** 主按钮配色，深浅模式同色 */
     @Composable

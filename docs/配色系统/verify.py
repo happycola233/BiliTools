@@ -124,21 +124,26 @@ for mode, src in (('浅色', LIGHT), ('深色', DARK)):
     outline = min(contrast(src[ov]['colorOutline'], src[ov][card_key]) for ov in SCHEMES)
     on_fill = min(contrast(src[ov]['colorOnPrimaryFixed'],
                            src[ov]['colorPrimaryFixedDim']) for ov in SCHEMES)
+    on_secondary = min(contrast(src[ov]['colorOnSecondaryContainer'],
+                                src[ov]['colorSecondaryContainer']) for ov in SCHEMES)
     check(body >= 4.5, '%s 正文 / 卡片底' % mode, '%.2f:1  (>= 4.5)' % body)
     check(sub >= 4.5, '%s 次要文字 / 卡片底' % mode, '%.2f:1  (>= 4.5)' % sub)
     check(outline >= 3.0, '%s 描边 / 卡片底' % mode, '%.2f:1  (>= 3)' % outline)
     check(on_fill >= 4.5, '%s 填充面上的内容' % mode, '%.2f:1  (>= 4.5)' % on_fill)
+    check(on_secondary >= 4.5, '%s 次级容器上的内容' % mode,
+          '%.2f:1  (>= 4.5)' % on_secondary)
 
 print()
-print('五、悬浮元素浮在页面底之上')
-# 浅色模式填充面对页面底达不到 3:1 是设计取舍，由投影补足，这里只看深色模式
+print('五、悬浮元素按模式取色并浮在页面底之上')
+# 浅色模式的 secondaryContainer 对页面底达不到 3:1 是淡雅风格的设计取舍，由投影补足；
+# 深色模式改用 fixed 填充面，容器本身必须达到 3:1。
 dark_float = min(contrast(DARK[ov]['colorPrimaryFixedDim'],
                           DARK[ov]['colorSurfaceContainer']) for ov in SCHEMES)
-light_float = min(contrast(LIGHT[ov]['colorPrimaryFixedDim'],
+light_float = min(contrast(LIGHT[ov]['colorSecondaryContainer'],
                            LIGHT[ov]['colorSurfaceContainer']) for ov in SCHEMES)
-check(dark_float >= 3.0, '深色 填充面 / 页面底', '%.2f:1  (>= 3)' % dark_float)
+check(dark_float >= 3.0, '深色 fixed 填充面 / 页面底', '%.2f:1  (>= 3)' % dark_float)
 print('  [ -- ] %-34s %.2f:1  （淡雅风格的取舍，靠投影补足）'
-      % ('浅色 填充面 / 页面底', light_float))
+      % ('浅色 secondaryContainer / 页面底', light_float))
 
 print()
 print('六、表面三层的相邻分离度')

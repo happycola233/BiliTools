@@ -3310,10 +3310,8 @@ private fun QuickActionFab(
                 scaleX = scale
                 scaleY = scale
             },
-        // 深浅同值的浅填充色，才能同时在浅色页面与深色页面上浮起来；
-        // secondaryContainer 在深色下是暗色，压在深色页底上会看不见
-        containerColor = AppAccents.fill,
-        contentColor = AppAccents.onFill,
+        containerColor = AppAccents.floatingActionContainer,
+        contentColor = AppAccents.onFloatingActionContainer,
         shape = FloatingActionButtonDefaults.shape,
         interactionSource = interactionSource,
     ) {
