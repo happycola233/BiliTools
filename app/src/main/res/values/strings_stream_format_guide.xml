@@ -8,7 +8,7 @@
     <string name="stream_format_guide_dash_notice">哔哩哔哩目前采用的串流格式，音视频质量最好，下载速度也最快。</string>
     <string name="stream_format_guide_dash_default">在大多数情况下保持该格式即可。若不了解其他格式，不要修改下载参数中的“流媒体格式”。</string>
     <string name="stream_format_guide_dash_body">音频与视频会被切片后单独下发，因此拿到的分别是无声视频和无画面音频。</string>
-    <string name="stream_format_guide_dash_merge">若要得到单个音视频文件，必须经 FFmpeg 混流，也就是应用内名为“音视频”的任务。</string>
+    <string name="stream_format_guide_dash_merge">若要得到单个音视频文件，必须经 FFmpeg 混流，也就是应用内名为“音视频”的输出类型。</string>
 
     <string name="stream_format_guide_mp4_status">谨慎选择</string>
     <string name="stream_format_guide_mp4_notice">不要因为后缀看起来是 MP4 就选它，下载速度通常更慢，质量也不如 DASH。</string>

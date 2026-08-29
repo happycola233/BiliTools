@@ -246,6 +246,18 @@ internal fun defaultParseContentSelection(type: MediaType?): DefaultParseContent
     )
 }
 
+internal fun formatBiliApiErrorMessage(
+    message: String?,
+    code: Int,
+    fallback: String,
+): String {
+    val detail = message
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() && it != "0" }
+        ?: fallback
+    return if (code == 0) detail else "$detail ($code)"
+}
+
 private data class PreparedDownloadTarget(
     val item: MediaItem,
     val opusDocument: OpusDocument?,
@@ -324,6 +336,16 @@ data class ParseUiState(
 
     val opusImagesEffectivelyEnabled: Boolean
         get() = opusImagesEnabled && (isMultiSelect || opusImagesAvailable != false)
+}
+
+internal fun ParseUiState.canAutoLoadStream(): Boolean {
+    return !loading &&
+        !collectionModeLoading &&
+        error.isNullOrBlank() &&
+        mediaInfo != null &&
+        outputType != null &&
+        selectedItemIndices.isNotEmpty() &&
+        items.getOrNull(selectedItemIndex)?.type?.capabilities?.supportsPlaybackStream == true
 }
 
 /**
@@ -430,7 +452,9 @@ class ParseViewModel(
         }
         invalidateExtrasRefresh()
         viewModelScope.launch {
-            resetStreamLoadTracking()
+            // 中止仍在进行的旧取流，但保留已完成/已失败标记。若本次解析失败，页面下方保留的
+            // 旧结果便不会立刻触发重复取流并清掉刚产生的解析错误。
+            invalidateActiveStreamLoad()
             _state.update {
                 it.copy(
                     loading = true,
@@ -459,6 +483,7 @@ class ParseViewModel(
                 val defaultItem = info.list.getOrNull(defaultIndex)
                 val defaultCapabilities = defaultItem?.type?.capabilities
                 val defaultContentSelection = defaultParseContentSelection(defaultItem?.type)
+                resetStreamLoadTracking()
                 _state.update {
                     normalizeQualityModes(
                         applyDefaultDownloadQuality(
@@ -2870,16 +2895,7 @@ class ParseViewModel(
     }
 
     private fun ParseUiState.autoStreamRequestKeyOrNull(): StreamRequestKey? {
-        if (
-            loading ||
-            collectionModeLoading ||
-            mediaInfo == null ||
-            outputType == null ||
-            selectedItemIndices.isEmpty() ||
-            currentItem(this)?.type?.capabilities?.supportsPlaybackStream != true
-        ) {
-            return null
-        }
+        if (!canAutoLoadStream()) return null
         return streamRequestKeyOrNull()
     }
 
@@ -2902,6 +2918,11 @@ class ParseViewModel(
         loadedStreamKey = null
         loadingStreamKey = null
         failedStreamKey = null
+    }
+
+    private fun invalidateActiveStreamLoad() {
+        streamLoadGeneration += 1
+        loadingStreamKey = null
     }
 
     private fun selectVideoStream(state: ParseUiState): VideoStream? {
@@ -3361,9 +3382,17 @@ class ParseViewModel(
                 OpusFailure.PermissionDenied -> strings.get(R.string.parse_error_opus_permission_denied)
                 OpusFailure.NotFound -> strings.get(R.string.parse_error_opus_not_found)
                 OpusFailure.InvalidResponse -> strings.get(R.string.parse_error_opus_invalid_response)
-                OpusFailure.ApiError -> strings.get(R.string.parse_error_failed)
+                OpusFailure.ApiError -> formatBiliApiErrorMessage(
+                    message = err.message?.takeUnless { it == err.failure.name },
+                    code = err.apiCode ?: 0,
+                    fallback = strings.get(R.string.parse_error_failed),
+                )
             }
-            is BiliHttpException -> strings.get(R.string.parse_error_failed)
+            is BiliHttpException -> formatBiliApiErrorMessage(
+                message = err.message,
+                code = err.code,
+                fallback = strings.get(R.string.parse_error_failed),
+            )
             else -> err.message?.takeIf { it.isNotBlank() } ?: strings.get(R.string.common_error_unknown)
         }
     }
