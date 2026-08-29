@@ -24,6 +24,7 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.horizontalScroll
@@ -31,6 +32,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -79,12 +81,15 @@ import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -100,6 +105,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
@@ -1318,6 +1324,7 @@ private fun ParseResultCard(
     contentBelowSectionControls: @Composable ColumnScope.() -> Unit,
 ) {
     val display = resolveParseResultCardDisplay(state, info, selectedItem)
+    var detailSubjectKey by rememberSaveable { mutableStateOf<String?>(null) }
     val contentSizeSpec = tween<IntSize>(
         durationMillis = parseContentAnimationDurationMillis,
         easing = FastOutSlowInEasing,
@@ -1326,6 +1333,13 @@ private fun ParseResultCard(
         durationMillis = parseContentAnimationDurationMillis,
         easing = FastOutSlowInEasing,
     )
+
+    LaunchedEffect(display.metadata.subjectKey) {
+        if (detailSubjectKey != display.metadata.subjectKey) {
+            detailSubjectKey = null
+        }
+    }
+
     ParseCard {
         Column(
             modifier = Modifier.animateContentSize(animationSpec = contentSizeSpec),
@@ -1346,6 +1360,7 @@ private fun ParseResultCard(
                         fadeIn(animationSpec = contentFadeSpec) togetherWith
                             fadeOut(animationSpec = contentFadeSpec)
                     },
+                    contentKey = { it.metadata.subjectKey },
                     label = "ParseResultCardDisplay",
                 ) { animatedDisplay ->
                     val displayTitle = animatedDisplay.title.ifBlank {
@@ -1368,27 +1383,49 @@ private fun ParseResultCard(
                             ?.takeIf { it.name.isNotBlank() }
                             ?.let { upper ->
                                 val upperName = upper.name.trim()
-                                UserIdentityLabel(
-                                    name = upperName,
-                                    avatarUrl = upper.avatar,
-                                    onClick = { onOpenUpper(upper.mid) },
-                                    onLongClickLabel = stringResource(R.string.common_copy_upper_name),
-                                    onLongClick = {
-                                        onCopyResultContent(ParseResultCopyTarget.UpperName, upperName)
-                                    },
-                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    UserIdentityLabel(
+                                        name = upperName,
+                                        avatarUrl = upper.avatar,
+                                        modifier = Modifier.weight(1f, fill = false),
+                                        onClick = { onOpenUpper(upper.mid) },
+                                        onLongClickLabel = stringResource(R.string.common_copy_upper_name),
+                                        onLongClick = {
+                                            onCopyResultContent(
+                                                ParseResultCopyTarget.UpperName,
+                                                upperName,
+                                            )
+                                        },
+                                    )
+                                    upper.followerCount?.let { followerCount ->
+                                        FormattedStatValue(
+                                            iconRes = R.string.icon_stat_follower,
+                                            value = followerCount,
+                                            modifier = Modifier.padding(start = 18.dp),
+                                        )
+                                    }
+                                }
                             }
+                        MetadataSummaryRow(
+                            metadata = animatedDisplay.metadata,
+                            onOpenDetails = {
+                                detailSubjectKey = animatedDisplay.metadata.subjectKey
+                            },
+                            onCopyPublicId = { publicId ->
+                                onCopyResultContent(ParseResultCopyTarget.PublicId, publicId)
+                            },
+                        )
                         if (animatedDisplay.description.isNotBlank()) {
-                            LongPressCopyText(
+                            ExpandableDescription(
                                 text = animatedDisplay.description,
+                                subjectKey = animatedDisplay.metadata.subjectKey,
                                 copyActionLabel = stringResource(R.string.parse_copy_description),
                                 onCopy = { text ->
                                     onCopyResultContent(ParseResultCopyTarget.Description, text)
                                 },
-                                style = ParseTextStyles.mediaDescription,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 3,
-                                overflow = TextOverflow.Ellipsis,
                             )
                         }
                         StatRow(animatedDisplay.stat)
@@ -1402,6 +1439,451 @@ private fun ParseResultCard(
                 )
                 contentBelowSectionControls()
             }
+        }
+    }
+
+    if (detailSubjectKey == display.metadata.subjectKey) {
+        MetadataDetailsBottomSheet(
+            metadata = display.metadata,
+            onDismiss = { detailSubjectKey = null },
+            onOpenUpper = onOpenUpper,
+            onCopyUpperName = { name ->
+                onCopyResultContent(ParseResultCopyTarget.UpperName, name)
+            },
+            onCopyValue = { value ->
+                onCopyResultContent(ParseResultCopyTarget.DetailValue, value)
+            },
+        )
+    }
+}
+
+@Composable
+private fun MetadataSummaryRow(
+    metadata: ParseMetadataDisplay,
+    onOpenDetails: () -> Unit,
+    onCopyPublicId: (String) -> Unit,
+) {
+    if (metadata.summarySlots.isEmpty()) return
+    val haptics = rememberAppHaptics()
+    val interactionSource = remember { MutableInteractionSource() }
+    val canOpenDetails = metadata.sections.isNotEmpty()
+    val publicId = metadata.publicIdCopyValue
+    val publicIdCopyName = metadata.publicIdCopyName
+    val interactionModifier = when {
+        canOpenDetails -> Modifier.combinedClickable(
+            interactionSource = interactionSource,
+            indication = null,
+            role = Role.Button,
+            onClickLabel = stringResource(R.string.parse_metadata_view_details),
+            onClick = {
+                haptics.tap()
+                onOpenDetails()
+            },
+            onLongClickLabel = publicId?.let {
+                stringResource(
+                    R.string.parse_metadata_copy_identifier,
+                    publicIdCopyName.orEmpty(),
+                )
+            },
+            onLongClick = publicId?.let { id ->
+                {
+                    haptics.longPress()
+                    onCopyPublicId(id)
+                }
+            },
+            hapticFeedbackEnabled = false,
+        )
+        publicId != null -> Modifier.longPressAction(
+            interactionKey = publicId,
+            actionLabel = stringResource(
+                R.string.parse_metadata_copy_identifier,
+                publicIdCopyName.orEmpty(),
+            ),
+            onLongPress = { onCopyPublicId(publicId) },
+        )
+        else -> Modifier
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .then(interactionModifier)
+            .padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = metadata.summarySlots.joinToString("  ·  "),
+            modifier = Modifier.weight(1f),
+            style = ParseTextStyles.supporting,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (canOpenDetails) {
+            Icon(
+                painter = painterResource(R.drawable.ic_chevron_right_24),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .padding(start = 6.dp)
+                    .size(18.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExpandableDescription(
+    text: String,
+    subjectKey: String,
+    copyActionLabel: String,
+    onCopy: (String) -> Unit,
+) {
+    // 同一条目的简介可能在既有 view 补拉完成后变成全文，保留用户已经选择的展开状态。
+    var expanded by rememberSaveable(subjectKey) { mutableStateOf(false) }
+    var hasOverflow by remember(subjectKey, text) { mutableStateOf(false) }
+    val haptics = rememberAppHaptics()
+    val interactionSource = remember(subjectKey, text) { MutableInteractionSource() }
+    val interactionModifier = if (hasOverflow) {
+        Modifier.combinedClickable(
+            interactionSource = interactionSource,
+            indication = null,
+            onClickLabel = stringResource(
+                if (expanded) R.string.parse_description_collapse else R.string.parse_description_expand,
+            ),
+            onClick = {
+                haptics.tap()
+                expanded = !expanded
+            },
+            onLongClickLabel = copyActionLabel,
+            onLongClick = {
+                haptics.longPress()
+                onCopy(text)
+            },
+            hapticFeedbackEnabled = false,
+        )
+    } else {
+        Modifier.longPressAction(
+            interactionKey = "$subjectKey:$text",
+            actionLabel = copyActionLabel,
+            onLongPress = { onCopy(text) },
+        )
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(
+                animationSpec = tween(
+                    durationMillis = parseContentAnimationDurationMillis,
+                    easing = FastOutSlowInEasing,
+                ),
+                alignment = Alignment.TopStart,
+            )
+            .then(interactionModifier),
+    ) {
+        Text(
+            text = text,
+            style = ParseTextStyles.mediaDescription,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = if (expanded) Int.MAX_VALUE else 3,
+            overflow = if (expanded) TextOverflow.Clip else TextOverflow.Ellipsis,
+            onTextLayout = { result ->
+                hasOverflow = if (expanded) result.lineCount > 3 else result.hasVisualOverflow
+            },
+        )
+        if (!expanded && hasOverflow) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .width(56.dp)
+                    .height(20.dp)
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                AppSurfaces.cardContainerColor,
+                            ),
+                        ),
+                    ),
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MetadataDetailsBottomSheet(
+    metadata: ParseMetadataDisplay,
+    onDismiss: () -> Unit,
+    onOpenUpper: (Long) -> Unit,
+    onCopyUpperName: (String) -> Unit,
+    onCopyValue: (String) -> Unit,
+) {
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+    )
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = AppSurfaces.pageContainerColor,
+    ) {
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            // 使用 BottomSheet 在拖拽手柄之后提供的完整剩余高度，让长内容的
+            // Expanded 锚点能够真正吸顶；短内容仍由 heightIn 按自身高度包裹。
+            val contentMaxHeight = maxHeight
+            val useLazyContent = metadata.sections
+                .filterIsInstance<ParseMetadataSection.Groups>()
+                .sumOf { it.groups.size } > 3
+            val contentPadding = PaddingValues(
+                start = 20.dp,
+                top = 4.dp,
+                end = 20.dp,
+                bottom = 32.dp,
+            )
+
+            if (useLazyContent) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = contentMaxHeight),
+                    contentPadding = contentPadding,
+                ) {
+                    item(key = "metadata-title") {
+                        MetadataDetailsTitle()
+                    }
+                    metadata.sections.forEachIndexed { sectionIndex, section ->
+                        item(key = "section-header:$sectionIndex:${section.title}") {
+                            MetadataDetailsSectionHeader(
+                                section = section,
+                                showTopDivider = sectionIndex > 0,
+                            )
+                        }
+                        when (section) {
+                            is ParseMetadataSection.Values -> itemsIndexed(
+                                items = section.rows,
+                                key = { rowIndex, row ->
+                                    "section:$sectionIndex:row:$rowIndex:${row.name}"
+                                },
+                            ) { _, row ->
+                                MetadataDetailValueRow(row = row, onCopyValue = onCopyValue)
+                            }
+                            is ParseMetadataSection.Groups -> itemsIndexed(
+                                items = section.groups,
+                                key = { groupIndex, group ->
+                                    "section:$sectionIndex:group:$groupIndex:${group.title}"
+                                },
+                            ) { groupIndex, group ->
+                                MetadataDetailsGroup(
+                                    group = group,
+                                    showTopDivider = groupIndex > 0,
+                                    onCopyValue = onCopyValue,
+                                )
+                            }
+                            is ParseMetadataSection.Contributors -> itemsIndexed(
+                                items = section.members,
+                                key = { memberIndex, member ->
+                                    "section:$sectionIndex:member:$memberIndex:${member.mid}"
+                                },
+                            ) { _, member ->
+                                MetadataContributorRow(
+                                    member = member,
+                                    onOpenUpper = onOpenUpper,
+                                    onCopyUpperName = onCopyUpperName,
+                                    onCopyValue = onCopyValue,
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = contentMaxHeight)
+                        .verticalScroll(rememberScrollState())
+                        .padding(contentPadding),
+                ) {
+                    MetadataDetailsTitle()
+                    metadata.sections.forEachIndexed { index, section ->
+                        MetadataDetailsSection(
+                            section = section,
+                            showTopDivider = index > 0,
+                            onOpenUpper = onOpenUpper,
+                            onCopyUpperName = onCopyUpperName,
+                            onCopyValue = onCopyValue,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MetadataDetailsTitle() {
+    Text(
+        text = stringResource(R.string.parse_metadata_details_title),
+        style = MaterialTheme.typography.headlineSmall,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.padding(bottom = 20.dp),
+    )
+}
+
+@Composable
+private fun MetadataDetailsSection(
+    section: ParseMetadataSection,
+    showTopDivider: Boolean,
+    onOpenUpper: (Long) -> Unit,
+    onCopyUpperName: (String) -> Unit,
+    onCopyValue: (String) -> Unit,
+) {
+    MetadataDetailsSectionHeader(
+        section = section,
+        showTopDivider = showTopDivider,
+    )
+    when (section) {
+        is ParseMetadataSection.Values -> section.rows.forEach { row ->
+            MetadataDetailValueRow(row = row, onCopyValue = onCopyValue)
+        }
+        is ParseMetadataSection.Groups -> section.groups.forEachIndexed { groupIndex, group ->
+            MetadataDetailsGroup(
+                group = group,
+                showTopDivider = groupIndex > 0,
+                onCopyValue = onCopyValue,
+            )
+        }
+        is ParseMetadataSection.Contributors -> section.members.forEach { member ->
+            MetadataContributorRow(
+                member = member,
+                onOpenUpper = onOpenUpper,
+                onCopyUpperName = onCopyUpperName,
+                onCopyValue = onCopyValue,
+            )
+        }
+    }
+}
+
+@Composable
+private fun MetadataDetailsSectionHeader(
+    section: ParseMetadataSection,
+    showTopDivider: Boolean,
+) {
+    if (showTopDivider) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 14.dp)
+                .height(1.dp)
+                .background(MaterialTheme.colorScheme.outlineVariant),
+        )
+    }
+    Text(
+        text = section.title,
+        style = ParseTextStyles.sectionLabel,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.padding(bottom = 6.dp),
+    )
+}
+
+@Composable
+private fun MetadataDetailsGroup(
+    group: ParseMetadataGroup,
+    showTopDivider: Boolean,
+    onCopyValue: (String) -> Unit,
+) {
+    if (showTopDivider) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 7.dp)
+                .height(1.dp)
+                .background(MaterialTheme.colorScheme.outlineVariant),
+        )
+    }
+    Text(
+        text = group.title,
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(top = 7.dp, bottom = 1.dp),
+    )
+    group.rows.forEach { row ->
+        MetadataDetailValueRow(row = row, onCopyValue = onCopyValue)
+    }
+}
+
+@Composable
+private fun MetadataDetailValueRow(
+    row: ParseMetadataRow,
+    onCopyValue: (String) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 9.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text(
+            text = row.name,
+            modifier = Modifier.alignByBaseline(),
+            style = ParseTextStyles.body,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            softWrap = false,
+        )
+        LongPressCopyText(
+            text = row.value,
+            copyActionLabel = stringResource(R.string.parse_metadata_copy_value),
+            onCopy = onCopyValue,
+            style = ParseTextStyles.body,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier
+                .weight(1f)
+                .alignByBaseline(),
+        )
+    }
+}
+
+@Composable
+private fun MetadataContributorRow(
+    member: com.happycola233.bilitools.data.model.MediaContributor,
+    onOpenUpper: (Long) -> Unit,
+    onCopyUpperName: (String) -> Unit,
+    onCopyValue: (String) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 9.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        UserIdentityLabel(
+            name = member.name,
+            avatarUrl = member.avatar,
+            modifier = Modifier.weight(1f),
+            onClick = if (member.mid > 0L) {
+                { onOpenUpper(member.mid) }
+            } else {
+                null
+            },
+            onLongClickLabel = stringResource(R.string.common_copy_upper_name),
+            onLongClick = { onCopyUpperName(member.name) },
+        )
+        member.role?.takeIf(String::isNotBlank)?.let { role ->
+            LongPressCopyText(
+                text = role,
+                copyActionLabel = stringResource(R.string.parse_metadata_copy_value),
+                onCopy = onCopyValue,
+                style = ParseTextStyles.supporting,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -1530,17 +2012,16 @@ private fun CoverImage(
 @Composable
 private fun StatRow(stat: MediaStat) {
     val stats = listOfNotNull(
-        stat.play?.let { StatDisplay(R.string.icon_stat_play, it) },
-        stat.danmaku?.let { StatDisplay(R.string.icon_stat_danmaku, it) },
-        stat.reply?.let { StatDisplay(R.string.icon_stat_reply, it) },
-        stat.like?.let { StatDisplay(R.string.icon_stat_like, it) },
-        stat.coin?.let { StatDisplay(R.string.icon_stat_coin, it) },
-        stat.favorite?.let { StatDisplay(R.string.icon_stat_favorite, it) },
-        stat.share?.let { StatDisplay(R.string.icon_stat_share, it) },
+        stat.play?.takeIf { it > 0L }?.let { StatDisplay(R.string.icon_stat_play, it) },
+        stat.danmaku?.takeIf { it > 0L }?.let { StatDisplay(R.string.icon_stat_danmaku, it) },
+        stat.reply?.takeIf { it > 0L }?.let { StatDisplay(R.string.icon_stat_reply, it) },
+        stat.like?.takeIf { it > 0L }?.let { StatDisplay(R.string.icon_stat_like, it) },
+        stat.coin?.takeIf { it > 0L }?.let { StatDisplay(R.string.icon_stat_coin, it) },
+        stat.favorite?.takeIf { it > 0L }?.let { StatDisplay(R.string.icon_stat_favorite, it) },
+        stat.share?.takeIf { it > 0L }?.let { StatDisplay(R.string.icon_stat_share, it) },
     )
     if (stats.isEmpty()) return
 
-    val iconFont = remember { FontFamily(Font(R.font.bcc_iconfont)) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1549,23 +2030,36 @@ private fun StatRow(stat: MediaStat) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         stats.forEach { item ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = stringResource(item.iconRes),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = iconFont,
-                    maxLines = 1,
-                    style = ParseTextStyles.supporting,
-                )
-                Text(
-                    text = formatStat(item.value),
-                    modifier = Modifier.padding(start = 5.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    style = ParseTextStyles.supporting,
-                )
-            }
+            FormattedStatValue(iconRes = item.iconRes, value = item.value)
         }
+    }
+}
+
+@Composable
+private fun FormattedStatValue(
+    iconRes: Int,
+    value: Long,
+    modifier: Modifier = Modifier,
+) {
+    val iconFont = remember { FontFamily(Font(R.font.bcc_iconfont)) }
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(iconRes),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontFamily = iconFont,
+            maxLines = 1,
+            style = ParseTextStyles.supporting,
+        )
+        Text(
+            text = formatMediaStatValue(value),
+            modifier = Modifier.padding(start = 5.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            style = ParseTextStyles.supporting,
+        )
     }
 }
 
@@ -3795,6 +4289,7 @@ internal data class ParseResultCardDisplay(
     val coverUrl: String,
     val stat: MediaStat,
     val upper: MediaUpper?,
+    val metadata: ParseMetadataDisplay,
 )
 
 enum class ParseResultCopyTarget {
@@ -3802,6 +4297,8 @@ enum class ParseResultCopyTarget {
     Description,
     CoverUrl,
     UpperName,
+    PublicId,
+    DetailValue,
 }
 
 private data class DropdownOption<T>(
@@ -3844,6 +4341,11 @@ internal fun resolveParseResultCardDisplay(
             coverUrl = coverUrl,
             stat = stat,
             upper = previewItem.resolvedUpper(info),
+            metadata = buildParseMetadataDisplay(
+                info = info,
+                subjectItem = previewItem,
+                collectionOverview = false,
+            ),
         )
     }
 
@@ -3863,6 +4365,11 @@ internal fun resolveParseResultCardDisplay(
             coverUrl = coverUrl,
             stat = selectedItem?.stat ?: state.selectedItemStat ?: info.nfo.stat,
             upper = info.nfo.upper,
+            metadata = buildParseMetadataDisplay(
+                info = info,
+                subjectItem = null,
+                collectionOverview = true,
+            ),
         )
     }
 
@@ -3878,8 +4385,13 @@ internal fun resolveParseResultCardDisplay(
             title = title,
             description = description,
             coverUrl = coverUrl,
-            stat = info.nfo.stat,
+            stat = selectedItem?.stat ?: state.selectedItemStat ?: info.nfo.stat,
             upper = selectedItem?.resolvedUpper(info) ?: info.nfo.upper,
+            metadata = buildParseMetadataDisplay(
+                info = info,
+                subjectItem = selectedItem,
+                collectionOverview = false,
+            ),
         )
     }
 
@@ -3914,6 +4426,11 @@ internal fun resolveParseResultCardDisplay(
         coverUrl = coverUrl,
         stat = stat,
         upper = displayItem?.resolvedUpper(info) ?: info.nfo.upper,
+        metadata = buildParseMetadataDisplay(
+            info = info,
+            subjectItem = displayItem,
+            collectionOverview = false,
+        ),
     )
 }
 
@@ -3947,14 +4464,6 @@ private fun resolveNonCollectionVideoTitle(
 
 private fun String?.ifNullOrBlank(fallback: () -> String): String {
     return this?.takeIf { it.isNotBlank() } ?: fallback()
-}
-
-private fun formatStat(value: Long): String {
-    return when {
-        value >= 100_000_000L -> String.format("%.1f亿", value / 100_000_000.0)
-        value >= 10_000L -> String.format("%.1f万", value / 10_000.0)
-        else -> value.toString()
-    }
 }
 
 private fun Modifier.semanticsRoleRadio(): Modifier {

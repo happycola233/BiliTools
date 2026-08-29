@@ -39,9 +39,12 @@ import com.happycola233.bilitools.data.model.DownloadTaskType
 import com.happycola233.bilitools.data.model.MediaCapabilities
 import com.happycola233.bilitools.data.model.MediaInfo
 import com.happycola233.bilitools.data.model.MediaItem
+import com.happycola233.bilitools.data.model.MediaMetadata
+import com.happycola233.bilitools.data.model.MediaQueryOptions
 import com.happycola233.bilitools.data.model.MediaSections
 import com.happycola233.bilitools.data.model.MediaStat
 import com.happycola233.bilitools.data.model.MediaType
+import com.happycola233.bilitools.data.model.MediaUpper
 import com.happycola233.bilitools.data.model.OutputType
 import com.happycola233.bilitools.data.model.OpusDocument
 import com.happycola233.bilitools.data.model.capabilities
@@ -55,6 +58,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -94,8 +98,88 @@ data class ImageOption(
 )
 
 private data class ItemPresentationDetail(
-    val stat: MediaStat?,
-    val description: String?,
+    val item: MediaItem,
+)
+
+internal data class PresentationDetailQuery(
+    val id: String,
+    val type: MediaType,
+    val options: MediaQueryOptions = MediaQueryOptions(),
+)
+
+internal fun buildPresentationDetailQuery(item: MediaItem): PresentationDetailQuery? {
+    return when (item.type) {
+        MediaType.Video -> {
+            val id = item.bvid?.trim()?.takeIf(String::isNotBlank)
+                ?: item.aid?.toString()
+                ?: return null
+            PresentationDetailQuery(
+                id = id,
+                type = MediaType.Video,
+                // view 是列表预览所需的正式补充；标签来自独立接口，不在这里重复请求。
+                options = MediaQueryOptions(includeOptionalVideoTags = false),
+            )
+        }
+        MediaType.Bangumi -> {
+            val id = item.epid?.let { "ep$it" }
+                ?: item.ssid?.let { "ss$it" }
+                ?: return null
+            PresentationDetailQuery(id = id, type = MediaType.Bangumi)
+        }
+        MediaType.Music -> item.sid?.let { sid ->
+            PresentationDetailQuery(
+                id = "au$sid",
+                type = MediaType.Music,
+                options = MediaQueryOptions(includeOptionalMusicExtras = false),
+            )
+        }
+        MediaType.Opus -> {
+            val id = item.cvid?.let { "cv$it" }
+                ?: item.opid?.trim()?.takeIf(String::isNotBlank)
+                ?: return null
+            PresentationDetailQuery(id = id, type = MediaType.Opus)
+        }
+        else -> null
+    }
+}
+
+internal fun shouldSupplementPresentation(info: MediaInfo, item: MediaItem): Boolean {
+    if (item.metadata.presentationDetailsComplete) return false
+    if (buildPresentationDetailQuery(item) == null) return false
+    return when (info.type) {
+        MediaType.Video -> info.collection && item.metadata.videoParts.isEmpty()
+        MediaType.Favorite,
+        MediaType.WatchLater,
+        MediaType.UserVideo,
+        MediaType.UserAudio,
+        MediaType.UserOpus,
+        MediaType.MusicList,
+        MediaType.OpusList,
+        -> true
+        else -> false
+    }
+}
+
+internal fun resolveDisplayedUpper(state: ParseUiState): MediaUpper? {
+    val info = state.mediaInfo ?: return null
+    val selectedItem = state.items.getOrNull(state.selectedItemIndex)
+    val previewItem = state.previewItemIndex?.let(state.items::getOrNull)
+    val isCollectionOverview = state.collectionMode &&
+        info.type == MediaType.Video &&
+        info.collection &&
+        previewItem == null
+
+    return when {
+        isCollectionOverview -> info.nfo.upper
+        previewItem != null -> previewItem.resolvedUpper(info)
+        selectedItem != null -> selectedItem.resolvedUpper(info)
+        else -> info.nfo.upper
+    }
+}
+
+private data class DisplayedUpperFollowerTarget(
+    val mid: Long,
+    val followerCount: Long?,
 )
 
 private data class StreamRequestKey(
@@ -403,8 +487,9 @@ class ParseViewModel(
     private val fullResolutionIds = listOf(127, 126, 125, 120, 116, 112, 80, 64, 32, 16, 6)
     private val fullAudioIds = AudioQualities.allIds
     private val offsetMap = mutableMapOf<Int, String>()
-    private val itemStatCache = mutableMapOf<String, MediaStat>()
-    private val itemDescriptionCache = mutableMapOf<String, String>()
+    private val itemPresentationCache = mutableMapOf<String, MediaItem>()
+    private val itemPresentationRequests = mutableMapOf<String, Long>()
+    private val upperFollowerCache = mutableMapOf<Long, Long>()
     private var streamLoadGeneration = 0L
     private var loadedStreamKey: StreamRequestKey? = null
     private var loadingStreamKey: StreamRequestKey? = null
@@ -414,6 +499,27 @@ class ParseViewModel(
 
     init {
         refreshLoginState()
+        viewModelScope.launch {
+            _state
+                .map { state ->
+                    resolveDisplayedUpper(state)?.let { upper ->
+                        DisplayedUpperFollowerTarget(upper.mid, upper.followerCount)
+                    }
+                }
+                .distinctUntilChanged()
+                .collectLatest { target ->
+                    if (target == null || target.mid <= 0L) return@collectLatest
+                    target.followerCount?.let { followerCount ->
+                        upperFollowerCache[target.mid] = followerCount
+                        return@collectLatest
+                    }
+                    val followerCount = upperFollowerCache[target.mid] ?: withContext(Dispatchers.IO) {
+                        runCatching { mediaRepository.getUpperFollowerCount(target.mid) }.getOrNull()
+                    } ?: return@collectLatest
+                    upperFollowerCache[target.mid] = followerCount
+                    applyUpperFollowerCount(target.mid, followerCount)
+                }
+        }
         viewModelScope.launch {
             _state
                 .map { it.autoStreamRequestKeyOrNull() }
@@ -466,8 +572,8 @@ class ParseViewModel(
                 )
             }
             offsetMap.clear()
-            itemStatCache.clear()
-            itemDescriptionCache.clear()
+            itemPresentationCache.clear()
+            itemPresentationRequests.clear()
             runCatching {
                 val allowRaw = _state.value.selectedMediaType != null
                 val parsed = mediaRepository.parseInput(input, allowRaw)
@@ -553,8 +659,8 @@ class ParseViewModel(
         resetStreamLoadTracking()
         invalidateExtrasRefresh()
         offsetMap.clear()
-        itemStatCache.clear()
-        itemDescriptionCache.clear()
+        itemPresentationCache.clear()
+        itemPresentationRequests.clear()
         _state.value = applyDefaultDownloadQuality(
             ParseUiState(
                 selectedMediaType = selectedType,
@@ -632,7 +738,7 @@ class ParseViewModel(
         if (!rowClickable) return
         val item = snapshot.items.getOrNull(index) ?: return
         _state.update { it.copy(previewItemIndex = index) }
-        refreshItemPresentation(info, item, index, fromPreview = true)
+        refreshItemPresentation(info, item, index)
     }
 
     fun selectAllItems() {
@@ -1597,6 +1703,11 @@ class ParseViewModel(
         pubTime = document.publishedAt ?: pubTime,
         opid = document.id,
         cvid = document.cvid ?: cvid,
+        metadata = metadata.copy(
+            presentationDetailsComplete = true,
+            imageCount = document.images.size.takeIf { it > 0 },
+            tags = document.tags,
+        ),
     )
 
     private fun OpusDocument.withItemFallback(
@@ -2670,7 +2781,10 @@ class ParseViewModel(
             ).withResolvedOpusImageSelection()
         }
         if (!applied) return
-        refreshItemPresentation(info, resolvedItem, _state.value.selectedItemIndex, fromPreview = false)
+        // 图文已经在上方用同一个文档接口尝试过一次，不为展示详情立即重复请求。
+        if (!isOpus) {
+            refreshItemPresentation(info, resolvedItem, _state.value.selectedItemIndex)
+        }
     }
 
     private fun invalidateExtrasRefresh() {
@@ -2682,95 +2796,209 @@ class ParseViewModel(
         info: MediaInfo,
         item: MediaItem,
         index: Int,
-        fromPreview: Boolean,
     ) {
-        val itemKey = itemCacheKey(item)
-        val cachedStat = itemKey?.let { itemStatCache[it] } ?: item.stat
-        val cachedDescription = itemKey?.let { itemDescriptionCache[it] }
-        val itemDescription = item.description.trim()
-
-        if (cachedStat != null || !cachedDescription.isNullOrBlank()) {
-            applyItemPresentation(index, itemKey, cachedStat, cachedDescription)
+        val itemKey = itemCacheKey(item) ?: return
+        itemPresentationCache[itemKey]?.let { cachedItem ->
+            applyItemPresentation(index, itemKey, cachedItem)
+            return
         }
+        if (!shouldSupplementPresentation(info, item)) return
+        val requestGeneration = extrasRefreshGeneration
+        if (itemPresentationRequests[itemKey] == requestGeneration) return
+        itemPresentationRequests[itemKey] = requestGeneration
 
-        if (!shouldFetchPresentationDetail(info, item, fromPreview) || itemKey == null) return
-        val needStat = shouldFetchPresentationStatDetail(info, cachedStat)
-        val needDescription =
-            info.type == MediaType.Favorite &&
-                cachedDescription.isNullOrBlank() &&
-                itemDescription.isBlank()
-        if (!needStat && !needDescription) return
-
-        viewModelScope.launch(Dispatchers.IO) {
-            val detail = fetchPresentationDetail(
-                item = item,
-                needStat = needStat,
-                needDescription = needDescription,
-            ) ?: return@launch
-            detail.stat?.let { itemStatCache[itemKey] = it }
-            detail.description?.takeIf { it.isNotBlank() }?.let { itemDescriptionCache[itemKey] = it }
-            applyItemPresentation(index, itemKey, detail.stat, detail.description)
+        viewModelScope.launch {
+            try {
+                val detail = withContext(Dispatchers.IO) {
+                    fetchPresentationDetail(info, item)
+                } ?: return@launch
+                if (requestGeneration != extrasRefreshGeneration) return@launch
+                itemPresentationCache[itemKey] = detail.item
+                itemCacheKey(detail.item)?.let { resolvedKey ->
+                    itemPresentationCache[resolvedKey] = detail.item
+                }
+                applyItemPresentation(index, itemKey, detail.item)
+            } finally {
+                if (itemPresentationRequests[itemKey] == requestGeneration) {
+                    itemPresentationRequests.remove(itemKey)
+                }
+            }
         }
     }
 
     private suspend fun fetchPresentationDetail(
+        info: MediaInfo,
         item: MediaItem,
-        needStat: Boolean,
-        needDescription: Boolean,
     ): ItemPresentationDetail? {
-        val queryId = item.bvid?.takeIf { it.isNotBlank() } ?: item.aid?.toString() ?: return null
-        val nfo = runCatching {
-            mediaRepository.getMediaInfo(queryId, MediaType.Video).nfo
+        val query = buildPresentationDetailQuery(item) ?: return null
+        val detailedInfo = runCatching {
+            mediaRepository.getMediaInfo(query.id, query.type, query.options)
         }.getOrNull() ?: return null
-
-        val stat = if (needStat && hasAnyStat(nfo.stat)) nfo.stat else null
-        val description = if (needDescription) {
-            nfo.intro?.trim()?.takeIf { it.isNotBlank() }
-        } else {
-            null
+        val detailedItem = when {
+            item.type == MediaType.Bangumi && item.epid == null -> null
+            item.epid != null -> detailedInfo.list.firstOrNull { it.epid == item.epid }
+                ?: detailedInfo.list.firstOrNull { it.isTarget }
+            else -> detailedInfo.list.firstOrNull { it.isTarget }
+                ?: detailedInfo.list.firstOrNull()
         }
-        if (stat == null && description == null) return null
-        return ItemPresentationDetail(stat = stat, description = description)
+        return ItemPresentationDetail(
+            item = mergePresentationDetail(
+                containerType = info.type,
+                original = item,
+                detailedInfo = detailedInfo,
+                detailedItem = detailedItem,
+            ),
+        )
+    }
+
+    private fun mergePresentationDetail(
+        containerType: MediaType,
+        original: MediaItem,
+        detailedInfo: MediaInfo,
+        detailedItem: MediaItem?,
+    ): MediaItem {
+        val detailedMetadata = detailedItem?.metadata
+            ?.takeUnless { it == MediaMetadata() }
+            ?: detailedInfo.metadata.takeUnless { it == MediaMetadata() }
+            ?: original.metadata
+        val metadata = detailedMetadata.copy(
+            itemCount = detailedMetadata.itemCount
+                ?: detailedInfo.metadata.itemCount
+                ?: original.metadata.itemCount,
+            imageCount = detailedMetadata.imageCount ?: original.metadata.imageCount,
+            publishedAt = detailedMetadata.publishedAt ?: original.metadata.publishedAt,
+            tags = detailedMetadata.tags.ifEmpty { original.metadata.tags },
+            collectionId = detailedMetadata.collectionId ?: original.metadata.collectionId,
+            invalid = detailedMetadata.invalid || original.metadata.invalid,
+        )
+        val stat = detailedItem?.stat?.takeIf(::hasAnyStat)
+            ?: detailedInfo.nfo.stat.takeIf(::hasAnyStat)
+            ?: original.stat
+        val description = detailedItem?.description?.trim()?.takeIf(String::isNotBlank)
+            ?: detailedInfo.nfo.intro?.trim()?.takeIf(String::isNotBlank)
+            ?: original.description
+        val useDetailedOpusTitle = containerType == MediaType.UserOpus &&
+            (original.title.isBlank() || original.title.startsWith("图文_"))
+        val title = if (useDetailedOpusTitle) {
+            detailedItem?.title?.trim()?.takeIf(String::isNotBlank) ?: original.title
+        } else {
+            original.title
+        }
+        val coverUrl = original.coverUrl.takeIf(String::isNotBlank)
+            ?: detailedItem?.coverUrl?.takeIf(String::isNotBlank)
+            ?: detailedInfo.nfo.thumbs.firstOrNull()?.url.orEmpty()
+        val detailedUpper = detailedItem?.resolvedUpper(detailedInfo)
+        val originalUpper = original.upper
+        val upper = if (
+            detailedUpper != null &&
+            detailedUpper.followerCount == null &&
+            originalUpper != null &&
+            detailedUpper.mid == originalUpper.mid
+        ) {
+            detailedUpper.copy(followerCount = originalUpper.followerCount)
+        } else {
+            detailedUpper ?: originalUpper
+        }
+
+        return original.copy(
+            title = title,
+            coverUrl = coverUrl,
+            description = description,
+            stat = stat,
+            duration = detailedItem?.duration?.takeIf { it > 0 } ?: original.duration,
+            pubTime = detailedItem?.pubTime?.takeIf { it > 0L } ?: original.pubTime,
+            upper = upper,
+            artist = detailedItem?.artist?.takeIf(String::isNotBlank) ?: original.artist,
+            aid = detailedItem?.aid ?: original.aid,
+            bvid = detailedItem?.bvid?.takeIf(String::isNotBlank) ?: original.bvid,
+            cid = detailedItem?.cid ?: original.cid,
+            epid = detailedItem?.epid ?: original.epid,
+            ssid = detailedItem?.ssid ?: original.ssid,
+            sid = detailedItem?.sid ?: original.sid,
+            opid = detailedItem?.opid?.takeIf(String::isNotBlank) ?: original.opid,
+            cvid = detailedItem?.cvid ?: original.cvid,
+            mdid = detailedItem?.mdid ?: original.mdid,
+            metadata = metadata,
+        )
+    }
+
+    private fun applyUpperFollowerCount(mid: Long, followerCount: Long) {
+        itemPresentationCache.entries.forEach { entry ->
+            val upper = entry.value.upper
+            if (upper?.mid == mid && upper.followerCount != followerCount) {
+                entry.setValue(entry.value.copy(upper = upper.copy(followerCount = followerCount)))
+            }
+        }
+        _state.update { current ->
+            val info = current.mediaInfo ?: return@update current
+            val updatedNfoUpper = info.nfo.upper?.let { upper ->
+                if (upper.mid == mid && upper.followerCount != followerCount) {
+                    upper.copy(followerCount = followerCount)
+                } else {
+                    upper
+                }
+            }
+            val updatedItems = current.items.map { item ->
+                val upper = item.upper
+                if (upper?.mid == mid && upper.followerCount != followerCount) {
+                    item.copy(upper = upper.copy(followerCount = followerCount))
+                } else {
+                    item
+                }
+            }
+            if (updatedNfoUpper == info.nfo.upper && updatedItems == current.items) {
+                return@update current
+            }
+            current.copy(
+                items = updatedItems,
+                mediaInfo = info.copy(
+                    nfo = info.nfo.copy(upper = updatedNfoUpper),
+                    list = updatedItems,
+                ),
+            )
+        }
     }
 
     private fun applyItemPresentation(
         index: Int,
-        itemKey: String?,
-        stat: MediaStat?,
-        description: String?,
+        itemKey: String,
+        presentationItem: MediaItem,
     ) {
         _state.update { current ->
             // 列表可能已因翻页/切换分区被替换，仅在目标条目未变时才应用补拉结果
             val item = current.items.getOrNull(index) ?: return@update current
-            if (itemKey != null && itemCacheKey(item) != itemKey) {
+            if (itemCacheKey(item) != itemKey) {
                 return@update current
             }
-
-            var changed = false
-            var updatedItem = item
-
-            if (!description.isNullOrBlank() && description != item.description) {
-                updatedItem = updatedItem.copy(description = description)
-                changed = true
-            }
-
-            val resolvedStat = stat ?: updatedItem.stat
-            if (resolvedStat != null && resolvedStat != updatedItem.stat) {
-                updatedItem = updatedItem.copy(stat = resolvedStat)
-                changed = true
-            }
-
-            val updatedItems = if (changed) {
-                current.items.toMutableList().also { list ->
-                    list[index] = updatedItem
-                }
-            } else {
-                current.items
+            // 重新使用当前列表的容器归属与选择字段，缓存只负责内容主体的补充信息。
+            val updatedItem = presentationItem.copy(
+                isTarget = item.isTarget,
+                index = item.index,
+                page = item.page ?: presentationItem.page,
+                pageCount = item.pageCount ?: presentationItem.pageCount,
+                workTitle = item.workTitle ?: presentationItem.workTitle,
+                episode = item.episode ?: presentationItem.episode,
+                longTitle = item.longTitle ?: presentationItem.longTitle,
+                sectionTitle = item.sectionTitle ?: presentationItem.sectionTitle,
+                amid = item.amid ?: presentationItem.amid,
+                fid = item.fid ?: presentationItem.fid,
+                rlid = item.rlid ?: presentationItem.rlid,
+                sourceMid = item.sourceMid ?: presentationItem.sourceMid,
+                metadata = presentationItem.metadata.copy(
+                    tags = presentationItem.metadata.tags.ifEmpty { item.metadata.tags },
+                    collectionId = presentationItem.metadata.collectionId
+                        ?: item.metadata.collectionId,
+                    invalid = presentationItem.metadata.invalid || item.metadata.invalid,
+                ),
+            )
+            val changed = updatedItem != item
+            val updatedItems = current.items.toMutableList().also { list ->
+                list[index] = updatedItem
             }
 
             // 仅当补拉的是当前项时才同步 selectedItemStat，预览其他条目不影响当前项
             val nextSelectedItemStat = if (index == current.selectedItemIndex) {
-                resolvedStat ?: current.selectedItemStat
+                updatedItem.stat ?: current.selectedItemStat
             } else {
                 current.selectedItemStat
             }
@@ -2780,48 +3008,15 @@ class ParseViewModel(
 
             current.copy(
                 items = updatedItems,
+                mediaInfo = current.mediaInfo?.copy(list = updatedItems),
                 selectedItemStat = nextSelectedItemStat,
             )
         }
     }
 
-    private fun shouldFetchPresentationDetail(
-        info: MediaInfo,
-        item: MediaItem,
-        fromPreview: Boolean,
-    ): Boolean {
-        return when (info.type) {
-            // 合集列表接口不返回选集的 stat，仅在用户点击预览时补拉该视频详情，
-            // 避免解析合集时为默认选集额外多发一次请求
-            MediaType.Video -> fromPreview && info.collection && item.bvid?.isNotBlank() == true
-            MediaType.Favorite -> item.type == MediaType.Video && item.bvid?.isNotBlank() == true
-            MediaType.WatchLater -> item.type == MediaType.Video &&
-                (item.bvid?.isNotBlank() == true || item.aid != null)
-            else -> false
-        }
-    }
-
-    private fun shouldFetchPresentationStatDetail(info: MediaInfo, stat: MediaStat?): Boolean {
-        if (stat == null) return true
-        return when (info.type) {
-            // 合集选集与收藏夹的列表接口都不含评论/点赞/投币/分享，缺失时补拉完整详情
-            MediaType.Video,
-            MediaType.Favorite,
-            -> stat.reply == null ||
-                stat.like == null ||
-                stat.coin == null ||
-                stat.share == null
-            MediaType.WatchLater -> !hasAnyStat(stat)
-            else -> !hasAnyStat(stat)
-        }
-    }
-
     private fun itemCacheKey(item: MediaItem): String? {
-        val bvid = item.bvid?.trim().orEmpty()
-        if (bvid.isNotBlank()) {
-            return "bvid:$bvid"
-        }
-        return item.aid?.let { aid -> "aid:$aid" }
+        item.publicContentId()?.let { return "${item.type}:$it" }
+        return item.aid?.let { aid -> "${item.type}:aid:$aid" }
     }
 
     private fun hasAnyStat(stat: MediaStat): Boolean {

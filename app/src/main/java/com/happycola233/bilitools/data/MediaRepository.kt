@@ -6,16 +6,24 @@ import com.happycola233.bilitools.core.CookieStore
 import com.happycola233.bilitools.core.AudioQualities
 import com.happycola233.bilitools.core.WbiSigner
 import com.happycola233.bilitools.data.model.AudioStream
+import com.happycola233.bilitools.data.model.MediaContributor
+import com.happycola233.bilitools.data.model.MediaCopyrightType
+import com.happycola233.bilitools.data.model.MediaHonor
 import com.happycola233.bilitools.data.model.MediaInfo
 import com.happycola233.bilitools.data.model.MediaItem
+import com.happycola233.bilitools.data.model.MediaMetadata
 import com.happycola233.bilitools.data.model.MediaNfo
+import com.happycola233.bilitools.data.model.MediaPaymentInfo
 import com.happycola233.bilitools.data.model.MediaQueryOptions
+import com.happycola233.bilitools.data.model.MediaRareAttribute
+import com.happycola233.bilitools.data.model.MediaResolution
 import com.happycola233.bilitools.data.model.MediaSections
 import com.happycola233.bilitools.data.model.MediaStat
 import com.happycola233.bilitools.data.model.MediaTab
 import com.happycola233.bilitools.data.model.MediaThumb
 import com.happycola233.bilitools.data.model.MediaType
 import com.happycola233.bilitools.data.model.MediaUpper
+import com.happycola233.bilitools.data.model.MediaVideoPart
 import com.happycola233.bilitools.data.model.ParsedInput
 import com.happycola233.bilitools.data.model.PlayUrlInfo
 import com.happycola233.bilitools.data.model.StreamFormat
@@ -123,7 +131,7 @@ class MediaRepository(
             MediaType.Video -> fetchVideoInfo(id, options)
             MediaType.Bangumi -> fetchBangumiInfo(id, options)
             MediaType.Lesson -> fetchLessonInfo(id, options)
-            MediaType.Music -> fetchMusicInfo(id)
+            MediaType.Music -> fetchMusicInfo(id, options)
             MediaType.MusicList -> fetchMusicListInfo(id, options)
             MediaType.WatchLater -> fetchWatchLaterInfo(options)
             MediaType.Favorite -> fetchFavoriteInfo(id, options)
@@ -133,6 +141,19 @@ class MediaRepository(
             MediaType.UserOpus -> fetchUserOpusInfo(id, options)
             MediaType.UserAudio -> fetchUserAudioInfo(id, options)
         }
+    }
+
+    suspend fun getUpperFollowerCount(mid: Long): Long? {
+        if (mid <= 0L) return null
+        val body = httpClient.get(
+            buildUrl(
+                "https://api.bilibili.com/x/relation/stat",
+                mapOf("vmid" to mid.toString()),
+            ),
+        )
+        val response = httpClient.adapter(UpperRelationStatResponse::class.java).fromJson(body)
+            ?: return null
+        return response.data?.follower?.takeIf { response.code == 0 && it >= 0L }
     }
 
     suspend fun getPlayUrlInfo(
@@ -184,6 +205,24 @@ class MediaRepository(
         val sectionOfTarget = targetEpisode?.let { ep ->
             ugcSeason?.sections?.firstOrNull { it.id == ep.sectionId }
         }
+        val tags = if (options.includeOptionalVideoTags) {
+            // 标签是投稿解析阶段的正式可选数据；接口失败时直接省略，不影响 view 主结果。
+            runCatching {
+                val tagBody = httpClient.get(
+                    buildUrl("https://api.bilibili.com/x/tag/archive/tags", params),
+                )
+                val tagAdapter = httpClient.adapter(VideoTagsResponse::class.java)
+                val tagResp = tagAdapter.fromJson(tagBody)
+                if (tagResp?.code == 0) {
+                    tagResp.data.orEmpty().map(VideoTagItem::tagName)
+                } else {
+                    emptyList()
+                }
+            }.getOrDefault(emptyList())
+        } else {
+            emptyList()
+        }
+        val videoMetadata = data.toMediaMetadata(tags)
         // 合集里的单集标题和稿件标题可以不同，命名用的是合集里展示的那个。
         val workTitle = targetEpisode?.title?.takeIf { it.isNotBlank() } ?: data.title
         val basePageCount = data.pages?.size ?: 1
@@ -198,7 +237,7 @@ class MediaRepository(
                 bvid = data.bvid,
                 cid = page.cid,
                 duration = page.duration,
-                pubTime = page.ctime ?: data.pubdate,
+                pubTime = data.pubdate,
                 type = MediaType.Video,
                 isTarget = index == 0,
                 index = index,
@@ -206,6 +245,7 @@ class MediaRepository(
                 pageCount = basePageCount,
                 workTitle = workTitle,
                 sectionTitle = sectionOfTarget?.title,
+                metadata = videoMetadata,
             )
         } ?: listOf(
             MediaItem(
@@ -225,6 +265,7 @@ class MediaRepository(
                 pageCount = 1,
                 workTitle = workTitle,
                 sectionTitle = sectionOfTarget?.title,
+                metadata = videoMetadata,
             ),
         )
 
@@ -235,6 +276,10 @@ class MediaRepository(
             if (options.collection) {
                 val targetEpisodeId = options.target?.takeIf { t -> allEpisodes.any { it.id == t } }
                 list = allEpisodes.mapIndexed { index, ep ->
+                    val episodeDuration = ep.arc.duration?.takeIf { it > 0 }
+                        ?: ep.pages.sumOf(UgcEpisodePage::duration).takeIf { it > 0 }
+                    val episodePartCount = ep.arc.videos?.takeIf { it > 0 }
+                        ?: ep.pages.size.takeIf { it > 0 }
                     MediaItem(
                         title = ep.title,
                         coverUrl = normalizeCoverUrl(ep.arc.pic),
@@ -246,6 +291,9 @@ class MediaRepository(
                         duration = ep.page.duration,
                         pubTime = ep.arc.pubdate,
                         type = MediaType.Video,
+                        upper = ep.arc.author
+                            ?.takeIf { it.mid > 0L && it.name.isNotBlank() }
+                            ?.let { createMediaUpper(it.name, it.mid, it.face) },
                         isTarget = targetEpisodeId?.let { ep.id == it } ?: (ep.aid == data.aid),
                         index = index,
                         pageCount = ep.pages.size.takeIf { it > 0 },
@@ -253,6 +301,15 @@ class MediaRepository(
                         sectionTitle = ugcSeason?.sections
                             ?.firstOrNull { it.id == ep.sectionId }
                             ?.title,
+                        metadata = if (ep.aid == data.aid) {
+                            videoMetadata
+                        } else {
+                            MediaMetadata(
+                                totalDuration = episodeDuration,
+                                partCount = episodePartCount,
+                                collectionId = ugcSeason?.id,
+                            )
+                        },
                     )
                 }
             } else if (basePageCount > 1 && sectionOfTarget != null) {
@@ -275,6 +332,17 @@ class MediaRepository(
                         pageCount = targetEpisode.pages.size,
                         workTitle = targetEpisode.title,
                         sectionTitle = sectionOfTarget.title,
+                        metadata = if (targetEpisode.aid == data.aid) {
+                            videoMetadata
+                        } else {
+                            MediaMetadata(
+                                totalDuration = targetEpisode.arc.duration?.takeIf { it > 0 }
+                                    ?: targetEpisode.pages.sumOf(UgcEpisodePage::duration).takeIf { it > 0 },
+                                partCount = targetEpisode.arc.videos?.takeIf { it > 0 }
+                                    ?: targetEpisode.pages.size.takeIf { it > 0 },
+                                collectionId = ugcSeason?.id,
+                            )
+                        },
                     )
                 }
                 val targetId = options.target
@@ -286,13 +354,6 @@ class MediaRepository(
                 )
             }
         }
-
-        val tags = runCatching {
-            val tagBody = httpClient.get(buildUrl("https://api.bilibili.com/x/tag/archive/tags", params))
-            val tagAdapter = httpClient.adapter(VideoTagsResponse::class.java)
-            val tagResp = tagAdapter.fromJson(tagBody)
-            tagResp?.data?.mapNotNull { it.tagName }.orEmpty()
-        }.getOrDefault(emptyList())
 
         val thumbs = buildList {
             add(MediaThumb("cover", normalizeCoverUrl(data.pic)))
@@ -323,6 +384,14 @@ class MediaRepository(
             list = list,
             sections = sections,
             collection = hasCollection,
+            metadata = if (hasCollection) {
+                MediaMetadata(
+                    itemCount = allEpisodes.size.takeIf { it > 0 },
+                    collectionId = ugcSeason.id,
+                )
+            } else {
+                videoMetadata
+            },
         )
     }
 
@@ -382,6 +451,33 @@ class MediaRepository(
             data.section?.forEach { add(MediaTab(it.id, it.title)) }
         }
         val sectionTitle = tabs.firstOrNull { it.id == targetSectionId }?.name
+        val bangumiMetadata = MediaMetadata(
+            presentationDetailsComplete = true,
+            itemCount = data.episodes.size.takeIf { it > 0 },
+            mediaId = data.mediaId,
+            contentKind = when (data.type) {
+                1 -> "番剧"
+                2 -> "电影"
+                3 -> "纪录片"
+                4 -> "国创"
+                5 -> "电视剧"
+                7 -> "综艺"
+                else -> null
+            },
+            area = data.areas.map { it.name.trim() }.filter(String::isNotBlank)
+                .joinToString("、").takeIf(String::isNotBlank),
+            rating = data.rating?.score,
+            copyrightLabel = when (data.rights?.copyright?.lowercase()) {
+                "bilibili" -> "授权"
+                "dujia" -> "独家"
+                else -> data.rights?.copyright?.trim()?.takeIf(String::isNotBlank)
+            },
+            isCompleted = data.publish?.isFinished?.let { it == 1 },
+            updateText = data.newEpisode?.description?.trim()?.takeIf(String::isNotBlank),
+            actors = data.actors?.trim()?.takeIf(String::isNotBlank),
+            productionStaff = data.staff?.trim()?.takeIf(String::isNotBlank),
+            tags = data.styles.map(String::trim).filter(String::isNotBlank),
+        )
         val list = listSource.mapIndexed { index, ep ->
             val isTargetEpisode = if (idType == "ep" && inputEpisodeId != null) {
                 ep.epId == inputEpisodeId || ep.id == inputEpisodeId
@@ -391,6 +487,10 @@ class MediaRepository(
             val title = ep.showTitle?.takeIf { it.isNotBlank() }
                 ?: ep.title?.takeIf { it.isNotBlank() }
                 ?: "EP${index + 1}"
+            val badges = listOfNotNull(ep.badge, ep.badgeInfo?.text)
+                .map(String::trim)
+                .filter(String::isNotBlank)
+                .distinct()
             MediaItem(
                 title = title,
                 coverUrl = normalizeCoverUrl(ep.cover ?: data.cover),
@@ -401,6 +501,7 @@ class MediaRepository(
                 cid = ep.cid,
                 epid = ep.epId ?: ep.id,
                 ssid = data.seasonId,
+                mdid = data.mediaId,
                 duration = ((ep.duration ?: 0) / 1000),
                 pubTime = ep.pubTime ?: 0L,
                 type = MediaType.Bangumi,
@@ -410,6 +511,13 @@ class MediaRepository(
                 episode = ep.title,
                 longTitle = ep.longTitle,
                 sectionTitle = sectionTitle,
+                metadata = bangumiMetadata.copy(
+                    totalDuration = ep.duration?.div(1000)?.takeIf { it > 0 },
+                    badges = badges,
+                    rareAttributes = rareAttributesForBadges(badges),
+                    resolution = ep.dimension.toMediaResolution(),
+                    publishedAt = ep.pubTime?.takeIf { it > 0L },
+                ),
             )
         }
         val resolvedTargetId = tabs.firstOrNull { it.id == targetSectionId }?.id ?: data.positive.id
@@ -466,10 +574,13 @@ class MediaRepository(
                 ),
                 thumbs = thumbs,
                 premiered = data.episodes.firstOrNull()?.pubTime,
-                upper = data.upInfo?.let { createMediaUpper(it.uname, it.mid, it.avatar) },
+                upper = data.upInfo?.let {
+                    createMediaUpper(it.uname, it.mid, it.avatar, it.follower)
+                },
             ),
             list = list,
             sections = if (tabs.isNotEmpty()) MediaSections(resolvedTargetId, tabs) else null,
+            metadata = bangumiMetadata.copy(itemCount = data.episodes.size.takeIf { it > 0 }),
         )
     }
 
@@ -491,7 +602,23 @@ class MediaRepository(
             throw BiliHttpException(resp.message ?: "Lesson error", resp.code)
         }
         val data = resp.data
+        val requestedLessonEpisodeId = idNum.toLongOrNull()
+            ?.takeIf { id.startsWith("ep", ignoreCase = true) }
+        val lessonMetadata = MediaMetadata(
+            presentationDetailsComplete = true,
+            itemCount = data.episodes.size.takeIf { it > 0 },
+            updateText = data.releaseInfo?.trim()?.takeIf(String::isNotBlank)
+                ?: data.releaseStatus?.trim()?.takeIf(String::isNotBlank),
+            payment = data.payment?.let { payment ->
+                MediaPaymentInfo(
+                    description = payment.discountDescription?.trim()?.takeIf(String::isNotBlank)
+                        ?: payment.description?.trim()?.takeIf(String::isNotBlank),
+                    price = payment.priceFormat?.trim()?.takeIf(String::isNotBlank)?.let { "$it B币" },
+                )
+            },
+        )
         val list = data.episodes.mapIndexed { index, ep ->
+            val requiresPurchase = ep.status == 2 && data.payment != null
             MediaItem(
                 title = ep.title,
                 coverUrl = normalizeCoverUrl(ep.cover),
@@ -504,10 +631,24 @@ class MediaRepository(
                 duration = ep.duration,
                 pubTime = ep.releaseDate,
                 type = MediaType.Lesson,
-                isTarget = index == 0,
+                isTarget = requestedLessonEpisodeId?.let { ep.id == it } ?: (index == 0),
                 index = index,
                 workTitle = data.title,
                 episode = (ep.index ?: (index + 1)).toString(),
+                metadata = lessonMetadata.copy(
+                    totalDuration = ep.duration.takeIf { it > 0 },
+                    publishedAt = ep.releaseDate.takeIf { it > 0L },
+                    accessLabel = when (ep.status) {
+                        1 -> "可观看"
+                        2 -> if (requiresPurchase) "需购买" else "暂不可观看"
+                        else -> null
+                    },
+                    rareAttributes = if (requiresPurchase) {
+                        setOf(MediaRareAttribute.PurchaseRequired)
+                    } else {
+                        emptySet()
+                    },
+                ),
             )
         }
         val intro = listOfNotNull(
@@ -550,13 +691,19 @@ class MediaRepository(
                 stat = MediaStat(play = data.stat.play.toLong()),
                 thumbs = thumbs,
                 premiered = data.episodes.firstOrNull()?.releaseDate,
-                upper = data.upInfo?.let { createMediaUpper(it.uname, it.mid, it.avatar) },
+                upper = data.upInfo?.let {
+                    createMediaUpper(it.uname, it.mid, it.avatar, it.follower)
+                },
             ),
             list = list,
+            metadata = lessonMetadata,
         )
     }
 
-    private suspend fun fetchMusicInfo(id: String): MediaInfo {
+    private suspend fun fetchMusicInfo(
+        id: String,
+        options: MediaQueryOptions,
+    ): MediaInfo {
         val idNum = id.filter { it.isDigit() }
         val url = buildUrl(
             "https://www.bilibili.com/audio/music-service-c/web/song/info",
@@ -569,28 +716,43 @@ class MediaRepository(
             throw BiliHttpException(resp.msg ?: "Music error", resp.code)
         }
         val data = resp.data
-        val tags = runCatching {
-            val tagBody = httpClient.get(
-                buildUrl(
-                    "https://www.bilibili.com/audio/music-service-c/web/tag/song",
-                    mapOf("sid" to idNum),
-                ),
-            )
-            val tagAdapter = httpClient.adapter(MusicTagsResponse::class.java)
-            val tagResp = tagAdapter.fromJson(tagBody)
-            tagResp?.data?.map { it.info }.orEmpty()
-        }.getOrDefault(emptyList())
-        val upper = runCatching {
-            val upperBody = httpClient.get(
-                buildUrl(
-                    "https://www.bilibili.com/audio/music-service-c/web/user/info",
-                    mapOf("uid" to data.uid.toString()),
-                ),
-            )
-            val upperAdapter = httpClient.adapter(MusicUpperResponse::class.java)
-            upperAdapter.fromJson(upperBody)?.data
-        }.getOrNull()
+        val tags = if (options.includeOptionalMusicExtras) {
+            runCatching {
+                val tagBody = httpClient.get(
+                    buildUrl(
+                        "https://www.bilibili.com/audio/music-service-c/web/tag/song",
+                        mapOf("sid" to idNum),
+                    ),
+                )
+                val tagAdapter = httpClient.adapter(MusicTagsResponse::class.java)
+                val tagResp = tagAdapter.fromJson(tagBody)
+                tagResp?.data?.map { it.info }.orEmpty()
+            }.getOrDefault(emptyList())
+        } else {
+            emptyList()
+        }
+        val upper = if (options.includeOptionalMusicExtras) {
+            runCatching {
+                val upperBody = httpClient.get(
+                    buildUrl(
+                        "https://www.bilibili.com/audio/music-service-c/web/user/info",
+                        mapOf("uid" to data.uid.toString()),
+                    ),
+                )
+                val upperAdapter = httpClient.adapter(MusicUpperResponse::class.java)
+                upperAdapter.fromJson(upperBody)?.data
+            }.getOrNull()
+        } else {
+            null
+        }
         val link = "https://www.bilibili.com/audio/au${data.id}"
+        val musicMetadata = MediaMetadata(
+            presentationDetailsComplete = true,
+            totalDuration = data.duration.takeIf { it > 0 },
+            publishedAt = data.passtime.takeIf { it > 0L },
+            artist = data.author?.trim()?.takeIf(String::isNotBlank),
+            tags = tags.map(String::trim).filter(String::isNotBlank).distinct(),
+        )
         val list = listOf(
             MediaItem(
                 title = data.title,
@@ -608,6 +770,7 @@ class MediaRepository(
                 index = 0,
                 workTitle = data.title,
                 artist = data.author,
+                metadata = musicMetadata,
             ),
         )
         return MediaInfo(
@@ -633,6 +796,7 @@ class MediaRepository(
                 ),
             ),
             list = list,
+            metadata = musicMetadata,
         )
     }
 
@@ -673,7 +837,7 @@ class MediaRepository(
             MediaItem(
                 title = item.title,
                 coverUrl = normalizeCoverUrl(item.cover),
-                description = data.intro,
+                description = item.intro,
                 url = "${link}au${item.id}",
                 aid = item.aid,
                 bvid = item.bvid,
@@ -688,6 +852,12 @@ class MediaRepository(
                 workTitle = item.title,
                 artist = item.author,
                 amid = data.menuId,
+                metadata = MediaMetadata(
+                    presentationDetailsComplete = true,
+                    totalDuration = item.duration.takeIf { it > 0 },
+                    publishedAt = item.passtime.takeIf { it > 0L },
+                    artist = item.author?.trim()?.takeIf(String::isNotBlank),
+                ),
             )
         }
         return MediaInfo(
@@ -708,10 +878,15 @@ class MediaRepository(
                     share = data.statistic.share.toLong(),
                 ),
                 thumbs = listOf(MediaThumb("cover", normalizeCoverUrl(data.cover))),
-                premiered = data.ctime * 1000,
+                premiered = data.ctime,
                 upper = createMediaUpper(data.uname, data.uid, null),
             ),
             list = list,
+            metadata = MediaMetadata(
+                itemCount = (listResp.data.totalSize ?: data.songCount ?: data.legacySongCount)
+                    ?.takeIf { it > 0 },
+                createdAt = data.ctime.takeIf { it > 0L },
+            ),
         )
     }
 
@@ -746,6 +921,10 @@ class MediaRepository(
                 isTarget = index == 0,
                 index = baseIndex + index,
                 workTitle = item.title,
+                metadata = MediaMetadata(
+                    totalDuration = item.duration.takeIf { it > 0 },
+                    publishedAt = item.pubdate.takeIf { it > 0L },
+                ),
             )
         }
         return MediaInfo(
@@ -760,6 +939,7 @@ class MediaRepository(
                 thumbs = list.firstOrNull()?.let { listOf(MediaThumb("cover", it.coverUrl)) }.orEmpty(),
             ),
             list = list,
+            metadata = MediaMetadata(itemCount = resp.data.count?.takeIf { it > 0 }),
         )
     }
 
@@ -820,14 +1000,28 @@ class MediaRepository(
             } ?: MediaStat()
             // 收藏夹条目的 id 随内容类型改变含义：稿件是 avid，音频是 auid，剧集是 season_id。
             val itemType = mapFavoriteType(item.type)
+            val favoriteEpisodeId = item.link
+                ?.takeIf { itemType == MediaType.Bangumi }
+                ?.let(::extractEpisodeId)
+            val resolvedBvid = item.bvid?.trim()?.takeIf(String::isNotBlank)
+                ?: item.id.takeIf { item.type == 2 && it > 0L }?.let(::convertAidToBvid)
+            val itemUrl = when (itemType) {
+                MediaType.Music -> "https://www.bilibili.com/audio/au${item.id}"
+                MediaType.Bangumi -> favoriteEpisodeId
+                    ?.let { "https://www.bilibili.com/bangumi/play/ep$it" }
+                    ?: "https://www.bilibili.com/bangumi/play/ss${item.id}"
+                else -> item.link?.takeIf(String::isNotBlank)
+                    ?: "https://www.bilibili.com/video/${resolvedBvid.orEmpty()}"
+            }
             MediaItem(
                 title = item.title,
                 coverUrl = normalizeCoverUrl(item.cover),
                 description = item.intro?.takeIf { it.isNotBlank() } ?: "",
                 stat = itemStat,
-                url = "https://www.bilibili.com/video/${item.bvid}",
-                aid = item.id.takeIf { itemType == MediaType.Video },
-                bvid = item.bvid,
+                url = itemUrl,
+                aid = item.id.takeIf { item.type == 2 },
+                bvid = resolvedBvid,
+                epid = favoriteEpisodeId,
                 sid = item.id.takeIf { itemType == MediaType.Music },
                 ssid = item.id.takeIf { itemType == MediaType.Bangumi },
                 duration = item.duration,
@@ -838,6 +1032,11 @@ class MediaRepository(
                 index = baseIndex + index,
                 workTitle = item.title,
                 fid = data.info.id,
+                metadata = MediaMetadata(
+                    totalDuration = item.duration.takeIf { it > 0 },
+                    publishedAt = item.pubtime.takeIf { it > 0L },
+                    invalid = item.attribute?.let { it != 0 } == true,
+                ),
             )
         }
         val resolvedInfo = data.info
@@ -864,11 +1063,15 @@ class MediaRepository(
                     share = resolvedInfo.cntInfo.share.toLong(),
                 ),
                 thumbs = listOf(MediaThumb("cover", normalizeCoverUrl(resolvedInfo.cover))),
-                premiered = resolvedInfo.ctime * 1000,
+                premiered = resolvedInfo.ctime,
                 upper = resolvedInfo.upper?.let { createMediaUpper(it.name, it.mid, it.face) },
             ),
             list = list,
             sections = sections,
+            metadata = MediaMetadata(
+                itemCount = resolvedInfo.mediaCount?.takeIf { it > 0 },
+                createdAt = resolvedInfo.ctime.takeIf { it > 0L },
+            ),
         )
     }
 
@@ -893,6 +1096,12 @@ class MediaRepository(
                 workTitle = document.title,
                 opid = document.id,
                 cvid = document.cvid,
+                metadata = MediaMetadata(
+                    presentationDetailsComplete = true,
+                    imageCount = document.images.size.takeIf { it > 0 },
+                    tags = document.tags,
+                    publishedAt = document.publishedAt?.takeIf { it > 0L },
+                ),
             ),
         )
         return MediaInfo(
@@ -907,10 +1116,15 @@ class MediaRepository(
                 thumbs = document.images.firstOrNull()?.let {
                     listOf(MediaThumb("cover", it.url))
                 }.orEmpty(),
-                premiered = document.publishedAt?.times(1000),
+                premiered = document.publishedAt,
                 upper = document.author,
             ),
             list = list,
+            metadata = MediaMetadata(
+                presentationDetailsComplete = true,
+                imageCount = document.images.size.takeIf { it > 0 },
+                tags = document.tags,
+            ),
         )
     }
 
@@ -955,6 +1169,12 @@ class MediaRepository(
                 opid = article.dynId,
                 cvid = article.id,
                 rlid = listInfo.id,
+                metadata = MediaMetadata(
+                    imageCount = article.imageUrls.size.takeIf { it > 0 },
+                    tags = article.categories.orEmpty().mapNotNull { it.name?.trim() }
+                        .filter(String::isNotBlank),
+                    publishedAt = article.publishTime.takeIf { it > 0L },
+                ),
             )
         }
         return MediaInfo(
@@ -970,6 +1190,10 @@ class MediaRepository(
                 upper = author?.let { createMediaUpper(it.name, it.mid, it.face) },
             ),
             list = list,
+            metadata = MediaMetadata(
+                itemCount = (listInfo.articleCount ?: articles.size).takeIf { it > 0 },
+                createdAt = listInfo.createdAt?.takeIf { it > 0L },
+            ),
         )
     }
 
@@ -1087,6 +1311,11 @@ class MediaRepository(
                     isTarget = index == 0,
                     index = index,
                     workTitle = item.title,
+                    sourceMid = upperMid,
+                    metadata = MediaMetadata(
+                        totalDuration = item.duration.takeIf { it > 0 },
+                        publishedAt = item.pubdate.takeIf { it > 0L },
+                    ),
                 )
             }
             return MediaInfo(
@@ -1110,6 +1339,10 @@ class MediaRepository(
                 ),
                 sections = sections,
                 list = list,
+                metadata = MediaMetadata(
+                    itemCount = (listTotalItems ?: archives.size).takeIf { it > 0 },
+                    createdAt = resolvedMeta.ptime.takeIf { it > 0L },
+                ),
             )
         }
 
@@ -1148,6 +1381,11 @@ class MediaRepository(
                 isTarget = index == 0,
                 index = index,
                 workTitle = item.title,
+                sourceMid = upperMid,
+                metadata = MediaMetadata(
+                    totalDuration = parseDurationText(item.length).takeIf { it > 0 },
+                    publishedAt = item.created.takeIf { it > 0L },
+                ),
             )
         }
         return MediaInfo(
@@ -1167,6 +1405,7 @@ class MediaRepository(
                 },
             ),
             list = list,
+            metadata = MediaMetadata(itemCount = searchPage?.count?.takeIf { it > 0 }),
         )
     }
 
@@ -1198,6 +1437,10 @@ class MediaRepository(
         val upperMid = upper?.mid ?: fallbackMid
         val url = "https://space.bilibili.com/$upperMid/upload/opus"
         val list = data.items.mapIndexed { index, item ->
+            val publishedAt = item.pubTime
+                ?.trim()
+                ?.toLongOrNull()
+                ?.takeIf { it > 0L }
             val itemUrl = item.jumpUrl?.takeIf { it.isNotBlank() }
                 ?.let(::normalizeCoverUrl)
                 ?: "https://www.bilibili.com/opus/${item.opusId}"
@@ -1212,12 +1455,14 @@ class MediaRepository(
                 ),
                 url = itemUrl,
                 duration = 0,
-                pubTime = 0,
+                pubTime = publishedAt ?: 0L,
                 type = MediaType.Opus,
                 isTarget = index == 0,
                 index = index,
                 workTitle = item.content.trim().takeIf { it.isNotBlank() },
                 opid = item.opusId,
+                sourceMid = upperMid,
+                metadata = MediaMetadata(publishedAt = publishedAt),
             )
         }
         return MediaInfo(
@@ -1266,7 +1511,7 @@ class MediaRepository(
             MediaItem(
                 title = item.title,
                 coverUrl = normalizeCoverUrl(item.cover),
-                description = item.title,
+                description = item.intro,
                 url = "https://www.bilibili.com/audio/au${item.id}",
                 aid = item.aid,
                 bvid = item.bvid,
@@ -1275,10 +1520,18 @@ class MediaRepository(
                 duration = item.duration,
                 pubTime = item.passtime,
                 type = MediaType.Music,
+                upper = createMediaUpper(item.uname, item.uid, null),
                 isTarget = index == 0,
                 index = index,
                 workTitle = item.title,
                 artist = item.author,
+                sourceMid = upperMid,
+                metadata = MediaMetadata(
+                    presentationDetailsComplete = true,
+                    totalDuration = item.duration.takeIf { it > 0 },
+                    publishedAt = item.passtime.takeIf { it > 0L },
+                    artist = item.author?.trim()?.takeIf(String::isNotBlank),
+                ),
             )
         }
         return MediaInfo(
@@ -1763,12 +2016,128 @@ class MediaRepository(
         }
     }
 
-    private fun createMediaUpper(name: String, mid: Long, avatar: String?): MediaUpper {
+    private fun createMediaUpper(
+        name: String,
+        mid: Long,
+        avatar: String?,
+        followerCount: Long? = null,
+    ): MediaUpper {
         val normalizedAvatar = avatar
             ?.trim()
             ?.takeIf { it.isNotBlank() }
             ?.let(::normalizeCoverUrl)
-        return MediaUpper(name = name, mid = mid, avatar = normalizedAvatar)
+        return MediaUpper(
+            name = name,
+            mid = mid,
+            avatar = normalizedAvatar,
+            followerCount = followerCount?.takeIf { it >= 0L },
+        )
+    }
+
+    private fun VideoViewData.toMediaMetadata(tags: List<String>): MediaMetadata {
+        val videoRights = rights
+        val attributes = buildSet {
+            if (videoRights?.isCooperation == 1 || !staff.isNullOrEmpty()) {
+                add(MediaRareAttribute.Cooperation)
+            }
+            if (videoRights?.isSteinGate == 1) add(MediaRareAttribute.Interactive)
+            if (videoRights?.is360 == 1) add(MediaRareAttribute.Panorama)
+            if (isUpowerExclusive) add(MediaRareAttribute.ChargeExclusive)
+            if (videoRights?.freeWatch == 1) add(MediaRareAttribute.LimitedFree)
+            if (
+                isChargeableSeason ||
+                videoRights?.pay == 1 ||
+                videoRights?.ugcPay == 1 ||
+                videoRights?.arcPay == 1
+            ) {
+                add(MediaRareAttribute.PurchaseRequired)
+            }
+            if (isStory) add(MediaRareAttribute.DynamicVideo)
+        }
+        val parts = pages.orEmpty().map { page ->
+            MediaVideoPart(
+                page = page.page,
+                title = page.part?.trim()?.takeIf(String::isNotBlank),
+                duration = page.duration.takeIf { it > 0 },
+                resolution = page.dimension.toMediaResolution()
+                    ?: if (page.page == 1) dimension.toMediaResolution() else null,
+                cid = page.cid.takeIf { it > 0L },
+                submittedAt = page.ctime?.takeIf { it > 0L }
+                    ?: if (page.page == 1) ctime?.takeIf { it > 0L } else null,
+            )
+        }.ifEmpty {
+            listOf(
+                MediaVideoPart(
+                    page = 1,
+                    title = title.trim().takeIf(String::isNotBlank),
+                    duration = duration.takeIf { it > 0 },
+                    resolution = dimension.toMediaResolution(),
+                    cid = cid.takeIf { it > 0L },
+                    submittedAt = ctime?.takeIf { it > 0L },
+                ),
+            )
+        }
+        return MediaMetadata(
+            presentationDetailsComplete = true,
+            totalDuration = duration.takeIf { it > 0 },
+            partCount = (videos ?: pages?.size)?.takeIf { it > 0 },
+            legacyCategory = VideoCategoryCatalog.legacyLabel(tid, tname),
+            modernCategory = VideoCategoryCatalog.modernLabel(tidV2, tnameV2),
+            copyrightType = when (copyright) {
+                1 -> MediaCopyrightType.Original
+                2 -> MediaCopyrightType.Repost
+                else -> null
+            },
+            noReprint = videoRights?.noReprint == 1,
+            rareAttributes = attributes,
+            warning = argueInfo?.message?.trim()?.takeIf(String::isNotBlank),
+            collisionBvid = forward?.takeIf { it > 0L }?.let(::convertAidToBvid),
+            videoState = state,
+            honors = honorReply?.honors.orEmpty()
+                .mapNotNull { honor ->
+                    val description = honor.description?.trim()?.takeIf(String::isNotBlank)
+                        ?: return@mapNotNull null
+                    MediaHonor(type = honor.type, description = description)
+                }
+                .distinct(),
+            currentRank = stat?.nowRank?.takeIf { it > 0 },
+            historicalRank = stat?.historicalRank?.takeIf { it > 0 },
+            evaluation = stat?.evaluation?.trim()?.takeIf(String::isNotBlank),
+            dynamicText = dynamicText?.trim()?.takeIf(String::isNotBlank),
+            videoParts = parts,
+            publishedAt = pubdate.takeIf { it > 0L },
+            submittedAt = ctime?.takeIf { it > 0L },
+            contributors = staff.orEmpty().mapNotNull { member ->
+                val memberName = member.name.trim()
+                if (memberName.isBlank()) return@mapNotNull null
+                MediaContributor(
+                    name = memberName,
+                    mid = member.mid,
+                    avatar = member.face?.let(::normalizeCoverUrl),
+                    role = member.title?.trim()?.takeIf(String::isNotBlank),
+                )
+            },
+            tags = tags.map(String::trim).filter(String::isNotBlank).distinct(),
+            collectionId = ugcSeason?.id,
+        )
+    }
+
+    private fun VideoDimension?.toMediaResolution(): MediaResolution? {
+        val value = this ?: return null
+        val width = value.width?.takeIf { it > 0 } ?: return null
+        val height = value.height?.takeIf { it > 0 } ?: return null
+        return MediaResolution(width = width, height = height, rotate = value.rotate ?: 0)
+    }
+
+    private fun rareAttributesForBadges(badges: List<String>): Set<MediaRareAttribute> = buildSet {
+        badges.forEach { rawBadge ->
+            val badge = rawBadge.trim()
+            when {
+                "限免" in badge || "限时免费" in badge -> add(MediaRareAttribute.LimitedFree)
+                "会员" in badge -> add(MediaRareAttribute.VipOnly)
+                "付费" in badge || "购买" in badge -> add(MediaRareAttribute.PurchaseRequired)
+            }
+        }
     }
 
     private fun mapFavoriteType(raw: Int): MediaType {
@@ -1791,6 +2160,28 @@ class MediaRepository(
 
 }
 
+private fun extractEpisodeId(link: String): Long? {
+    return Regex("(?i)ep(\\d+)")
+        .find(link)
+        ?.groupValues
+        ?.getOrNull(1)
+        ?.toLongOrNull()
+}
+
+/** 将接口只给出的 avid 转成对应 BV 号，用于收藏夹失效项与撞车跳转。 */
+internal fun convertAidToBvid(aid: Long): String {
+    val alphabet = "FcwAPNKTMug3GV5Lj7EJnHpWsx4tb8haYeviqBz6rkCy12mUSDQX9RdoZf"
+    val positions = intArrayOf(8, 7, 0, 5, 1, 3, 2, 4, 6)
+    var encoded = ((1L shl 51) or aid) xor 23_442_827_791_579L
+    val payload = CharArray(positions.size)
+    positions.forEach { position ->
+        payload[position] = alphabet[(encoded % alphabet.length).toInt()]
+        encoded /= alphabet.length
+    }
+
+    return "BV1${payload.concatToString()}"
+}
+
 private data class VideoViewResponse(
     @Json(name = "code") val code: Int,
     @Json(name = "message") val message: String?,
@@ -1806,17 +2197,34 @@ private data class VideoPageListResponse(
 private data class VideoViewData(
     @Json(name = "bvid") val bvid: String,
     @Json(name = "aid") val aid: Long,
+    @Json(name = "videos") val videos: Int? = null,
+    @Json(name = "tid") val tid: Int? = null,
+    @Json(name = "tid_v2") val tidV2: Int? = null,
+    @Json(name = "tname") val tname: String? = null,
+    @Json(name = "tname_v2") val tnameV2: String? = null,
+    @Json(name = "copyright") val copyright: Int? = null,
     @Json(name = "title") val title: String,
     @Json(name = "desc") val desc: String,
     @Json(name = "pic") val pic: String,
     @Json(name = "cid") val cid: Long,
     @Json(name = "duration") val duration: Int,
     @Json(name = "pubdate") val pubdate: Long,
+    @Json(name = "ctime") val ctime: Long? = null,
+    @Json(name = "state") val state: Int? = null,
+    @Json(name = "forward") val forward: Long? = null,
+    @Json(name = "dynamic") val dynamicText: String? = null,
     @Json(name = "owner") val owner: VideoOwner?,
     @Json(name = "pages") val pages: List<VideoPageInfo>?,
+    @Json(name = "dimension") val dimension: VideoDimension? = null,
     @Json(name = "ugc_season") val ugcSeason: UgcSeasonInfo?,
     @Json(name = "rights") val rights: VideoRights?,
     @Json(name = "stat") val stat: VideoStat?,
+    @Json(name = "argue_info") val argueInfo: VideoArgueInfo? = null,
+    @Json(name = "honor_reply") val honorReply: VideoHonorReply? = null,
+    @Json(name = "is_chargeable_season") val isChargeableSeason: Boolean = false,
+    @Json(name = "is_story") val isStory: Boolean = false,
+    @Json(name = "is_upower_exclusive") val isUpowerExclusive: Boolean = false,
+    @Json(name = "staff") val staff: List<VideoStaff>? = null,
 )
 
 private data class VideoOwner(
@@ -1826,7 +2234,25 @@ private data class VideoOwner(
 )
 
 private data class VideoRights(
-    @Json(name = "is_stein_gate") val isSteinGate: Int,
+    @Json(name = "pay") val pay: Int = 0,
+    @Json(name = "ugc_pay") val ugcPay: Int = 0,
+    @Json(name = "arc_pay") val arcPay: Int = 0,
+    @Json(name = "free_watch") val freeWatch: Int = 0,
+    @Json(name = "no_reprint") val noReprint: Int = 0,
+    @Json(name = "is_cooperation") val isCooperation: Int = 0,
+    @Json(name = "is_stein_gate") val isSteinGate: Int = 0,
+    @Json(name = "is_360") val is360: Int = 0,
+)
+
+private data class VideoArgueInfo(
+    @Json(name = "argue_msg") val message: String? = null,
+)
+
+private data class VideoStaff(
+    @Json(name = "mid") val mid: Long,
+    @Json(name = "name") val name: String,
+    @Json(name = "face") val face: String? = null,
+    @Json(name = "title") val title: String? = null,
 )
 
 private data class VideoStat(
@@ -1837,6 +2263,24 @@ private data class VideoStat(
     @Json(name = "coin") val coin: Int,
     @Json(name = "share") val share: Int,
     @Json(name = "like") val like: Int,
+    @Json(name = "now_rank") val nowRank: Int? = null,
+    @Json(name = "his_rank") val historicalRank: Int? = null,
+    @Json(name = "evaluation") val evaluation: String? = null,
+)
+
+private data class VideoHonorReply(
+    @Json(name = "honor") val honors: List<VideoHonor>? = null,
+)
+
+private data class VideoHonor(
+    @Json(name = "type") val type: Int? = null,
+    @Json(name = "desc") val description: String? = null,
+)
+
+private data class VideoDimension(
+    @Json(name = "width") val width: Int? = null,
+    @Json(name = "height") val height: Int? = null,
+    @Json(name = "rotate") val rotate: Int? = null,
 )
 
 private data class VideoPageInfo(
@@ -1845,6 +2289,7 @@ private data class VideoPageInfo(
     @Json(name = "part") val part: String?,
     @Json(name = "duration") val duration: Int,
     @Json(name = "ctime") val ctime: Long?,
+    @Json(name = "dimension") val dimension: VideoDimension? = null,
 )
 
 private data class UgcSeasonInfo(
@@ -1877,6 +2322,9 @@ private data class UgcEpisodeArc(
     @Json(name = "pic") val pic: String,
     @Json(name = "desc") val desc: String,
     @Json(name = "pubdate") val pubdate: Long,
+    @Json(name = "duration") val duration: Int? = null,
+    @Json(name = "videos") val videos: Int? = null,
+    @Json(name = "author") val author: VideoOwner? = null,
 )
 
 private data class UgcEpisodePage(
@@ -1887,6 +2335,8 @@ private data class UgcEpisodePage(
 )
 
 private data class VideoTagsResponse(
+    @Json(name = "code") val code: Int,
+    @Json(name = "message") val message: String? = null,
     @Json(name = "data") val data: List<VideoTagItem>?,
 )
 
@@ -1915,21 +2365,48 @@ private data class BangumiResponse(
 )
 
 private data class BangumiResult(
+    @Json(name = "actors") val actors: String? = null,
+    @Json(name = "areas") val areas: List<BangumiArea> = emptyList(),
     @Json(name = "cover") val cover: String,
     @Json(name = "square_cover") val squareCover: String?,
     @Json(name = "episodes") val episodes: List<BangumiEpisode>,
     @Json(name = "evaluate") val evaluate: String,
+    @Json(name = "media_id") val mediaId: Long? = null,
+    @Json(name = "new_ep") val newEpisode: BangumiNewEpisode? = null,
     @Json(name = "positive") val positive: BangumiPositive,
+    @Json(name = "publish") val publish: BangumiPublish? = null,
+    @Json(name = "rating") val rating: BangumiRating? = null,
+    @Json(name = "rights") val rights: BangumiRights? = null,
     @Json(name = "season_id") val seasonId: Long,
     @Json(name = "season_title") val seasonTitle: String,
     @Json(name = "seasons") val seasons: List<BangumiSeasonInfo>,
     @Json(name = "section") val section: List<BangumiSection>?,
     @Json(name = "share_url") val shareUrl: String,
-    @Json(name = "staff") val staff: String,
-    @Json(name = "actors") val actors: String,
+    @Json(name = "staff") val staff: String? = null,
     @Json(name = "stat") val stat: BangumiStat,
     @Json(name = "styles") val styles: List<String>,
+    @Json(name = "type") val type: Int? = null,
     @Json(name = "up_info") val upInfo: BangumiUpInfo?,
+)
+
+private data class BangumiArea(
+    @Json(name = "name") val name: String,
+)
+
+private data class BangumiNewEpisode(
+    @Json(name = "desc") val description: String? = null,
+)
+
+private data class BangumiPublish(
+    @Json(name = "is_finish") val isFinished: Int? = null,
+)
+
+private data class BangumiRating(
+    @Json(name = "score") val score: Double? = null,
+)
+
+private data class BangumiRights(
+    @Json(name = "copyright") val copyright: String? = null,
 )
 
 private data class BangumiPositive(
@@ -1952,10 +2429,13 @@ private data class BangumiSection(
 
 private data class BangumiEpisode(
     @Json(name = "aid") val aid: Long? = null,
+    @Json(name = "badge") val badge: String? = null,
+    @Json(name = "badge_info") val badgeInfo: BangumiBadgeInfo? = null,
     @Json(name = "bvid") val bvid: String? = null,
     @Json(name = "cid") val cid: Long? = null,
     @Json(name = "cover") val cover: String? = null,
     @Json(name = "duration") val duration: Int? = null,
+    @Json(name = "dimension") val dimension: VideoDimension? = null,
     @Json(name = "ep_id") val epId: Long? = null,
     @Json(name = "id") val id: Long? = null,
     @Json(name = "pub_time") val pubTime: Long? = null,
@@ -1963,6 +2443,10 @@ private data class BangumiEpisode(
     @Json(name = "show_title") val showTitle: String?,
     @Json(name = "title") val title: String?,
     @Json(name = "long_title") val longTitle: String? = null,
+)
+
+private data class BangumiBadgeInfo(
+    @Json(name = "text") val text: String? = null,
 )
 
 private data class BangumiStat(
@@ -1977,6 +2461,7 @@ private data class BangumiStat(
 
 private data class BangumiUpInfo(
     @Json(name = "avatar") val avatar: String,
+    @Json(name = "follower") val follower: Long? = null,
     @Json(name = "mid") val mid: Long,
     @Json(name = "uname") val uname: String,
 )
@@ -1992,6 +2477,9 @@ private data class LessonData(
     @Json(name = "cover") val cover: String,
     @Json(name = "episodes") val episodes: List<LessonEpisode>,
     @Json(name = "faq") val faq: LessonFaq?,
+    @Json(name = "payment") val payment: LessonPayment? = null,
+    @Json(name = "release_info") val releaseInfo: String? = null,
+    @Json(name = "release_status") val releaseStatus: String? = null,
     @Json(name = "season_id") val seasonId: Long,
     @Json(name = "share_url") val shareUrl: String,
     @Json(name = "stat") val stat: LessonStat,
@@ -2016,7 +2504,14 @@ private data class LessonEpisode(
     @Json(name = "id") val id: Long,
     @Json(name = "index") val index: Int? = null,
     @Json(name = "release_date") val releaseDate: Long,
+    @Json(name = "status") val status: Int? = null,
     @Json(name = "title") val title: String,
+)
+
+private data class LessonPayment(
+    @Json(name = "desc") val description: String? = null,
+    @Json(name = "discount_desc") val discountDescription: String? = null,
+    @Json(name = "price_format") val priceFormat: String? = null,
 )
 
 private data class LessonFaq(
@@ -2030,6 +2525,7 @@ private data class LessonStat(
 
 private data class LessonUpInfo(
     @Json(name = "avatar") val avatar: String,
+    @Json(name = "follower") val follower: Long? = null,
     @Json(name = "mid") val mid: Long,
     @Json(name = "uname") val uname: String,
 )
@@ -2097,6 +2593,8 @@ private data class MusicListData(
     @Json(name = "cover") val cover: String,
     @Json(name = "intro") val intro: String,
     @Json(name = "ctime") val ctime: Long,
+    @Json(name = "snum") val songCount: Int? = null,
+    @Json(name = "song") val legacySongCount: Int? = null,
     @Json(name = "statistic") val statistic: MusicStat,
 )
 
@@ -2108,6 +2606,7 @@ private data class MusicListDetailResponse(
 
 private data class MusicListDetailData(
     @Json(name = "pageCount") val pageCount: Int? = null,
+    @Json(name = "totalSize") val totalSize: Int? = null,
     @Json(name = "data") val data: List<MusicInfoData>,
 )
 
@@ -2188,7 +2687,7 @@ private data class FavoriteCntInfo(
 
 private data class FavoriteMedia(
     @Json(name = "id") val id: Long,
-    @Json(name = "bvid") val bvid: String,
+    @Json(name = "bvid") val bvid: String? = null,
     @Json(name = "type") val type: Int,
     @Json(name = "title") val title: String,
     @Json(name = "cover") val cover: String,
@@ -2197,6 +2696,8 @@ private data class FavoriteMedia(
     @Json(name = "duration") val duration: Int,
     @Json(name = "pubtime") val pubtime: Long,
     @Json(name = "upper") val upper: FavoriteUpper? = null,
+    @Json(name = "attr") val attribute: Int? = null,
+    @Json(name = "link") val link: String? = null,
 )
 
 private data class FavoriteMediaCntInfo(
@@ -2228,6 +2729,8 @@ private data class OpusListInfo(
     @Json(name = "image_url") val imageUrl: String?,
     @Json(name = "summary") val summary: String,
     @Json(name = "read") val read: Int?,
+    @Json(name = "ctime") val createdAt: Long? = null,
+    @Json(name = "articles_count") val articleCount: Int? = null,
 )
 
 private data class OpusListArticle(
@@ -2370,6 +2873,7 @@ private data class UserOpusItem(
     @Json(name = "cover") val cover: UserOpusCover?,
     @Json(name = "opus_id") val opusId: String,
     @Json(name = "jump_url") val jumpUrl: String? = null,
+    @Json(name = "pub_time") val pubTime: String? = null,
     @Json(name = "stat") val stat: UserOpusStat? = null,
 )
 
@@ -2403,6 +2907,15 @@ private data class SpaceUserInfoData(
     @Json(name = "mid") val mid: Long?,
     @Json(name = "name") val name: String?,
     @Json(name = "face") val face: String?,
+)
+
+private data class UpperRelationStatResponse(
+    @Json(name = "code") val code: Int,
+    @Json(name = "data") val data: UpperRelationStatData?,
+)
+
+private data class UpperRelationStatData(
+    @Json(name = "follower") val follower: Long?,
 )
 
 private data class MusicPlayUrlResponse(

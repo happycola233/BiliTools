@@ -366,6 +366,19 @@ class ParseFragment : Fragment() {
     }
 
     private fun copyResultContent(target: ParseResultCopyTarget, content: String) {
+        if (target == ParseResultCopyTarget.PublicId) {
+            val identifierName = copiedIdentifierName(content)
+            requireContext().copyTextToClipboard(
+                label = getString(R.string.parse_metadata_identifier_clip_label, identifierName),
+                content = content,
+            )
+            Toast.makeText(
+                requireContext(),
+                getString(R.string.parse_metadata_identifier_copied, identifierName),
+                Toast.LENGTH_SHORT,
+            ).show()
+            return
+        }
         val (clipLabelRes, feedbackRes) = when (target) {
             ParseResultCopyTarget.Title -> R.string.common_title_clip_label to R.string.common_title_copied
             ParseResultCopyTarget.Description -> {
@@ -377,12 +390,27 @@ class ParseFragment : Fragment() {
             ParseResultCopyTarget.UpperName -> {
                 R.string.common_upper_name_clip_label to R.string.common_upper_name_copied
             }
+            ParseResultCopyTarget.PublicId -> return
+            ParseResultCopyTarget.DetailValue -> {
+                R.string.parse_metadata_value_clip_label to R.string.parse_metadata_value_copied
+            }
         }
         requireContext().copyTextWithFeedback(
             content = content,
             clipLabelRes = clipLabelRes,
             feedbackRes = feedbackRes,
         )
+    }
+
+    private fun copiedIdentifierName(content: String): String = when {
+        content.startsWith("BV", ignoreCase = true) -> "BV 号"
+        content.startsWith("ep", ignoreCase = true) -> "ep 号"
+        content.startsWith("ss", ignoreCase = true) -> "ss 号"
+        content.startsWith("au", ignoreCase = true) -> "au 号"
+        content.startsWith("cv", ignoreCase = true) -> "cv 号"
+        content.startsWith("am", ignoreCase = true) -> "am 号"
+        content.startsWith("rl", ignoreCase = true) -> "rl 号"
+        else -> "图文动态号"
     }
 
     private fun openUpperSpace(mid: Long) {

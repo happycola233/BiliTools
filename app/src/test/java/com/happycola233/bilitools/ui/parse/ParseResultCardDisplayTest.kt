@@ -2,6 +2,7 @@ package com.happycola233.bilitools.ui.parse
 
 import com.happycola233.bilitools.data.model.MediaInfo
 import com.happycola233.bilitools.data.model.MediaItem
+import com.happycola233.bilitools.data.model.MediaMetadata
 import com.happycola233.bilitools.data.model.MediaNfo
 import com.happycola233.bilitools.data.model.MediaType
 import com.happycola233.bilitools.data.model.MediaUpper
@@ -65,7 +66,10 @@ class ParseResultCardDisplayTest {
     fun collectionPreview_usesPreviewedItemUpper() {
         val collectionUpper = MediaUpper("合集 UP", 100L, "https://example.com/collection.jpg")
         val previewUpper = MediaUpper("预览选集 UP", 200L, "https://example.com/item.jpg")
-        val item = mediaItem(type = MediaType.Video, upper = previewUpper)
+        val item = mediaItem(type = MediaType.Video, upper = previewUpper).copy(
+            bvid = "BV1PreviewedItem",
+            metadata = MediaMetadata(modernCategory = "动画 > 短片"),
+        )
         val info = mediaInfo(
             type = MediaType.Video,
             item = item,
@@ -77,6 +81,76 @@ class ParseResultCardDisplayTest {
         val display = resolveParseResultCardDisplay(state, info, item)
 
         assertEquals(previewUpper, display.upper)
+        assertEquals("BV1PreviewedItem", display.metadata.publicIdText)
+        assertEquals(listOf("BV1PreviewedItem", "1:00", "动画 > 短片"), display.metadata.summarySlots)
+    }
+
+    @Test
+    fun listPreview_metadataAndDescriptionFollowDisplayedItem() {
+        val cases = listOf(
+            PreviewCase(
+                containerType = MediaType.Favorite,
+                selected = mediaItem(MediaType.Video).copy(
+                    title = "第一条视频",
+                    description = "第一条简介",
+                    bvid = "BV1SelectedVideo",
+                ),
+                preview = mediaItem(MediaType.Video).copy(
+                    title = "预览视频",
+                    description = "预览视频简介",
+                    bvid = "BV1PreviewVideo",
+                ),
+                expectedPublicId = "BV1PreviewVideo",
+            ),
+            PreviewCase(
+                containerType = MediaType.MusicList,
+                selected = mediaItem(MediaType.Music).copy(
+                    title = "第一首歌",
+                    description = "第一首简介",
+                    sid = 101L,
+                    amid = 301L,
+                ),
+                preview = mediaItem(MediaType.Music).copy(
+                    title = "预览歌曲",
+                    description = "预览歌曲简介",
+                    sid = 102L,
+                    amid = 301L,
+                ),
+                expectedPublicId = "au102",
+            ),
+            PreviewCase(
+                containerType = MediaType.OpusList,
+                selected = mediaItem(MediaType.Opus).copy(
+                    title = "第一篇文章",
+                    description = "第一篇简介",
+                    cvid = 201L,
+                    rlid = 401L,
+                ),
+                preview = mediaItem(MediaType.Opus).copy(
+                    title = "预览文章",
+                    description = "预览文章简介",
+                    cvid = 202L,
+                    rlid = 401L,
+                ),
+                expectedPublicId = "cv202",
+            ),
+        )
+
+        cases.forEach { case ->
+            val info = MediaInfo(
+                type = case.containerType,
+                id = "container",
+                nfo = MediaNfo(showTitle = "容器标题"),
+                list = listOf(case.selected, case.preview),
+            )
+            val state = ParseUiState(items = info.list, selectedItemIndex = 0, previewItemIndex = 1)
+
+            val display = resolveParseResultCardDisplay(state, info, case.selected)
+
+            assertEquals(case.containerType.name, case.preview.title, display.title)
+            assertEquals(case.containerType.name, case.preview.description, display.description)
+            assertEquals(case.containerType.name, case.expectedPublicId, display.metadata.publicIdText)
+        }
     }
 
     @Test
@@ -87,6 +161,28 @@ class ParseResultCardDisplayTest {
         val display = resolveParseResultCardDisplay(ParseUiState(items = info.list), info, item)
 
         assertNull(display.upper)
+    }
+
+    @Test
+    fun displayedUpper_keepsFollowerCountAndFollowsPreviewSubject() {
+        val containerUpper = MediaUpper("容器 UP", 100L, followerCount = 10)
+        val previewUpper = MediaUpper("预览 UP", 200L, followerCount = 123_456)
+        val item = mediaItem(type = MediaType.Music, upper = previewUpper)
+        val info = mediaInfo(
+            type = MediaType.MusicList,
+            item = item,
+            nfoUpper = containerUpper,
+        )
+        val state = ParseUiState(
+            mediaInfo = info,
+            items = info.list,
+            previewItemIndex = 0,
+        )
+
+        val display = resolveParseResultCardDisplay(state, info, item)
+
+        assertEquals(123_456L, display.upper?.followerCount)
+        assertEquals(previewUpper, resolveDisplayedUpper(state))
     }
 
     private fun mediaInfo(
@@ -140,4 +236,11 @@ class ParseResultCardDisplayTest {
             else -> containerType
         }
     }
+
+    private data class PreviewCase(
+        val containerType: MediaType,
+        val selected: MediaItem,
+        val preview: MediaItem,
+        val expectedPublicId: String,
+    )
 }
