@@ -663,7 +663,7 @@ private fun DownloadSettingsScreen(
             item {
                 ExpressiveSwitchListItem(
                     checked = settings.convertAudioToMp3,
-                    iconRes = R.drawable.ic_transform_24,
+                    iconRes = R.drawable.ic_mp3_24,
                     title = stringResource(R.string.settings_convert_audio_to_mp3),
                     description = stringResource(R.string.settings_convert_audio_to_mp3_desc),
                     items = 3,
@@ -675,7 +675,7 @@ private fun DownloadSettingsScreen(
             item {
                 ExpressiveSwitchListItem(
                     checked = settings.convertVideoToMp4,
-                    iconRes = R.drawable.ic_transform_24,
+                    iconRes = R.drawable.ic_mp4_24,
                     title = stringResource(R.string.settings_convert_video_to_mp4),
                     description = stringResource(R.string.settings_convert_video_to_mp4_desc),
                     items = 3,
