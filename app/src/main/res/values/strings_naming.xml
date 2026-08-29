@@ -6,7 +6,7 @@
     <string name="settings_naming_top_level_folder_mode_enabled">启用</string>
     <string name="settings_naming_top_level_folder_mode_disabled">关闭</string>
     <string name="settings_naming_top_level_folder_mode_auto_desc">自动根据下载的条目数量决定是否创建顶层文件夹。</string>
-    <string name="settings_naming_top_level_folder_mode_enabled_desc">始终为每一次下载操作包一层文件夹，适合整理同批次的多个下载项。</string>
+    <string name="settings_naming_top_level_folder_mode_enabled_desc">只下一个条目时不额外建文件夹；一次下多个条目时，会建一层文件夹把它们收纳在一起。。</string>
     <string name="settings_naming_top_level_folder_mode_disabled_desc">不再额外包一层顶层文件夹，如单次下载多个条目，则会直接创建多个项目文件夹。</string>
     <string name="settings_naming_overwrite_existing">重名时直接覆盖</string>
     <string name="settings_naming_overwrite_existing_desc">开启后，检测到同名文件（夹）时将直接覆盖。若关闭，会自动追加序号以解决命名冲突。</string>
