@@ -991,8 +991,9 @@ private fun DownloadTaskRow(
     val progress = DownloadProgressRules.normalizeTaskProgress(item.status, item.progress)
     val visualState = resolveDownloadsTaskProgressVisualState(item)
     val actionType = when {
-        !managed -> null
-        item.status == DownloadStatus.Running -> TaskAction.Pause
+        item.status == DownloadStatus.Pending -> TaskAction.Pause
+        managed && (item.status == DownloadStatus.Running ||
+            item.status == DownloadStatus.Merging) -> TaskAction.Pause
         item.status == DownloadStatus.Paused && item.userPaused -> TaskAction.Resume
         item.status == DownloadStatus.Failed -> TaskAction.Retry
         else -> null
@@ -1627,11 +1628,12 @@ private fun resolveDownloadsGroupActionState(group: DownloadGroup): DownloadsGro
     var hasActiveDownloads = false
     var hasUserPausedDownloads = false
     group.tasks.forEach { item ->
-        if (!isManagedTask(item)) return@forEach
         when (item.status) {
-            DownloadStatus.Pending,
+            DownloadStatus.Pending -> hasActiveDownloads = true
             DownloadStatus.Running,
-            DownloadStatus.Merging -> hasActiveDownloads = true
+            DownloadStatus.Merging -> if (isManagedTask(item)) {
+                hasActiveDownloads = true
+            }
             DownloadStatus.Paused -> if (item.userPaused) {
                 hasUserPausedDownloads = true
             }

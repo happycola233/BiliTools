@@ -30,10 +30,6 @@ class DownloadsViewModel(
         downloadRepository.resume(id)
     }
 
-    fun cancel(id: Long) {
-        downloadRepository.cancel(id)
-    }
-
     fun retry(id: Long) {
         downloadRepository.retry(id)
     }
@@ -46,12 +42,12 @@ class DownloadsViewModel(
         downloadRepository.resumeGroup(id)
     }
 
-    fun pauseAllManaged() {
-        downloadRepository.pauseAllManaged()
+    fun pauseAll() {
+        downloadRepository.pauseAll()
     }
 
-    fun resumeAllManaged() {
-        downloadRepository.resumeAllManaged()
+    fun startAll() {
+        downloadRepository.startAll()
     }
 
     fun deleteGroup(id: Long, deleteFile: Boolean) {

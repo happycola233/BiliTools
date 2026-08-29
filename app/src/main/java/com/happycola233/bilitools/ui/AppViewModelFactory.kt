@@ -24,7 +24,6 @@ class AppViewModelFactory(
                     container.opusRepository,
                     container.extrasRepository,
                     container.downloadRepository,
-                    container.exportRepository,
                     container.settingsRepository,
                     container.authRepository,
                     container.strings,

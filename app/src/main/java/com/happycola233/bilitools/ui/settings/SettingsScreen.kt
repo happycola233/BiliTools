@@ -202,6 +202,7 @@ fun BiliToolsSettingsContent(
     onConvertXmlDanmakuToAssChange: (Boolean) -> Unit,
     onConvertAudioToMp3Change: (Boolean) -> Unit,
     onConvertVideoToMp4Change: (Boolean) -> Unit,
+    onMaxConcurrentDownloadsChange: (Int) -> Unit,
     onConfirmCellularChange: (Boolean) -> Unit,
     onHideInAlbumChange: (Boolean) -> Unit,
     onNamingTopLevelFolderModeChange: (TopLevelFolderMode) -> Unit,
@@ -279,6 +280,7 @@ fun BiliToolsSettingsContent(
                         onConvertXmlDanmakuToAssChange = onConvertXmlDanmakuToAssChange,
                         onConvertAudioToMp3Change = onConvertAudioToMp3Change,
                         onConvertVideoToMp4Change = onConvertVideoToMp4Change,
+                        onMaxConcurrentDownloadsChange = onMaxConcurrentDownloadsChange,
                         onConfirmCellularChange = onConfirmCellularChange,
                         onHideInAlbumChange = onHideInAlbumChange,
                         onBack = onNavigateBack,
@@ -587,6 +589,7 @@ private fun DownloadSettingsScreen(
     onConvertXmlDanmakuToAssChange: (Boolean) -> Unit,
     onConvertAudioToMp3Change: (Boolean) -> Unit,
     onConvertVideoToMp4Change: (Boolean) -> Unit,
+    onMaxConcurrentDownloadsChange: (Int) -> Unit,
     onConfirmCellularChange: (Boolean) -> Unit,
     onHideInAlbumChange: (Boolean) -> Unit,
     onBack: () -> Unit,
@@ -608,6 +611,15 @@ private fun DownloadSettingsScreen(
                 .padding(horizontal = 16.dp),
         ) {
             item { Spacer(Modifier.height(14.dp)) }
+
+            item {
+                MaxConcurrentDownloadsListItem(
+                    value = settings.maxConcurrentDownloads,
+                    onValueChange = onMaxConcurrentDownloadsChange,
+                )
+            }
+
+            item { Spacer(Modifier.height(12.dp)) }
 
             item {
                 ClickableListItem(
@@ -711,6 +723,60 @@ private fun DownloadSettingsScreen(
             }
 
             item { Spacer(Modifier.height(12.dp)) }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun MaxConcurrentDownloadsListItem(
+    value: Int,
+    onValueChange: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val options = remember {
+        (SettingsRepository.MIN_MAX_CONCURRENT_DOWNLOADS..SettingsRepository.MAX_MAX_CONCURRENT_DOWNLOADS)
+            .toList()
+    }
+    Column(
+        modifier = modifier.clip(SettingsExpressiveShapes.groupShape(index = 0, items = 1)),
+    ) {
+        ListItem(
+            leadingContent = {
+                SettingsItemIcon(R.drawable.ic_arrow_shape_up_stack_2_24)
+            },
+            supportingContent = {
+                Text(stringResource(R.string.settings_max_concurrent_downloads_desc))
+            },
+            colors = SettingsExpressiveDefaults.listItemColors,
+        ) {
+            SettingsItemTitle(stringResource(R.string.settings_max_concurrent_downloads))
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(SettingsExpressiveDefaults.listItemColors.containerColor)
+                .padding(start = 52.dp, end = 16.dp, bottom = 12.dp),
+        ) {
+            options.fastForEachIndexed { index, option ->
+                ToggleButton(
+                    checked = option == value,
+                    onCheckedChange = { checked ->
+                        if (checked) onValueChange(option)
+                    },
+                    shapes = when (index) {
+                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                        options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics { role = Role.RadioButton },
+                ) {
+                    Text(option.toString())
+                }
+            }
         }
     }
 }

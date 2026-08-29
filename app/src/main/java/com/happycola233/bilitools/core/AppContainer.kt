@@ -39,6 +39,8 @@ class AppContainer(context: Context) {
             cookieStore,
             settingsRepository,
             mediaRepository,
+            extrasRepository,
+            exportRepository,
         )
     }
     val exportRepository by lazy { ExportRepository(appContext, settingsRepository) }

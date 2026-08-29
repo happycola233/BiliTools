@@ -13,11 +13,15 @@ import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.AudioQualities
 import com.happycola233.bilitools.core.AppLog as Log
 import com.happycola233.bilitools.core.BiliHttpClient
+import com.happycola233.bilitools.core.BiliHttpException
 import com.happycola233.bilitools.core.MediaProcessingEngine
+import com.happycola233.bilitools.core.naming.NamingRenderer
 import com.happycola233.bilitools.data.model.AudioStream
 import com.happycola233.bilitools.core.CookieStore
 import com.happycola233.bilitools.core.createHttpDiagnosticLoggingInterceptor
 import com.happycola233.bilitools.data.model.DownloadEmbeddedMetadata
+import com.happycola233.bilitools.data.model.DownloadExtraTaskOperation
+import com.happycola233.bilitools.data.model.DownloadExtraTaskSpec
 import com.happycola233.bilitools.data.model.DownloadGroup
 import com.happycola233.bilitools.data.model.DownloadItem
 import com.happycola233.bilitools.data.model.DownloadMediaParams
@@ -26,10 +30,13 @@ import com.happycola233.bilitools.data.model.DownloadStatus
 import com.happycola233.bilitools.data.model.DownloadTaskType
 import com.happycola233.bilitools.data.model.isResolvedWithoutFailure
 import com.happycola233.bilitools.data.model.isManagedTransfer
+import com.happycola233.bilitools.data.model.subtitleTaskKey
+import com.happycola233.bilitools.data.model.subtitleTaskKeyFor
 import com.happycola233.bilitools.data.model.MediaInfo
 import com.happycola233.bilitools.data.model.MediaItem
 import com.happycola233.bilitools.data.model.MediaType
 import com.happycola233.bilitools.data.model.StreamFormat
+import com.happycola233.bilitools.data.model.SubtitleInfo
 import com.happycola233.bilitools.data.model.VideoCodec
 import com.happycola233.bilitools.data.model.VideoStream
 import com.happycola233.bilitools.download.DownloadForegroundService
@@ -47,9 +54,9 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -72,6 +79,8 @@ class DownloadRepository(
     private val cookieStore: CookieStore,
     private val settingsRepository: SettingsRepository,
     private val mediaRepository: MediaRepository,
+    private val extrasRepository: ExtrasRepository,
+    private val exportRepository: ExportRepository,
 ) {
     private val resolver = context.contentResolver
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -135,7 +144,12 @@ class DownloadRepository(
     private val downloadStates = ConcurrentHashMap<Long, ResumableState>()
     private val mergeTasks = ConcurrentHashMap<Long, MergedDownload>()
     private val mergeJobs = ConcurrentHashMap<Long, Job>()
-    private val extraTaskSemaphore = Semaphore(EXTRA_TASK_PARALLELISM)
+    private val managedTaskQueue = TaskConcurrencyQueue(
+        settingsRepository.maxConcurrentDownloads(),
+    )
+    private val extraTaskQueue = TaskConcurrencyQueue(EXTRA_TASK_PARALLELISM)
+    private val managedRetryTaskIds = ConcurrentHashMap.newKeySet<Long>()
+    private val extraTaskSpecs = ConcurrentHashMap<Long, DownloadExtraTaskSpec>()
     private val mergeIds = AtomicLong(-1L)
     private val downloadIds = AtomicLong(0L)
     private val groupIds = AtomicLong(0L)
@@ -146,6 +160,19 @@ class DownloadRepository(
     private val deletingGroupIds = mutableSetOf<Long>()
     private val deletingTaskIds = mutableSetOf<Long>()
     private val lock = Any()
+    private val schedulingLock = Any()
+
+    init {
+        scope.launch {
+            settingsRepository.settings
+                .map { settings -> settings.maxConcurrentDownloads }
+                .distinctUntilChanged()
+                .collect { limit ->
+                    managedTaskQueue.updateLimit(limit)
+                    startReadyManagedTasks()
+                }
+        }
+    }
 
     fun ensureLoaded() {
         if (loaded) return
@@ -301,9 +328,8 @@ class DownloadRepository(
             conversionTarget = conversionTarget,
         )
         downloadStates[id] = state
-        schedulePersist()
         addTask(item)
-        startDownload(id)
+        requestManagedTaskStart(id)
         return item
     }
 
@@ -343,7 +369,6 @@ class DownloadRepository(
             conversionTarget = conversionTarget,
         )
         mergeTasks[mergeId] = task
-        schedulePersist()
         val item = buildItem(
             mergeId,
             groupId,
@@ -355,11 +380,31 @@ class DownloadRepository(
             embeddedMetadata = embeddedMetadata,
         )
         addTask(item)
-        startMergedDownloads(task)
+        requestManagedTaskStart(mergeId)
         return item
     }
 
-    fun addExtraTask(
+    fun enqueueExtraTask(
+        groupId: Long,
+        type: DownloadTaskType,
+        taskTitle: String,
+        fileName: String,
+        spec: DownloadExtraTaskSpec,
+    ): DownloadItem {
+        val item = addExtraTask(
+            groupId = groupId,
+            type = type,
+            taskTitle = taskTitle,
+            fileName = fileName,
+            status = DownloadStatus.Pending,
+        )
+        extraTaskSpecs[item.id] = spec
+        schedulePersist()
+        requestExtraTaskStart(item.id)
+        return item
+    }
+
+    private fun addExtraTask(
         groupId: Long,
         type: DownloadTaskType,
         taskTitle: String,
@@ -403,7 +448,7 @@ class DownloadRepository(
     }
 
     // 动态发现的附加任务必须与删除流程同锁校验，避免已删除的任务组被重新创建。
-    fun addExtraTaskIfParentActive(
+    private fun addExtraTaskIfParentActive(
         parentTaskId: Long,
         groupId: Long,
         type: DownloadTaskType,
@@ -480,7 +525,7 @@ class DownloadRepository(
         return item
     }
 
-    fun updateExtraTask(
+    private fun updateExtraTask(
         id: Long,
         status: DownloadStatus,
         progress: Int,
@@ -490,6 +535,7 @@ class DownloadRepository(
         localUri: String? = null,
         statusDetail: String? = null,
         progressIndeterminate: Boolean = false,
+        userPaused: Boolean = false,
     ): Boolean {
         var updated = false
         var shouldPersist = false
@@ -508,6 +554,7 @@ class DownloadRepository(
                     localUri = localUri,
                     statusDetail = statusDetail,
                     progressIndeterminate = progressIndeterminate,
+                    userPaused = userPaused,
                 ),
             )
             tasks[id] = next
@@ -522,7 +569,7 @@ class DownloadRepository(
         return true
     }
 
-    fun updateExtraTaskMetadata(
+    private fun updateExtraTaskMetadata(
         id: Long,
         taskTitle: String,
         fileName: String,
@@ -550,192 +597,694 @@ class DownloadRepository(
         return true
     }
 
-    fun launchExtraTask(id: Long, block: suspend () -> Unit): Boolean {
-        if (!isActiveExtraTask(id)) return false
+    private fun requestManagedTaskStart(id: Long) {
+        synchronized(schedulingLock) {
+            val task = tasks[id] ?: return
+            if (!isManagedTask(task) || task.status != DownloadStatus.Pending) return
+            managedTaskQueue.enqueue(id)
+            startReadyManagedTasks()
+        }
+    }
+
+    private fun startReadyManagedTasks() {
+        synchronized(schedulingLock) {
+            var shouldCheckAgain: Boolean
+            do {
+                shouldCheckAgain = false
+                managedTaskQueue.takeReady().forEach { slot ->
+                    val id = slot.taskId
+                    val task = tasks[id]
+                    if (task == null ||
+                        !isManagedTask(task) ||
+                        task.status != DownloadStatus.Pending
+                    ) {
+                        managedTaskQueue.finish(slot)
+                        shouldCheckAgain = true
+                    } else if (mergeTasks[id] != null) {
+                        startMergedDownloadsNow(mergeTasks.getValue(id), slot)
+                    } else {
+                        startDownloadNow(id, slot)
+                    }
+                }
+            } while (shouldCheckAgain)
+        }
+    }
+
+    private fun releaseManagedTaskSlot(slot: TaskConcurrencyQueue.TaskSlot) {
+        synchronized(schedulingLock) {
+            onManagedTaskSlotReleased(slot.taskId, managedTaskQueue.finish(slot))
+        }
+    }
+
+    private fun releaseManagedTaskSlot(id: Long) {
+        synchronized(schedulingLock) {
+            onManagedTaskSlotReleased(id, managedTaskQueue.finishCurrent(id))
+        }
+    }
+
+    private fun onManagedTaskSlotReleased(id: Long, released: Boolean) {
+        if (!released) return
+        val current = tasks[id]
+        if (current != null && isManagedTask(current) && current.status == DownloadStatus.Pending) {
+            // 失败状态刚展示时用户可能立即重试；旧执行结束后要保留这次重新入队请求。
+            managedTaskQueue.enqueue(id)
+        }
+        startReadyManagedTasks()
+    }
+
+    private fun requestExtraTaskStart(id: Long) {
+        synchronized(schedulingLock) {
+            val task = tasks[id] ?: return
+            if (isManagedTask(task) || task.status != DownloadStatus.Pending) return
+            extraTaskQueue.enqueue(id)
+            startReadyExtraTasks()
+        }
+    }
+
+    private fun startReadyExtraTasks() {
+        synchronized(schedulingLock) {
+            var shouldCheckAgain: Boolean
+            do {
+                shouldCheckAgain = false
+                extraTaskQueue.takeReady().forEach { slot ->
+                    val id = slot.taskId
+                    val task = tasks[id]
+                    val spec = extraTaskSpecs[id]
+                    if (task == null ||
+                        isManagedTask(task) ||
+                        task.status != DownloadStatus.Pending
+                    ) {
+                        extraTaskQueue.finish(slot)
+                        shouldCheckAgain = true
+                    } else if (spec == null) {
+                        updateExtraTask(
+                            id = id,
+                            status = DownloadStatus.Failed,
+                            progress = task.progress,
+                            errorMessage = context.getString(
+                                R.string.download_failure_retry_data_missing,
+                            ),
+                        )
+                        extraTaskQueue.finish(slot)
+                        shouldCheckAgain = true
+                    } else {
+                        startExtraTaskNow(task, spec, slot)
+                    }
+                }
+            } while (shouldCheckAgain)
+        }
+    }
+
+    private fun releaseExtraTaskSlot(slot: TaskConcurrencyQueue.TaskSlot) {
+        synchronized(schedulingLock) {
+            onExtraTaskSlotReleased(slot.taskId, extraTaskQueue.finish(slot))
+        }
+    }
+
+    private fun releaseExtraTaskSlot(id: Long) {
+        synchronized(schedulingLock) {
+            onExtraTaskSlotReleased(id, extraTaskQueue.finishCurrent(id))
+        }
+    }
+
+    private fun onExtraTaskSlotReleased(id: Long, released: Boolean) {
+        if (!released) return
+        val current = tasks[id]
+        if (current != null && !isManagedTask(current) && current.status == DownloadStatus.Pending) {
+            extraTaskQueue.enqueue(id)
+        }
+        startReadyExtraTasks()
+    }
+
+    private fun startExtraTaskNow(
+        task: DownloadItem,
+        spec: DownloadExtraTaskSpec,
+        slot: TaskConcurrencyQueue.TaskSlot,
+    ) {
+        if (!extraTaskQueue.isCurrent(slot) || tasks[task.id]?.status != DownloadStatus.Pending) {
+            releaseExtraTaskSlot(slot)
+            return
+        }
+        val started = updateTaskIf(
+            id = task.id,
+            predicate = { current ->
+                !isManagedTask(current) && current.status == DownloadStatus.Pending
+            },
+            transform = { current ->
+                current.copy(
+                    status = DownloadStatus.Running,
+                    progress = 0,
+                    downloadedBytes = 0,
+                    totalBytes = 0,
+                    speedBytesPerSec = 0,
+                    etaSeconds = null,
+                    errorMessage = null,
+                    localUri = null,
+                    statusDetail = null,
+                    progressIndeterminate = false,
+                    userPaused = false,
+                )
+            },
+        )
+        if (!started) {
+            releaseExtraTaskSlot(slot)
+            return
+        }
         val job = scope.launch(start = CoroutineStart.LAZY) {
-            val currentJob = coroutineContext[Job]
             try {
-                extraTaskSemaphore.withPermit {
-                    if (!isActiveExtraTask(id)) return@withPermit
-                    block()
+                if (!extraTaskQueue.isCurrent(slot) ||
+                    tasks[task.id]?.status != DownloadStatus.Running
+                ) {
+                    return@launch
                 }
+                persistState()
+                executeExtraTask(task.id, spec)
             } catch (err: CancellationException) {
-                if (currentJob == null || extraJobs[id] == currentJob) {
-                    cancelExtraTaskIfActive(id, err.message)
-                }
                 throw err
+            } catch (err: Throwable) {
+                val current = tasks[task.id] ?: return@launch
+                val message = extraTaskErrorMessage(current.title, err)
+                Log.w(
+                    TAG,
+                    "[extra-task] failed, taskId=${task.id}, type=${task.taskType}, file=${current.fileName}",
+                    err,
+                )
+                updateExtraTask(
+                    id = task.id,
+                    status = DownloadStatus.Failed,
+                    progress = 0,
+                    errorMessage = message,
+                )
             } finally {
-                currentJob?.let {
-                    extraJobs.remove(id, it)
+                val currentJob = coroutineContext[Job]
+                val ownsExecution = currentJob != null && extraJobs.remove(task.id, currentJob)
+                if (ownsExecution) {
+                    releaseExtraTaskSlot(slot)
                 }
             }
         }
-        extraJobs.put(id, job)?.cancel()
+        extraJobs.put(task.id, job)?.cancel()
         job.start()
-        return true
     }
 
-    private fun cancelExtraTaskIfActive(id: Long, errorMessage: String?) {
-        val active = synchronized(lock) {
-            val task = tasks[id] ?: return@synchronized false
-            !isManagedTask(task) &&
-                (task.status == DownloadStatus.Pending || task.status == DownloadStatus.Running)
+    private suspend fun executeExtraTask(id: Long, spec: DownloadExtraTaskSpec) {
+        val bytes = when (spec.operation) {
+            DownloadExtraTaskOperation.StaticText -> spec.textContent
+                ?.takeIf { it.isNotBlank() }
+                ?.toByteArray(Charsets.UTF_8)
+
+            DownloadExtraTaskOperation.FetchBytes ->
+                extrasRepository.fetchBytes(requireNotNull(spec.sourceUrl))
+
+            DownloadExtraTaskOperation.SubtitleDiscovery ->
+                executeSubtitleDiscovery(id, spec)
+
+            DownloadExtraTaskOperation.Subtitle ->
+                extrasRepository.getSubtitleSrt(requireNotNull(spec.subtitle))
+
+            DownloadExtraTaskOperation.AiSummary -> extrasRepository.getAiSummaryMarkdown(
+                title = requireNotNull(spec.summaryTitle),
+                bvid = requireNotNull(spec.bvid),
+                aid = requireNotNull(spec.aid),
+                cid = requireNotNull(spec.cid),
+            )
+                ?.takeIf { content -> content.isNotBlank() }
+                ?.toByteArray(Charsets.UTF_8)
+
+            DownloadExtraTaskOperation.DanmakuLive -> {
+                val onProgress: (DanmakuLiveProgress) -> Unit = { progress ->
+                    val segmentCount = progress.segmentCount.coerceAtLeast(1)
+                    val statusDetail = when (progress.phase) {
+                        DanmakuLiveProgressPhase.FetchingSegment -> context.getString(
+                            R.string.download_detail_fetching_danmaku_segment,
+                            progress.segmentIndex.coerceIn(1, segmentCount),
+                            segmentCount,
+                        )
+
+                        DanmakuLiveProgressPhase.Converting ->
+                            context.getString(R.string.download_detail_converting_danmaku)
+                    }
+                    updateExtraTask(
+                        id = id,
+                        status = DownloadStatus.Running,
+                        progress = progress.progress.coerceIn(0, 99),
+                        statusDetail = statusDetail,
+                        progressIndeterminate =
+                            progress.phase == DanmakuLiveProgressPhase.Converting,
+                    )
+                }
+                if (spec.convertDanmakuToAss) {
+                    extrasRepository.getDanmakuLiveAss(
+                        requireNotNull(spec.aid),
+                        requireNotNull(spec.cid),
+                        requireNotNull(spec.durationSeconds),
+                        onProgress,
+                    )
+                } else {
+                    extrasRepository.getDanmakuLiveXml(
+                        requireNotNull(spec.aid),
+                        requireNotNull(spec.cid),
+                        requireNotNull(spec.durationSeconds),
+                        onProgress,
+                    )
+                }
+            }
+
+            DownloadExtraTaskOperation.DanmakuHistory -> if (spec.convertDanmakuToAss) {
+                extrasRepository.getDanmakuHistoryAss(
+                    requireNotNull(spec.cid),
+                    requireNotNull(spec.date),
+                    spec.hour,
+                )
+            } else {
+                extrasRepository.getDanmakuHistoryXml(
+                    requireNotNull(spec.cid),
+                    requireNotNull(spec.date),
+                    spec.hour,
+                )
+            }
         }
-        if (!active) return
+
+        if (bytes == null) {
+            updateExtraTask(
+                id = id,
+                status = DownloadStatus.Unavailable,
+                progress = 100,
+                statusDetail = spec.unavailableMessage,
+            )
+            return
+        }
+        val current = tasks[id] ?: return
+        if (!updateExtraTask(
+                id = id,
+                status = DownloadStatus.Running,
+                progress = 99,
+                statusDetail = context.getString(R.string.download_detail_saving_file),
+            )
+        ) {
+            return
+        }
+        val uri = exportRepository.saveBytes(
+            fileName = current.fileName,
+            mimeType = spec.mimeType,
+            bytes = bytes,
+            relativePath = groupRelativePath(current.groupId),
+        )
+        if (uri == null) {
+            updateExtraTask(
+                id = id,
+                status = DownloadStatus.Failed,
+                progress = 0,
+                errorMessage = context.getString(R.string.download_failure_save),
+            )
+            return
+        }
         updateExtraTask(
-            id,
-            DownloadStatus.Cancelled,
-            progress = 0,
-            errorMessage = errorMessage,
+            id = id,
+            status = DownloadStatus.Success,
+            progress = 100,
+            downloadedBytes = bytes.size.toLong(),
+            totalBytes = bytes.size.toLong(),
+            localUri = uri.toString(),
         )
     }
 
-    private fun isActiveExtraTask(id: Long): Boolean {
-        return synchronized(lock) {
-            val task = tasks[id] ?: return@synchronized false
-            !isManagedTask(task) &&
-                (task.status == DownloadStatus.Pending || task.status == DownloadStatus.Running)
+    private suspend fun executeSubtitleDiscovery(
+        id: Long,
+        spec: DownloadExtraTaskSpec,
+    ): ByteArray? {
+        val subtitles = extrasRepository.getSubtitles(
+            aid = requireNotNull(spec.aid),
+            cid = requireNotNull(spec.cid),
+        )
+        val selected = if (spec.downloadAllSubtitles) {
+            subtitles
+        } else {
+            subtitles.firstOrNull { subtitle ->
+                subtitle.lan == spec.selectedSubtitleLanguage
+            }?.let(::listOf).orEmpty()
         }
+        val first = selected.firstOrNull() ?: return null
+        val baseFileName = requireNotNull(spec.subtitleBaseFileName)
+        val taskTitle = requireNotNull(spec.subtitleTaskTitle)
+        val firstFileName = NamingRenderer.appendExtension(
+            baseName = baseFileName,
+            extension = "${first.lan}.srt",
+            cleanSeparators = spec.cleanFileNameSeparators,
+        )
+        if (!updateExtraTaskMetadata(id, "$taskTitle - ${first.name}", firstFileName)) {
+            throw CancellationException("Subtitle task is no longer active")
+        }
+        selected.drop(1).forEach { subtitle ->
+            enqueueSubtitleTaskIfAbsent(
+                parentTaskId = id,
+                subtitle = subtitle,
+                parentSpec = spec,
+            )
+        }
+        return extrasRepository.getSubtitleSrt(first)
+    }
+
+    private fun enqueueSubtitleTaskIfAbsent(
+        parentTaskId: Long,
+        subtitle: SubtitleInfo,
+        parentSpec: DownloadExtraTaskSpec,
+    ) {
+        val parent = tasks[parentTaskId] ?: return
+        val baseFileName = requireNotNull(parentSpec.subtitleBaseFileName)
+        val taskTitle = requireNotNull(parentSpec.subtitleTaskTitle)
+        val fileName = NamingRenderer.appendExtension(
+            baseName = baseFileName,
+            extension = "${subtitle.lan}.srt",
+            cleanSeparators = parentSpec.cleanFileNameSeparators,
+        )
+        val candidateKey = parentSpec.subtitleTaskKeyFor(subtitle)
+        val duplicateExists = synchronized(lock) {
+            groupTaskIds[parent.groupId].orEmpty().any { taskId ->
+                val existingTask = tasks[taskId]
+                existingTask?.taskType == DownloadTaskType.Subtitle &&
+                    (existingTask.fileName == fileName ||
+                        candidateKey != null &&
+                        extraTaskSpecs[taskId]?.subtitleTaskKey() == candidateKey)
+            }
+        }
+        if (duplicateExists) return
+
+        val task = addExtraTaskIfParentActive(
+            parentTaskId = parentTaskId,
+            groupId = parent.groupId,
+            type = DownloadTaskType.Subtitle,
+            taskTitle = "$taskTitle - ${subtitle.name}",
+            fileName = fileName,
+            status = DownloadStatus.Pending,
+        ) ?: return
+        extraTaskSpecs[task.id] = parentSpec.copy(
+            operation = DownloadExtraTaskOperation.Subtitle,
+            subtitle = subtitle,
+        )
+        schedulePersist()
+        requestExtraTaskStart(task.id)
+    }
+
+    private fun extraTaskErrorMessage(taskTitle: String, err: Throwable?): String {
+        val detail = when (err) {
+            null -> null
+            is BiliHttpException -> {
+                val base = err.message?.takeIf { it.isNotBlank() }
+                    ?: context.getString(R.string.parse_error_failed)
+                "$base (${err.code})"
+            }
+
+            else -> err.message
+        }?.takeIf { it.isNotBlank() }
+            ?: context.getString(R.string.download_reason_unknown)
+        return context.getString(R.string.download_failure_extra, taskTitle, detail)
     }
 
     fun pause(id: Long) {
-        val target = tasks[id] ?: return
-        if (!isManagedTask(target)) return
+        synchronized(schedulingLock) {
+            if (pauseLocked(id)) {
+                persistStateImmediately()
+            }
+        }
+    }
+
+    private fun pauseLocked(id: Long): Boolean {
+        val target = tasks[id] ?: return false
+        if (!isManagedTask(target)) {
+            val paused = updateTaskIf(
+                id = id,
+                predicate = { current ->
+                    !isManagedTask(current) && current.status == DownloadStatus.Pending
+                },
+                transform = { current ->
+                    current.copy(
+                        status = DownloadStatus.Paused,
+                        progress = 0,
+                        speedBytesPerSec = 0,
+                        etaSeconds = null,
+                        userPaused = true,
+                        errorMessage = null,
+                        statusDetail = null,
+                        progressIndeterminate = false,
+                    )
+                },
+            )
+            if (!paused) return false
+            extraTaskQueue.pausePending(id)
+            releaseExtraTaskSlot(id)
+            return true
+        }
         val mergeTask = mergeTasks[id]
         if (mergeTask != null) {
-            pauseMerged(mergeTask)
-            return
+            return pauseMerged(mergeTask)
         }
-        downloadJobs.remove(id)?.cancel()
-        updateTask(
-            target.copy(
-                status = DownloadStatus.Paused,
-                speedBytesPerSec = 0,
-                etaSeconds = null,
-                userPaused = true,
-                statusDetail = null,
-            ),
+        val paused = updateTaskIf(
+            id = id,
+            predicate = { current ->
+                isManagedTask(current) &&
+                    (current.status == DownloadStatus.Pending ||
+                        current.status == DownloadStatus.Running ||
+                        current.status == DownloadStatus.Merging)
+            },
+            transform = { current ->
+                current.copy(
+                    status = DownloadStatus.Paused,
+                    speedBytesPerSec = 0,
+                    etaSeconds = null,
+                    userPaused = true,
+                    statusDetail = null,
+                )
+            },
         )
+        if (!paused) return false
+        managedTaskQueue.pausePending(id)
+        downloadJobs.remove(id)?.cancel()
+        releaseManagedTaskSlot(id)
+        return true
     }
 
     fun resume(id: Long) {
+        synchronized(schedulingLock) {
+            resumeLocked(id)
+        }
+    }
+
+    private fun resumeLocked(id: Long) {
         val target = tasks[id] ?: return
-        if (!isManagedTask(target)) return
+        if (target.status != DownloadStatus.Paused || !target.userPaused) return
+        if (!isManagedTask(target)) {
+            if (extraTaskSpecs[id] == null) {
+                updateExtraTask(
+                    id = id,
+                    status = DownloadStatus.Failed,
+                    progress = target.progress,
+                    errorMessage = context.getString(R.string.download_failure_retry_data_missing),
+                )
+                return
+            }
+            val queued = updateTaskIf(
+                id = id,
+                predicate = { current ->
+                    !isManagedTask(current) &&
+                        current.status == DownloadStatus.Paused && current.userPaused
+                },
+                transform = { current ->
+                    current.copy(
+                        status = DownloadStatus.Pending,
+                        progress = 0,
+                        downloadedBytes = 0,
+                        totalBytes = 0,
+                        speedBytesPerSec = 0,
+                        etaSeconds = null,
+                        errorMessage = null,
+                        localUri = null,
+                        statusDetail = null,
+                        progressIndeterminate = false,
+                        userPaused = false,
+                    )
+                },
+            )
+            if (!queued) return
+            requestExtraTaskStart(id)
+            return
+        }
         val mergeTask = mergeTasks[id]
         if (mergeTask != null) {
             resumeMerged(mergeTask)
             return
         }
-        if (target.status != DownloadStatus.Paused || !target.userPaused) return
-        updateTask(
-            target.copy(
-                status = DownloadStatus.Pending,
-                speedBytesPerSec = 0,
-                etaSeconds = null,
-                userPaused = false,
-                errorMessage = null,
-                statusDetail = null,
-            ),
+        val queued = updateTaskIf(
+            id = id,
+            predicate = { current ->
+                isManagedTask(current) &&
+                    current.status == DownloadStatus.Paused && current.userPaused
+            },
+            transform = { current ->
+                current.copy(
+                    status = DownloadStatus.Pending,
+                    speedBytesPerSec = 0,
+                    etaSeconds = null,
+                    userPaused = false,
+                    errorMessage = null,
+                    statusDetail = null,
+                )
+            },
         )
-        startDownload(id)
+        if (!queued) return
+        requestManagedTaskStart(id)
     }
 
     fun retry(id: Long) {
-        val target = tasks[id] ?: return
-        if (!isManagedTask(target)) return
-        val mergeTask = mergeTasks[id]
-        if (mergeTask != null) {
-            scope.launch {
-                retryMergedWithRefresh(id)
-            }
-            return
-        }
-        if (target.status != DownloadStatus.Failed) return
-        scope.launch {
-            retryManagedWithRefresh(id)
+        synchronized(schedulingLock) {
+            retryLocked(id)
         }
     }
 
-    fun cancel(id: Long) {
+    private fun retryLocked(id: Long) {
         val target = tasks[id] ?: return
-        if (!isManagedTask(target)) return
-        val mergeTask = mergeTasks[id]
-        if (mergeTask != null) {
-            cancelMerged(mergeTask)
+        if (target.status != DownloadStatus.Failed) return
+        if (!isManagedTask(target)) {
+            if (extraTaskSpecs[id] == null) {
+                updateExtraTask(
+                    id = id,
+                    status = DownloadStatus.Failed,
+                    progress = target.progress,
+                    errorMessage = context.getString(R.string.download_failure_retry_data_missing),
+                )
+                return
+            }
+            val queued = updateTaskIf(
+                id = id,
+                predicate = { current ->
+                    !isManagedTask(current) && current.status == DownloadStatus.Failed
+                },
+                transform = { current ->
+                    current.copy(
+                        status = DownloadStatus.Pending,
+                        progress = 0,
+                        downloadedBytes = 0,
+                        totalBytes = 0,
+                        speedBytesPerSec = 0,
+                        etaSeconds = null,
+                        errorMessage = null,
+                        localUri = null,
+                        statusDetail = null,
+                        progressIndeterminate = false,
+                        userPaused = false,
+                    )
+                },
+            )
+            if (!queued) return
+            requestExtraTaskStart(id)
             return
         }
-        downloadJobs.remove(id)?.cancel()
-        val downloadState = downloadStates.remove(id)
-        downloadState?.tempFile?.delete()
-        downloadState?.let { state ->
-            tempFilesForCleanup(id, state.fileName).forEach { it.delete() }
+        val mergeTask = mergeTasks[id]
+        if (mergeTask != null) {
+            if (!prepareMergedTaskForQueue(mergeTask)) return
+            requestManagedTaskStart(id)
+            return
         }
-        tempFilesForCleanup(id, target.fileName).forEach { it.delete() }
-        schedulePersist()
-        updateTask(
-            target.copy(
-                status = DownloadStatus.Cancelled,
-                speedBytesPerSec = 0,
-                etaSeconds = null,
-                userPaused = false,
-                statusDetail = null,
-            ),
+        val queued = updateTaskIf(
+            id = id,
+            predicate = { current ->
+                isManagedTask(current) && current.status == DownloadStatus.Failed
+            },
+            beforeUpdate = {
+                managedRetryTaskIds.add(id)
+            },
+            transform = { current ->
+                current.copy(
+                    status = DownloadStatus.Pending,
+                    speedBytesPerSec = 0,
+                    etaSeconds = null,
+                    userPaused = false,
+                    errorMessage = null,
+                    statusDetail = null,
+                )
+            },
         )
+        if (!queued) return
+        requestManagedTaskStart(id)
     }
 
     fun pauseGroup(groupId: Long) {
-        val ids = synchronized(lock) { groupTaskIds[groupId]?.toList().orEmpty() }
-        ids.mapNotNull { tasks[it] }
-            .filter { item ->
-                isManagedTask(item) && when (item.status) {
-                    DownloadStatus.Pending,
-                    DownloadStatus.Running,
-                    DownloadStatus.Merging,
-                    DownloadStatus.Paused -> true
-                    else -> false
+        synchronized(schedulingLock) {
+            val ids = synchronized(lock) { groupTaskIds[groupId]?.toList().orEmpty() }
+            var changed = false
+            ids.mapNotNull { tasks[it] }
+                .filter { item ->
+                    when {
+                        isManagedTask(item) -> item.status == DownloadStatus.Pending ||
+                            item.status == DownloadStatus.Running ||
+                            item.status == DownloadStatus.Merging
+                        else -> item.status == DownloadStatus.Pending
+                    }
                 }
+                .sortedBy { item -> if (item.status == DownloadStatus.Pending) 0 else 1 }
+                .forEach { item ->
+                    changed = pauseLocked(item.id) || changed
+                }
+            if (changed) {
+                persistStateImmediately()
             }
-            .forEach { pause(it.id) }
+        }
     }
 
     fun resumeGroup(groupId: Long) {
-        val ids = synchronized(lock) { groupTaskIds[groupId]?.toList().orEmpty() }
-        ids.mapNotNull { tasks[it] }
-            .filter { item ->
-                isManagedTask(item) &&
-                    item.status == DownloadStatus.Paused &&
-                    item.userPaused
-            }
-            .forEach { resume(it.id) }
+        synchronized(schedulingLock) {
+            val ids = synchronized(lock) { groupTaskIds[groupId]?.toList().orEmpty() }
+            ids.mapNotNull { tasks[it] }
+                .filter { item ->
+                    item.status == DownloadStatus.Paused && item.userPaused
+                }
+                .forEach { resumeLocked(it.id) }
+        }
     }
 
-    fun pauseAllManaged() {
-        val ids = synchronized(lock) {
-            tasks.values
-                .filter { item ->
-                    isManagedTask(item) && when (item.status) {
-                        DownloadStatus.Pending,
-                        DownloadStatus.Running,
-                        DownloadStatus.Merging -> true
-                        else -> false
+    fun pauseAll() {
+        synchronized(schedulingLock) {
+            val ids = synchronized(lock) {
+                tasks.values
+                    .filter { item ->
+                        when {
+                            isManagedTask(item) -> item.status == DownloadStatus.Pending ||
+                                item.status == DownloadStatus.Running ||
+                                item.status == DownloadStatus.Merging
+                            else -> item.status == DownloadStatus.Pending
+                        }
                     }
+                    .map { it.id }
+            }
+            var changed = false
+            ids.sortedBy { id -> if (tasks[id]?.status == DownloadStatus.Pending) 0 else 1 }
+                .forEach { id ->
+                    changed = pauseLocked(id) || changed
                 }
-                .map { it.id }
+            if (changed) {
+                persistStateImmediately()
+            }
         }
-        ids.forEach { pause(it) }
     }
 
-    fun resumeAllManaged() {
-        val ids = synchronized(lock) {
-            tasks.values
-                .filter { item ->
-                    isManagedTask(item) &&
-                        item.status == DownloadStatus.Paused &&
-                        item.userPaused
+    fun startAll() {
+        synchronized(schedulingLock) {
+            val snapshot = synchronized(lock) {
+                tasks.values
+                    .filter { item ->
+                        (item.status == DownloadStatus.Paused && item.userPaused) ||
+                            item.status == DownloadStatus.Failed
+                    }
+                    .sortedWith(compareBy<DownloadItem>({ it.createdAt }, { it.id }))
+            }
+            snapshot.forEach { item ->
+                when (item.status) {
+                    DownloadStatus.Paused -> resumeLocked(item.id)
+                    DownloadStatus.Failed -> retryLocked(item.id)
+                    else -> Unit
                 }
-                .map { it.id }
+            }
         }
-        ids.forEach { resume(it) }
     }
 
     fun summarizeTaskOutcomes(taskIds: Set<Long>): DownloadOutcomeSummary {
@@ -834,51 +1383,93 @@ class DownloadRepository(
         }
     }
 
-    private fun startDownload(id: Long) {
-        val state = downloadStates[id] ?: return
+    private fun startDownloadNow(id: Long, slot: TaskConcurrencyQueue.TaskSlot) {
+        if (!managedTaskQueue.isCurrent(slot)) {
+            releaseManagedTaskSlot(slot)
+            return
+        }
+        val started = updateTaskIf(
+            id = id,
+            predicate = { current ->
+                isManagedTask(current) && current.status == DownloadStatus.Pending
+            },
+            transform = { current ->
+                current.copy(
+                    status = DownloadStatus.Running,
+                    speedBytesPerSec = 0,
+                    etaSeconds = null,
+                    userPaused = false,
+                    errorMessage = null,
+                    statusDetail = null,
+                )
+            },
+        )
+        if (!started) {
+            releaseManagedTaskSlot(slot)
+            return
+        }
         DownloadForegroundService.requestSync(context)
         downloadJobs.remove(id)?.cancel()
-        val job = scope.launch {
+        val job = scope.launch(start = CoroutineStart.LAZY) {
+            var retrying = false
             try {
+                if (!managedTaskQueue.isCurrent(slot) ||
+                    tasks[id]?.status != DownloadStatus.Running
+                ) {
+                    return@launch
+                }
+                retrying = id in managedRetryTaskIds
+                persistState()
+                val state = if (retrying) {
+                    prepareManagedRetry(id)?.also {
+                        managedRetryTaskIds.remove(id)
+                    }
+                } else {
+                    downloadStates[id]
+                } ?: error(context.getString(R.string.download_failure_resume_data_missing))
                 runResumableDownload(id, state)
             } catch (err: CancellationException) {
                 // user pause/cancel
+                if (retrying && tasks[id]?.status == DownloadStatus.Paused) {
+                    managedRetryTaskIds.add(id)
+                }
             } catch (err: Exception) {
                 handleDownloadFailure(id, err)
+            } finally {
+                val currentJob = coroutineContext[Job]
+                val ownsExecution = currentJob != null && downloadJobs.remove(id, currentJob)
+                if (ownsExecution) {
+                    releaseManagedTaskSlot(slot)
+                }
             }
         }
-        downloadJobs[id] = job
+        downloadJobs.put(id, job)?.cancel()
+        job.start()
     }
 
     private suspend fun runResumableDownload(id: Long, state: ResumableState) {
         val startItem = tasks[id] ?: return
-        updateTask(
-            startItem.copy(
-                status = DownloadStatus.Pending,
-                speedBytesPerSec = 0,
-                etaSeconds = null,
-                userPaused = false,
-                errorMessage = null,
-                statusDetail = null,
-            ),
-        )
         downloadToTemp(state.url, state) { downloaded, total, speed, eta ->
-            val current = tasks[id] ?: return@downloadToTemp
-            if (current.userPaused) return@downloadToTemp
-            val progress = calculateProgress(downloaded, total, current.progress)
-            updateTask(
-                current.copy(
-                    status = DownloadStatus.Running,
-                    progress = progress,
-                    downloadedBytes = downloaded,
-                    totalBytes = total,
-                    speedBytesPerSec = speed,
-                    etaSeconds = eta,
-                    userPaused = false,
-                    errorMessage = null,
-                ),
+            updateTaskIf(
+                id = id,
+                predicate = { current ->
+                    current.status == DownloadStatus.Running && !current.userPaused
+                },
+                transform = { current ->
+                    current.copy(
+                        status = DownloadStatus.Running,
+                        progress = calculateProgress(downloaded, total, current.progress),
+                        downloadedBytes = downloaded,
+                        totalBytes = total,
+                        speedBytesPerSec = speed,
+                        etaSeconds = eta,
+                        userPaused = false,
+                        errorMessage = null,
+                    )
+                },
             )
         }
+        currentCoroutineContext().ensureActive()
         val finalizedSource = prepareFinalTempFile(state.id, state.fileName, state.tempFile)
         val processedTemp = try {
             convertDownloadedMediaIfNeeded(
@@ -892,9 +1483,11 @@ class DownloadRepository(
             }
             throw err
         }
+        currentCoroutineContext().ensureActive()
         tasks[id]?.let { item ->
             applyEmbeddedMetadataIfPossible(item, processedTemp)
         }
+        currentCoroutineContext().ensureActive()
         val relativePath = groupRelativePath(startItem.groupId)
         Log.d(
             TAG,
@@ -962,7 +1555,6 @@ class DownloadRepository(
                 "[save-chain] managed download failed to resolve output uri after save and fallback, taskId=$id, file=${startItem.fileName}, groupId=${startItem.groupId}",
             )
         }
-        downloadJobs.remove(id)
     }
 
     private suspend fun convertDownloadedMediaIfNeeded(
@@ -1017,25 +1609,30 @@ class DownloadRepository(
 
     private fun handleDownloadFailure(id: Long, err: Throwable) {
         val state = downloadStates[id]
-        val current = tasks[id] ?: return
-        val downloaded = state?.downloadedBytes ?: current.downloadedBytes
-        val total = state?.totalBytes ?: current.totalBytes
-        val progress = calculateProgress(downloaded, total, current.progress)
-        updateTask(
-            current.copy(
-                status = DownloadStatus.Failed,
-                progress = progress,
-                downloadedBytes = downloaded,
-                totalBytes = total,
-                speedBytesPerSec = 0,
-                etaSeconds = null,
-                userPaused = false,
-                errorMessage = err.message?.takeIf { it.isNotBlank() }
-                    ?: context.getString(R.string.download_failure_download_unknown),
-                statusDetail = null,
-            ),
+        updateTaskIf(
+            id = id,
+            predicate = { current ->
+                !current.userPaused &&
+                    (current.status == DownloadStatus.Running ||
+                        current.status == DownloadStatus.Merging)
+            },
+            transform = { current ->
+                val downloaded = state?.downloadedBytes ?: current.downloadedBytes
+                val total = state?.totalBytes ?: current.totalBytes
+                current.copy(
+                    status = DownloadStatus.Failed,
+                    progress = calculateProgress(downloaded, total, current.progress),
+                    downloadedBytes = downloaded,
+                    totalBytes = total,
+                    speedBytesPerSec = 0,
+                    etaSeconds = null,
+                    userPaused = false,
+                    errorMessage = err.message?.takeIf { it.isNotBlank() }
+                        ?: context.getString(R.string.download_failure_download_unknown),
+                    statusDetail = null,
+                )
+            },
         )
-        downloadJobs.remove(id)
         schedulePersist()
     }
 
@@ -1156,9 +1753,9 @@ class DownloadRepository(
         }
     }
 
-    private suspend fun retryManagedWithRefresh(id: Long) {
-        val target = tasks[id] ?: return
-        if (!isManagedTask(target) || target.status != DownloadStatus.Failed) return
+    private suspend fun prepareManagedRetry(id: Long): ResumableState? {
+        val target = tasks[id] ?: return null
+        if (!isManagedTask(target)) return null
         val prepared = refreshManagedUrlIfPossible(target) ?: target
         val latest = tasks[id] ?: prepared
         val existingState = downloadStates[id]
@@ -1181,24 +1778,7 @@ class DownloadRepository(
             state.totalBytes = latest.totalBytes
         }
         downloadStates[id] = state
-        updateTask(
-            latest.copy(
-                status = DownloadStatus.Pending,
-                speedBytesPerSec = 0,
-                etaSeconds = null,
-                userPaused = false,
-                errorMessage = null,
-                statusDetail = null,
-            ),
-        )
-        startDownload(id)
-    }
-
-    private suspend fun retryMergedWithRefresh(id: Long) {
-        val task = mergeTasks[id] ?: return
-        refreshMergedUrlsIfPossible(id, task)
-        val latest = mergeTasks[id] ?: task
-        retryMerged(latest)
+        return state
     }
 
     private fun resetTargetForFreshDownload(
@@ -1540,22 +2120,116 @@ class DownloadRepository(
         return total.toLongOrNull()
     }
 
-    private fun startMergedDownloads(task: MergedDownload) {
-        if (task.userPaused || task.failed || task.completed) return
-        DownloadForegroundService.requestSync(context)
-        if (task.video.completed && task.audio.completed) {
-            startMerge(task)
+    private fun startMergedDownloadsNow(
+        task: MergedDownload,
+        slot: TaskConcurrencyQueue.TaskSlot,
+    ) {
+        if (task.userPaused || task.failed || task.completed) {
+            managedTaskQueue.finish(slot)
+            startReadyManagedTasks()
             return
         }
-        startPartDownload(task, task.video)
-        startPartDownload(task, task.audio)
-        updateMergedProgress(task, true, null)
+        if (!managedTaskQueue.isCurrent(slot)) {
+            releaseManagedTaskSlot(slot)
+            return
+        }
+        val started = updateTaskIf(
+            id = task.id,
+            predicate = { current ->
+                isManagedTask(current) && current.status == DownloadStatus.Pending
+            },
+            transform = { current ->
+                current.copy(
+                    status = DownloadStatus.Running,
+                    speedBytesPerSec = 0,
+                    etaSeconds = null,
+                    userPaused = false,
+                    errorMessage = null,
+                    statusDetail = null,
+                )
+            },
+        )
+        if (!started) {
+            releaseManagedTaskSlot(slot)
+            return
+        }
+        DownloadForegroundService.requestSync(context)
+        val coordinator = scope.launch(start = CoroutineStart.LAZY) {
+            var retrying = false
+            try {
+                if (!managedTaskQueue.isCurrent(slot) ||
+                    tasks[task.id]?.status != DownloadStatus.Running
+                ) {
+                    return@launch
+                }
+                retrying = task.id in managedRetryTaskIds
+                persistState()
+                if (retrying) {
+                    refreshMergedUrlsIfPossible(task.id, task)
+                    prepareMergedTaskForRun(task)
+                    managedRetryTaskIds.remove(task.id)
+                }
+                if (tasks[task.id]?.status != DownloadStatus.Running) return@launch
+                startMergedTransfers(task, slot)
+            } catch (err: CancellationException) {
+                if (retrying && tasks[task.id]?.status == DownloadStatus.Paused) {
+                    managedRetryTaskIds.add(task.id)
+                }
+                throw err
+            } catch (err: Throwable) {
+                task.failed = true
+                updateMergedProgress(
+                    task = task,
+                    force = true,
+                    errorMessage = err.message?.takeIf { it.isNotBlank() }
+                        ?: context.getString(R.string.download_failure_download_unknown),
+                )
+                releaseManagedTaskSlot(slot)
+            } finally {
+                val currentJob = coroutineContext[Job]
+                if (currentJob != null) {
+                    downloadJobs.remove(task.id, currentJob)
+                }
+            }
+        }
+        downloadJobs.put(task.id, coordinator)?.cancel()
+        coordinator.start()
     }
 
-    private fun startPartDownload(task: MergedDownload, part: ResumablePart) {
+    private fun startMergedTransfers(
+        task: MergedDownload,
+        slot: TaskConcurrencyQueue.TaskSlot,
+    ) {
+        synchronized(schedulingLock) {
+            if (!managedTaskQueue.isCurrent(slot) ||
+                tasks[task.id]?.status != DownloadStatus.Running ||
+                task.userPaused || task.failed || task.completed
+            ) {
+                return
+            }
+            if (task.video.completed && task.audio.completed) {
+                startMerge(task, slot)
+                return
+            }
+            startPartDownload(task, task.video, slot)
+            startPartDownload(task, task.audio, slot)
+            updateMergedProgress(task, true, null)
+        }
+    }
+
+    private fun startPartDownload(
+        task: MergedDownload,
+        part: ResumablePart,
+        slot: TaskConcurrencyQueue.TaskSlot,
+    ) {
         if (part.completed || part.job?.isActive == true) return
-        part.job = scope.launch {
+        val job = scope.launch(start = CoroutineStart.LAZY) {
             try {
+                if (!managedTaskQueue.isCurrent(slot) ||
+                    tasks[task.id]?.status != DownloadStatus.Running
+                ) {
+                    return@launch
+                }
                 downloadToTemp(part.url, part) { _, _, _, _ ->
                     updateMergedProgress(task, false, null)
                 }
@@ -1564,7 +2238,7 @@ class DownloadRepository(
                 schedulePersist()
                 updateMergedProgress(task, true, null)
                 if (task.video.completed && task.audio.completed) {
-                    startMerge(task)
+                    startMerge(task, slot)
                 }
             } catch (err: CancellationException) {
                 // user pause/cancel
@@ -1583,43 +2257,143 @@ class DownloadRepository(
                     err.message?.takeIf { it.isNotBlank() }
                         ?: context.getString(R.string.download_failure_download_unknown),
                 )
+                releaseManagedTaskSlot(slot)
             }
         }
+        part.job = job
+        job.start()
     }
 
-    private fun pauseMerged(task: MergedDownload) {
+    private fun pauseMerged(task: MergedDownload): Boolean {
         task.userPaused = true
+        val paused = updateTaskIf(
+            id = task.id,
+            predicate = { current ->
+                isManagedTask(current) &&
+                    (current.status == DownloadStatus.Pending ||
+                        current.status == DownloadStatus.Running ||
+                        current.status == DownloadStatus.Merging)
+            },
+            transform = { current ->
+                current.copy(
+                    status = DownloadStatus.Paused,
+                    speedBytesPerSec = 0,
+                    etaSeconds = null,
+                    userPaused = true,
+                    statusDetail = null,
+                )
+            },
+        )
+        if (!paused) {
+            task.userPaused = false
+            return false
+        }
+        managedTaskQueue.pausePending(task.id)
         task.video.job?.cancel()
         task.audio.job?.cancel()
         task.video.job = null
         task.audio.job = null
         task.video.speedBytesPerSec = 0
         task.audio.speedBytesPerSec = 0
+        downloadJobs.remove(task.id)?.cancel()
         mergeJobs[task.id]?.cancel()
         if (mergeJobs[task.id]?.isActive != true) {
             task.isMerging = false
         }
         updateMergedProgress(task, true, null)
+        releaseManagedTaskSlot(task.id)
+        return true
     }
 
     private fun resumeMerged(task: MergedDownload) {
         if (!task.userPaused || task.failed || task.completed) return
-        task.userPaused = false
-        updateMergedProgress(task, true, null)
-        startMergedDownloads(task)
+        val total = task.video.totalBytes + task.audio.totalBytes
+        val downloaded = task.video.downloadedBytes + task.audio.downloadedBytes
+        val queued = updateTaskIf(
+            id = task.id,
+            predicate = { current ->
+                isManagedTask(current) &&
+                    current.status == DownloadStatus.Paused && current.userPaused
+            },
+            beforeUpdate = {
+                task.userPaused = false
+                task.isMerging = false
+            },
+            transform = { current ->
+                current.copy(
+                    status = DownloadStatus.Pending,
+                    progress = calculateProgress(downloaded, total, current.progress),
+                    downloadedBytes = downloaded,
+                    totalBytes = total,
+                    speedBytesPerSec = 0,
+                    etaSeconds = null,
+                    userPaused = false,
+                    errorMessage = null,
+                    statusDetail = null,
+                )
+            },
+        )
+        if (!queued) return
+        requestManagedTaskStart(task.id)
     }
 
-    private fun retryMerged(task: MergedDownload) {
-        if (task.completed) return
-        task.failed = false
-        task.userPaused = false
-        task.isMerging = false
-        task.video.failed = false
-        task.audio.failed = false
+    private fun prepareMergedTaskForQueue(task: MergedDownload): Boolean {
+        if (task.completed) return false
+        val total = task.video.totalBytes + task.audio.totalBytes
+        val downloaded = task.video.downloadedBytes + task.audio.downloadedBytes
+        return updateTaskIf(
+            id = task.id,
+            predicate = { current ->
+                isManagedTask(current) && current.status == DownloadStatus.Failed
+            },
+            beforeUpdate = {
+                managedRetryTaskIds.add(task.id)
+                task.failed = false
+                task.userPaused = false
+                task.isMerging = false
+                task.video.job = null
+                task.audio.job = null
+                task.video.failed = false
+                task.audio.failed = false
+            },
+            transform = { current ->
+                current.copy(
+                    status = DownloadStatus.Pending,
+                    progress = calculateProgress(downloaded, total, current.progress),
+                    downloadedBytes = downloaded,
+                    totalBytes = total,
+                    speedBytesPerSec = 0,
+                    etaSeconds = null,
+                    userPaused = false,
+                    errorMessage = null,
+                    statusDetail = null,
+                )
+            },
+        )
+    }
+
+    private fun updateMergedTaskPending(task: MergedDownload) {
+        val current = tasks[task.id] ?: return
+        val total = task.video.totalBytes + task.audio.totalBytes
+        val downloaded = task.video.downloadedBytes + task.audio.downloadedBytes
+        updateTask(
+            current.copy(
+                status = DownloadStatus.Pending,
+                progress = calculateProgress(downloaded, total, current.progress),
+                downloadedBytes = downloaded,
+                totalBytes = total,
+                speedBytesPerSec = 0,
+                etaSeconds = null,
+                userPaused = false,
+                errorMessage = null,
+                statusDetail = null,
+            ),
+        )
+    }
+
+    private fun prepareMergedTaskForRun(task: MergedDownload) {
         prepareMergedPartForRetry(task.video, "video/")
         prepareMergedPartForRetry(task.audio, "audio/")
-        updateMergedProgress(task, true, null)
-        startMergedDownloads(task)
     }
 
     private fun prepareMergedPartForRetry(part: ResumablePart, mimePrefix: String) {
@@ -1655,31 +2429,6 @@ class DownloadRepository(
         part.failed = false
         part.downloadedBytes = 0
         part.speedBytesPerSec = 0
-    }
-
-    private fun cancelMerged(task: MergedDownload) {
-        task.userPaused = false
-        task.video.job?.cancel()
-        task.audio.job?.cancel()
-        task.video.job = null
-        task.audio.job = null
-        task.video.speedBytesPerSec = 0
-        task.audio.speedBytesPerSec = 0
-        mergeJobs[task.id]?.cancel()
-        task.isMerging = false
-        task.video.tempFile.delete()
-        task.audio.tempFile.delete()
-        mergeTasks.remove(task.id)
-        schedulePersist()
-        val target = tasks[task.id] ?: return
-        updateTask(
-            target.copy(
-                status = DownloadStatus.Cancelled,
-                speedBytesPerSec = 0,
-                etaSeconds = null,
-                userPaused = false,
-            ),
-        )
     }
 
     private fun updateMergedProgress(
@@ -1742,52 +2491,65 @@ class DownloadRepository(
     }
 
     fun clearAllGroups() {
-        synchronized(lock) {
-            deletingGroupIds.addAll(groupInfo.keys)
-            deletingTaskIds.addAll(tasks.keys)
-        }
-        val downloadJobSnapshot = downloadJobs.values.toList()
-        val mergeJobSnapshot = mergeJobs.values.toList()
-        val extraJobSnapshot = extraJobs.values.toList()
-        downloadJobs.clear()
-        mergeJobs.clear()
-        extraJobs.clear()
-        downloadJobSnapshot.forEach { it.cancel() }
-        mergeJobSnapshot.forEach { it.cancel() }
-        extraJobSnapshot.forEach { it.cancel() }
+        var downloadStateSnapshot = emptyList<ResumableState>()
+        var taskSnapshot = emptyList<DownloadItem>()
+        var mergeTaskSnapshot = emptyList<MergedDownload>()
+        synchronized(schedulingLock) {
+            synchronized(lock) {
+                deletingGroupIds.addAll(groupInfo.keys)
+                deletingTaskIds.addAll(tasks.keys)
+                taskSnapshot = tasks.values.toList()
+            }
+            val downloadJobSnapshot = downloadJobs.values.toList()
+            val mergeJobSnapshot = mergeJobs.values.toList()
+            val extraJobSnapshot = extraJobs.values.toList()
+            downloadJobs.clear()
+            mergeJobs.clear()
+            extraJobs.clear()
+            managedTaskQueue.clear()
+            extraTaskQueue.clear()
+            managedRetryTaskIds.clear()
+            extraTaskSpecs.clear()
+            downloadJobSnapshot.forEach { it.cancel() }
+            mergeJobSnapshot.forEach { it.cancel() }
+            extraJobSnapshot.forEach { it.cancel() }
 
-        val downloadStateSnapshot = downloadStates.values.toList()
-        downloadStates.clear()
+            downloadStateSnapshot = downloadStates.values.toList()
+            downloadStates.clear()
+            mergeTaskSnapshot = mergeTasks.values.toList()
+            mergeTasks.clear()
+            mergeTaskSnapshot.forEach { task ->
+                task.video.job?.cancel()
+                task.audio.job?.cancel()
+                task.video.job = null
+                task.audio.job = null
+            }
+
+            synchronized(lock) {
+                groupInfo.clear()
+                groupTaskIds.clear()
+                tasks.clear()
+                deletingGroupIds.clear()
+                deletingTaskIds.clear()
+            }
+        }
         downloadStateSnapshot.forEach { state ->
             state.tempFile.delete()
             tempFilesForCleanup(state.id, state.fileName).forEach { it.delete() }
         }
 
-        val taskSnapshot = synchronized(lock) { tasks.values.toList() }
         taskSnapshot.forEach { item ->
             tempFilesForCleanup(item.id, item.fileName).forEach { it.delete() }
         }
 
-        val mergeTaskSnapshot = mergeTasks.values.toList()
-        mergeTasks.clear()
         mergeTaskSnapshot.forEach { task ->
-            task.video.job?.cancel()
-            task.audio.job?.cancel()
-            task.video.job = null
-            task.audio.job = null
             task.video.tempFile.delete()
             task.audio.tempFile.delete()
         }
-
-        synchronized(lock) {
-            groupInfo.clear()
-            groupTaskIds.clear()
-            tasks.clear()
-            deletingGroupIds.clear()
-            deletingTaskIds.clear()
-        }
         updateGroups()
         schedulePersist()
+        startReadyManagedTasks()
+        startReadyExtraTasks()
     }
 
     fun clearCompletedGroups() {
@@ -1808,6 +2570,10 @@ class DownloadRepository(
                 tasks.remove(id)
                 downloadJobs.remove(id)?.cancel()
                 extraJobs.remove(id)?.cancel()
+                managedTaskQueue.remove(id)
+                extraTaskQueue.remove(id)
+                managedRetryTaskIds.remove(id)
+                extraTaskSpecs.remove(id)
                 downloadStates.remove(id)?.tempFile?.delete()
                 mergeJobs.remove(id)?.cancel()
                 mergeTasks.remove(id)?.let {
@@ -1822,6 +2588,8 @@ class DownloadRepository(
         }
         updateGroups()
         schedulePersist()
+        startReadyManagedTasks()
+        startReadyExtraTasks()
     }
 
     private fun deleteTasks(items: List<DownloadItem>, deleteFile: Boolean) {
@@ -1832,21 +2600,25 @@ class DownloadRepository(
             deletingTaskIds.addAll(taskIds)
         }
         try {
-            items.forEach { cleanupTaskResources(it, deleteFile) }
-            synchronized(lock) {
-                items.forEach { item ->
-                    tasks.remove(item.id)
-                    groupTaskIds[item.groupId]?.remove(item.id)
-                }
-                groupIds.forEach { groupId ->
-                    if (groupTaskIds[groupId].isNullOrEmpty()) {
-                        groupTaskIds.remove(groupId)
-                        groupInfo.remove(groupId)
+            synchronized(schedulingLock) {
+                items.forEach { cleanupTaskResources(it, deleteFile) }
+                synchronized(lock) {
+                    items.forEach { item ->
+                        tasks.remove(item.id)
+                        groupTaskIds[item.groupId]?.remove(item.id)
+                    }
+                    groupIds.forEach { groupId ->
+                        if (groupTaskIds[groupId].isNullOrEmpty()) {
+                            groupTaskIds.remove(groupId)
+                            groupInfo.remove(groupId)
+                        }
                     }
                 }
             }
             updateGroups()
             schedulePersist()
+            startReadyManagedTasks()
+            startReadyExtraTasks()
         } finally {
             synchronized(lock) {
                 deletingTaskIds.removeAll(taskIds)
@@ -1857,6 +2629,10 @@ class DownloadRepository(
     private fun cleanupTaskResources(item: DownloadItem, deleteFile: Boolean) {
         downloadJobs.remove(item.id)?.cancel()
         extraJobs.remove(item.id)?.cancel()
+        managedTaskQueue.remove(item.id)
+        extraTaskQueue.remove(item.id)
+        managedRetryTaskIds.remove(item.id)
+        extraTaskSpecs.remove(item.id)
         val downloadState = downloadStates.remove(item.id)
         downloadState?.tempFile?.delete()
         downloadState?.let { state ->
@@ -1954,6 +2730,31 @@ class DownloadRepository(
         }
     }
 
+    private fun updateTaskIf(
+        id: Long,
+        predicate: (DownloadItem) -> Boolean,
+        beforeUpdate: (DownloadItem) -> Unit = {},
+        transform: (DownloadItem) -> DownloadItem,
+    ): Boolean {
+        var updated = false
+        var shouldPersist = false
+        synchronized(lock) {
+            val current = tasks[id] ?: return@synchronized
+            if (!predicate(current)) return@synchronized
+            beforeUpdate(current)
+            val next = DownloadProgressRules.normalizeTask(transform(current))
+            tasks[id] = next
+            updated = true
+            shouldPersist = shouldPersistTaskChange(current, next)
+        }
+        if (!updated) return false
+        updateGroups()
+        if (shouldPersist) {
+            schedulePersist()
+        }
+        return true
+    }
+
     private fun replaceTask(oldId: Long, newItem: DownloadItem) {
         val normalizedItem = DownloadProgressRules.normalizeTask(newItem)
         val shouldPersist = synchronized(lock) {
@@ -2002,6 +2803,7 @@ class DownloadRepository(
                 val ids = groupTaskIds[groupId].orEmpty()
                 if (ids.isEmpty()) return@mapNotNull null
                 val taskList = ids.mapNotNull { tasks[it] }
+                    .filterNot { item -> item.status == DownloadStatus.Cancelled }
                 if (taskList.isEmpty()) return@mapNotNull null
                 DownloadGroup(
                     id = groupId,
@@ -2111,12 +2913,29 @@ class DownloadRepository(
             if (persistJob?.isActive == true) return
             persistJob = scope.launch {
                 delay(PERSIST_DELAY_MS)
+                synchronized(persistLock) {
+                    persistJob = null
+                }
                 persistState()
             }
         }
     }
 
+    private fun persistStateImmediately() {
+        synchronized(persistLock) {
+            persistJob?.cancel()
+            persistJob = null
+            writeStoreSnapshot()
+        }
+    }
+
     private fun persistState() {
+        synchronized(persistLock) {
+            writeStoreSnapshot()
+        }
+    }
+
+    private fun writeStoreSnapshot() {
         val snapshot = buildStoreSnapshot()
         runCatching {
             storeFile.writeText(storeAdapter.toJson(snapshot), Charsets.UTF_8)
@@ -2171,27 +2990,29 @@ class DownloadRepository(
                     conversionTarget = task.conversionTarget,
                 )
             },
+            extraTaskStates = extraTaskSpecs.map { (id, spec) ->
+                ExtraTaskSnapshot(id = id, spec = spec)
+            },
         )
     }
 
     private fun loadState() {
         val store = readStore() ?: return
+        extraTaskSpecs.clear()
         val resumableById = store.resumableStates.associateBy { it.id }
         val mergeById = store.mergeStates.associateBy { it.id }
+        val extraSpecById = store.extraTaskStates.associate { it.id to it.spec }
         val restoredGroupInfo = mutableMapOf<Long, GroupInfo>()
         val restoredGroupTaskIds = mutableMapOf<Long, MutableList<Long>>()
         val restoredTasks = mutableMapOf<Long, DownloadItem>()
         val restoredStates = mutableMapOf<Long, ResumableState>()
         val restoredMerges = mutableMapOf<Long, MergedDownload>()
         val completedTempFiles = mutableListOf<File>()
-        val autoResumeIds = mutableListOf<Long>()
-        val autoResumeMerges = mutableListOf<MergedDownload>()
-        val autoMerge = mutableListOf<MergedDownload>()
         var maxGroupId = 0L
         var maxDownloadId = 0L
         var minMergeId: Long? = null
         var minExtraId: Long? = null
-        var restoredExtraStatusChanged = false
+        var restoredStateChanged = false
 
         val usedFolderNames = mutableSetOf<String>()
         for (group in store.groups) {
@@ -2221,7 +3042,6 @@ class DownloadRepository(
             )
             val ids = mutableListOf<Long>()
             for (task in group.tasks) {
-                ids.add(task.id)
                 when {
                     task.id > 0 -> maxDownloadId = maxOf(maxDownloadId, task.id)
                     task.id <= EXTRA_TASK_ID_START -> {
@@ -2229,21 +3049,26 @@ class DownloadRepository(
                     }
                     else -> minMergeId = minOf(minMergeId ?: task.id, task.id)
                 }
+                if (task.status == DownloadStatus.Cancelled) {
+                    restoredStateChanged = true
+                    continue
+                }
+                ids.add(task.id)
 
                 if (task.taskType == DownloadTaskType.AudioVideo &&
                     task.id in (EXTRA_TASK_ID_START + 1)..-1L
                 ) {
                     val restored = restoreMergedTask(task, mergeById[task.id])
                     restoredTasks[task.id] = restored.item
+                    if (restored.item.status != task.status ||
+                        restored.item.userPaused != task.userPaused
+                    ) {
+                        restoredStateChanged = true
+                    }
                     completedTempFiles += restored.cleanupTempFiles
                     val mergeTask = restored.mergeTask
                     if (mergeTask != null) {
                         restoredMerges[task.id] = mergeTask
-                        if (restored.autoMerge) {
-                            autoMerge.add(mergeTask)
-                        } else if (restored.autoResume) {
-                            autoResumeMerges.add(mergeTask)
-                        }
                     }
                     continue
                 }
@@ -2251,37 +3076,60 @@ class DownloadRepository(
                 if (isManagedTask(task)) {
                     val restored = restoreManagedTask(task, resumableById[task.id])
                     restoredTasks[task.id] = restored.item
+                    if (restored.item.status != task.status ||
+                        restored.item.userPaused != task.userPaused
+                    ) {
+                        restoredStateChanged = true
+                    }
                     completedTempFiles += restored.cleanupTempFiles
                     if (restored.state != null) {
                         restoredStates[task.id] = restored.state
                     }
-                    if (restored.autoResume) {
-                        autoResumeIds.add(task.id)
-                    }
                     continue
                 }
 
-                val restoredExtraTask = if (task.status == DownloadStatus.Pending ||
-                    task.status == DownloadStatus.Running
+                val restoredLifecycle = DownloadRestartPolicy.restore(
+                    status = task.status,
+                    userPaused = task.userPaused,
+                )
+                val restoredExtraTask = task.copy(
+                    status = restoredLifecycle.status,
+                    speedBytesPerSec = 0,
+                    etaSeconds = null,
+                    userPaused = restoredLifecycle.userPaused,
+                    errorMessage = when {
+                        restoredLifecycle.interrupted ->
+                            context.getString(R.string.download_error_unsafe_exit)
+                        restoredLifecycle.status == DownloadStatus.Paused -> null
+                        else -> task.errorMessage
+                    },
+                    statusDetail = if (restoredLifecycle.interrupted ||
+                        restoredLifecycle.status == DownloadStatus.Paused
+                    ) {
+                        null
+                    } else {
+                        task.statusDetail
+                    },
+                    progressIndeterminate = false,
+                )
+                if (restoredExtraTask.status != task.status ||
+                    restoredExtraTask.userPaused != task.userPaused ||
+                    restoredExtraTask.errorMessage != task.errorMessage ||
+                    restoredExtraTask.statusDetail != task.statusDetail ||
+                    restoredExtraTask.progressIndeterminate != task.progressIndeterminate
                 ) {
-                    restoredExtraStatusChanged = true
-                    task.copy(
-                        status = DownloadStatus.Cancelled,
-                        progress = 0,
-                        speedBytesPerSec = 0,
-                        etaSeconds = null,
-                        statusDetail = null,
-                        progressIndeterminate = false,
-                    )
-                } else {
-                    task.copy(
-                        speedBytesPerSec = 0,
-                        etaSeconds = null,
-                    )
+                    restoredStateChanged = true
                 }
                 restoredTasks[task.id] = restoredExtraTask
+                extraSpecById[task.id]?.let { spec ->
+                    extraTaskSpecs[task.id] = spec
+                }
             }
-            restoredGroupTaskIds[group.id] = ids
+            if (ids.isEmpty()) {
+                restoredGroupInfo.remove(group.id)
+            } else {
+                restoredGroupTaskIds[group.id] = ids
+            }
         }
 
         synchronized(lock) {
@@ -2300,6 +3148,9 @@ class DownloadRepository(
         downloadStates.putAll(restoredStates)
         mergeTasks.clear()
         mergeTasks.putAll(restoredMerges)
+        managedTaskQueue.clear()
+        extraTaskQueue.clear()
+        managedRetryTaskIds.clear()
 
         groupIds.set(maxGroupId)
         downloadIds.set(maxDownloadId)
@@ -2308,13 +3159,9 @@ class DownloadRepository(
 
         cleanupCompletedTempFiles(completedTempFiles)
         updateGroups()
-        if (restoredExtraStatusChanged) {
+        if (restoredStateChanged) {
             schedulePersist()
         }
-
-        autoResumeIds.forEach { startDownload(it) }
-        autoMerge.forEach { startMerge(it) }
-        autoResumeMerges.forEach { startMergedDownloads(it) }
     }
 
     private fun restoreManagedTask(
@@ -2333,46 +3180,7 @@ class DownloadRepository(
         } else {
             item.totalBytes
         }
-        var status = item.status
-        var userPaused = item.userPaused
-        var autoResume = false
-        var errorMessage = item.errorMessage
-        val shouldCheckExisting = status == DownloadStatus.Pending ||
-            status == DownloadStatus.Running ||
-            status == DownloadStatus.Merging ||
-            (status == DownloadStatus.Paused && !item.userPaused)
-        if (shouldCheckExisting) {
-            Log.d(
-                TAG,
-                "[restore-managed] checking existing output, taskId=${item.id}, groupId=${item.groupId}, file=${item.fileName}, status=${item.status}, userPaused=${item.userPaused}",
-            )
-            val existingUri = findAccessibleDownload(item.fileName, item.groupId)
-                ?: findAccessibleDownloadAnywhere(item.fileName)
-            if (existingUri != null) {
-                Log.i(
-                    TAG,
-                    "[restore-managed] found existing output, mark success, taskId=${item.id}, file=${item.fileName}, uri=$existingUri",
-                )
-                return ManagedRestoreResult(
-                    item = item.copy(
-                        status = DownloadStatus.Success,
-                        progress = 100,
-                        localUri = existingUri,
-                        speedBytesPerSec = 0,
-                        etaSeconds = null,
-                        userPaused = false,
-                        errorMessage = null,
-                    ),
-                    state = null,
-                    autoResume = false,
-                    cleanupTempFiles = cleanupTempFiles,
-                )
-            }
-            Log.d(
-                TAG,
-                "[restore-managed] existing output not found, taskId=${item.id}, file=${item.fileName}",
-            )
-        } else if (item.status == DownloadStatus.Success) {
+        if (item.status == DownloadStatus.Success) {
             val existingUri = resolveCompletedOutputUri(
                 item = item,
                 traceSource = "restore-managed-success-${item.id}",
@@ -2392,41 +3200,39 @@ class DownloadRepository(
                         errorMessage = null,
                     ),
                     state = null,
-                    autoResume = false,
                     cleanupTempFiles = cleanupTempFiles,
                 )
             }
         }
 
-        if (status == DownloadStatus.Pending) {
-            status = DownloadStatus.Pending
-            userPaused = false
-            autoResume = true
-            errorMessage = null
-        } else if (status == DownloadStatus.Running ||
-            status == DownloadStatus.Merging ||
-            (status == DownloadStatus.Paused && !item.userPaused)) {
-            // Preserve the temp file so retry can continue from the breakpoint when possible.
-            status = DownloadStatus.Failed
-            userPaused = false
-            autoResume = false
-            errorMessage = context.getString(R.string.download_error_unsafe_exit)
-        }
+        val restoredLifecycle = DownloadRestartPolicy.restore(item.status, item.userPaused)
 
         val progress = calculateProgress(downloaded, total, item.progress)
         val finalItem = item.copy(
-            status = status,
+            status = restoredLifecycle.status,
             progress = progress,
             downloadedBytes = downloaded,
             totalBytes = total,
             speedBytesPerSec = 0,
             etaSeconds = null,
-            userPaused = userPaused,
-            errorMessage = errorMessage,
+            userPaused = restoredLifecycle.userPaused,
+            errorMessage = when {
+                restoredLifecycle.interrupted ->
+                    context.getString(R.string.download_error_unsafe_exit)
+                restoredLifecycle.status == DownloadStatus.Paused -> null
+                else -> item.errorMessage
+            },
+            statusDetail = if (restoredLifecycle.interrupted ||
+                restoredLifecycle.status == DownloadStatus.Paused
+            ) {
+                null
+            } else {
+                item.statusDetail
+            },
         )
         Log.d(
             TAG,
-            "[restore-managed] rebuilt task state, taskId=${item.id}, file=${item.fileName}, finalStatus=${finalItem.status}, downloaded=$downloaded, total=$total, progress=$progress, autoResume=$autoResume",
+            "[restore-managed] rebuilt task state, taskId=${item.id}, file=${item.fileName}, finalStatus=${finalItem.status}, downloaded=$downloaded, total=$total, progress=$progress",
         )
         val state = if (!finalItem.status.isResolvedWithoutFailure &&
             finalItem.status != DownloadStatus.Cancelled) {
@@ -2447,7 +3253,6 @@ class DownloadRepository(
         return ManagedRestoreResult(
             item = finalItem,
             state = state,
-            autoResume = autoResume,
             cleanupTempFiles = emptyList(),
         )
     }
@@ -2461,42 +3266,7 @@ class DownloadRepository(
             outputName = item.fileName,
             snapshot = snapshot,
         )
-        val shouldCheckExisting = item.status == DownloadStatus.Pending ||
-            item.status == DownloadStatus.Running ||
-            item.status == DownloadStatus.Merging ||
-            (item.status == DownloadStatus.Paused && !item.userPaused)
-        if (shouldCheckExisting) {
-            Log.d(
-                TAG,
-                "[restore-merge] checking existing output, taskId=${item.id}, groupId=${item.groupId}, file=${item.fileName}, status=${item.status}, userPaused=${item.userPaused}",
-            )
-            val existingUri = findAccessibleDownload(item.fileName, item.groupId)
-                ?: findAccessibleDownloadAnywhere(item.fileName)
-            if (existingUri != null) {
-                Log.i(
-                    TAG,
-                    "[restore-merge] found existing output, mark success, taskId=${item.id}, file=${item.fileName}, uri=$existingUri",
-                )
-                return MergedRestoreResult(
-                    item = item.copy(
-                        status = DownloadStatus.Success,
-                        progress = 100,
-                        localUri = existingUri,
-                        speedBytesPerSec = 0,
-                        etaSeconds = null,
-                        errorMessage = null,
-                    ),
-                    mergeTask = null,
-                    autoResume = false,
-                    autoMerge = false,
-                    cleanupTempFiles = cleanupTempFiles,
-                )
-            }
-            Log.d(
-                TAG,
-                "[restore-merge] existing output not found, taskId=${item.id}, file=${item.fileName}",
-            )
-        } else if (item.status == DownloadStatus.Success) {
+        if (item.status == DownloadStatus.Success) {
             val existingUri = resolveCompletedOutputUri(
                 item = item,
                 traceSource = "restore-merge-success-${item.id}",
@@ -2515,8 +3285,6 @@ class DownloadRepository(
                         errorMessage = null,
                     ),
                     mergeTask = null,
-                    autoResume = false,
-                    autoMerge = false,
                     cleanupTempFiles = cleanupTempFiles,
                 )
             }
@@ -2529,23 +3297,25 @@ class DownloadRepository(
                         etaSeconds = null,
                     ),
                     mergeTask = null,
-                    autoResume = false,
-                    autoMerge = false,
                     cleanupTempFiles = emptyList(),
                 )
             }
-            val failedItem = item.copy(
-                status = DownloadStatus.Failed,
+            val restoredLifecycle = DownloadRestartPolicy.restore(item.status, item.userPaused)
+            val restoredItem = item.copy(
+                status = restoredLifecycle.status,
                 speedBytesPerSec = 0,
                 etaSeconds = null,
-                errorMessage = item.errorMessage
-                    ?: context.getString(R.string.download_failure_resume_data_missing),
+                userPaused = restoredLifecycle.userPaused,
+                errorMessage = when {
+                    restoredLifecycle.interrupted ->
+                        context.getString(R.string.download_error_unsafe_exit)
+                    restoredLifecycle.status == DownloadStatus.Paused -> null
+                    else -> item.errorMessage
+                },
             )
             return MergedRestoreResult(
-                item = failedItem,
+                item = restoredItem,
                 mergeTask = null,
-                autoResume = false,
-                autoMerge = false,
                 cleanupTempFiles = emptyList(),
             )
         }
@@ -2579,54 +3349,33 @@ class DownloadRepository(
             return MergedRestoreResult(
                 item = finalItem,
                 mergeTask = null,
-                autoResume = false,
-                autoMerge = false,
                 cleanupTempFiles = emptyList(),
             )
         }
 
-        var status = item.status
-        var userPaused = item.userPaused
-        var autoResume = false
-        var autoMerge = false
-        var errorMessage = item.errorMessage
-
-        if (status == DownloadStatus.Pending) {
-            status = DownloadStatus.Pending
-            userPaused = false
-            autoResume = true
-            errorMessage = null
-        } else if (status == DownloadStatus.Running ||
-            (status == DownloadStatus.Paused && !item.userPaused)) {
-            // Preserve the temp parts so retry can resume or restart them selectively.
-            status = DownloadStatus.Failed
-            userPaused = false
-            autoResume = false
-            autoMerge = false
-            errorMessage = context.getString(R.string.download_error_unsafe_exit)
-        } else if (status == DownloadStatus.Merging) {
-            // Preserve source parts so retry can try merge again first.
-            status = DownloadStatus.Failed
-            userPaused = false
-            autoResume = false
-            autoMerge = false
-            errorMessage = context.getString(R.string.download_error_unsafe_exit)
-        }
-
-        if (status != DownloadStatus.Failed && !userPaused && videoCompleted && audioCompleted) {
-            autoMerge = true
-            autoResume = false
-        }
+        val restoredLifecycle = DownloadRestartPolicy.restore(item.status, item.userPaused)
         val progress = calculateProgress(downloaded, total, item.progress)
         val finalItem = item.copy(
-            status = status,
+            status = restoredLifecycle.status,
             progress = progress,
             downloadedBytes = downloaded,
             totalBytes = total,
             speedBytesPerSec = 0,
             etaSeconds = null,
-            userPaused = userPaused,
-            errorMessage = errorMessage,
+            userPaused = restoredLifecycle.userPaused,
+            errorMessage = when {
+                restoredLifecycle.interrupted ->
+                    context.getString(R.string.download_error_unsafe_exit)
+                restoredLifecycle.status == DownloadStatus.Paused -> null
+                else -> item.errorMessage
+            },
+            statusDetail = if (restoredLifecycle.interrupted ||
+                restoredLifecycle.status == DownloadStatus.Paused
+            ) {
+                null
+            } else {
+                item.statusDetail
+            },
         )
         val mergeTask = MergedDownload(
             id = item.id,
@@ -2642,7 +3391,7 @@ class DownloadRepository(
                 lastModified = snapshot.video.lastModified,
                 speedBytesPerSec = 0,
                 completed = videoCompleted,
-                failed = status == DownloadStatus.Failed,
+                failed = restoredLifecycle.status == DownloadStatus.Failed,
             ),
             audio = ResumablePart(
                 url = snapshot.audio.url,
@@ -2654,20 +3403,18 @@ class DownloadRepository(
                 lastModified = snapshot.audio.lastModified,
                 speedBytesPerSec = 0,
                 completed = audioCompleted,
-                failed = status == DownloadStatus.Failed,
+                failed = restoredLifecycle.status == DownloadStatus.Failed,
             ),
-            userPaused = userPaused,
+            userPaused = restoredLifecycle.userPaused,
             isMerging = false,
             completed = false,
-            failed = status == DownloadStatus.Failed,
+            failed = restoredLifecycle.status == DownloadStatus.Failed,
             outputUri = item.localUri,
             conversionTarget = snapshot.conversionTarget,
         )
         return MergedRestoreResult(
             item = finalItem,
             mergeTask = mergeTask,
-            autoResume = autoResume,
-            autoMerge = autoMerge,
             cleanupTempFiles = emptyList(),
         )
     }
@@ -2685,8 +3432,25 @@ class DownloadRepository(
         )
     }
 
-    private fun startMerge(task: MergedDownload) {
-        if (task.isMerging || mergeJobs[task.id]?.isActive == true) return
+    private fun startMerge(
+        task: MergedDownload,
+        slot: TaskConcurrencyQueue.TaskSlot,
+    ) {
+        synchronized(schedulingLock) {
+            startMergeLocked(task, slot)
+        }
+    }
+
+    private fun startMergeLocked(
+        task: MergedDownload,
+        slot: TaskConcurrencyQueue.TaskSlot,
+    ) {
+        if (task.userPaused || task.failed || task.completed ||
+            !managedTaskQueue.isCurrent(slot) ||
+            task.isMerging || mergeJobs[task.id]?.isActive == true
+        ) {
+            return
+        }
         DownloadForegroundService.requestSync(context)
         task.isMerging = true
         updateMergedProgress(task, true, null)
@@ -2694,9 +3458,13 @@ class DownloadRepository(
             TAG,
             "[merge-chain] start merge, taskId=${task.id}, output=${task.outputName}, videoTemp=${task.video.tempFile.absolutePath}, audioTemp=${task.audio.tempFile.absolutePath}",
         )
-        mergeJobs[task.id] = scope.launch {
+        val job = scope.launch(start = CoroutineStart.LAZY) {
             var cancelled = false
+            var terminalExecution = false
             try {
+                if (!managedTaskQueue.isCurrent(slot) || mergeTasks[task.id] !== task) {
+                    return@launch
+                }
                 var uri = performMerge(task)
                 val target = tasks[task.id]
                 if (mergeTasks[task.id] !== task) {
@@ -2716,6 +3484,7 @@ class DownloadRepository(
                 }
                 if (uri != null) {
                     task.completed = true
+                    terminalExecution = true
                     task.outputUri = uri
                     if (target != null) {
                         updateTask(
@@ -2735,6 +3504,7 @@ class DownloadRepository(
                     )
                 } else {
                     task.failed = true
+                    terminalExecution = true
                     if (target != null) {
                         Log.w(
                             TAG,
@@ -2763,6 +3533,7 @@ class DownloadRepository(
             } catch (err: Exception) {
                 if (mergeTasks[task.id] === task) {
                     task.failed = true
+                    terminalExecution = true
                     val target = tasks[task.id]
                     if (target != null) {
                         Log.w(
@@ -2787,26 +3558,40 @@ class DownloadRepository(
                     )
                 }
             } finally {
-                task.isMerging = false
-                mergeJobs.remove(task.id)
-                if (mergeTasks[task.id] === task) {
-                    when {
-                        cancelled && !task.userPaused && !task.failed && !task.completed &&
-                            task.video.completed && task.audio.completed -> {
-                            Log.d(
-                                TAG,
-                                "[merge-chain] restart merge after cancellation, taskId=${task.id}",
-                            )
-                            startMerge(task)
-                        }
+                val currentJob = coroutineContext[Job]
+                val ownsExecution = currentJob != null && mergeJobs.remove(task.id, currentJob)
+                if (ownsExecution) {
+                    task.isMerging = false
+                    if (mergeTasks[task.id] === task) {
+                        when {
+                            cancelled && !task.userPaused && !task.failed && !task.completed &&
+                                task.video.completed && task.audio.completed -> {
+                                Log.d(
+                                    TAG,
+                                    "[merge-chain] continue queued merge after cancellation, taskId=${task.id}",
+                                )
+                                val queuedSlot = managedTaskQueue.currentSlot(task.id)
+                                if (queuedSlot != null) {
+                                    startMerge(task, queuedSlot)
+                                } else {
+                                    updateMergedTaskPending(task)
+                                    requestManagedTaskStart(task.id)
+                                }
+                            }
 
-                        cancelled || task.userPaused -> {
-                            updateMergedProgress(task, true, null)
+                            cancelled || task.userPaused -> {
+                                updateMergedProgress(task, true, null)
+                            }
                         }
+                    }
+                    if (terminalExecution) {
+                        releaseManagedTaskSlot(slot)
                     }
                 }
             }
         }
+        mergeJobs.put(task.id, job)?.cancel()
+        job.start()
     }
 
     private suspend fun performMerge(task: MergedDownload): String? {
@@ -4352,15 +5137,12 @@ class DownloadRepository(
     private data class ManagedRestoreResult(
         val item: DownloadItem,
         val state: ResumableState?,
-        val autoResume: Boolean,
         val cleanupTempFiles: List<File>,
     )
 
     private data class MergedRestoreResult(
         val item: DownloadItem,
         val mergeTask: MergedDownload?,
-        val autoResume: Boolean,
-        val autoMerge: Boolean,
         val cleanupTempFiles: List<File>,
     )
 
@@ -4381,6 +5163,12 @@ class DownloadRepository(
         val groups: List<DownloadGroup> = emptyList(),
         val resumableStates: List<ResumableStateSnapshot> = emptyList(),
         val mergeStates: List<MergedTaskSnapshot> = emptyList(),
+        val extraTaskStates: List<ExtraTaskSnapshot> = emptyList(),
+    )
+
+    private data class ExtraTaskSnapshot(
+        val id: Long,
+        val spec: DownloadExtraTaskSpec,
     )
 
     private data class ResumableStateSnapshot(
@@ -4416,7 +5204,7 @@ class DownloadRepository(
         private const val LOGIN_REQUIRED_CODE = -101
         private const val PROGRESS_UPDATE_INTERVAL_MS = 300L
         private const val PERSIST_DELAY_MS = 1000L
-        private const val STORE_VERSION = 1
+        private const val STORE_VERSION = 2
         private const val EXTRA_TASK_PARALLELISM = 3
         private const val EXTRA_TASK_ID_START = -1_000_000_000L
     }

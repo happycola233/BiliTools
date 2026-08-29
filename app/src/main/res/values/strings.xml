@@ -398,6 +398,7 @@
     <string name="download_failure_convert_audio">音频转 MP3 失败</string>
     <string name="download_failure_convert_video">视频转 MP4 失败</string>
     <string name="download_failure_resume_data_missing">续传数据已丢失，请重新下载</string>
+    <string name="download_failure_retry_data_missing">任务数据不完整，无法重试</string>
     <string name="download_failure_extra">%1$s处理失败：%2$s</string>
     <string name="login_user_guest">未登录</string>
     <string name="login_user_mid">UID：%1$d</string>
@@ -485,7 +486,7 @@
     <string name="parse_notice_no_more">没有更多内容</string>
     <string name="parse_notice_page_not_loaded">请先逐页加载到这里</string>
     <string name="delete">删除</string>
-    <string name="download_error_unsafe_exit">程序意外退出，文件可能损坏，请重新下载</string>
+    <string name="download_error_unsafe_exit">应用意外退出，任务未完成，请重试</string>
 
     <string name="settings_header_title">下载偏好</string>
     <string name="settings_header_subtitle">管理下载行为、外观主题与存储路径。</string>
@@ -495,12 +496,14 @@
     <string name="settings_download_title">下载</string>
     <string name="settings_appearance_title">外观</string>
     <string name="settings_general_summary">默认下载质量、实时活动通知</string>
-    <string name="settings_download_summary">下载位置、元数据、格式转换、移动网络、系统相册</string>
+    <string name="settings_download_summary">并发数量、下载位置、元数据、格式转换、移动网络、系统相册</string>
     <string name="settings_appearance_summary">主题、配色、纯黑主题、液态玻璃底栏、启动动画</string>
     <string name="settings_about_summary">版本、更新、日志导出、开源协议、免责声明</string>
     <string name="settings_download_behavior">下载行为</string>
     <string name="settings_add_metadata">为下载文件添加元数据</string>
     <string name="settings_add_metadata_desc">下载音频或视频完成后自动写入标题、封面等元信息。</string>
+    <string name="settings_max_concurrent_downloads">最大并发下载数</string>
+    <string name="settings_max_concurrent_downloads_desc">同时下载的视频、音频和图文图片数量，超出的会排队等待。数值过大可能增加风控风险。（字幕、弹幕、封面、刮削、AI 总结和图文内容不受此项限制）</string>
     <string name="settings_convert_xml_danmaku_to_ass">将弹幕转为 ASS 格式</string>
     <string name="settings_convert_xml_danmaku_to_ass_desc">若启用，则会在下载弹幕时将 XML 转换为 ASS 格式。</string>
     <string name="settings_convert_audio_to_mp3">将音频转换为 MP3 格式</string>

@@ -19,12 +19,9 @@ import com.happycola233.bilitools.core.naming.NamingStreamInfo
 import com.happycola233.bilitools.core.naming.NamingTemplateScope
 import com.happycola233.bilitools.data.AuthRepository
 import com.happycola233.bilitools.data.DefaultDownloadVideoCodec
-import com.happycola233.bilitools.data.DanmakuLiveProgress
-import com.happycola233.bilitools.data.DanmakuLiveProgressPhase
 import com.happycola233.bilitools.data.DownloadNamingSettings
 import com.happycola233.bilitools.data.DownloadRepository
 import com.happycola233.bilitools.data.DownloadQualityMode
-import com.happycola233.bilitools.data.ExportRepository
 import com.happycola233.bilitools.data.ExtrasRepository
 import com.happycola233.bilitools.data.MediaRepository
 import com.happycola233.bilitools.data.InvalidMediaInputException
@@ -36,8 +33,8 @@ import com.happycola233.bilitools.data.TopLevelFolderMode
 import com.happycola233.bilitools.data.model.AudioStream
 import com.happycola233.bilitools.data.model.DownloadMediaParams
 import com.happycola233.bilitools.data.model.DownloadEmbeddedMetadata
-import com.happycola233.bilitools.data.model.DownloadItem
-import com.happycola233.bilitools.data.model.DownloadStatus
+import com.happycola233.bilitools.data.model.DownloadExtraTaskOperation
+import com.happycola233.bilitools.data.model.DownloadExtraTaskSpec
 import com.happycola233.bilitools.data.model.DownloadTaskType
 import com.happycola233.bilitools.data.model.MediaCapabilities
 import com.happycola233.bilitools.data.model.MediaInfo
@@ -67,8 +64,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -130,12 +125,6 @@ private fun MediaItem.extrasTargetKey(): ExtrasTargetKey {
     }
     return ExtrasTargetKey(type, resourceId)
 }
-
-private data class ExtraTaskProgress(
-    val progress: Int,
-    val statusDetail: String? = null,
-    val progressIndeterminate: Boolean = false,
-)
 
 /** 下载列表里展示的分组标题，与写盘命名互不影响。 */
 private data class DownloadGroupLabel(
@@ -381,7 +370,6 @@ class ParseViewModel(
     private val opusRepository: OpusRepository,
     private val extrasRepository: ExtrasRepository,
     private val downloadRepository: DownloadRepository,
-    private val exportRepository: ExportRepository,
     private val settingsRepository: SettingsRepository,
     private val authRepository: AuthRepository,
     private val strings: StringProvider,
@@ -1293,8 +1281,6 @@ class ParseViewModel(
                             item.coverUrl,
                             relativePath = requestedGroupRelativePath,
                         )
-                        val groupRelativePath = downloadRepository.groupRelativePath(groupId)
-
                         val trackTotal = when {
                             (item.pageCount ?: 0) > 0 -> item.pageCount
                             !info.paged && info.list.size > 1 -> info.list.size
@@ -1511,7 +1497,6 @@ class ParseViewModel(
                                 namingSession = namingSession,
                                 batchOrdinal = batchOrdinal,
                                 groupId = groupId,
-                                groupRelativePath = groupRelativePath,
                             )
                         }
 
@@ -1522,7 +1507,6 @@ class ParseViewModel(
                             namingSession = namingSession,
                             batchOrdinal = batchOrdinal,
                             groupId = groupId,
-                            groupRelativePath = groupRelativePath,
                             subtitleSelectionPolicy = selectionPolicy,
                         )
                         queuedGroups += 1
@@ -1620,7 +1604,6 @@ class ParseViewModel(
         namingSession: NamingSession,
         batchOrdinal: Int,
         groupId: Long,
-        groupRelativePath: String,
     ) {
         val contentTitle = strings.get(R.string.parse_opus_content)
         val imageTitle = strings.get(R.string.parse_opus_images)
@@ -1657,15 +1640,17 @@ class ParseViewModel(
                 extension = "md",
             )
             val localAssets = if (snapshot.opusImagesEffectivelyEnabled) imageAssets else emptyList()
-            saveTextTask(
+            downloadRepository.enqueueExtraTask(
                 groupId = groupId,
                 type = DownloadTaskType.OpusContent,
                 taskTitle = contentTitle,
                 fileName = contentName,
-                mimeType = "text/markdown",
-                relativePath = groupRelativePath,
-                contentProvider = { OpusMarkdownRenderer.render(document, localAssets) },
-                unavailableMessage = strings.get(R.string.parse_error_opus_invalid_response),
+                spec = DownloadExtraTaskSpec(
+                    operation = DownloadExtraTaskOperation.StaticText,
+                    mimeType = "text/markdown",
+                    unavailableMessage = strings.get(R.string.parse_error_opus_invalid_response),
+                    textContent = OpusMarkdownRenderer.render(document, localAssets),
+                ),
             )
         }
 
@@ -1701,7 +1686,6 @@ class ParseViewModel(
         namingSession: NamingSession,
         batchOrdinal: Int,
         groupId: Long,
-        groupRelativePath: String,
         subtitleSelectionPolicy: SubtitleSelectionPolicy,
     ) {
         val capabilities = item.type.capabilities
@@ -1740,53 +1724,29 @@ class ParseViewModel(
                         "srt"
                     },
                 )
-                saveBytesTask(
+                val subtitleBaseFileName = resolveTemplateBaseName(
+                    item = item,
+                    namingSession = namingSession,
+                    context = subtitleContext,
+                )
+                downloadRepository.enqueueExtraTask(
                     groupId = groupId,
                     type = DownloadTaskType.Subtitle,
                     taskTitle = subtitleTitle,
                     fileName = initialName,
-                    mimeType = null,
-                    relativePath = groupRelativePath,
-                    bytesProvider = { task, _, updateMetadata ->
-                        // 首个占位任务负责发现字幕列表，其余语言再分别追加为独立下载任务。
-                        val subtitles = extrasRepository.getSubtitles(aid, cid)
-                        val selectedSubtitles = selectSubtitles(
-                            subtitles = subtitles,
-                            languageSelection = snapshot.subtitleLanguageSelection,
-                            policy = subtitleSelectionPolicy,
-                        )
-                        val firstSubtitle = selectedSubtitles.firstOrNull()
-                            ?: return@saveBytesTask null
-                        val firstSubtitleName = resolveTemplateFileName(
-                            item = item,
-                            namingSession = namingSession,
-                            context = subtitleContext,
-                            extension = "${firstSubtitle.lan}.srt",
-                        )
-                        if (!updateMetadata(
-                            "$subtitleTitle - ${firstSubtitle.name}",
-                            firstSubtitleName,
-                        )) {
-                            throw CancellationException("Subtitle task is no longer active")
-                        }
-                        selectedSubtitles.drop(1).forEach { subtitle ->
-                            currentCoroutineContext().ensureActive()
-                            if (!saveSubtitleTask(
-                                parentTaskId = task.id,
-                                groupId = groupId,
-                                item = item,
-                                subtitle = subtitle,
-                                subtitleTitle = subtitleTitle,
-                                subtitleContext = subtitleContext,
-                                namingSession = namingSession,
-                                groupRelativePath = groupRelativePath,
-                            )) {
-                                throw CancellationException("Subtitle group is no longer active")
-                            }
-                        }
-                        extrasRepository.getSubtitleSrt(firstSubtitle)
-                    },
-                    unavailableMessage = strings.get(R.string.parse_error_no_subtitle),
+                    spec = DownloadExtraTaskSpec(
+                        operation = DownloadExtraTaskOperation.SubtitleDiscovery,
+                        unavailableMessage = strings.get(R.string.parse_error_no_subtitle),
+                        aid = aid,
+                        cid = cid,
+                        downloadAllSubtitles =
+                            subtitleSelectionPolicy == SubtitleSelectionPolicy.AllAvailable,
+                        selectedSubtitleLanguage =
+                            (snapshot.subtitleLanguageSelection as? SubtitleLanguageSelection.Language)?.lan,
+                        subtitleBaseFileName = subtitleBaseFileName,
+                        subtitleTaskTitle = subtitleTitle,
+                        cleanFileNameSeparators = namingSession.settings.cleanSeparators,
+                    ),
                 )
             }
         }
@@ -1820,17 +1780,19 @@ class ParseViewModel(
                     context = aiSummaryContext,
                     extension = "md",
                 )
-                saveTextTask(
+                downloadRepository.enqueueExtraTask(
                     groupId = groupId,
                     type = DownloadTaskType.AiSummary,
                     taskTitle = taskTitle,
                     fileName = name,
-                    mimeType = null,
-                    relativePath = groupRelativePath,
-                    contentProvider = {
-                        extrasRepository.getAiSummaryMarkdown(summaryTitle, bvid, aid, cid)
-                    },
-                    unavailableMessage = strings.get(R.string.parse_error_no_ai),
+                    spec = DownloadExtraTaskSpec(
+                        operation = DownloadExtraTaskOperation.AiSummary,
+                        unavailableMessage = strings.get(R.string.parse_error_no_ai),
+                        summaryTitle = summaryTitle,
+                        bvid = bvid,
+                        aid = aid,
+                        cid = cid,
+                    ),
                 )
             }
         }
@@ -1838,15 +1800,16 @@ class ParseViewModel(
         if (snapshot.nfoCollectionEnabled && capabilities.supportsNfoExport) {
             val taskTitle = strings.get(R.string.parse_nfo_collection)
             if (isCollectionNfoAvailable(info)) {
-                saveTextTask(
+                downloadRepository.enqueueExtraTask(
                     groupId = groupId,
                     type = DownloadTaskType.NfoCollection,
                     taskTitle = taskTitle,
                     fileName = "tvshow.nfo",
-                    mimeType = null,
-                    relativePath = groupRelativePath,
-                    contentProvider = { NfoGenerator.buildCollectionNfo(info) },
-                    unavailableMessage = strings.get(R.string.parse_error_no_nfo),
+                    spec = DownloadExtraTaskSpec(
+                        operation = DownloadExtraTaskOperation.StaticText,
+                        unavailableMessage = strings.get(R.string.parse_error_no_nfo),
+                        textContent = NfoGenerator.buildCollectionNfo(info),
+                    ),
                 )
             } else {
                 addUnavailableExtraTask(
@@ -1875,15 +1838,16 @@ class ParseViewModel(
                 context = nfoContext,
                 extension = "nfo",
             )
-            saveTextTask(
+            downloadRepository.enqueueExtraTask(
                 groupId = groupId,
                 type = DownloadTaskType.NfoSingle,
                 taskTitle = taskTitle,
                 fileName = name,
-                mimeType = null,
-                relativePath = groupRelativePath,
-                contentProvider = { NfoGenerator.buildSingleNfo(info, item) },
-                unavailableMessage = strings.get(R.string.parse_error_no_nfo),
+                spec = DownloadExtraTaskSpec(
+                    operation = DownloadExtraTaskOperation.StaticText,
+                    unavailableMessage = strings.get(R.string.parse_error_no_nfo),
+                    textContent = NfoGenerator.buildSingleNfo(info, item),
+                ),
             )
         }
 
@@ -1916,25 +1880,19 @@ class ParseViewModel(
                     strings.get(R.string.parse_error_no_danmaku),
                 )
             } else {
-                saveBytesTask(
+                downloadRepository.enqueueExtraTask(
                     groupId = groupId,
                     type = DownloadTaskType.DanmakuLive,
                     taskTitle = taskTitle,
                     fileName = name,
-                    mimeType = null,
-                    relativePath = groupRelativePath,
-                    bytesProvider = { _, onProgress, _ ->
-                        if (convertXmlDanmakuToAss) {
-                            extrasRepository.getDanmakuLiveAss(aid, cid, duration) { progress ->
-                                onProgress(danmakuLiveProgressUpdate(progress))
-                            }
-                        } else {
-                            extrasRepository.getDanmakuLiveXml(aid, cid, duration) { progress ->
-                                onProgress(danmakuLiveProgressUpdate(progress))
-                            }
-                        }
-                    },
-                    unavailableMessage = strings.get(R.string.parse_error_no_danmaku),
+                    spec = DownloadExtraTaskSpec(
+                        operation = DownloadExtraTaskOperation.DanmakuLive,
+                        unavailableMessage = strings.get(R.string.parse_error_no_danmaku),
+                        aid = aid,
+                        cid = cid,
+                        durationSeconds = duration,
+                        convertDanmakuToAss = convertXmlDanmakuToAss,
+                    ),
                 )
             }
         }
@@ -1967,21 +1925,19 @@ class ParseViewModel(
                     context = danmakuHistoryContext,
                     extension = if (convertXmlDanmakuToAss) "ass" else "xml",
                 )
-                saveBytesTask(
+                downloadRepository.enqueueExtraTask(
                     groupId = groupId,
                     type = DownloadTaskType.DanmakuHistory,
                     taskTitle = taskTitle,
                     fileName = name,
-                    mimeType = null,
-                    relativePath = groupRelativePath,
-                    bytesProvider = { _, _, _ ->
-                        if (convertXmlDanmakuToAss) {
-                            extrasRepository.getDanmakuHistoryAss(cid, date, hour)
-                        } else {
-                            extrasRepository.getDanmakuHistoryXml(cid, date, hour)
-                        }
-                    },
-                    unavailableMessage = strings.get(R.string.parse_error_no_danmaku),
+                    spec = DownloadExtraTaskSpec(
+                        operation = DownloadExtraTaskOperation.DanmakuHistory,
+                        unavailableMessage = strings.get(R.string.parse_error_no_danmaku),
+                        cid = cid,
+                        date = date,
+                        hour = hour,
+                        convertDanmakuToAss = convertXmlDanmakuToAss,
+                    ),
                 )
             }
         }
@@ -2019,15 +1975,17 @@ class ParseViewModel(
                     context = imageContext,
                     extension = extensionFromUrl(thumb.url),
                 )
-                saveBytesTask(
+                downloadRepository.enqueueExtraTask(
                     groupId = groupId,
                     type = taskType,
                     taskTitle = label,
                     fileName = name,
-                    mimeType = "image/*",
-                    relativePath = groupRelativePath,
-                    bytesProvider = { _, _, _ -> extrasRepository.fetchBytes(thumb.url) },
-                    unavailableMessage = strings.get(R.string.download_unavailable_image),
+                    spec = DownloadExtraTaskSpec(
+                        operation = DownloadExtraTaskOperation.FetchBytes,
+                        mimeType = "image/*",
+                        unavailableMessage = strings.get(R.string.download_unavailable_image),
+                        sourceUrl = thumb.url,
+                    ),
                 )
             }
             val availableIds = thumbs.mapTo(mutableSetOf()) { it.id }
@@ -2044,35 +2002,6 @@ class ParseViewModel(
                     )
                 }
         }
-    }
-
-    private fun saveSubtitleTask(
-        parentTaskId: Long,
-        groupId: Long,
-        item: MediaItem,
-        subtitle: SubtitleInfo,
-        subtitleTitle: String,
-        subtitleContext: NamingContext,
-        namingSession: NamingSession,
-        groupRelativePath: String,
-    ): Boolean {
-        val fileName = resolveTemplateFileName(
-            item = item,
-            namingSession = namingSession,
-            context = subtitleContext,
-            extension = "${subtitle.lan}.srt",
-        )
-        return saveBytesTask(
-            groupId = groupId,
-            type = DownloadTaskType.Subtitle,
-            taskTitle = "$subtitleTitle - ${subtitle.name}",
-            fileName = fileName,
-            mimeType = null,
-            relativePath = groupRelativePath,
-            bytesProvider = { _, _, _ -> extrasRepository.getSubtitleSrt(subtitle) },
-            unavailableMessage = strings.get(R.string.parse_error_no_subtitle),
-            parentTaskId = parentTaskId,
-        )
     }
 
     fun copySubtitlesNow() {
@@ -3400,252 +3329,6 @@ class ParseViewModel(
         return info.collection ||
             info.type == MediaType.Bangumi ||
             info.type == MediaType.Lesson
-    }
-
-    private fun danmakuLiveProgressUpdate(progress: DanmakuLiveProgress): ExtraTaskProgress {
-        val segmentCount = progress.segmentCount.coerceAtLeast(1)
-        return when (progress.phase) {
-            DanmakuLiveProgressPhase.FetchingSegment -> ExtraTaskProgress(
-                progress = progress.progress,
-                statusDetail = strings.get(
-                    R.string.download_detail_fetching_danmaku_segment,
-                    progress.segmentIndex.coerceIn(1, segmentCount),
-                    segmentCount,
-                ),
-            )
-            DanmakuLiveProgressPhase.Converting -> ExtraTaskProgress(
-                progress = progress.progress,
-                statusDetail = strings.get(R.string.download_detail_converting_danmaku),
-                progressIndeterminate = true,
-            )
-        }
-    }
-
-    private fun extraTaskErrorMessage(taskTitle: String, err: Throwable?): String {
-        val detail = when (err) {
-            null -> null
-            is BiliHttpException -> {
-                val base = err.message?.takeIf { it.isNotBlank() }
-                    ?: strings.get(R.string.parse_error_failed)
-                "$base (${err.code})"
-            }
-            else -> err.message
-        }?.takeIf { it.isNotBlank() }
-            ?: strings.get(R.string.download_reason_unknown)
-        return strings.get(R.string.download_failure_extra, taskTitle, detail)
-    }
-
-    private fun saveTextTask(
-        groupId: Long,
-        type: DownloadTaskType,
-        taskTitle: String,
-        fileName: String,
-        mimeType: String?,
-        relativePath: String,
-        contentProvider: suspend () -> String?,
-        unavailableMessage: String,
-    ) {
-        val task = downloadRepository.addExtraTask(
-            groupId,
-            type,
-            taskTitle,
-            fileName,
-            DownloadStatus.Pending,
-        )
-        downloadRepository.launchExtraTask(task.id) extraTask@{
-            try {
-                if (!downloadRepository.updateExtraTask(task.id, DownloadStatus.Running, progress = 0)) {
-                    return@extraTask
-                }
-                val content = contentProvider()
-                if (content.isNullOrBlank()) {
-                    downloadRepository.updateExtraTask(
-                        task.id,
-                        DownloadStatus.Unavailable,
-                        progress = 100,
-                        statusDetail = unavailableMessage,
-                    )
-                    return@extraTask
-                }
-                if (!downloadRepository.updateExtraTask(
-                        task.id,
-                        DownloadStatus.Running,
-                        progress = 99,
-                        statusDetail = strings.get(R.string.download_detail_saving_file),
-                    )
-                ) {
-                    return@extraTask
-                }
-                val bytes = content.toByteArray(Charsets.UTF_8)
-                val byteCount = bytes.size.toLong()
-                val uri = exportRepository.saveBytes(fileName, mimeType, bytes, relativePath)
-                if (uri != null) {
-                    downloadRepository.updateExtraTask(
-                        task.id,
-                        DownloadStatus.Success,
-                        progress = 100,
-                        downloadedBytes = byteCount,
-                        totalBytes = byteCount,
-                        localUri = uri.toString(),
-                    )
-                } else {
-                    downloadRepository.updateExtraTask(
-                        task.id,
-                        DownloadStatus.Failed,
-                        progress = 0,
-                        errorMessage = strings.get(R.string.download_failure_save),
-                    )
-                    _state.update {
-                        it.copy(error = strings.get(R.string.download_failure_save))
-                    }
-                }
-            } catch (err: CancellationException) {
-                downloadRepository.updateExtraTask(
-                    task.id,
-                    DownloadStatus.Cancelled,
-                    progress = 0,
-                    errorMessage = err.message,
-                )
-                throw err
-            } catch (err: Throwable) {
-                val message = extraTaskErrorMessage(taskTitle, err)
-                AppLog.w(TAG, "[extra-task] text failed, type=$type, file=$fileName", err)
-                downloadRepository.updateExtraTask(
-                    task.id,
-                    DownloadStatus.Failed,
-                    progress = 0,
-                    errorMessage = message,
-                )
-                _state.update { it.copy(error = message) }
-            }
-        }
-    }
-
-    private fun saveBytesTask(
-        groupId: Long,
-        type: DownloadTaskType,
-        taskTitle: String,
-        fileName: String,
-        mimeType: String?,
-        relativePath: String,
-        bytesProvider: suspend (
-            DownloadItem,
-            (ExtraTaskProgress) -> Unit,
-            (String, String) -> Boolean,
-        ) -> ByteArray?,
-        unavailableMessage: String,
-        parentTaskId: Long? = null,
-    ): Boolean {
-        val task = if (parentTaskId == null) {
-            downloadRepository.addExtraTask(
-                groupId,
-                type,
-                taskTitle,
-                fileName,
-                DownloadStatus.Pending,
-            )
-        } else {
-            downloadRepository.addExtraTaskIfParentActive(
-                parentTaskId = parentTaskId,
-                groupId = groupId,
-                type = type,
-                taskTitle = taskTitle,
-                fileName = fileName,
-                status = DownloadStatus.Pending,
-            ) ?: return false
-        }
-        return downloadRepository.launchExtraTask(task.id) extraTask@{
-            try {
-                var outputFileName = fileName
-                var lastProgress = 0
-                var lastStatusDetail: String? = null
-                var lastProgressIndeterminate = false
-                fun updateRunningProgress(update: ExtraTaskProgress) {
-                    val normalized = update.progress.coerceIn(0, 99)
-                    val statusDetail = update.statusDetail?.takeIf { it.isNotBlank() }
-                    val shouldUpdate = normalized != lastProgress ||
-                        statusDetail != lastStatusDetail ||
-                        update.progressIndeterminate != lastProgressIndeterminate
-                    if (!shouldUpdate) return
-                    lastProgress = normalized
-                    lastStatusDetail = statusDetail
-                    lastProgressIndeterminate = update.progressIndeterminate
-                    downloadRepository.updateExtraTask(
-                        task.id,
-                        DownloadStatus.Running,
-                        progress = normalized,
-                        statusDetail = statusDetail,
-                        progressIndeterminate = update.progressIndeterminate,
-                    )
-                }
-                fun updateTaskMetadata(nextTitle: String, nextFileName: String): Boolean {
-                    outputFileName = nextFileName
-                    return downloadRepository.updateExtraTaskMetadata(task.id, nextTitle, nextFileName)
-                }
-                if (!downloadRepository.updateExtraTask(task.id, DownloadStatus.Running, progress = 0)) {
-                    return@extraTask
-                }
-                val bytes = bytesProvider(task, ::updateRunningProgress, ::updateTaskMetadata)
-                if (bytes == null) {
-                    downloadRepository.updateExtraTask(
-                        task.id,
-                        DownloadStatus.Unavailable,
-                        progress = 100,
-                        statusDetail = unavailableMessage,
-                    )
-                    return@extraTask
-                }
-                if (!downloadRepository.updateExtraTask(
-                        task.id,
-                        DownloadStatus.Running,
-                        progress = 99,
-                        statusDetail = strings.get(R.string.download_detail_saving_file),
-                    )
-                ) {
-                    return@extraTask
-                }
-                val uri = exportRepository.saveBytes(outputFileName, mimeType, bytes, relativePath)
-                val byteCount = bytes.size.toLong()
-                if (uri != null) {
-                    downloadRepository.updateExtraTask(
-                        task.id,
-                        DownloadStatus.Success,
-                        progress = 100,
-                        downloadedBytes = byteCount,
-                        totalBytes = byteCount,
-                        localUri = uri.toString(),
-                    )
-                } else {
-                    downloadRepository.updateExtraTask(
-                        task.id,
-                        DownloadStatus.Failed,
-                        progress = 0,
-                        errorMessage = strings.get(R.string.download_failure_save),
-                    )
-                    _state.update {
-                        it.copy(error = strings.get(R.string.download_failure_save))
-                    }
-                }
-            } catch (err: CancellationException) {
-                downloadRepository.updateExtraTask(
-                    task.id,
-                    DownloadStatus.Cancelled,
-                    progress = 0,
-                    errorMessage = err.message,
-                )
-                throw err
-            } catch (err: Throwable) {
-                val message = extraTaskErrorMessage(taskTitle, err)
-                AppLog.w(TAG, "[extra-task] bytes failed, type=$type, file=$fileName", err)
-                downloadRepository.updateExtraTask(
-                    task.id,
-                    DownloadStatus.Failed,
-                    progress = 0,
-                    errorMessage = message,
-                )
-                _state.update { it.copy(error = message) }
-            }
-        }
     }
 
     private fun sanitizeFileName(name: String): String {

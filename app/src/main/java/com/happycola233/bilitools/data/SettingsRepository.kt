@@ -71,6 +71,7 @@ data class AppSettings(
     val hapticFeedbackLevel: HapticFeedbackLevel = HapticFeedbackLevel.Full,
     val liveActivityStyleNotificationEnabled: Boolean = true,
     val downloadRootRelativePath: String = SettingsRepository.DEFAULT_DOWNLOAD_ROOT,
+    val maxConcurrentDownloads: Int = SettingsRepository.DEFAULT_MAX_CONCURRENT_DOWNLOADS,
     val confirmCellularDownload: Boolean = true,
     val hideDownloadedVideosInSystemAlbum: Boolean = false,
     val downloadsGlassDebugEnabled: Boolean = false,
@@ -202,6 +203,8 @@ class SettingsRepository(context: Context) {
     fun shouldConvertXmlDanmakuToAss(): Boolean = _settings.value.convertXmlDanmakuToAss
 
     fun downloadRootRelativePath(): String = _settings.value.downloadRootRelativePath
+
+    fun maxConcurrentDownloads(): Int = _settings.value.maxConcurrentDownloads
 
     fun shouldConfirmCellularDownload(): Boolean = _settings.value.confirmCellularDownload
 
@@ -354,6 +357,17 @@ class SettingsRepository(context: Context) {
         if (current.confirmCellularDownload == enabled) return
         prefs.edit().putBoolean(KEY_CONFIRM_CELLULAR_DOWNLOAD, enabled).apply()
         _settings.value = current.copy(confirmCellularDownload = enabled)
+    }
+
+    fun setMaxConcurrentDownloads(value: Int) {
+        val normalized = value.coerceIn(
+            MIN_MAX_CONCURRENT_DOWNLOADS,
+            MAX_MAX_CONCURRENT_DOWNLOADS,
+        )
+        val current = _settings.value
+        if (current.maxConcurrentDownloads == normalized) return
+        prefs.edit().putInt(KEY_MAX_CONCURRENT_DOWNLOADS, normalized).apply()
+        _settings.value = current.copy(maxConcurrentDownloads = normalized)
     }
 
     fun setHideDownloadedVideosInSystemAlbum(enabled: Boolean) {
@@ -626,6 +640,10 @@ class SettingsRepository(context: Context) {
             downloadRootRelativePath = normalizeDownloadRoot(
                 prefs.getString(KEY_DOWNLOAD_ROOT_RELATIVE_PATH, DEFAULT_DOWNLOAD_ROOT),
             ),
+            maxConcurrentDownloads = prefs.getInt(
+                KEY_MAX_CONCURRENT_DOWNLOADS,
+                DEFAULT_MAX_CONCURRENT_DOWNLOADS,
+            ).coerceIn(MIN_MAX_CONCURRENT_DOWNLOADS, MAX_MAX_CONCURRENT_DOWNLOADS),
             confirmCellularDownload = prefs.getBoolean(KEY_CONFIRM_CELLULAR_DOWNLOAD, true),
             hideDownloadedVideosInSystemAlbum = prefs.getBoolean(
                 KEY_HIDE_DOWNLOADED_VIDEOS_IN_SYSTEM_ALBUM,
@@ -873,6 +891,9 @@ class SettingsRepository(context: Context) {
     companion object {
         // Keep this a true compile-time constant for default values.
         const val DEFAULT_DOWNLOAD_ROOT = "Download/BiliTools"
+        const val DEFAULT_MAX_CONCURRENT_DOWNLOADS = 3
+        const val MIN_MAX_CONCURRENT_DOWNLOADS = 1
+        const val MAX_MAX_CONCURRENT_DOWNLOADS = 5
         const val DEFAULT_LIQUID_BAR_WIDTH_FRACTION = 0.8f
         const val MIN_LIQUID_BAR_WIDTH_FRACTION = 0.6f
         const val DEFAULT_LIQUID_BAR_GLASS_BLUR_RADIUS_DP = 6f
@@ -913,6 +934,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_LIVE_ACTIVITY_STYLE_NOTIFICATION_ENABLED =
             "live_activity_style_notification_enabled"
         private const val KEY_DOWNLOAD_ROOT_RELATIVE_PATH = "download_root_relative_path"
+        private const val KEY_MAX_CONCURRENT_DOWNLOADS = "max_concurrent_downloads"
         private const val KEY_CONFIRM_CELLULAR_DOWNLOAD = "confirm_cellular_download"
         private const val KEY_HIDE_DOWNLOADED_VIDEOS_IN_SYSTEM_ALBUM =
             "hide_downloaded_videos_in_system_album"

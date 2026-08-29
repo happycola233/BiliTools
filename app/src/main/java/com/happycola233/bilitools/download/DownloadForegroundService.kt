@@ -47,8 +47,8 @@ class DownloadForegroundService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_PAUSE_ALL -> downloadRepository.pauseAllManaged()
-            ACTION_RESUME_ALL -> downloadRepository.resumeAllManaged()
+            ACTION_PAUSE_ALL -> downloadRepository.pauseAll()
+            ACTION_RESUME_ALL -> downloadRepository.startAll()
         }
         publishState(downloadRepository.notificationState.value, allowThrottle = false)
         return START_NOT_STICKY

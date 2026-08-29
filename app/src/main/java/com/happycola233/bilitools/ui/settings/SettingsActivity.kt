@@ -173,6 +173,7 @@ class SettingsActivity : AppCompatActivity() {
                 onConvertXmlDanmakuToAssChange = viewModel::setConvertXmlDanmakuToAss,
                 onConvertAudioToMp3Change = viewModel::setConvertAudioToMp3,
                 onConvertVideoToMp4Change = viewModel::setConvertVideoToMp4,
+                onMaxConcurrentDownloadsChange = viewModel::setMaxConcurrentDownloads,
                 onConfirmCellularChange = viewModel::setConfirmCellularDownload,
                 onHideInAlbumChange = viewModel::setHideDownloadedVideosInSystemAlbum,
                 onNamingTopLevelFolderModeChange = viewModel::setNamingTopLevelFolderMode,

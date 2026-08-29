@@ -304,7 +304,9 @@ class DownloadsFragment : Fragment() {
 
     private fun handleTaskPauseResume(item: DownloadItem) {
         when (item.status) {
-            DownloadStatus.Running -> viewModel.pause(item.id)
+            DownloadStatus.Pending,
+            DownloadStatus.Running,
+            DownloadStatus.Merging -> viewModel.pause(item.id)
             DownloadStatus.Paused -> if (item.userPaused) {
                 viewModel.resume(item.id)
             }
@@ -653,8 +655,7 @@ class DownloadsFragment : Fragment() {
                 }
                 R.id.action_resume_all -> {
                     val currentState = calculateGlobalManageState()
-                    val retryableIds = collectRetryableManagedTaskIds()
-                    val retryCount = retryableIds.size
+                    val retryCount = currentState.retryableCount
                     if (currentState.startableCount <= 0) {
                         Toast.makeText(
                             requireContext(),
@@ -662,12 +663,7 @@ class DownloadsFragment : Fragment() {
                             Toast.LENGTH_SHORT,
                         ).show()
                     } else {
-                        if (currentState.resumableCount > 0) {
-                            viewModel.resumeAllManaged()
-                        }
-                        retryableIds.forEach { taskId ->
-                            viewModel.retry(taskId)
-                        }
+                        viewModel.startAll()
                         val startedCount = currentState.resumableCount + retryCount
                         Toast.makeText(
                             requireContext(),
@@ -694,7 +690,7 @@ class DownloadsFragment : Fragment() {
                             Toast.LENGTH_SHORT,
                         ).show()
                     } else {
-                        viewModel.pauseAllManaged()
+                        viewModel.pauseAll()
                         Toast.makeText(
                             requireContext(),
                             getString(R.string.downloads_pause_all_done, currentState.pausableCount),
@@ -719,8 +715,7 @@ class DownloadsFragment : Fragment() {
 
     private fun performResumeAll() {
         val currentState = calculateGlobalManageState()
-        val retryableIds = collectRetryableManagedTaskIds()
-        val retryCount = retryableIds.size
+        val retryCount = currentState.retryableCount
         if (currentState.startableCount <= 0) {
             Toast.makeText(
                 requireContext(),
@@ -728,12 +723,7 @@ class DownloadsFragment : Fragment() {
                 Toast.LENGTH_SHORT,
             ).show()
         } else {
-            if (currentState.resumableCount > 0) {
-                viewModel.resumeAllManaged()
-            }
-            retryableIds.forEach { taskId ->
-                viewModel.retry(taskId)
-            }
+            viewModel.startAll()
             val startedCount = currentState.resumableCount + retryCount
             Toast.makeText(
                 requireContext(),
@@ -760,7 +750,7 @@ class DownloadsFragment : Fragment() {
                 Toast.LENGTH_SHORT,
             ).show()
         } else {
-            viewModel.pauseAllManaged()
+            viewModel.pauseAll()
             Toast.makeText(
                 requireContext(),
                 getString(R.string.downloads_pause_all_done, currentState.pausableCount),
@@ -775,11 +765,10 @@ class DownloadsFragment : Fragment() {
         var pausableCount = 0
         latestGroups.forEach { group ->
             group.tasks.forEach { task ->
-                if (!isManagedTask(task)) return@forEach
                 when (task.status) {
-                    DownloadStatus.Pending,
+                    DownloadStatus.Pending -> pausableCount++
                     DownloadStatus.Running,
-                    DownloadStatus.Merging -> pausableCount++
+                    DownloadStatus.Merging -> if (isManagedTask(task)) pausableCount++
                     DownloadStatus.Paused -> if (task.userPaused) resumableCount++
                     DownloadStatus.Failed -> retryableCount++
                     else -> Unit
@@ -791,18 +780,6 @@ class DownloadsFragment : Fragment() {
             retryableCount = retryableCount,
             pausableCount = pausableCount,
         )
-    }
-
-    private fun collectRetryableManagedTaskIds(): List<Long> {
-        val ids = mutableListOf<Long>()
-        latestGroups.forEach { group ->
-            group.tasks.forEach { task ->
-                if (isManagedTask(task) && task.status == DownloadStatus.Failed) {
-                    ids += task.id
-                }
-            }
-        }
-        return ids
     }
 
     private fun isManagedTask(task: DownloadItem): Boolean {

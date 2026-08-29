@@ -121,6 +121,10 @@ class SettingsViewModel(
         settingsRepository.setConfirmCellularDownload(enabled)
     }
 
+    fun setMaxConcurrentDownloads(value: Int) {
+        settingsRepository.setMaxConcurrentDownloads(value)
+    }
+
     fun setHideDownloadedVideosInSystemAlbum(enabled: Boolean) {
         settingsRepository.setHideDownloadedVideosInSystemAlbum(enabled)
     }
