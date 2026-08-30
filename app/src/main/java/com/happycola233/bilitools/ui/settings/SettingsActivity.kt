@@ -248,9 +248,16 @@ class SettingsActivity : AppCompatActivity() {
         liveUpdateSupported.value = applicationContext.isLiveUpdateSupported()
     }
 
-    override fun finish() {
-        viewModel.syncThemeMode()
-        super.finish()
+    override fun onDestroy() {
+        val shouldSyncThemeMode = isFinishing
+        super.onDestroy()
+        if (shouldSyncThemeMode) {
+            /*
+             * setDefaultNightMode() 会重建所有仍存活的 AppCompatActivity。等当前设置页完成
+             * 退场并从 AppCompat delegate 列表移除后再同步，避免返回动画露出正在重建的首页。
+             */
+            applicationContext.appContainer.settingsRepository.syncThemeMode()
+        }
     }
 
     private fun currentVersionCode(): Long {

@@ -85,10 +85,6 @@ class SettingsViewModel(
         settingsRepository.setThemeMode(mode, applyImmediately)
     }
 
-    fun syncThemeMode() {
-        settingsRepository.syncThemeMode()
-    }
-
     fun setThemeColor(color: AppThemeColor) {
         settingsRepository.setThemeColor(color)
     }
