@@ -5,7 +5,7 @@
 产出两张 PNG 到 .tmp/：
 
   palette.png  十三套配色的填充色 / 前景色 / 表面三层色板，浅深并排
-  mock.png     典型界面 mock：卡片、内嵌区域、三档按钮、开关、悬浮按钮
+  mock.png     典型界面 mock：浅色、深色与纯黑下的卡片、按钮、开关等组件
 
 用法：python docs/配色系统/preview.py
 """
@@ -43,13 +43,54 @@ def overlays(dark):
     return out
 
 
+def named_overlay(style_name):
+    """回读 values/themes.xml 中不属于十三套主题色的具名 overlay。"""
+    path = os.path.join(RES, 'values', 'themes.xml')
+    text = io.open(path, encoding='utf-8').read()
+    match = re.search(
+        r'<style name="%s"[^>]*>(.*?)</style>' % re.escape(style_name),
+        text,
+        re.S,
+    )
+    if not match:
+        raise ValueError('找不到 overlay：%s' % style_name)
+    return {
+        key: '#' + value for key, value in re.findall(
+            r'<item name="([\w:]+)">#FF([0-9A-Fa-f]{6})</item>', match.group(1)
+        )
+    }
+
+
 LIGHT, DARK = overlays(False), overlays(True)
+PURE_BLACK_SURFACES = named_overlay('ThemeOverlay.BiliTools.DarkPureBlack')
+PURE_BLACK = {
+    style: {**DARK[style], **PURE_BLACK_SURFACES} for style, _ in SCHEMES
+}
 
 
 def swatch(d, x, y, w, h, color, label=None, label_color='#000000'):
     d.rounded_rectangle([x, y, x + w, y + h], radius=8, fill=color)
     if label:
         d.text((x + 8, y + h / 2 - 9), label, font=FS, fill=label_color)
+
+
+def draw_switch(d, x, y, track, thumb, checked, border=None):
+    """按实际组件的开启/关闭滑块比例画一个无状态图标的开关。"""
+    width, height = 76, 42
+    d.rounded_rectangle(
+        [x, y, x + width, y + height],
+        radius=height // 2,
+        fill=track,
+        outline=border,
+        width=3,
+    )
+    center_x = x + width - height // 2 if checked else x + height // 2
+    radius = 15 if checked else 11
+    center_y = y + height // 2
+    d.ellipse(
+        [center_x - radius, center_y - radius, center_x + radius, center_y + radius],
+        fill=thumb,
+    )
 
 
 def draw_palette():
@@ -83,26 +124,36 @@ def draw_palette():
 
 
 def draw_mock():
-    """典型界面：卡片浮在页面底上，卡片里有内嵌区域、三档按钮、开关和悬浮按钮。"""
+    """典型界面：并排检查浅色、深色与纯黑模式下的常用组件。"""
     shown = ['Sakura', 'Matcha', 'Lagoon', 'Lilac']
+    modes = (
+        ('浅色', LIGHT, False, False),
+        ('深色', DARK, True, False),
+        ('纯黑', PURE_BLACK, True, True),
+    )
     panel_w, panel_h = 520, 268
-    img = Image.new('RGB', (2 * panel_w + 90, 80 + len(shown) * (panel_h + 24)), '#FFFFFF')
+    image_width = 56 + len(modes) * panel_w + (len(modes) - 1) * 34
+    img = Image.new('RGB', (image_width, 80 + len(shown) * (panel_h + 24)), '#FFFFFF')
     d = ImageDraw.Draw(img)
-    d.text((28, 22), '界面 mock（左浅色 / 右深色）', font=FB, fill='#111111')
+    d.text((28, 22), '界面 mock（浅色 / 深色 / 纯黑）', font=FB, fill='#111111')
 
     for r, style in enumerate(shown):
-        for side, (src, dark) in enumerate(((LIGHT, False), (DARK, True))):
+        for side, (mode_name, src, dark, pure_black) in enumerate(modes):
             t = src[style]
             ox = 28 + side * (panel_w + 34)
             oy = 68 + r * (panel_h + 24)
-            page, card, inset = (t['colorSurfaceContainer'], t['colorSurfaceBright'],
-                                 t['colorSurfaceContainerLow' if not dark
-                                   else 'colorSurfaceContainerHigh'])
+            if pure_black:
+                page, card, inset = (t['colorSurface'], t['colorSurfaceContainerHigh'],
+                                     t['colorSurfaceContainer'])
+            else:
+                page, card, inset = (t['colorSurfaceContainer'], t['colorSurfaceBright'],
+                                     t['colorSurfaceContainerLow' if not dark
+                                       else 'colorSurfaceContainerHigh'])
             fill, on_fill = t['colorPrimaryFixedDim'], t['colorOnPrimaryFixed']
             ink, sub = t['colorOnSurface'], t['colorOnSurfaceVariant']
 
             d.rounded_rectangle([ox, oy, ox + panel_w, oy + panel_h], radius=20, fill=page)
-            d.text((ox + 20, oy + 12), '%s  %s' % (style, '深色' if dark else '浅色'),
+            d.text((ox + 20, oy + 12), '%s  %s' % (style, mode_name),
                    font=FS, fill=sub)
             # 卡片
             d.rounded_rectangle([ox + 18, oy + 40, ox + panel_w - 18, oy + 212],
@@ -118,14 +169,29 @@ def draw_mock():
             d.rounded_rectangle([ox + 180, oy + 142, ox + 320, oy + 180], radius=14,
                                 fill=t['colorSecondaryContainer'])
             d.text((ox + 214, oy + 152), '复制', font=FS, fill=t['colorOnSecondaryContainer'])
-            # 开关：浅色白滑块 / 深色深滑块
-            sx, sy, sw, sh = ox + 340, oy + 146, 76, 42
-            d.rounded_rectangle([sx, sy, sx + sw, sy + sh], radius=sh // 2, fill=fill)
-            cx, cy, rr = sx + sw - sh // 2, sy + sh // 2, 15
-            thumb = on_fill if dark else '#FFFFFF'
-            tick = fill if dark else on_fill
-            d.ellipse([cx - rr, cy - rr, cx + rr, cy + rr], fill=thumb)
-            d.line([(cx - 6, cy + 1), (cx - 2, cy + 5), (cx + 6, cy - 4)], fill=tick, width=3)
+            # 开关：同时画关闭与开启态；纯黑关闭态使用更高一档轨道并恢复描边
+            sx, sy = ox + 326, oy + 146
+            unchecked_track = t[
+                'colorSurfaceContainerHighest' if pure_black else 'colorSurfaceContainerHigh'
+            ]
+            unchecked_thumb = t['colorOutline'] if dark else t['colorOnPrimary']
+            draw_switch(
+                d,
+                sx,
+                sy,
+                unchecked_track,
+                unchecked_thumb,
+                checked=False,
+                border=t['colorOutline'] if pure_black else None,
+            )
+            draw_switch(
+                d,
+                sx + 84,
+                sy,
+                fill if dark else t['colorPrimary'],
+                on_fill if dark else t['colorOnPrimary'],
+                checked=True,
+            )
             # 悬浮按钮：浅色与次级按钮同色，深色改用固定填充色保证能浮出页面底
             fab_fill = fill if dark else t['colorSecondaryContainer']
             on_fab_fill = on_fill if dark else t['colorOnSecondaryContainer']

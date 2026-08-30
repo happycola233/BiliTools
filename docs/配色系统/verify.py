@@ -65,6 +65,23 @@ def overlays(path):
     return out
 
 
+def named_overlay(path, style_name):
+    """回读一个具名 overlay；找不到时返回 None。"""
+    text = io.open(path, encoding='utf-8').read()
+    match = re.search(
+        r'<style name="%s"[^>]*>(.*?)</style>' % re.escape(style_name),
+        text,
+        re.S,
+    )
+    if not match:
+        return None
+    return {
+        key: value for key, value in re.findall(
+            r'<item name="([\w:]+)">#FF([0-9A-Fa-f]{6})</item>', match.group(1)
+        )
+    }
+
+
 def lum(hexstr):
     def channel(v):
         v /= 255
@@ -133,6 +150,29 @@ for mode, src in (('浅色', LIGHT), ('深色', DARK)):
     check(on_secondary >= 4.5, '%s 次级容器上的内容' % mode,
           '%.2f:1  (>= 4.5)' % on_secondary)
 
+# 浅色开关使用 M3 的 primary / onPrimary 组合，深色开关使用 fixed 填充组合；
+# 两种模式下开启轨道都要能从卡片底中明确浮出，滑块也要与轨道保持足够的非文字元素对比度。
+light_switch_track = min(contrast(LIGHT[ov]['colorPrimary'],
+                                  LIGHT[ov]['colorSurfaceBright']) for ov in SCHEMES)
+light_switch_thumb = min(contrast(LIGHT[ov]['colorOnPrimary'],
+                                  LIGHT[ov]['colorPrimary']) for ov in SCHEMES)
+dark_switch_track = min(contrast(DARK[ov]['colorPrimaryFixedDim'],
+                                 DARK[ov]['colorSurfaceBright']) for ov in SCHEMES)
+light_switch_states = min(contrast(LIGHT[ov]['colorPrimary'],
+                                   LIGHT[ov]['colorSurfaceContainerHigh']) for ov in SCHEMES)
+dark_switch_states = min(contrast(DARK[ov]['colorPrimaryFixedDim'],
+                                  DARK[ov]['colorSurfaceContainerHigh']) for ov in SCHEMES)
+check(light_switch_track >= 3.0, '浅色开关轨道 / 卡片底',
+      '%.2f:1  (>= 3)' % light_switch_track)
+check(light_switch_thumb >= 3.0, '浅色开关滑块 / 轨道',
+      '%.2f:1  (>= 3)' % light_switch_thumb)
+check(dark_switch_track >= 3.0, '深色开关轨道 / 卡片底',
+      '%.2f:1  (>= 3)' % dark_switch_track)
+check(light_switch_states >= 3.0, '浅色开关开启 / 关闭轨道',
+      '%.2f:1  (>= 3)' % light_switch_states)
+check(dark_switch_states >= 3.0, '深色开关开启 / 关闭轨道',
+      '%.2f:1  (>= 3)' % dark_switch_states)
+
 print()
 print('五、悬浮元素按模式取色并浮在页面底之上')
 # 浅色模式的 secondaryContainer 对页面底达不到 3:1 是淡雅风格的设计取舍，由投影补足；
@@ -161,18 +201,31 @@ for mode, src, card, page, inset in (
 
 print()
 print('七、纯黑深色模式 overlay')
-light_text = io.open(LIGHT_XML, encoding='utf-8').read()
-pure = re.search(r'<style name="ThemeOverlay\.BiliTools\.DarkPureBlack".*?</style>',
-                 light_text, re.S)
+pure = named_overlay(LIGHT_XML, 'ThemeOverlay.BiliTools.DarkPureBlack')
 check(pure is not None, '纯黑 overlay 存在', '在 values/themes.xml 中')
-if pure:
-    body = pure.group(0)
+if pure is not None:
     need = ['colorSurface', 'colorSurfaceDim', 'colorSurfaceBright',
             'colorSurfaceContainerLowest', 'colorSurfaceContainerLow', 'colorSurfaceContainer',
             'colorSurfaceContainerHigh', 'colorSurfaceContainerHighest',
             'android:windowBackground']
-    lack = [n for n in need if 'name="%s"' % n not in body]
+    lack = [name for name in need if name not in pure]
     check(not lack, '纯黑 overlay 色阶齐备', '无缺失' if not lack else '缺 %s' % lack)
+    if not lack:
+        # 纯黑卡片使用 surfaceContainerHigh，关闭轨道必须升到 Highest 并由 outline 勾边；
+        # 否则二者同色时轨道会完全消失。outline 同时也是关闭态滑块色。
+        pure_card = pure['colorSurfaceContainerHigh']
+        pure_unchecked_track = pure['colorSurfaceContainerHighest']
+        pure_track_separation = contrast(pure_unchecked_track, pure_card)
+        pure_outline_card = min(contrast(DARK[ov]['colorOutline'], pure_card)
+                                for ov in SCHEMES)
+        pure_thumb_track = min(contrast(DARK[ov]['colorOutline'], pure_unchecked_track)
+                               for ov in SCHEMES)
+        check(pure_track_separation >= 1.08, '纯黑关闭轨道 / 卡片底',
+              '%.3f:1  (>= 1.08，另有描边)' % pure_track_separation)
+        check(pure_outline_card >= 3.0, '纯黑关闭描边 / 卡片底',
+              '%.2f:1  (>= 3)' % pure_outline_card)
+        check(pure_thumb_track >= 3.0, '纯黑关闭滑块 / 轨道',
+              '%.2f:1  (>= 3)' % pure_thumb_track)
 
 print()
 print('八、开屏页色号（平台限制：静态、零彩度、明度对齐页面底）')

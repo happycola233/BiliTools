@@ -16,17 +16,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 /**
- * 强调色的两种用法，二者不可互换：
+ * 强调色按承载方式分为两类，常规组件不要随意混用：
  *
- * - **填充面**（[fill]）：主按钮底、选中胶囊、开关开启轨道、滑条已选段、普通底栏选中气泡等着色区域。
+ * - **固定填充面**（[fill]）：主按钮底、选中胶囊、深色开关开启轨道、滑条已选段、普通底栏选中气泡等着色区域。
  *   取自 M3 的 fixed 色组，浅色与深色模式下是同一个颜色，其上的内容使用 [onFill]，
  *   因此设置页的色块所见即所得。
- * - **前景色**（`MaterialTheme.colorScheme.primary`）：正文里的链接、强调文字、强调图标。
- *   随模式变化，浅色模式下压得足够深以保证读得清。
+ * - **模式相关强调色**（`MaterialTheme.colorScheme.primary`）：默认用于正文里的链接、强调文字、强调图标，
+ *   随模式变化，浅色模式下压得足够深以保证读得清；也可作为需要更强轮廓对比的浅色控件填充。
  *
- * [fill] 与页面底色的对比度不到 3:1，能不能用它取决于色块之上是否有足以表达状态的内容：
- * 按钮、胶囊、开关、滑条都有文字、图标或位置明确的滑块承担状态表达；
- * 勾选框是视觉例外：浅色模式使用 `primary` 填充配白色对勾，与高亮边框统一并保证对比度；
+ * 浅色模式下 [fill] 与页面底色的对比度不到 3:1，能不能用它取决于色块之上是否有足以表达状态的内容：
+ * 按钮、胶囊、滑条都有文字、图标或位置明确的滑块承担状态表达；
+ * 勾选框与开关是视觉例外：浅色模式使用 `primary` 填充，分别搭配白色对勾与 `onPrimary` 滑块，
+ * 与高亮边框统一并保证对比度；
  * 深色模式仍使用 [fill] 与 [onFill]，保持原有观感；
  * 进度条没有滑块，进度全靠已完成段与轨道的反差来读，只能用前景色。
  *
@@ -90,22 +91,31 @@ internal object AppAccents {
     }
 
     /**
-     * 开关配色。启用时，开启态轨道使用 [fill]，关闭态轨道使用 `surfaceContainerHigh`，
-     * 且不画描边。浅色模式的开、关滑块都使用白色；深色模式开启态使用 [onFill]，
-     * 关闭态使用 `outline`。禁用态保留 M3 的降强调配色，但关闭态同样不画描边。
+     * 开关配色。浅色模式的开启态使用 `primary` 轨道与 `onPrimary` 滑块，强化与卡片底的层次；
+     * 深色模式继续使用 [fill] 轨道与 [onFill] 滑块。普通浅色与深色模式的关闭态轨道使用
+     * `surfaceContainerHigh` 且不画描边；纯黑模式改用 `surfaceContainerHighest` 轨道与 `outline`
+     * 描边，避免轨道和同为 `surfaceContainerHigh` 的卡片底重合。浅色模式关闭态滑块使用
+     * `onPrimary`，深色模式使用 `outline`。
+     * 禁用态保留 M3 的降强调配色，但关闭态同样不画描边。
      */
     @Composable
     fun switchColors(): SwitchColors {
         val colorScheme = MaterialTheme.colorScheme
         val darkSurfaces = colorScheme.usesDarkSurfaces()
-        val checkedThumbColor = if (darkSurfaces) onFill else Color.White
+        val pureBlackSurfaces = colorScheme.usesPureBlackSurfaces()
+        val checkedThumbColor = if (darkSurfaces) onFill else colorScheme.onPrimary
+        val checkedTrackColor = if (darkSurfaces) fill else colorScheme.primary
         val uncheckedThumbColor = if (darkSurfaces) colorScheme.outline else checkedThumbColor
         return SwitchDefaults.colors(
             checkedThumbColor = checkedThumbColor,
-            checkedTrackColor = fill,
+            checkedTrackColor = checkedTrackColor,
             uncheckedThumbColor = uncheckedThumbColor,
-            uncheckedTrackColor = colorScheme.surfaceContainerHigh,
-            uncheckedBorderColor = Color.Transparent,
+            uncheckedTrackColor = if (pureBlackSurfaces) {
+                colorScheme.surfaceContainerHighest
+            } else {
+                colorScheme.surfaceContainerHigh
+            },
+            uncheckedBorderColor = if (pureBlackSurfaces) colorScheme.outline else Color.Transparent,
             disabledUncheckedBorderColor = Color.Transparent,
         )
     }
