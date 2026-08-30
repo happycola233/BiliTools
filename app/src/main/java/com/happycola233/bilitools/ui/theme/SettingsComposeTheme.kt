@@ -4,10 +4,10 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.res.Configuration
+import android.content.res.Resources
 import android.os.Build
 import android.util.TypedValue
 import android.view.ContextThemeWrapper
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialExpressiveTheme
@@ -44,11 +44,14 @@ fun BiliToolsSettingsTheme(
     settings: AppSettings,
     content: @Composable () -> Unit,
 ) {
-    val darkTheme = when (settings.themeMode) {
-        AppThemeMode.System -> isSystemInDarkTheme()
-        AppThemeMode.Light -> false
-        AppThemeMode.Dark -> true
-    }
+    /*
+     * 设置页会直接按新偏好预览主题，但为了避免 Activity 重建，AppCompat 要到退出设置页时
+     * 才同步。因此从“浅色”改回“跟随系统”时，LocalConfiguration 仍是应用强制的浅色配置，
+     * isSystemInDarkTheme() 会误判。这里必须读取不受应用覆盖影响的设备配置。
+     */
+    val darkTheme = settings.themeMode.usesDarkTheme(
+        deviceUiMode = Resources.getSystem().configuration.uiMode,
+    )
     val colorScheme = rememberSettingsThemeColorScheme(settings, darkTheme)
     val view = LocalView.current
 
@@ -69,6 +72,17 @@ fun BiliToolsSettingsTheme(
         motionScheme = MotionScheme.expressive(),
         content = content,
     )
+}
+
+internal fun AppThemeMode.usesDarkTheme(deviceUiMode: Int): Boolean {
+    return when (this) {
+        AppThemeMode.System ->
+            (deviceUiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+                Configuration.UI_MODE_NIGHT_YES
+
+        AppThemeMode.Light -> false
+        AppThemeMode.Dark -> true
+    }
 }
 
 @Composable
