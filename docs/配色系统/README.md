@@ -58,7 +58,7 @@ python docs/配色系统/preview.py      # 出图目视确认
 
 | | 取哪个角色 | 浅色 | 深色 | 用在哪 |
 |---|---|---|---|---|
-| **固定填充面** | `primaryFixedDim` | 同一个值 | 同一个值 | 主按钮底、选中胶囊、滑条已选段、深色开关开启态轨道、深色复选框、深色悬浮按钮、普通底栏选中气泡 |
+| **固定填充面** | `primaryFixedDim` | 同一个值 | 同一个值 | 主按钮底、选中胶囊、滑条已选段、深色开关开启态轨道、深色复选框、深色悬浮按钮 |
 | **压在填充面上的内容** | `onPrimaryFixed` | 同一个值 | 同一个值 | 文字、图标、滑条已选段刻度，以及深色复选框对勾、深色开关开启态滑块、浅色滑条滑块 |
 | **浅色开关开启态** | `primary` + `onPrimary` | 深色轨道、白色滑块 | — | 与强调文字同色，并沿用 M3 开关的标准角色搭配 |
 | **浅色复选框选中态** | `primary` + 白色 | 深色方框、白色对勾 | — | 让方框与列表高亮边框同色 |
@@ -81,6 +81,7 @@ M3 的 **fixed 色组**正是为这种场景设计的：它的定义就是「不
 - **开关 —— 浅色用 `primary` 轨道与 `onPrimary` 滑块，深色用填充色**。浅色下强化开启态与卡片底、关闭态的层次，深色下继续保持明亮的固定填充观感；
 - **勾选框 —— 浅色用 `primary`，深色用填充色**。浅色方框与列表高亮边框统一，并为白色对勾提供足够反差；深色继续使用 `primaryFixedDim` + `onPrimaryFixed`，保持原有观感；
 - **进度条 —— 用 `primary`**。它没有滑块，进度全靠已完成段与轨道的反差来读，填充色配 `primaryFixed` 轨道只有 1.35:1，实测不可用，所以退回 `primary` + `surfaceVariant`；
+- **普通底栏 —— 沿用 Material 3 Expressive 的导航栏 token**。选中指示器用 `secondaryContainer`，选中图标用 `onSecondaryContainer`，选中文字用 `secondary`，未选中图标与文字用 `onSurfaceVariant`。文字位于指示器之外，不能与图标共用“填充面上的内容色”；
 - **液态玻璃底栏 —— 用 `primary`**。它的选中气泡是透明玻璃透镜而不是色块，被着色的其实是选中项的图标与文字，属于前景语义。这一处最容易看错。
 
 ### 悬浮元素为什么要按模式取色
@@ -198,8 +199,7 @@ M3 的 **fixed 色组**正是为这种场景设计的：它的定义就是「不
 | `res/values/themes.xml` | 基础主题 + 十三套 overlay（浅色）+ 纯黑 overlay，**生成器产出** |
 | `res/values-night/themes.xml` | 同上（深色），**生成器产出** |
 | `res/values/colors.xml` | 基线（樱粉）色号 + 开屏页色号，**生成器产出** |
-| `res/values/styles.xml` | View 层控件样式，底栏选中气泡与进度条在这 |
-| `res/color/bottom_nav_item_tint.xml` | 普通底栏图标/文字的选中色表 |
+| `res/values/styles.xml` | View 层控件样式；底栏仅覆盖尺寸与形状，颜色继承 Material 3 Expressive token |
 | `ui/theme/AppAccents.kt` | 填充面 / 前景色的语义封装，各控件的 `*Colors()` 都在这 |
 | `ui/theme/AppSurfaces.kt` | 三层表面语义 + 深浅/纯黑判定 |
 | `ui/ThemeColorOverlay.kt` | 枚举 → overlay 样式、枚举 → 中文名、overlay 取色、主题叠加 |
@@ -232,6 +232,9 @@ leaf → Mint      turquoise → Seafoam    cyan → Lagoon
 | 次要文字 `onSurfaceVariant` / 卡片底 | 4.5:1 | 8.19:1 | 6.72:1 |
 | 描边 `outline` / 卡片底 | 3:1 | 4.54:1 | 3.86:1 |
 | 填充面上的内容 `onFill` / `fill` | 4.5:1 | 8.59:1 | 8.59:1 |
+| 普通底栏选中图标 / 指示器 | 4.5:1 | 7.74:1 | 6.53:1 |
+| 普通底栏选中文字 / 底栏底 | 4.5:1 | 5.93:1 | 10.17:1 |
+| 普通底栏未选中内容 / 底栏底 | 4.5:1 | 7.41:1 | 9.55:1 |
 | 开关开启轨道 / 卡片底 | 3:1 | 7.06:1 | 6.38:1 |
 | 开关开启滑块 / 轨道 | 3:1 | 7.45:1 | 8.59:1 |
 | 开关开启 / 关闭轨道 | 3:1 | 5.47:1 | 7.95:1 |

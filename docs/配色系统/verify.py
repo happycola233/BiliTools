@@ -15,6 +15,7 @@ RES = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                    '..', '..', 'app', 'src', 'main', 'res')
 LIGHT_XML = os.path.join(RES, 'values', 'themes.xml')
 DARK_XML = os.path.join(RES, 'values-night', 'themes.xml')
+STYLES_XML = os.path.join(RES, 'values', 'styles.xml')
 
 SCHEMES = ['Sakura', 'Coral', 'Apricot', 'Sand', 'Matcha', 'Mint', 'Seafoam',
            'Lagoon', 'Sky', 'Iris', 'Periwinkle', 'Lilac', 'Orchid']
@@ -82,6 +83,17 @@ def named_overlay(path, style_name):
     }
 
 
+def style_body(path, style_name):
+    """回读一个 style 的原始内容，用于检查是否意外覆盖父样式的颜色契约。"""
+    text = io.open(path, encoding='utf-8').read()
+    match = re.search(
+        r'<style name="%s"[^>]*>(.*?)</style>' % re.escape(style_name),
+        text,
+        re.S,
+    )
+    return match.group(1) if match else None
+
+
 def lum(hexstr):
     def channel(v):
         v /= 255
@@ -143,12 +155,20 @@ for mode, src in (('浅色', LIGHT), ('深色', DARK)):
                            src[ov]['colorPrimaryFixedDim']) for ov in SCHEMES)
     on_secondary = min(contrast(src[ov]['colorOnSecondaryContainer'],
                                 src[ov]['colorSecondaryContainer']) for ov in SCHEMES)
+    nav_selected_label = min(contrast(src[ov]['colorSecondary'],
+                                      src[ov]['colorSurfaceContainer']) for ov in SCHEMES)
+    nav_inactive_content = min(contrast(src[ov]['colorOnSurfaceVariant'],
+                                        src[ov]['colorSurfaceContainer']) for ov in SCHEMES)
     check(body >= 4.5, '%s 正文 / 卡片底' % mode, '%.2f:1  (>= 4.5)' % body)
     check(sub >= 4.5, '%s 次要文字 / 卡片底' % mode, '%.2f:1  (>= 4.5)' % sub)
     check(outline >= 3.0, '%s 描边 / 卡片底' % mode, '%.2f:1  (>= 3)' % outline)
     check(on_fill >= 4.5, '%s 填充面上的内容' % mode, '%.2f:1  (>= 4.5)' % on_fill)
     check(on_secondary >= 4.5, '%s 次级容器上的内容' % mode,
           '%.2f:1  (>= 4.5)' % on_secondary)
+    check(nav_selected_label >= 4.5, '%s 底栏选中文字 / 底栏底' % mode,
+          '%.2f:1  (>= 4.5)' % nav_selected_label)
+    check(nav_inactive_content >= 4.5, '%s 底栏未选中内容 / 底栏底' % mode,
+          '%.2f:1  (>= 4.5)' % nav_inactive_content)
 
 # 浅色开关使用 M3 的 primary / onPrimary 组合，深色开关使用 fixed 填充组合；
 # 两种模式下开启轨道都要能从卡片底中明确浮出，滑块也要与轨道保持足够的非文字元素对比度。
@@ -174,7 +194,28 @@ check(dark_switch_states >= 3.0, '深色开关开启 / 关闭轨道',
       '%.2f:1  (>= 3)' % dark_switch_states)
 
 print()
-print('五、悬浮元素按模式取色并浮在页面底之上')
+print('五、普通底栏沿用 Material 3 Expressive 颜色契约')
+bottom_style = style_body(STYLES_XML, 'Widget.BiliTools.BottomNavigation')
+indicator_style = style_body(
+    STYLES_XML, 'Widget.BiliTools.BottomNavigation.ActiveIndicator'
+)
+check(bottom_style is not None, '普通底栏样式存在', '已找到自定义样式')
+if bottom_style is not None:
+    content_overrides = [
+        role for role in ('itemIconTint', 'itemTextColor')
+        if re.search(r'<item name="%s">' % role, bottom_style)
+    ]
+    check(not content_overrides, '底栏内容色继承父样式',
+          '未覆盖图标/文字 token' if not content_overrides
+          else '存在覆盖：%s' % ', '.join(content_overrides))
+check(indicator_style is not None, '底栏指示器样式存在', '已找到自定义样式')
+if indicator_style is not None:
+    indicator_override = re.search(r'<item name="android:color">', indicator_style)
+    check(not indicator_override, '底栏指示器色继承父样式',
+          '使用 colorSecondaryContainer token' if not indicator_override else '存在颜色覆盖')
+
+print()
+print('六、悬浮元素按模式取色并浮在页面底之上')
 # 浅色模式的 secondaryContainer 对页面底达不到 3:1 是淡雅风格的设计取舍，由投影补足；
 # 深色模式改用 fixed 填充面，容器本身必须达到 3:1。
 dark_float = min(contrast(DARK[ov]['colorPrimaryFixedDim'],
@@ -186,7 +227,7 @@ print('  [ -- ] %-34s %.2f:1  （淡雅风格的取舍，靠投影补足）'
       % ('浅色 secondaryContainer / 页面底', light_float))
 
 print()
-print('六、表面三层的相邻分离度')
+print('七、表面三层的相邻分离度')
 for mode, src, card, page, inset in (
         ('浅色', LIGHT, 'colorSurfaceBright', 'colorSurfaceContainer', 'colorSurfaceContainerLow'),
         ('深色', DARK, 'colorSurfaceBright', 'colorSurfaceContainer', 'colorSurfaceContainerHigh')):
@@ -200,7 +241,7 @@ for mode, src, card, page, inset in (
     check(top, '%s 卡片是最亮的一层' % mode, '十三套均成立' if top else '存在反序')
 
 print()
-print('七、纯黑深色模式 overlay')
+print('八、纯黑深色模式 overlay')
 pure = named_overlay(LIGHT_XML, 'ThemeOverlay.BiliTools.DarkPureBlack')
 check(pure is not None, '纯黑 overlay 存在', '在 values/themes.xml 中')
 if pure is not None:
@@ -228,7 +269,7 @@ if pure is not None:
               '%.2f:1  (>= 3)' % pure_thumb_track)
 
 print()
-print('八、开屏页色号（平台限制：静态、零彩度、明度对齐页面底）')
+print('九、开屏页色号（平台限制：静态、零彩度、明度对齐页面底）')
 colors_text = io.open(os.path.join(RES, 'values', 'colors.xml'), encoding='utf-8').read()
 for name in ('splash_background_light', 'splash_background_dark'):
     m = re.search(r'<color name="%s">#FF([0-9A-Fa-f]{6})</color>' % name, colors_text)

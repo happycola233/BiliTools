@@ -5,7 +5,7 @@
 产出两张 PNG 到 .tmp/：
 
   palette.png  十三套配色的填充色 / 前景色 / 表面三层色板，浅深并排
-  mock.png     典型界面 mock：浅色、深色与纯黑下的卡片、按钮、开关等组件
+  mock.png     典型界面 mock：浅色、深色与纯黑下的卡片、按钮、开关、底栏等组件
 
 用法：python docs/配色系统/preview.py
 """
@@ -93,6 +93,41 @@ def draw_switch(d, x, y, track, thumb, checked, border=None):
     )
 
 
+def draw_centered_text(d, center_x, y, text, font, fill):
+    """以给定横坐标为中心绘制单行文本。"""
+    bounds = d.textbbox((0, 0), text, font=font)
+    width = bounds[2] - bounds[0]
+    d.text((center_x - width / 2, y), text, font=font, fill=fill)
+
+
+def draw_bottom_navigation(d, x, y, width, theme):
+    """按 Material 3 Expressive 的四个导航栏颜色角色绘制普通底栏。"""
+    height = 76
+    d.rectangle([x, y, x + width, y + height], fill=theme['colorSurfaceContainer'])
+    centers = [x + width * fraction for fraction in (1 / 6, 1 / 2, 5 / 6)]
+    indicator = theme['colorSecondaryContainer']
+    selected_icon = theme['colorOnSecondaryContainer']
+    selected_label = theme['colorSecondary']
+    inactive = theme['colorOnSurfaceVariant']
+
+    d.rounded_rectangle(
+        [centers[0] - 38, y + 7, centers[0] + 38, y + 39],
+        radius=16,
+        fill=indicator,
+    )
+    for index, center_x in enumerate(centers):
+        icon_color = selected_icon if index == 0 else inactive
+        d.ellipse([center_x - 7, y + 16, center_x + 7, y + 30], fill=icon_color)
+        draw_centered_text(
+            d,
+            center_x,
+            y + 46,
+            ('解析', '下载', '我')[index],
+            FS,
+            selected_label if index == 0 else inactive,
+        )
+
+
 def draw_palette():
     """每套配色一行：填充色、其上内容色、前景色，以及表面三层。"""
     cols = ['colorPrimaryFixedDim', 'colorOnPrimaryFixed', 'colorPrimary',
@@ -131,7 +166,7 @@ def draw_mock():
         ('深色', DARK, True, False),
         ('纯黑', PURE_BLACK, True, True),
     )
-    panel_w, panel_h = 520, 268
+    panel_w, panel_h = 520, 356
     image_width = 56 + len(modes) * panel_w + (len(modes) - 1) * 34
     img = Image.new('RGB', (image_width, 80 + len(shown) * (panel_h + 24)), '#FFFFFF')
     d = ImageDraw.Draw(img)
@@ -200,6 +235,8 @@ def draw_mock():
             for k in (-6, 0, 6):
                 d.line([(bx + 11, by + bs // 2 + k), (bx + bs - 11, by + bs // 2 + k)],
                        fill=on_fab_fill, width=2)
+            # 普通底栏：选中指示器、图标与文字是三个独立角色，不能复用同一内容色
+            draw_bottom_navigation(d, ox, oy + panel_h - 76, panel_w, t)
 
     path = os.path.join(OUT_DIR, 'mock.png')
     img.save(path)

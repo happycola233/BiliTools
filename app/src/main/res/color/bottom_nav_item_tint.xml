@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- 选中项压在浅填充色的气泡上，必须取气泡的内容色；未选中项落在底栏背景上 -->
-<selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:state_checked="true" android:color="?attr/colorOnPrimaryFixed" />
-    <item android:color="?attr/colorOnSurfaceVariant" />
-</selector>

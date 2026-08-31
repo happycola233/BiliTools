@@ -18,7 +18,7 @@ import androidx.compose.ui.graphics.Color
 /**
  * 强调色按承载方式分为两类，常规组件不要随意混用：
  *
- * - **固定填充面**（[fill]）：主按钮底、选中胶囊、深色开关开启轨道、滑条已选段、普通底栏选中气泡等着色区域。
+ * - **固定填充面**（[fill]）：主按钮底、选中胶囊、深色开关开启轨道、滑条已选段等着色区域。
  *   取自 M3 的 fixed 色组，浅色与深色模式下是同一个颜色，其上的内容使用 [onFill]，
  *   因此设置页的色块所见即所得。
  * - **模式相关强调色**（`MaterialTheme.colorScheme.primary`）：默认用于正文里的链接、强调文字、强调图标，
@@ -33,6 +33,8 @@ import androidx.compose.ui.graphics.Color
  *
  * 液态玻璃底栏是个容易看错的例子：它的选中气泡是透明玻璃透镜而非色块，被着色的其实是
  * 选中项的图标与文字，所以那里也要用前景色，不是 [fill]。
+ * 普通底栏不经过本对象：View 样式直接沿用 Material 3 Expressive 的导航栏 token，
+ * 让选中指示器、图标与文字各自使用对应的颜色角色。
  *
  * 悬浮按钮（FAB）浅色模式使用 [floatingActionContainer]，与次级操作保持同一强调层级；
  * 深色模式则回到 [fill]，避免 `secondaryContainer` 或 `primaryContainer` 这类暗色容器

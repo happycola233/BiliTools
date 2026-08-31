@@ -75,13 +75,17 @@ def fixed_roles(h):
 
 
 def scheme(h, dark):
+    # Material 3 Expressive 普通底栏按组件 token 分层取色：secondaryContainer 指示器、
+    # onSecondaryContainer 选中图标、secondary 选中文字、onSurfaceVariant 未选中内容。
+    # 这些角色必须各自保持可读，不能再用同一份 fixed 色组 selector 合并。
     t3 = h + 60
     if dark:
         roles = [
             ('colorPrimary', c(h, 28, 84)), ('colorOnPrimary', c(h, 24, 22)),
             ('colorPrimaryContainer', c(h, 18, 32)), ('colorOnPrimaryContainer', c(h, 14, 92)),
             ('colorSecondary', c(h, 12, 82)), ('colorOnSecondary', c(h, 10, 24)),
-            # secondaryContainer 是普通次级按钮（复制等）的底色，要比卡片底亮一档且带得出色相，
+            # secondaryContainer 是普通次级按钮（复制等）与底栏选中指示器的底色，
+            # 要比卡片底亮一档且带得出色相，
             # 才能既像按钮又不抢主按钮；深色悬浮按钮另用 fixed 色组，避免暗色容器糊进页面底
             ('colorSecondaryContainer', c(h, 17, 34)), ('colorOnSecondaryContainer', c(h, 12, 92)),
             ('colorTertiary', c(t3, 22, 82)), ('colorOnTertiary', c(t3, 18, 24)),
@@ -104,7 +108,7 @@ def scheme(h, dark):
             ('colorPrimary', c(h, 38, 36)), ('colorOnPrimary', WHITE),
             ('colorPrimaryContainer', c(h, 16, 90)), ('colorOnPrimaryContainer', c(h, 24, 28)),
             ('colorSecondary', c(h, 14, 38)), ('colorOnSecondary', WHITE),
-            # secondaryContainer 是次级按钮（复制、浮动按钮）的底色，
+            # secondaryContainer 是次级按钮（复制、浮动按钮）与底栏选中指示器的底色，
             # 彩度介于主填充与中性容器之间，读得出是同一色族的低一档
             ('colorSecondaryContainer', c(h, 22, 90)), ('colorOnSecondaryContainer', c(h, 18, 28)),
             ('colorTertiary', c(t3, 22, 38)), ('colorOnTertiary', WHITE),
