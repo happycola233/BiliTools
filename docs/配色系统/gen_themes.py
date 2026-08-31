@@ -35,6 +35,11 @@ def c(h, chroma, tone):
 
 
 WHITE = '#FFFFFFFF'
+# 浅色表面的着色量，单位是 sRGB 通道差。8 是当前档：大面积页面底长时间看不累，
+# 色调只在与纯白卡片并排时才读得出来。13 色调明确，18 偏鲜，23 已是明快糖果色。
+# 改这一个数就能整体调浓淡，不影响任何对比度门槛。
+# 注意页面停在 T95 时暖色相最多只能到 Δ15，再往上调也拿不到。
+TINT = 8
 # 明度上限压到 87：绿─青色相原本会顶到 T90-91，离卡片底太近，按钮浮不起来。
 # 代价是这几个色相在色板里比暖色略深一点点，换来的是全局层级立得住。
 C_CAP, T_CAP, TARGET_CHANNEL = 30.0, 87.0, 242
@@ -52,6 +57,25 @@ def fill_tone_chroma(h):
         if max(chans(Hct.fromHct(h, chroma, tone).toInt())) >= TARGET_CHANNEL:
             return tone, chroma
     return T_CAP, min(C_CAP, 0.92 * maxc(h, T_CAP))
+
+
+def tint(h, tone, spread):
+    """浅色表面色：给定明度，取「最大通道 − 最小通道」刚够 spread 的那一档彩度。
+
+    不能直接给彩度值：同一个彩度在十三个色相上的实际浓度差着三倍——樱粉在 T94 被色域
+    裁到 C8.1 封顶，抹茶却能到 C68.9，照数字给必然一半发灰、一半发腻。通道差才是
+    「这块底看起来上了多少色」的直观量，对齐它，十三套摆在一起才是同一种淡。
+    与填充色按最大通道对齐（见 fill_tone_chroma）是同一套思路。
+    """
+    lo, hi = 0.0, 0.92 * maxc(h, tone)
+    for _ in range(24):
+        mid = (lo + hi) / 2
+        r, g, b = chans(Hct.fromHct(h, mid, tone).toInt())
+        if max(r, g, b) - min(r, g, b) < spread:
+            lo = mid
+        else:
+            hi = mid
+    return c(h, hi, tone)
 
 
 def fixed_roles(h):
@@ -114,19 +138,22 @@ def scheme(h, dark):
             ('colorTertiary', c(t3, 22, 38)), ('colorOnTertiary', WHITE),
             ('colorTertiaryContainer', c(t3, 16, 90)), ('colorOnTertiaryContainer', c(t3, 20, 28)),
         ] + fixed_roles(h) + [
-            ('android:colorBackground', c(h, 5, 98)), ('colorOnBackground', c(h, 5, 13)),
-            ('colorSurface', c(h, 5, 98)), ('colorOnSurface', c(h, 5, 13)),
+            # 卡片放弃色相改用纯白：带色相的近白色到 T98 就撞上色域天花板，而纯白还能再亮
+            # 一截。这一截亮度全部让给页面底，于是页面既能停在明亮的 T94，又不必为了
+            # 拉开层次而压暗自己
+            ('android:colorBackground', WHITE), ('colorOnBackground', c(h, 5, 13)),
+            ('colorSurface', WHITE), ('colorOnSurface', c(h, 5, 13)),
             ('colorSurfaceVariant', c(h, 8, 92)), ('colorOnSurfaceVariant', c(h, 7, 32)),
             ('colorOutline', c(h, 6, 48)), ('colorOutlineVariant', c(h, 7, 80)),
-            ('colorSurfaceBright', c(h, 5, 98)), ('colorSurfaceDim', c(h, 7, 85)),
-            # 内嵌层沉到页面底之下：卡片底为了保住色相只能停在 T98，可用亮度实际封顶在 247，
-            # 页面底一抬亮，卡片就浮不起来了。把腾不出来的余量从内嵌层这边借，
-            # 内嵌与页面隔着卡片、从不相邻，同不同深浅都看不出来
-            ('colorSurfaceContainerLowest', WHITE), ('colorSurfaceContainerLow', c(h, 6, 93)),
-            # 页面底：明度抬高、彩度压低，色调只作为一层极淡的底噪，
-            # 与近白的卡片底仍差得出层次
-            ('colorSurfaceContainer', c(h, 4, 94)), ('colorSurfaceContainerHigh', c(h, 7, 88)),
-            ('colorSurfaceContainerHighest', c(h, 7, 85)),
+            ('colorSurfaceBright', WHITE), ('colorSurfaceDim', tint(h, 88, TINT + 4)),
+            # 页面、内嵌、内嵌激活依次各沉一档，层次全靠明度撑；着色量则按通道差对齐，
+            # 与层次互不干扰——对比度公式只看相对亮度，这几层上多少色都不影响分离度，
+            # 所以着色量可以纯按观感挑
+            ('colorSurfaceContainerLowest', WHITE),
+            ('colorSurfaceContainerLow', tint(h, 94, TINT + 1)),
+            ('colorSurfaceContainer', tint(h, 95, TINT)),
+            ('colorSurfaceContainerHigh', tint(h, 89, TINT + 4)),
+            ('colorSurfaceContainerHighest', tint(h, 88, TINT + 4)),
             # 反色组：Snackbar、富提示这类要盖住页面的浮层会用到，浅色下反过来取深底浅字
             ('colorSurfaceInverse', c(h, 5, 20)), ('colorOnSurfaceInverse', c(h, 5, 95)),
             ('colorPrimaryInverse', c(h, 38, 84)),
@@ -207,9 +234,9 @@ def build_colors_xml():
             out.append(f'    <color name="md_theme_{mode}_{name}">{named[name]}</color>')
         out.append('')
     # 开屏页由系统在应用进程启动前绘制，拿不到用户选的配色方案，只能取一个静态色号。
-    # 因此这里刻意用零彩度的中性灰：明度对齐页面底色（浅色 T94 / 深色 T12），
+    # 因此这里刻意用零彩度的中性灰：明度对齐页面底色（浅色 T95 / 深色 T12），
     # 十三套配色下都读作干净的加载底，不会像带色相的基线色那样和当前配色打架。
-    out.append('    <color name="splash_background_light">#FFEEEEEE</color>')
+    out.append('    <color name="splash_background_light">#FFF1F1F1</color>')
     out.append('    <color name="splash_background_dark">#FF1F1F1F</color>')
     out.append('</resources>')
     return '\n'.join(out) + '\n'

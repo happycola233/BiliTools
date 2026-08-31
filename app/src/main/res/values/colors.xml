@@ -30,21 +30,21 @@
     <color name="md_theme_light_onError">#FFFFFFFF</color>
     <color name="md_theme_light_errorContainer">#FFFFDAD6</color>
     <color name="md_theme_light_onErrorContainer">#FF93000A</color>
-    <color name="md_theme_light_background">#FFFFF7F7</color>
+    <color name="md_theme_light_background">#FFFFFFFF</color>
     <color name="md_theme_light_onBackground">#FF272021</color>
-    <color name="md_theme_light_surface">#FFFFF7F7</color>
+    <color name="md_theme_light_surface">#FFFFFFFF</color>
     <color name="md_theme_light_onSurface">#FF272021</color>
     <color name="md_theme_light_surfaceVariant">#FFF9E3E6</color>
     <color name="md_theme_light_onSurfaceVariant">#FF55484A</color>
     <color name="md_theme_light_outline">#FF7C6F71</color>
     <color name="md_theme_light_outlineVariant">#FFD4C2C4</color>
-    <color name="md_theme_light_surfaceBright">#FFFFF7F7</color>
-    <color name="md_theme_light_surfaceDim">#FFE2D0D2</color>
+    <color name="md_theme_light_surfaceBright">#FFFFFFFF</color>
+    <color name="md_theme_light_surfaceDim">#FFE6DADB</color>
     <color name="md_theme_light_surfaceContainerLowest">#FFFFFFFF</color>
-    <color name="md_theme_light_surfaceContainerLow">#FFF8E7E9</color>
-    <color name="md_theme_light_surfaceContainer">#FFF8EBEC</color>
-    <color name="md_theme_light_surfaceContainerHigh">#FFEBD8DA</color>
-    <color name="md_theme_light_surfaceContainerHighest">#FFE2D0D2</color>
+    <color name="md_theme_light_surfaceContainerLow">#FFF5ECEC</color>
+    <color name="md_theme_light_surfaceContainer">#FFF7EFEF</color>
+    <color name="md_theme_light_surfaceContainerHigh">#FFE9DDDE</color>
+    <color name="md_theme_light_surfaceContainerHighest">#FFE6DADB</color>
     <color name="md_theme_light_inverseSurface">#FF372E30</color>
     <color name="md_theme_light_inverseOnSurface">#FFFCEEEF</color>
     <color name="md_theme_light_inversePrimary">#FFFCC3CE</color>
@@ -102,6 +102,6 @@
     <color name="md_theme_dark_shadow">#FF000000</color>
     <color name="md_theme_dark_scrim">#FF000000</color>
 
-    <color name="splash_background_light">#FFEEEEEE</color>
+    <color name="splash_background_light">#FFF1F1F1</color>
     <color name="splash_background_dark">#FF1F1F1F</color>
 </resources>

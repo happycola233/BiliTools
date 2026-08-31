@@ -18,8 +18,8 @@ import androidx.compose.ui.graphics.luminance
  * 保证三种模式下层与层的间距观感一致。
  *
  * 界面代码只应该用这三个语义名，不要直接取 `surfaceContainer*`——浅色模式的档位分配是
- * 被卡片底的色域天花板逼出来的（内嵌层刻意沉到了页面底之下），照直觉挑档会踩坑。
- * 来历见 `docs/配色系统/README.md` 第四节。
+ * 被色域天花板逼出来的（卡片底放弃色相改用纯白换取亮度，内嵌层则刻意沉到了页面底之下），
+ * 照直觉挑档会踩坑。来历见 `docs/配色系统/README.md` 第四节。
  */
 internal object AppSurfaces {
     val pageContainerColor: Color
