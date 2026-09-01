@@ -352,7 +352,7 @@ fun BiliToolsSettingsContent(
                     )
                 }
             },
-            modifier = modifier,
+            modifier = modifier.background(AppSurfaces.pageContainerColor),
         )
     }
 }
