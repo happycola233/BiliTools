@@ -9,9 +9,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.MediumFlexibleTopAppBar
-import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
@@ -21,16 +18,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.saveable.SaveableStateHolder
-import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Constraints
 import androidx.appcompat.app.AppCompatActivity
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.appContainer
@@ -55,15 +49,14 @@ import com.happycola233.bilitools.ui.update.UpdateDialogContent
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import kotlin.math.roundToInt
 
 private const val TAB_PARSE = 0
 private const val TAB_DOWNLOADS = 1
 private const val TAB_ME = 2
-private val MainTopBarCollapsedHeight = 56.dp
-private val MainTopBarExpandedHeight = 96.dp
 
 /** 主界面的单一 Compose 根：内容采样层、底栏与所有模态浮层按顺序叠放。 */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     activity: AppCompatActivity,
@@ -77,7 +70,6 @@ fun MainScreen(
     onOpenParseUrl: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val saveableStateHolder = rememberSaveableStateHolder()
     val topAppBarState = rememberTopAppBarState()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(topAppBarState)
     val contentBackdrop = rememberLayerBackdrop()
@@ -102,7 +94,6 @@ fun MainScreen(
     ) {
         MainContentLayer(
             selectedTabIndex = selectedTabIndex,
-            saveableStateHolder = saveableStateHolder,
             scrollBehavior = scrollBehavior,
             contentBackdrop = contentBackdrop,
             taskActionsOverlayState = taskActionsOverlayState,
@@ -133,13 +124,14 @@ fun MainScreen(
 
 /**
  * 只有这里读取当前 Tab；底栏点击不会让主壳、更新检查与其他模态层跟着重组。
- * 页面容器固定全屏，顶栏折叠仅改变滚动内容的 top padding，底部锚定控件不参与位移。
+ *
+ * 页面内边距固定按展开态预留，顶栏折叠改由 [collapsingTopBarOffset] 在布局阶段整体上移页面，
+ * 因此滚动过程中三个页面都不会重组，底部锚定控件的位置也不受影响。
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MainContentLayer(
     selectedTabIndex: () -> Int,
-    saveableStateHolder: SaveableStateHolder,
     scrollBehavior: TopAppBarScrollBehavior,
     contentBackdrop: LayerBackdrop,
     taskActionsOverlayState: DownloadsTaskActionsOverlayState,
@@ -149,14 +141,13 @@ private fun MainContentLayer(
     onOpenParseUrl: (String) -> Unit,
 ) {
     val selectedIndex = selectedTabIndex()
-    val density = LocalDensity.current
     val safeTopPadding = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
-    val currentTopBarHeight = with(density) {
-        MainTopBarExpandedHeight + scrollBehavior.state.heightOffset.toDp()
-    }.coerceAtLeast(MainTopBarCollapsedHeight)
-    val contentTopPadding = safeTopPadding + currentTopBarHeight
+    val contentTopPadding = safeTopPadding + MainTopBarExpandedHeight
+    val focusManager = LocalFocusManager.current
 
     LaunchedEffect(selectedIndex) {
+        // 页面常驻组合，切走时输入焦点不会自动释放，这里主动收起键盘
+        focusManager.clearFocus()
         if (selectedIndex != TAB_DOWNLOADS) {
             taskActionsOverlayState.dismissImmediately()
         }
@@ -168,21 +159,27 @@ private fun MainContentLayer(
             .layerBackdrop(contentBackdrop)
             .nestedScroll(scrollBehavior.nestedScrollConnection),
     ) {
-        saveableStateHolder.SaveableStateProvider(selectedIndex) {
-            when (selectedIndex) {
-                TAB_PARSE -> ParseRoute(
+        Box(
+            modifier = Modifier.collapsingTopBarOffset { scrollBehavior.state.heightOffset },
+        ) {
+            MainTabHost(active = selectedIndex == TAB_PARSE) {
+                ParseRoute(
                     viewModel = parseViewModel,
                     contentTopPadding = contentTopPadding,
                 )
+            }
 
-                TAB_DOWNLOADS -> DownloadsRoute(
+            MainTabHost(active = selectedIndex == TAB_DOWNLOADS) {
+                DownloadsRoute(
                     viewModel = downloadsViewModel,
                     contentTopPadding = contentTopPadding,
                     taskActionsOverlayState = taskActionsOverlayState,
                     modifier = Modifier.fillMaxSize(),
                 )
+            }
 
-                TAB_ME -> MeRoute(
+            MainTabHost(active = selectedIndex == TAB_ME) {
+                MeRoute(
                     viewModel = loginViewModel,
                     contentTopPadding = contentTopPadding,
                     onOpenParseUrl = onOpenParseUrl,
@@ -191,36 +188,84 @@ private fun MainContentLayer(
             }
         }
 
-        MediumFlexibleTopAppBar(
-            title = {
-                Text(
-                    text = when (selectedIndex) {
-                        TAB_DOWNLOADS -> stringResource(R.string.nav_downloads)
-                        TAB_ME -> stringResource(R.string.nav_me)
-                        else -> stringResource(R.string.app_name)
-                    },
-                    // 旧折叠栏在 96dp 展开高度下使用 28dp 底边距，而 M3 Medium 固定为
-                    // 24dp。仅在展开态上移差值，折叠态仍保持 actionBarSize 内垂直居中。
-                    modifier = Modifier.graphicsLayer {
-                        translationY = -4.dp.toPx() *
-                            (1f - scrollBehavior.state.collapsedFraction.coerceIn(0f, 1f))
-                    },
-                    fontWeight = FontWeight.Bold,
-                    // 解析页标题延续旧壳的品牌字形，其他页面使用系统标题字体。
-                    fontFamily = BiliToolsFonts.googleSansFlexRond100
-                        .takeIf { selectedIndex == TAB_PARSE },
-                )
+        MainCollapsingTopBar(
+            title = when (selectedIndex) {
+                TAB_DOWNLOADS -> stringResource(R.string.nav_downloads)
+                TAB_ME -> stringResource(R.string.nav_me)
+                else -> stringResource(R.string.app_name)
             },
-            collapsedHeight = MainTopBarCollapsedHeight,
-            expandedHeight = MainTopBarExpandedHeight,
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = AppSurfaces.pageContainerColor,
-                scrolledContainerColor = AppSurfaces.pageContainerColor,
-            ),
-            scrollBehavior = scrollBehavior,
+            state = scrollBehavior.state,
+            // 解析页标题延续旧壳的品牌字形，其他页面使用系统标题字体
+            titleFontFamily = BiliToolsFonts.googleSansFlexRond100
+                .takeIf { selectedIndex == TAB_PARSE },
         )
     }
 }
+
+/**
+ * 页面宿主：首次激活后常驻组合，未激活的页面只测量、不放置。
+ *
+ * 常驻组合让切页不再重建整个页面（旧的 ViewPager2 同样保留已创建的页面）；不放置则意味着
+ * 它既不绘制、不参与玻璃采样，也收不到触摸，与激活页互不干扰。
+ */
+@Composable
+private fun MainTabHost(
+    active: Boolean,
+    content: @Composable () -> Unit,
+) {
+    // active 变化本身就会触发重组，用普通标记即可，不必额外引入可观察状态
+    val visit = remember { MainTabVisit() }
+    if (active) {
+        visit.visited = true
+    }
+    if (!visit.visited) return
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .tabPlacement(active),
+    ) {
+        content()
+    }
+}
+
+private class MainTabVisit {
+    var visited = false
+}
+
+private fun Modifier.tabPlacement(active: Boolean): Modifier = layout { measurable, constraints ->
+    val placeable = measurable.measure(constraints)
+    layout(placeable.width, placeable.height) {
+        if (active) {
+            placeable.place(0, 0)
+        }
+    }
+}
+
+/**
+ * 顶栏折叠时页面整体等量上移，并等量增高以保持底边贴住屏幕底部，
+ * 效果与旧 CoordinatorLayout 的滚动联动一致。
+ *
+ * [heightOffset] 在布局阶段读取（取值为 0 到负的折叠区间），滚动时不会触发页面重组。
+ */
+private fun Modifier.collapsingTopBarOffset(heightOffset: () -> Float): Modifier =
+    layout { measurable, constraints ->
+        val offset = heightOffset().roundToInt().coerceAtMost(0)
+        val extraHeight = -offset
+        val placeable = measurable.measure(
+            constraints.copy(
+                minHeight = constraints.minHeight + extraHeight,
+                maxHeight = if (constraints.maxHeight == Constraints.Infinity) {
+                    Constraints.Infinity
+                } else {
+                    constraints.maxHeight + extraHeight
+                },
+            ),
+        )
+        layout(placeable.width, (placeable.height - extraHeight).coerceAtLeast(0)) {
+            placeable.place(0, offset)
+        }
+    }
 
 @Composable
 private fun BoxScope.MainBottomBarOverlay(

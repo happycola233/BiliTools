@@ -37,9 +37,8 @@ import java.util.Locale
 /**
  * 下载页的 Compose 路由。
  *
- * [viewModel] 由 Activity 创建并传入，页面切换只销毁当前页组合，不会重建下载数据状态。
- * 列表展开、批量选择等纯 UI 状态由 [rememberSaveable] 保存，配合主壳的
- * `SaveableStateHolder` 可在只组合当前 Tab 时继续保留。
+ * [viewModel] 由 Activity 创建并传入；本页首次进入后常驻主壳组合，切走只是不再绘制，
+ * 列表展开、批量选择等纯 UI 状态另由 [rememberSaveable] 保存以跨进程重建恢复。
  *
  * 任务操作菜单需要位于主壳最上层才能覆盖底栏并采样完整背景，因此本路由只向
  * [taskActionsOverlayState] 提交请求；主壳负责在内容和底栏之后组合
