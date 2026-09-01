@@ -121,9 +121,9 @@ M3 的 **fixed 色组**正是为这种场景设计的：它的定义就是「不
 
 ---
 
-## 四、表面色阶：三层深度
+## 四、表面色阶：四层深度
 
-语义层封装在 `AppSurfaces.kt`，界面代码只应该用这三个名字，不要直接取 `surfaceContainer*`。
+语义层封装在 `AppSurfaces.kt`，界面代码应该使用这些语义名，不要直接取 `surfaceContainer*`。
 
 | 语义层 | 浅色 | 深色 | 纯黑 |
 |---|---|---|---|
@@ -131,10 +131,13 @@ M3 的 **fixed 色组**正是为这种场景设计的：它的定义就是「不
 | `cardContainerColor` 卡片底 | `surfaceBright` #FFFFFF | `surfaceBright` T24 | `surfaceContainerHigh` |
 | `insetContainerColor` 卡片内嵌 | `surfaceContainerLow` T94 Δ9 | `surfaceContainerHigh` T17 | `surfaceContainer` |
 | `insetActiveContainerColor` 内嵌激活 | `surfaceContainerHigh` T89 Δ12 | `surfaceContainerHighest` T21 | `surfaceContainerHigh` |
+| `modalContainerColor` 模态容器 | `surfaceContainerHigh` T89 Δ12 | `surfaceContainerHighest` T21 | `surfaceContainerHighest` #1F1F1F |
 
 浅色的 Δ 是**通道差**（最大 sRGB 通道 − 最小），不是彩度，理由见下面第二小节。
 
 深色模式的色阶方向与浅色相反（层级越高越亮），所以每层都得按模式分别取档，不能共用一套档位。判定深浅用的是 `ColorScheme.usesDarkSurfaces()`——比较 `surfaceContainerHighest` 与 `surface` 的相对亮度，**从最终色值反推**。不要改用 `isSystemInDarkTheme()`：应用内的主题模式设置可以覆盖系统深浅，那个 API 会判错。
+
+模态容器还由 `AppDialogs.kt` 统一补上窗口遮罩和细边缘：浅色保持 Material 3 默认的 32% 黑色遮罩且不画边；普通深色使用 42% 遮罩与 30% `outlineVariant` 边缘；纯黑使用 48% 遮罩与 50% `outlineVariant` 边缘。黑色遮罩无法让已经是 #000000 的区域继续变暗，因此纯黑模式不能只靠遮罩或投影，必须同时把容器升到 `surfaceContainerHighest` 并勾出克制的边缘。
 
 ### 浅色的核心取舍：卡片放弃色相，换页面的亮度
 
@@ -235,7 +238,8 @@ M3 的 **fixed 色组**正是为这种场景设计的：它的定义就是「不
 | `res/values/colors.xml` | 基线（樱粉）色号 + 开屏页色号，**生成器产出** |
 | `res/values/styles.xml` | 仍保留的 View 层控件样式 |
 | `ui/theme/AppAccents.kt` | 填充面 / 前景色的语义封装，各控件的 `*Colors()` 都在这 |
-| `ui/theme/AppSurfaces.kt` | 三层表面语义 + 深浅/纯黑判定 |
+| `ui/theme/AppSurfaces.kt` | 四层表面语义 + 深浅/纯黑判定 |
+| `ui/AppDialogs.kt` | 标准/日期/自定义对话框入口 + 深色边缘与动态遮罩 |
 | `ui/ThemeColorOverlay.kt` | 枚举 → overlay 样式、枚举 → 中文名、overlay 取色，以及启动窗口 / View 层的 Activity 主题叠加 |
 | `ui/theme/BiliToolsTheme.kt` | 全应用唯一 Compose 主题入口，由 `AppSettings` 驱动并完整解析 XML 颜色角色 |
 | `data/SettingsRepository.kt` | `AppThemeColor` 枚举与旧值迁移表 |
@@ -276,8 +280,9 @@ leaf → Mint      turquoise → Seafoam    cyan → Lagoon
 | 悬浮按钮 / 页面底 | 深色 3:1 | 1.13:1（靠投影） | 9.07:1 |
 | 悬浮按钮内容 / 按钮 | 4.5:1 | 7.74:1 | 8.59:1 |
 | 卡片对页面 / 对内嵌 | 1.09 | 1.128 / 1.159 | 1.408 / 1.241 |
+| 模态底 / 遮罩后卡片 | 深色 1.15 | Material 3 默认 | 1.256 |
 | 填充色最大通道 | 220 ~ 252 | 225 ~ 250 | 同浅色 |
 
-纯黑模式另有一组关闭态约束：`surfaceContainerHighest` 轨道与 `surfaceContainerHigh` 卡片底至少保持 1.08:1 的细微层次（当前 1.088:1），组件边界由 `outline` 描边承担并至少达到 3:1（当前最差 6.01:1），同为 `outline` 的滑块与轨道当前最差 5.53:1。
+纯黑模式另有一组关闭态约束：`surfaceContainerHighest` 轨道与 `surfaceContainerHigh` 卡片底至少保持 1.08:1 的细微层次（当前 1.088:1），组件边界由 `outline` 描边承担并至少达到 3:1（当前最差 6.01:1），同为 `outline` 的滑块与轨道当前最差 5.53:1。纯黑模态底与 48% 遮罩后卡片的分离度门槛为 1.17:1，当前 1.187:1，并由半透明 `outlineVariant` 边缘进一步界定轮廓。
 
 浅色模式下淡色按钮容器对页面底达不到 3:1 是**设计取舍**，不是缺陷：淡雅浅色风格要求色块本身很淡，状态表达交给压在上面的深色内容与投影。详见第二节。

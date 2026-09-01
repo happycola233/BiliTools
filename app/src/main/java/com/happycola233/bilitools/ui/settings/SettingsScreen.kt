@@ -60,7 +60,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.Image
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -161,6 +160,7 @@ import com.happycola233.bilitools.data.HapticFeedbackLevel
 import com.happycola233.bilitools.data.IssueReportLogState
 import com.happycola233.bilitools.data.SettingsRepository
 import com.happycola233.bilitools.data.TopLevelFolderMode
+import com.happycola233.bilitools.ui.AppAlertDialog
 import com.happycola233.bilitools.ui.BiliTvLaunchMotion
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import com.happycola233.bilitools.ui.displayNameRes
@@ -950,7 +950,7 @@ private fun NamingSettingsScreen(
         ?: NamingShape.Video
 
     if (showRestoreDefaultsConfirmDialog) {
-        AlertDialog(
+        AppAlertDialog(
             onDismissRequest = { showRestoreDefaultsConfirmDialog = false },
             title = {
                 Text(stringResource(R.string.settings_naming_restore_defaults))

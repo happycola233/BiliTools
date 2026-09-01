@@ -45,7 +45,6 @@ import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -96,6 +95,7 @@ import coil.load
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.AppSettings
 import com.happycola233.bilitools.data.model.UserInfo
+import com.happycola233.bilitools.ui.AppAlertDialog
 import com.happycola233.bilitools.ui.TopErrorMessageHost
 import com.happycola233.bilitools.ui.MainBottomBarHeight
 import com.happycola233.bilitools.ui.login.LoginTab
@@ -276,7 +276,7 @@ private fun MeOverviewScreen(
     }
 
     if (showLogoutConfirmDialog) {
-        AlertDialog(
+        AppAlertDialog(
             onDismissRequest = { showLogoutConfirmDialog = false },
             title = {
                 Text(

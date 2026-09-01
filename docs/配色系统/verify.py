@@ -19,6 +19,14 @@ MAIN_BOTTOM_BAR_KT = os.path.join(
     os.path.dirname(RES), 'java', 'com', 'happycola233', 'bilitools', 'ui',
     'liquidtabs', 'MainLiquidBottomBar.kt'
 )
+APP_DIALOGS_KT = os.path.join(
+    os.path.dirname(RES), 'java', 'com', 'happycola233', 'bilitools', 'ui',
+    'AppDialogs.kt'
+)
+APP_SURFACES_KT = os.path.join(
+    os.path.dirname(RES), 'java', 'com', 'happycola233', 'bilitools', 'ui',
+    'theme', 'AppSurfaces.kt'
+)
 
 SCHEMES = ['Sakura', 'Coral', 'Apricot', 'Sand', 'Matcha', 'Mint', 'Seafoam',
            'Lagoon', 'Sky', 'Iris', 'Periwinkle', 'Lilac', 'Orchid']
@@ -101,6 +109,11 @@ def contrast(a, b):
 
 def max_channel(hexstr):
     return max(int(hexstr[i:i + 2], 16) for i in (0, 2, 4))
+
+
+def dimmed_by_black_scrim(hexstr, alpha):
+    return ''.join('%02X' % round(int(hexstr[i:i + 2], 16) * (1 - alpha))
+                   for i in (0, 2, 4))
 
 
 LIGHT = overlays(LIGHT_XML)
@@ -219,7 +232,7 @@ print('  [ -- ] %-34s %.2f:1  （淡雅风格的取舍，靠投影补足）'
       % ('浅色 secondaryContainer / 页面底', light_float))
 
 print()
-print('七、表面三层的相邻分离度')
+print('七、基础表面三层的相邻分离度')
 for mode, src, card, page, inset in (
         ('浅色', LIGHT, 'colorSurfaceBright', 'colorSurfaceContainer', 'colorSurfaceContainerLow'),
         ('深色', DARK, 'colorSurfaceBright', 'colorSurfaceContainer', 'colorSurfaceContainerHigh')):
@@ -233,7 +246,37 @@ for mode, src, card, page, inset in (
     check(top, '%s 卡片是最亮的一层' % mode, '十三套均成立' if top else '存在反序')
 
 print()
-print('八、纯黑深色模式 overlay')
+print('八、模态容器层级')
+app_dialogs = io.open(APP_DIALOGS_KT, encoding='utf-8').read()
+app_surfaces = io.open(APP_SURFACES_KT, encoding='utf-8').read()
+check('val modalContainerColor: Color' in app_surfaces and
+      'if (usesDarkSurfaces()) surfaceContainerHighest else surfaceContainerHigh' in app_surfaces,
+      '模态容器按模式取色', '浅色 High，深色/纯黑 Highest')
+check(all(name in app_dialogs for name in (
+        'fun AppAlertDialog(', 'fun AppDatePickerDialog(', 'fun AppDialog(')),
+      '模态组件统一入口', '标准、日期与自定义对话框均已封装')
+scrim_match = re.search(
+    r'val scrimAlpha: Float.*?usesPureBlackSurfaces\(\) -> ([0-9.]+)f.*?'
+    r'usesDarkSurfaces\(\) -> ([0-9.]+)f.*?else -> ([0-9.]+)f',
+    app_dialogs,
+    re.S,
+)
+scrims = tuple(float(value) for value in scrim_match.groups()) if scrim_match else None
+check(scrims == (0.48, 0.42, 0.32), '模态遮罩按模式分档',
+      '纯黑 48% / 深色 42% / 浅色 32%' if scrims else '未识别到完整配置')
+if scrims:
+    _, dark_scrim, _ = scrims
+    dark_modal_separation = min(
+        contrast(
+            DARK[ov]['colorSurfaceContainerHighest'],
+            dimmed_by_black_scrim(DARK[ov]['colorSurfaceBright'], dark_scrim),
+        ) for ov in SCHEMES
+    )
+    check(dark_modal_separation >= 1.15, '深色模态底 / 遮罩后卡片',
+          '%.3f:1  (>= 1.15，另有边缘)' % dark_modal_separation)
+
+print()
+print('九、纯黑深色模式 overlay')
 pure = named_overlay(LIGHT_XML, 'ThemeOverlay.BiliTools.DarkPureBlack')
 check(pure is not None, '纯黑 overlay 存在', '在 values/themes.xml 中')
 if pure is not None:
@@ -259,9 +302,17 @@ if pure is not None:
               '%.2f:1  (>= 3)' % pure_outline_card)
         check(pure_thumb_track >= 3.0, '纯黑关闭滑块 / 轨道',
               '%.2f:1  (>= 3)' % pure_thumb_track)
+        if scrims:
+            pure_scrim, _, _ = scrims
+            pure_modal_separation = contrast(
+                pure['colorSurfaceContainerHighest'],
+                dimmed_by_black_scrim(pure_card, pure_scrim),
+            )
+            check(pure_modal_separation >= 1.17, '纯黑模态底 / 遮罩后卡片',
+                  '%.3f:1  (>= 1.17，另有边缘)' % pure_modal_separation)
 
 print()
-print('九、开屏页色号（平台限制：静态、零彩度、明度对齐页面底）')
+print('十、开屏页色号（平台限制：静态、零彩度、明度对齐页面底）')
 colors_text = io.open(os.path.join(RES, 'values', 'colors.xml'), encoding='utf-8').read()
 for name in ('splash_background_light', 'splash_background_dark'):
     m = re.search(r'<color name="%s">#FF([0-9A-Fa-f]{6})</color>' % name, colors_text)

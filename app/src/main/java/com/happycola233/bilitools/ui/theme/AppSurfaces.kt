@@ -7,11 +7,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 
 /**
- * 全站统一的表面配色语义层，把界面分为三层深度：
+ * 全站统一的表面配色语义层，把界面分为四层深度：
  *
  * 1. [pageContainerColor]：页面底色，托住上面的卡片；
  * 2. [cardContainerColor]：卡片与列表项底色，浮在页面之上；
  * 3. [insetContainerColor]：卡片内嵌区域（输入框、下拉框、次级列表、展开的子项）底色，沉在卡片之下。
+ * 4. [modalContainerColor]：对话框等模态容器底色，位于当前内容之上。
  *
  * 深色配色下容器色阶随层级变亮，方向与浅色相反；纯黑深色模式又把 surface 与 background 压到了
  * #000000，标准色阶不足以拉开上述层次。因此每层都按浅色、深色、纯黑分别取相邻档位，
@@ -32,6 +33,16 @@ internal object AppSurfaces {
         @Composable
         get() = with(MaterialTheme.colorScheme) {
             if (usesPureBlackSurfaces()) surfaceContainerHigh else surfaceBright
+        }
+
+    /**
+     * 模态容器在深色下升到最高容器色阶，避免纯黑模式中与同为
+     * `surfaceContainerHigh` 的卡片重合。浅色保留 Material 3 默认档位，不改变现有观感。
+     */
+    val modalContainerColor: Color
+        @Composable
+        get() = with(MaterialTheme.colorScheme) {
+            if (usesDarkSurfaces()) surfaceContainerHighest else surfaceContainerHigh
         }
 
     /** 只比 [cardContainerColor] 沉一档，刚好读出内嵌关系又不至于像在卡片上挖了个洞。 */

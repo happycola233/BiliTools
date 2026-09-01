@@ -13,7 +13,6 @@ import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -37,6 +36,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.appContainer
+import com.happycola233.bilitools.ui.AppAlertDialog
 import com.happycola233.bilitools.ui.copyTextToClipboard
 import com.happycola233.bilitools.ui.copyTextWithFeedback
 import kotlinx.coroutines.flow.collect
@@ -172,7 +172,7 @@ fun ParseRoute(
     )
 
     if (showCellularConfirmation) {
-        AlertDialog(
+        AppAlertDialog(
             onDismissRequest = { showCellularConfirmation = false },
             title = { Text(text = resources.getString(R.string.parse_mobile_confirm_title)) },
             text = { Text(text = resources.getString(R.string.parse_mobile_confirm_message)) },

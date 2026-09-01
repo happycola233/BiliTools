@@ -146,7 +146,6 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -154,6 +153,9 @@ import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.model.MediaInfo
 import com.happycola233.bilitools.data.model.MediaItem
 import com.happycola233.bilitools.data.model.MediaStat
+import com.happycola233.bilitools.ui.AppDialog
+import com.happycola233.bilitools.ui.AppDialogDefaults
+import com.happycola233.bilitools.ui.appDialogBorder
 import com.happycola233.bilitools.data.model.MediaType
 import com.happycola233.bilitools.data.model.MediaUpper
 import com.happycola233.bilitools.data.model.OutputType
@@ -663,7 +665,7 @@ private fun <T> CopyPreviewDialog(
         }
     }
 
-    Dialog(
+    AppDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
@@ -682,14 +684,15 @@ private fun <T> CopyPreviewDialog(
                         animationSpec = motionScheme.fastSpatialSpec(),
                     ),
         ) {
+            val dialogShape = RoundedCornerShape(copyDialogCornerRadius)
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = copyDialogHorizontalMargin),
-                shape = RoundedCornerShape(copyDialogCornerRadius),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                // 层次由投影表达；tonalElevation 会额外叠一层 surfaceTint（即 primary），
-                // 让弹窗底色偏离配色方案里的表面色阶
+                    .padding(horizontal = copyDialogHorizontalMargin)
+                    .appDialogBorder(dialogShape),
+                shape = dialogShape,
+                color = AppDialogDefaults.containerColor,
+                // 深色层次主要由模态表面、边缘与遮罩表达；投影仅保留为浅色模式的辅助。
                 shadowElevation = 18.dp,
             ) {
                 Column(

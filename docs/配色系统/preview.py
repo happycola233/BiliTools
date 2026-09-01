@@ -4,8 +4,8 @@
 改完 gen_themes.py 之后，verify.py 只能保证数值达标，「好不好看」得看图。
 产出两张 PNG 到 .tmp/：
 
-  palette.png  十三套配色的填充色 / 前景色 / 表面三层色板，浅深并排
-  mock.png     典型界面 mock：浅色、深色与纯黑下的卡片、按钮、开关、底栏等组件
+  palette.png  十三套配色的填充色 / 前景色 / 表面四层色板，浅深并排
+  mock.png     典型界面 mock：浅色、深色与纯黑下的常用组件与模态弹窗
 
 用法：python docs/配色系统/preview.py
 """
@@ -100,6 +100,22 @@ def draw_centered_text(d, center_x, y, text, font, fill):
     d.text((center_x - width / 2, y), text, font=font, fill=fill)
 
 
+def blend_hex(foreground, background, alpha):
+    """把 foreground 以 alpha 叠到 background 上，用于预览带透明度的模态边缘。"""
+    fg = tuple(int(foreground[i:i + 2], 16) for i in (1, 3, 5))
+    bg = tuple(int(background[i:i + 2], 16) for i in (1, 3, 5))
+    channels = tuple(round(f * alpha + b * (1 - alpha)) for f, b in zip(fg, bg))
+    return '#%02X%02X%02X' % channels
+
+
+def apply_black_scrim(image, bounds, alpha):
+    """在指定预览区域叠加与 Compose Dialog 一致的黑色遮罩。"""
+    overlay = Image.new('RGBA', image.size, (0, 0, 0, 0))
+    overlay_draw = ImageDraw.Draw(overlay)
+    overlay_draw.rectangle(bounds, fill=(0, 0, 0, round(alpha * 255)))
+    image.paste(overlay, (0, 0), overlay)
+
+
 def draw_bottom_navigation(d, x, y, width, theme):
     """按 Material 3 Expressive 的四个导航栏颜色角色绘制普通底栏。"""
     height = 76
@@ -129,19 +145,23 @@ def draw_bottom_navigation(d, x, y, width, theme):
 
 
 def draw_palette():
-    """每套配色一行：填充色、其上内容色、前景色，以及表面三层。"""
-    cols = ['colorPrimaryFixedDim', 'colorOnPrimaryFixed', 'colorPrimary',
-            'colorSurfaceBright', 'colorSurfaceContainer', 'colorSurfaceContainerLow']
-    heads = ['填充面', '面上内容', '前景色', '卡片底', '页面底', '内嵌底']
+    """每套配色一行：填充色、其上内容色、前景色，以及表面四层。"""
+    common_cols = ['colorPrimaryFixedDim', 'colorOnPrimaryFixed', 'colorPrimary',
+                   'colorSurfaceBright', 'colorSurfaceContainer']
+    heads = ['填充面', '面上内容', '前景色', '卡片底', '页面底', '内嵌底', '模态底']
     row_h, cell_w, gap = 52, 132, 8
-    width = 2 * (170 + len(cols) * (cell_w + gap)) + 60
+    width = 2 * (170 + len(heads) * (cell_w + gap)) + 60
     img = Image.new('RGB', (width, 130 + len(SCHEMES) * row_h), '#FFFFFF')
     d = ImageDraw.Draw(img)
     d.text((28, 22), '配色色板（左浅色 / 右深色）  填充面深浅同值，前景色与表面色阶随模式变化',
            font=FB, fill='#111111')
 
     for side, (mode, src) in enumerate((('浅色模式', LIGHT), ('深色模式', DARK))):
-        ox = 28 + side * (170 + len(cols) * (cell_w + gap) + 30)
+        cols = common_cols + [
+            'colorSurfaceContainerLow' if side == 0 else 'colorSurfaceContainerHigh',
+            'colorSurfaceContainerHigh' if side == 0 else 'colorSurfaceContainerHighest',
+        ]
+        ox = 28 + side * (170 + len(heads) * (cell_w + gap) + 30)
         d.text((ox, 66), mode, font=FB, fill='#111111')
         for i, head in enumerate(heads):
             d.text((ox + 170 + i * (cell_w + gap), 98), head, font=FS, fill='#555555')
@@ -159,14 +179,14 @@ def draw_palette():
 
 
 def draw_mock():
-    """典型界面：并排检查浅色、深色与纯黑模式下的常用组件。"""
+    """典型界面：并排检查浅色、深色与纯黑模式下的常用组件和模态层。"""
     shown = ['Sakura', 'Matcha', 'Lagoon', 'Lilac']
     modes = (
         ('浅色', LIGHT, False, False),
         ('深色', DARK, True, False),
         ('纯黑', PURE_BLACK, True, True),
     )
-    panel_w, panel_h = 520, 356
+    panel_w, normal_h, panel_h = 520, 356, 610
     image_width = 56 + len(modes) * panel_w + (len(modes) - 1) * 34
     img = Image.new('RGB', (image_width, 80 + len(shown) * (panel_h + 24)), '#FFFFFF')
     d = ImageDraw.Draw(img)
@@ -186,6 +206,8 @@ def draw_mock():
                                        else 'colorSurfaceContainerHigh'])
             fill, on_fill = t['colorPrimaryFixedDim'], t['colorOnPrimaryFixed']
             ink, sub = t['colorOnSurface'], t['colorOnSurfaceVariant']
+            error = '#FFB4AB' if dark else '#BA1A1A'
+            error_container = '#93000A' if dark else '#FFDAD6'
 
             d.rounded_rectangle([ox, oy, ox + panel_w, oy + panel_h], radius=20, fill=page)
             d.text((ox + 20, oy + 12), '%s  %s' % (style, mode_name),
@@ -236,7 +258,56 @@ def draw_mock():
                 d.line([(bx + 11, by + bs // 2 + k), (bx + bs - 11, by + bs // 2 + k)],
                        fill=on_fab_fill, width=2)
             # 普通底栏：选中指示器、图标与文字是三个独立角色，不能复用同一内容色
-            draw_bottom_navigation(d, ox, oy + panel_h - 76, panel_w, t)
+            draw_bottom_navigation(d, ox, oy + normal_h - 76, panel_w, t)
+
+            # 下半区单独展示模态状态，避免覆盖上方常用组件预览。
+            modal_top = oy + normal_h + 20
+            d.text((ox + 20, modal_top + 4), '模态状态', font=FS, fill=sub)
+            d.rounded_rectangle(
+                [ox + 18, modal_top + 34, ox + panel_w - 18, oy + panel_h - 18],
+                radius=18,
+                fill=card,
+            )
+            d.text((ox + 38, modal_top + 48), '底层内容', font=F, fill=ink)
+            d.rounded_rectangle(
+                [ox + 330, modal_top + 80, ox + panel_w - 34, modal_top + 122],
+                radius=12,
+                fill=error_container,
+            )
+
+            scrim_alpha = 0.48 if pure_black else 0.42 if dark else 0.32
+            apply_black_scrim(
+                img,
+                [ox, modal_top, ox + panel_w, oy + panel_h],
+                scrim_alpha,
+            )
+            d = ImageDraw.Draw(img)
+
+            modal_fill = t[
+                'colorSurfaceContainerHighest' if dark else 'colorSurfaceContainerHigh'
+            ]
+            outline_alpha = 0.50 if pure_black else 0.30 if dark else 0
+            modal_outline = (
+                blend_hex(t['colorOutlineVariant'], modal_fill, outline_alpha)
+                if outline_alpha else None
+            )
+            dialog_bounds = [
+                ox + 86,
+                modal_top + 32,
+                ox + panel_w - 86,
+                oy + panel_h - 34,
+            ]
+            d.rounded_rectangle(
+                dialog_bounds,
+                radius=24,
+                fill=modal_fill,
+                outline=modal_outline,
+                width=2,
+            )
+            d.text((ox + 114, modal_top + 52), '删除该组', font=F, fill=ink)
+            d.text((ox + 114, modal_top + 86), '此操作将删除组内所有任务。', font=FS, fill=sub)
+            d.text((ox + 312, modal_top + 126), '取消', font=FS, fill=t['colorPrimary'])
+            d.text((ox + 376, modal_top + 126), '删除', font=FS, fill=error)
 
     path = os.path.join(OUT_DIR, 'mock.png')
     img.save(path)

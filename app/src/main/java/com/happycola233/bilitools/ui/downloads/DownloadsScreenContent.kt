@@ -23,7 +23,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -81,6 +80,7 @@ import androidx.compose.material3.ToggleFloatingActionButton
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.model.DownloadGroup
 import com.happycola233.bilitools.data.model.DownloadItem
+import com.happycola233.bilitools.ui.AppAlertDialog
 import com.happycola233.bilitools.ui.FloatingControlsDefaults
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import com.happycola233.bilitools.ui.mainBottomBarBottomInset
@@ -428,7 +428,7 @@ private fun DownloadsDeleteDialog(
         is DownloadsDialogState.BatchDelete -> false
     }
 
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(

@@ -35,7 +35,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -98,6 +97,7 @@ import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.AppSettings
 import com.happycola233.bilitools.data.model.HistoryItem
 import com.happycola233.bilitools.data.model.HistoryTab
+import com.happycola233.bilitools.ui.AppDatePickerDialog
 import com.happycola233.bilitools.ui.UserIdentityLabel
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import com.happycola233.bilitools.ui.longPressAction
@@ -353,7 +353,7 @@ fun BiliToolsHistoryContent(
                     initialSelectedStartDateMillis = draftFilter.customStartUtcMillis,
                     initialSelectedEndDateMillis = draftFilter.customEndUtcMillis,
                 )
-                DatePickerDialog(
+                AppDatePickerDialog(
                     onDismissRequest = { showDateRangePicker = false },
                     dismissButton = {
                         OutlinedButton(onClick = { showDateRangePicker = false }) {
