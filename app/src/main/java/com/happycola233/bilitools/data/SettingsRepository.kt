@@ -59,7 +59,7 @@ data class AppSettings(
     val convertVideoToMp4: Boolean = false,
     val themeMode: AppThemeMode = AppThemeMode.System,
     val themeColor: AppThemeColor = AppThemeColor.Dynamic,
-    val darkModePureBlack: Boolean = false,
+    val darkModePureBlack: Boolean = true,
     val launchSplashAnimationEnabled: Boolean = true,
     val liquidBottomTabsEnabled: Boolean = true,
     val liquidBarWidthFraction: Float = SettingsRepository.DEFAULT_LIQUID_BAR_WIDTH_FRACTION,
@@ -614,6 +614,7 @@ class SettingsRepository(context: Context) {
     }
 
     private fun loadSettings(): AppSettings {
+        migrateSettings()
         return AppSettings(
             addMetadata = prefs.getBoolean(KEY_ADD_METADATA, true),
             convertXmlDanmakuToAss = prefs.getBoolean(KEY_CONVERT_XML_DANMAKU_TO_ASS, true),
@@ -625,7 +626,7 @@ class SettingsRepository(context: Context) {
             themeColor = AppThemeColor.fromValue(
                 prefs.getString(KEY_THEME_COLOR, AppThemeColor.Dynamic.value),
             ),
-            darkModePureBlack = prefs.getBoolean(KEY_DARK_MODE_PURE_BLACK, false),
+            darkModePureBlack = prefs.getBoolean(KEY_DARK_MODE_PURE_BLACK, true),
             launchSplashAnimationEnabled = prefs.getBoolean(
                 KEY_LAUNCH_SPLASH_ANIMATION_ENABLED,
                 true,
@@ -871,6 +872,20 @@ class SettingsRepository(context: Context) {
             ?.takeIf { it.isNotBlank() }
     }
 
+    private fun migrateSettings() {
+        val migrationVersion = prefs.getInt(KEY_SETTINGS_MIGRATION_VERSION, 0)
+        if (migrationVersion >= CURRENT_SETTINGS_MIGRATION_VERSION) return
+
+        val editor = prefs.edit()
+        if (migrationVersion < MIGRATION_VERSION_V3_0_ENABLE_PURE_BLACK) {
+            // v3.0 首次启动时统一开启一次；迁移完成后不再覆盖用户的手动选择。
+            editor.putBoolean(KEY_DARK_MODE_PURE_BLACK, true)
+        }
+        editor
+            .putInt(KEY_SETTINGS_MIGRATION_VERSION, CURRENT_SETTINGS_MIGRATION_VERSION)
+            .apply()
+    }
+
     private fun normalizeDefaultDownloadQuality(
         quality: DefaultDownloadQualitySettings,
     ): DefaultDownloadQualitySettings {
@@ -948,6 +963,11 @@ class SettingsRepository(context: Context) {
         private const val KEY_THEME_COLOR = "theme_color"
         private const val KEY_LAST_MANUAL_THEME_COLOR = "last_manual_theme_color"
         private const val KEY_DARK_MODE_PURE_BLACK = "dark_mode_pure_black"
+        private const val KEY_SETTINGS_MIGRATION_VERSION = "settings_migration_version"
+        // 设置迁移序号独立于应用版本；迁移 1 首次随 v3.0 发布。
+        private const val MIGRATION_VERSION_V3_0_ENABLE_PURE_BLACK = 1
+        private const val CURRENT_SETTINGS_MIGRATION_VERSION =
+            MIGRATION_VERSION_V3_0_ENABLE_PURE_BLACK
         private const val KEY_LAUNCH_SPLASH_ANIMATION_ENABLED = "launch_splash_animation_enabled"
         private const val KEY_LIQUID_BOTTOM_TABS_ENABLED = "liquid_bottom_tabs_enabled"
         private const val KEY_LIQUID_BAR_WIDTH_FRACTION = "liquid_bar_width_fraction"
