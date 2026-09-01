@@ -61,6 +61,7 @@
     <string name="login_stat_dynamic">动态</string>
     <string name="login_stat_coins">硬币</string>
     <string name="login_captcha_title">请完成验证</string>
+    <string name="login_captcha_loading">正在加载验证</string>
 
     <string name="parse_title">视频解析</string>
     <string name="parse_input_card_title">解析资源</string>

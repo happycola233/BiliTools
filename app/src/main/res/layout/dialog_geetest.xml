@@ -1,36 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="16dp">
+    android:layout_width="360dp"
+    android:layout_height="520dp">
 
-    <TextView
-        android:id="@+id/geetest_title"
+    <WebView
+        android:id="@+id/geetest_webview"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/login_captcha_title"
-        android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+        android:layout_height="match_parent"
+        android:background="@android:color/transparent"
+        android:forceDarkAllowed="false"
+        android:overScrollMode="never"
+        android:visibility="invisible" />
 
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginTop="12dp"
-        android:layout_weight="1"
-        android:minHeight="420dp">
-
-        <WebView
-            android:id="@+id/geetest_webview"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent" />
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/geetest_loading"
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:layout_gravity="center"
+        app:cardBackgroundColor="?attr/colorSurfaceContainerHighest"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="6dp">
 
         <com.google.android.material.loadingindicator.LoadingIndicator
-            android:id="@+id/geetest_loading"
             style="@style/Widget.Material3.LoadingIndicator"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center" />
-    </FrameLayout>
-</LinearLayout>
+            android:layout_gravity="center"
+            android:contentDescription="@string/login_captcha_loading" />
+    </com.google.android.material.card.MaterialCardView>
+</FrameLayout>
