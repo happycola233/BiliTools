@@ -204,12 +204,17 @@ check('alwaysShowLabel = true' in material_bottom_bar,
 print()
 print('六、悬浮元素按模式取色并浮在页面底之上')
 # 浅色模式的 secondaryContainer 对页面底达不到 3:1 是淡雅风格的设计取舍，由投影补足；
-# 深色模式改用 fixed 填充面，容器本身必须达到 3:1。
+# 展开项使用更轻的 primaryFixed，但其文案与图标必须维持正文对比度；
+# 深色模式改用 fixedDim 填充面，容器本身必须达到 3:1。
 dark_float = min(contrast(DARK[ov]['colorPrimaryFixedDim'],
                           DARK[ov]['colorSurfaceContainer']) for ov in SCHEMES)
 light_float = min(contrast(LIGHT[ov]['colorSecondaryContainer'],
                            LIGHT[ov]['colorSurfaceContainer']) for ov in SCHEMES)
+light_menu_item_content = min(contrast(LIGHT[ov]['colorOnPrimaryFixed'],
+                                       LIGHT[ov]['colorPrimaryFixed']) for ov in SCHEMES)
 check(dark_float >= 3.0, '深色 fixed 填充面 / 页面底', '%.2f:1  (>= 3)' % dark_float)
+check(light_menu_item_content >= 4.5, '浅色展开项内容 / 容器',
+      '%.2f:1  (>= 4.5)' % light_menu_item_content)
 print('  [ -- ] %-34s %.2f:1  （淡雅风格的取舍，靠投影补足）'
       % ('浅色 secondaryContainer / 页面底', light_float))
 

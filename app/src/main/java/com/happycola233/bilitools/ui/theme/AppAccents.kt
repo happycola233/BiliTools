@@ -38,7 +38,8 @@ import androidx.compose.ui.graphics.Color
  *
  * 悬浮按钮（FAB）浅色模式使用 [floatingActionContainer]，与次级操作保持同一强调层级；
  * 深色模式则回到 [fill]，避免 `secondaryContainer` 或 `primaryContainer` 这类暗色容器
- * 糊进深色页面里（实测只有 1.88:1）。
+ * 糊进深色页面里（实测只有 1.88:1）。下载页 FAB 菜单展开后的带文案操作项不跟随主菜单
+ * 按钮取色：浅色模式使用更轻的 `primaryFixed`，深色模式继续使用 [fill]。
  *
  * 完整的参数取值、色域约束与实测对比度见 `docs/配色系统/README.md`。
  */
@@ -64,6 +65,16 @@ internal object AppAccents {
         get() = with(MaterialTheme.colorScheme) {
             if (usesDarkSurfaces()) onPrimaryFixed else onSecondaryContainer
         }
+
+    /** 下载页展开菜单项：浅色使用较轻的 fixed 容器，深色保留高对比度的固定填充色。 */
+    val floatingActionMenuItemContainer: Color
+        @Composable
+        get() = with(MaterialTheme.colorScheme) {
+            if (usesDarkSurfaces()) primaryFixedDim else primaryFixed
+        }
+
+    val onFloatingActionMenuItemContainer: Color
+        @Composable get() = MaterialTheme.colorScheme.onPrimaryFixed
 
     /** 主按钮配色，深浅模式同色 */
     @Composable

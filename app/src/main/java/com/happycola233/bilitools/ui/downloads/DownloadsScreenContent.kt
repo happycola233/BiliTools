@@ -505,8 +505,12 @@ private fun DownloadsManageFab(
     // 图标的 tint 必须显式给：ToggleFloatingActionButton 只做了加阴影、画容器、调 content()
     // 三件事，既不提供 LocalContentColor，也不会自动套 animateIcon，不写 tint 的 Icon 会
     // 回落到 Compose 库默认的纯黑，与配色方案彻底脱钩。
-    val fabContainerColor = AppAccents.floatingActionContainer
-    val fabContentColor = AppAccents.onFloatingActionContainer
+    val menuButtonContainerColor = AppAccents.floatingActionContainer
+    val menuButtonContentColor = AppAccents.onFloatingActionContainer
+    // 展开的操作项浅色模式使用更轻的 fixed 容器，深色模式保持原样；
+    // 右下角主菜单按钮继续保留独立的 FAB 配色。
+    val menuItemContainerColor = AppAccents.floatingActionMenuItemContainer
+    val menuItemContentColor = AppAccents.onFloatingActionMenuItemContainer
 
     FloatingActionButtonMenu(
         expanded = expanded,
@@ -517,7 +521,7 @@ private fun DownloadsManageFab(
                     haptics.toggle(next)
                     expanded = next
                 },
-                containerColor = { fabContainerColor },
+                containerColor = { menuButtonContainerColor },
             ) {
                 val imageVector = if (checkedProgress > 0.5f) {
                     R.drawable.ic_close_rounded_24
@@ -527,7 +531,7 @@ private fun DownloadsManageFab(
                 Icon(
                     painter = painterResource(imageVector),
                     contentDescription = stringResource(R.string.downloads_actions_menu),
-                    tint = fabContentColor,
+                    tint = menuButtonContentColor,
                 )
             }
         },
@@ -538,36 +542,36 @@ private fun DownloadsManageFab(
             onClick = { expanded = false; haptics.confirm(); onClearAll() },
             icon = { Icon(painter = painterResource(R.drawable.ic_delete_24), contentDescription = null) },
             text = { Text(text = stringResource(R.string.downloads_clear_all)) },
-            containerColor = fabContainerColor,
-            contentColor = fabContentColor,
+            containerColor = menuItemContainerColor,
+            contentColor = menuItemContentColor,
         )
         FloatingActionButtonMenuItem(
             onClick = { expanded = false; haptics.confirm(); onClearCompleted() },
             icon = { Icon(painter = painterResource(R.drawable.ic_delete_sweep_24), contentDescription = null) },
             text = { Text(text = stringResource(R.string.downloads_clear_completed)) },
-            containerColor = fabContainerColor,
-            contentColor = fabContentColor,
+            containerColor = menuItemContainerColor,
+            contentColor = menuItemContentColor,
         )
         FloatingActionButtonMenuItem(
             onClick = { expanded = false; haptics.confirm(); onPauseAll() },
             icon = { Icon(painter = painterResource(R.drawable.ic_pause_24), contentDescription = null) },
             text = { Text(text = stringResource(R.string.downloads_pause_all_with_count, pauseAllCount)) },
-            containerColor = fabContainerColor,
-            contentColor = fabContentColor,
+            containerColor = menuItemContainerColor,
+            contentColor = menuItemContentColor,
         )
         FloatingActionButtonMenuItem(
             onClick = { expanded = false; haptics.confirm(); onResumeAll() },
             icon = { Icon(painter = painterResource(R.drawable.ic_play_arrow_24), contentDescription = null) },
             text = { Text(text = stringResource(R.string.downloads_resume_all_with_count, resumeAllCount)) },
-            containerColor = fabContainerColor,
-            contentColor = fabContentColor,
+            containerColor = menuItemContainerColor,
+            contentColor = menuItemContentColor,
         )
         FloatingActionButtonMenuItem(
             onClick = { expanded = false; haptics.confirm(); onBatchManage() },
             icon = { Icon(painter = painterResource(R.drawable.ic_checklist_rounded_24), contentDescription = null) },
             text = { Text(text = stringResource(R.string.downloads_multi_manage)) },
-            containerColor = fabContainerColor,
-            contentColor = fabContentColor,
+            containerColor = menuItemContainerColor,
+            contentColor = menuItemContentColor,
         )
     }
 }
