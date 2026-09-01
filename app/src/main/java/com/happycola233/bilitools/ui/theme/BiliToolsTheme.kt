@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.content.ContextCompat
@@ -30,17 +31,18 @@ import com.happycola233.bilitools.data.AppThemeMode
 import com.happycola233.bilitools.ui.overlayStyleResOrNull
 
 /**
- * 设置页专用主题。它自己按 [AppSettings] 拼一个带配色 overlay 的 Context 再取色，
- * 所以用户在设置页里改配色能立刻看到变化，不必等 `recreate()`。
+ * 全应用唯一的 Compose 主题入口。
  *
- * 代价是它与 Activity 主题是两套来源，其他页面一律用 [rememberAndroidThemeColorScheme]。
- * 同一屏里混用两者会出现一半即时刷新、一半等 `recreate()` 的分批变色。
+ * 主题直接由 [AppSettings] 构造带配色 overlay 的 Context，再把 XML 角色完整解析为
+ * [ColorScheme]。配色、纯黑与深浅设置变化后会随状态重组即时生效，不依赖 Activity
+ * `recreate()`；Activity 上的主题 overlay 只负责启动窗口与仍存在的 View 层组件。
  *
- * **新增角色时这里和 `ComposeTheme.kt` 必须同步补齐**，理由见那边的说明。
+ * 新增颜色角色时必须同时补齐这里与配色生成器的角色表，避免未覆盖角色回落到 Compose
+ * 基线紫色。
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun BiliToolsSettingsTheme(
+fun BiliToolsTheme(
     settings: AppSettings,
     content: @Composable () -> Unit,
 ) {
@@ -48,11 +50,17 @@ fun BiliToolsSettingsTheme(
      * 设置页会直接按新偏好预览主题，但为了避免 Activity 重建，AppCompat 要到退出设置页时
      * 才同步。因此从“浅色”改回“跟随系统”时，LocalConfiguration 仍是应用强制的浅色配置，
      * isSystemInDarkTheme() 会误判。这里必须读取不受应用覆盖影响的设备配置。
+     *
+     * 仍需读取 LocalConfiguration 订阅系统配置变化：MainActivity 接管 uiMode 后不会重建，
+     * 配置变化要靠这项 Compose 状态使主题重新读取 Resources.getSystem()。
      */
-    val darkTheme = settings.themeMode.usesDarkTheme(
-        deviceUiMode = Resources.getSystem().configuration.uiMode,
-    )
-    val colorScheme = rememberSettingsThemeColorScheme(settings, darkTheme)
+    val localConfiguration = LocalConfiguration.current
+    val darkTheme = remember(settings.themeMode, localConfiguration) {
+        settings.themeMode.usesDarkTheme(
+            deviceUiMode = Resources.getSystem().configuration.uiMode,
+        )
+    }
+    val colorScheme = rememberBiliToolsColorScheme(settings, darkTheme)
     val view = LocalView.current
 
     if (!view.isInEditMode) {
@@ -86,7 +94,7 @@ internal fun AppThemeMode.usesDarkTheme(deviceUiMode: Int): Boolean {
 }
 
 @Composable
-private fun rememberSettingsThemeColorScheme(
+private fun rememberBiliToolsColorScheme(
     settings: AppSettings,
     darkTheme: Boolean,
 ): ColorScheme {
@@ -97,7 +105,7 @@ private fun rememberSettingsThemeColorScheme(
         settings.darkModePureBlack,
         darkTheme,
     ) {
-        context.createSettingsThemeContext(
+        context.createBiliToolsThemeContext(
             themeColor = settings.themeColor,
             pureBlack = settings.darkModePureBlack,
             darkTheme = darkTheme,
@@ -109,7 +117,7 @@ private fun rememberSettingsThemeColorScheme(
     }
 }
 
-private fun Context.createSettingsThemeContext(
+private fun Context.createBiliToolsThemeContext(
     themeColor: AppThemeColor,
     pureBlack: Boolean,
     darkTheme: Boolean,

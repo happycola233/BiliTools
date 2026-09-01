@@ -5,8 +5,6 @@ import android.net.Uri
 
 internal object ExternalDownloadContract {
     const val EXTRA_URL = "com.happycola233.bilitools.extra.EXTERNAL_URL"
-    const val RESULT_KEY = "com.happycola233.bilitools.result.EXTERNAL_DOWNLOAD"
-    const val RESULT_URL = "url"
 }
 
 private val HTTP_URL_REGEX = Regex("""https?://[^\s<>"']+""", RegexOption.IGNORE_CASE)

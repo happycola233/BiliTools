@@ -68,15 +68,14 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -87,6 +86,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -148,8 +148,21 @@ private class DownloadsProgressIndicatorController(
     private val indicator: LinearProgressIndicator,
 ) {
     private var currentState: DownloadsProgressVisualState? = null
+    private var currentIndicatorColor: Int? = null
+    private var currentTrackColor: Int? = null
     private var waveAmplitudeAnimator: ValueAnimator? = null
     private val defaultWaveAmplitude = indicator.getWaveAmplitude()
+
+    fun bindColors(indicatorColor: Int, trackColor: Int) {
+        if (currentIndicatorColor != indicatorColor) {
+            indicator.setIndicatorColor(indicatorColor)
+            currentIndicatorColor = indicatorColor
+        }
+        if (currentTrackColor != trackColor) {
+            indicator.setTrackColor(trackColor)
+            currentTrackColor = trackColor
+        }
+    }
 
     fun bind(
         state: DownloadsProgressVisualState,
@@ -225,7 +238,8 @@ internal fun DownloadsListContent(
     expandedGroupIds: Set<Long>,
     collapsedSections: Set<DownloadSectionType>,
     swipedGroupId: Long?,
-    listBottomPadding: PaddingValues,
+    contentTopPadding: Dp,
+    listBottomPadding: Dp,
     onToggleSection: (DownloadSectionType) -> Unit,
     onToggleGroupExpanded: (Long) -> Unit,
     onSwipedGroupChange: (Long?) -> Unit,
@@ -240,7 +254,6 @@ internal fun DownloadsListContent(
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
-    val nestedScrollInterop = rememberNestedScrollInteropConnection()
     val sections = remember(groups, collapsedSections) {
         buildDownloadsSections(groups, collapsedSections)
     }
@@ -257,10 +270,11 @@ internal fun DownloadsListContent(
 
     LazyColumn(
         state = listState,
-        contentPadding = listBottomPadding,
-        modifier = modifier
-            .fillMaxWidth()
-            .nestedScroll(nestedScrollInterop),
+        contentPadding = PaddingValues(
+            top = contentTopPadding,
+            bottom = listBottomPadding,
+        ),
+        modifier = modifier.fillMaxWidth(),
     ) {
         sections.forEach { section ->
             val useVisibilitySectionAnimation = section.groups.size <= MAX_GROUP_COUNT_FOR_FULL_SECTION_ANIMATION
@@ -1237,6 +1251,8 @@ private fun DownloadProgressIndicator(
     animateProgress: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val indicatorColor = MaterialTheme.colorScheme.primary.toArgb()
+    val trackColor = MaterialTheme.colorScheme.surfaceVariant.toArgb()
     AndroidView(
         modifier = modifier
             .fillMaxWidth()
@@ -1261,6 +1277,12 @@ private fun DownloadProgressIndicator(
         },
         update = { indicator ->
             val holder = indicator.tag as? ProgressIndicatorHolder ?: return@AndroidView
+            // AndroidView 的 factory 不会因 AppSettings 配色变化而重建；颜色必须在 update
+            // 中从当前 Compose ColorScheme 同步，否则主界面不 recreate 后会一直保留旧色。
+            holder.controller.bindColors(
+                indicatorColor = indicatorColor,
+                trackColor = trackColor,
+            )
             holder.controller.bind(
                 state = visualState,
                 progress = progress,

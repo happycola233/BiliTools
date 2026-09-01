@@ -121,7 +121,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -312,7 +311,7 @@ private object ParseTextStyles {
 fun ParseScreenContent(
     state: ParseUiState,
     inputText: String,
-    controlsOffsetPx: Float,
+    contentTopPadding: Dp,
     externalMode: Boolean,
     subtitleCopyDialogEntries: List<SubtitleCopyEntry>?,
     aiSummaryCopyDialogEntries: List<AiSummaryCopyEntry>?,
@@ -361,7 +360,6 @@ fun ParseScreenContent(
     onCopyAllAiSummaries: (List<AiSummaryCopyEntry>) -> Unit,
     onDismissError: () -> Unit,
 ) {
-    val nestedScrollInterop = rememberNestedScrollInteropConnection()
     val info = state.mediaInfo
     val item = state.items.getOrNull(state.selectedItemIndex)
     val totalItems = state.items.size
@@ -390,12 +388,10 @@ fun ParseScreenContent(
             .background(AppSurfaces.pageContainerColor),
     ) {
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .nestedScroll(nestedScrollInterop),
+            modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
                 start = screenHorizontalPadding,
-                top = 12.dp,
+                top = contentTopPadding + 12.dp,
                 end = screenHorizontalPadding,
                 bottom = (if (!externalMode || info != null) 96.dp else 24.dp) + mainBarBottomInset,
             ),
@@ -499,7 +495,11 @@ fun ParseScreenContent(
         ) {
             QuickActionFab(
                 enabled = downloadEnabled,
-                controlsOffsetPx = controlsOffsetPx,
+                bottomPadding = if (externalMode) {
+                    FloatingControlsDefaults.ExternalEntryBottomPadding
+                } else {
+                    FloatingControlsDefaults.MainScreenBottomPadding
+                },
                 onDownload = onDownload,
             )
         }
@@ -510,7 +510,7 @@ fun ParseScreenContent(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .padding(horizontal = 8.dp)
-                .padding(top = 4.dp),
+                .padding(top = contentTopPadding + 4.dp),
         )
 
         subtitleCopyDialogEntries?.let { entries ->
@@ -3776,12 +3776,10 @@ private fun ExpressiveActionButton(
 @Composable
 private fun QuickActionFab(
     enabled: Boolean,
-    controlsOffsetPx: Float,
+    bottomPadding: Dp,
     onDownload: () -> Unit,
 ) {
     val haptics = rememberAppHaptics()
-    val density = LocalDensity.current
-    val offsetDp = with(density) { controlsOffsetPx.toDp() }
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -3797,9 +3795,8 @@ private fun QuickActionFab(
         modifier = Modifier
             .padding(
                 end = FloatingControlsDefaults.EdgePadding,
-                bottom = FloatingControlsDefaults.BottomPadding,
+                bottom = bottomPadding,
             )
-            .offset(y = offsetDp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale

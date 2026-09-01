@@ -1,6 +1,6 @@
 package com.happycola233.bilitools.ui.downloads
 
-import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -10,6 +10,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import com.happycola233.bilitools.data.AppSettings
+import com.happycola233.bilitools.ui.theme.usesDarkSurfaces
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
@@ -60,7 +61,7 @@ internal fun Modifier.downloadsGlassSurface(
     shadow: () -> Shadow = defaultGlassShadow,
     layerBlock: (GraphicsLayerScope.() -> Unit)? = null,
 ): Modifier {
-    val isLightTheme = !isSystemInDarkTheme()
+    val isLightTheme = !MaterialTheme.colorScheme.usesDarkSurfaces()
     val luminance = if (isLightTheme) 0.58f else 0.42f
     val surfaceOverlayColor = if (isLightTheme) Color.White else Color.Black
     return drawBackdrop(

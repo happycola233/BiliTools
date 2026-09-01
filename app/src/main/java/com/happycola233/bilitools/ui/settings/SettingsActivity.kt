@@ -253,8 +253,8 @@ class SettingsActivity : AppCompatActivity() {
         super.onDestroy()
         if (shouldSyncThemeMode) {
             /*
-             * setDefaultNightMode() 会重建所有仍存活的 AppCompatActivity。等当前设置页完成
-             * 退场并从 AppCompat delegate 列表移除后再同步，避免返回动画露出正在重建的首页。
+             * 其他未接管 uiMode 的 AppCompatActivity 仍会重建；主界面则收到配置变化并重组。
+             * 等当前设置页完成退场后再同步，避免设置页自身参与这轮主题切换。
              */
             applicationContext.appContainer.settingsRepository.syncThemeMode()
         }

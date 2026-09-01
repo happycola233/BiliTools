@@ -303,10 +303,13 @@ data class AiSummaryCopyEntry(
 
 sealed class ParseEvent {
     data class CopySingleSubtitle(val entry: SubtitleCopyEntry) : ParseEvent()
-    data class ShowSubtitleCopyDialog(val entries: List<SubtitleCopyEntry>) : ParseEvent()
     data class CopySingleAiSummary(val entry: AiSummaryCopyEntry) : ParseEvent()
-    data class ShowAiSummaryCopyDialog(val entries: List<AiSummaryCopyEntry>) : ParseEvent()
     data class DownloadQueued(val result: DownloadEnqueueResult) : ParseEvent()
+}
+
+sealed class ParseCopyDialogState {
+    data class Subtitles(val entries: List<SubtitleCopyEntry>) : ParseCopyDialogState()
+    data class AiSummaries(val entries: List<AiSummaryCopyEntry>) : ParseCopyDialogState()
 }
 
 data class DownloadEnqueueResult(
@@ -348,6 +351,7 @@ private data class PreparedDownloadTarget(
 )
 
 data class ParseUiState(
+    val inputText: String = "",
     val loading: Boolean = false,
     val streamLoading: Boolean = false,
     val collectionModeLoading: Boolean = false,
@@ -358,6 +362,7 @@ data class ParseUiState(
     // 输入框本身的校验提示：就地展示在输入框下方，不占用顶部错误横幅。
     val inputError: String? = null,
     val notice: String? = null,
+    val copyDialog: ParseCopyDialogState? = null,
     val mediaInfo: MediaInfo? = null,
     val items: List<MediaItem> = emptyList(),
     val selectedItemIndex: Int = 0,
@@ -549,7 +554,26 @@ class ParseViewModel(
         _state.update { it.copy(selectedMediaType = type) }
     }
 
+    fun setInputText(input: String) {
+        if (input.isEmpty()) {
+            clear()
+            return
+        }
+        _state.update { state ->
+            state.copy(
+                inputText = input,
+                inputError = null,
+            )
+        }
+    }
+
+    /** 外部入口与主界面 intent 共用：先同步输入框，再进入与手动解析相同的流程。 */
+    fun submitExternalUrl(url: String) {
+        parse(url)
+    }
+
     fun parse(input: String) {
+        _state.update { it.copy(inputText = input) }
         if (input.isBlank()) {
             _state.update {
                 it.copy(inputError = strings.get(R.string.parse_error_empty_input), error = null)
@@ -675,6 +699,10 @@ class ParseViewModel(
 
     fun clearError() {
         _state.update { it.copy(error = null) }
+    }
+
+    fun dismissCopyDialog() {
+        _state.update { it.copy(copyDialog = null) }
     }
 
     fun clearInputError() {
@@ -2204,7 +2232,9 @@ class ParseViewModel(
                 eventChannel.send(ParseEvent.CopySingleSubtitle(entry))
                 return@launch
             }
-            eventChannel.send(ParseEvent.ShowSubtitleCopyDialog(entries))
+            _state.update {
+                it.copy(copyDialog = ParseCopyDialogState.Subtitles(entries))
+            }
         }
     }
 
@@ -2272,7 +2302,9 @@ class ParseViewModel(
                 eventChannel.send(ParseEvent.CopySingleAiSummary(entry))
                 return@launch
             }
-            eventChannel.send(ParseEvent.ShowAiSummaryCopyDialog(entries))
+            _state.update {
+                it.copy(copyDialog = ParseCopyDialogState.AiSummaries(entries))
+            }
         }
     }
 

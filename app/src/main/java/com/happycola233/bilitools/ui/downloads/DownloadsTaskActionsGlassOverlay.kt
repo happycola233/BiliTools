@@ -1,12 +1,8 @@
 package com.happycola233.bilitools.ui.downloads
 
-import android.view.View
-import android.view.ViewGroup
 import androidx.activity.compose.BackHandler
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,17 +18,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,8 +37,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -55,12 +50,9 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import com.happycola233.bilitools.R
-import com.happycola233.bilitools.core.appContainer
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
-import com.happycola233.bilitools.ui.liquidglass.rememberViewLayerBackdrop
-import com.happycola233.bilitools.ui.theme.AppSurfaces
-import com.happycola233.bilitools.ui.theme.rememberAndroidThemeColorScheme
-import com.kyant.backdrop.backdrops.layerBackdrop
+import com.happycola233.bilitools.ui.theme.usesDarkSurfaces
+import com.kyant.backdrop.backdrops.LayerBackdrop
 import kotlin.math.roundToInt
 
 /** 菜单与屏幕安全区之间的最小留白。 */
@@ -85,132 +77,99 @@ private const val TASK_ACTIONS_ALPHA_SPEEDUP = 1.6f
 private fun taskActionsScale(progress: Float): Float =
     lerp(TASK_ACTIONS_ENTER_SCALE, 1f, progress)
 
-/**
- * 把任务操作弹窗挂到 Activity 内容之上，而不是放进独立的 Dialog Window。
- * 只有保持在同一窗口中，Backdrop 才能录制并折射弹窗背后的实时页面。
- */
-internal object DownloadsTaskActionsGlassOverlay {
-    private const val HOST_VIEW_TAG = "bilitools_downloads_task_actions_glass_host"
+internal data class DownloadsTaskActionsOverlayRequest(
+    val itemId: Long,
+    val title: String,
+    val anchorInWindow: Rect,
+    val glassStyle: DownloadsGlassStyle,
+)
+
+/** 主壳持有的任务菜单状态；退场动画结束后才派发所选操作。 */
+@Stable
+internal class DownloadsTaskActionsOverlayState {
+    var request by mutableStateOf<DownloadsTaskActionsOverlayRequest?>(null)
+        private set
+    var visible by mutableStateOf(false)
+        private set
+
+    private var pendingAction: DownloadsTaskAction? = null
+    private var onActionSelected: ((DownloadsTaskAction) -> Unit)? = null
+
+    val activeItemId: Long?
+        get() = request?.itemId
 
     fun show(
-        activity: AppCompatActivity,
-        backgroundView: View,
-        state: DownloadsDialogState.TaskActions,
-        anchorInWindow: Rect,
-        onDismiss: () -> Unit,
+        request: DownloadsTaskActionsOverlayRequest,
         onActionSelected: (DownloadsTaskAction) -> Unit,
     ) {
-        if (activity.isFinishing || activity.isDestroyed) return
-
-        val container = activity.findViewById<ViewGroup>(android.R.id.content)
-        dismiss(activity)
-
-        // 宿主铺满内容区，把窗口坐标换算成内容区坐标后即可直接用于菜单定位。
-        val containerLocation = IntArray(2)
-        container.getLocationInWindow(containerLocation)
-        val anchor = anchorInWindow.translate(
-            -containerLocation[0].toFloat(),
-            -containerLocation[1].toFloat(),
-        )
-
-        val composeView = ComposeView(activity).apply {
-            tag = HOST_VIEW_TAG
-            isClickable = true
-            isFocusable = true
-            isFocusableInTouchMode = true
-            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
-            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
-        }
-        container.addView(
-            composeView,
-            ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT,
-            ),
-        )
-        composeView.requestFocus()
-
-        // 关闭动画播完再摘掉宿主并回调，避免退场画面被瞬间截断。
-        val visibleState = mutableStateOf(true)
-        var selectedAction: DownloadsTaskAction? = null
-        var closing = false
-
-        fun requestClose(action: DownloadsTaskAction?) {
-            if (closing) return
-            closing = true
-            selectedAction = action
-            visibleState.value = false
-        }
-
-        composeView.setContent {
-            val colorScheme = rememberAndroidThemeColorScheme()
-            val settings by activity.applicationContext.appContainer.settingsRepository
-                .settings.collectAsState()
-            @OptIn(ExperimentalMaterial3ExpressiveApi::class)
-            MaterialExpressiveTheme(colorScheme = colorScheme) {
-                DownloadsTaskActionsOverlayContent(
-                    backgroundView = backgroundView,
-                    state = state,
-                    anchor = anchor,
-                    glassStyle = settings.toDownloadsGlassStyle(),
-                    visible = visibleState.value,
-                    onCloseRequested = ::requestClose,
-                    onExitFinished = {
-                        if (composeView.parent === container) {
-                            container.removeView(composeView)
-                        }
-                        val action = selectedAction
-                        if (action != null) {
-                            onActionSelected(action)
-                        } else {
-                            onDismiss()
-                        }
-                    },
-                )
-            }
-        }
+        this.request = request
+        this.onActionSelected = onActionSelected
+        pendingAction = null
+        visible = true
     }
 
-    fun dismiss(activity: AppCompatActivity) {
-        val container = activity.findViewById<ViewGroup>(android.R.id.content)
-        container.findViewWithTag<ComposeView>(HOST_VIEW_TAG)?.let(container::removeView)
+    fun dismiss() {
+        if (request != null) visible = false
+    }
+
+    fun dismissImmediately() {
+        request = null
+        visible = false
+        pendingAction = null
+        onActionSelected = null
+    }
+
+    internal fun requestClose(action: DownloadsTaskAction?) {
+        if (!visible) return
+        pendingAction = action
+        visible = false
+    }
+
+    internal fun finishExit() {
+        val action = pendingAction
+        val callback = onActionSelected
+        dismissImmediately()
+        if (action != null) callback?.invoke(action)
     }
 }
 
+/**
+ * 与主壳同树的最上层任务菜单。玻璃直接读取主内容层的 [backdrop]，不再创建 View 宿主，
+ * 也不会把 scrim 或菜单自身重新录进采样层。
+ */
 @Composable
-private fun DownloadsTaskActionsOverlayContent(
-    backgroundView: View,
-    state: DownloadsDialogState.TaskActions,
-    anchor: Rect,
-    glassStyle: DownloadsGlassStyle,
-    visible: Boolean,
-    onCloseRequested: (DownloadsTaskAction?) -> Unit,
-    onExitFinished: () -> Unit,
+internal fun DownloadsTaskActionsGlassOverlay(
+    state: DownloadsTaskActionsOverlayState,
+    backdrop: LayerBackdrop,
 ) {
-    BackHandler { onCloseRequested(null) }
+    val request = state.request ?: return
+    BackHandler(enabled = state.visible) { state.requestClose(null) }
 
-    val backdrop = rememberViewLayerBackdrop(
-        backgroundView = backgroundView,
-        baseColor = AppSurfaces.pageContainerColor,
+    var overlayBoundsInWindow by remember { mutableStateOf(Rect.Zero) }
+    val anchor = request.anchorInWindow.translate(
+        -overlayBoundsInWindow.left,
+        -overlayBoundsInWindow.top,
     )
     val motionScheme = MaterialTheme.motionScheme
     val enterSpec = motionScheme.fastSpatialSpec<Float>()
     val exitSpec = motionScheme.fastEffectsSpec<Float>()
     // 单一进度驱动缩放与淡入淡出，保证玻璃、投影与内容始终同步。
     val transition = remember { Animatable(0f) }
-    LaunchedEffect(visible) {
-        if (visible) {
+    LaunchedEffect(state.visible, request) {
+        if (state.visible) {
             transition.animateTo(1f, enterSpec)
         } else {
             transition.animateTo(0f, exitSpec)
-            onExitFinished()
+            state.finishExit()
         }
     }
 
-    val scrimAlpha = if (isSystemInDarkTheme()) 0.48f else 0.32f
-    Box(Modifier.fillMaxSize()) {
-        // 与宿主 ComposeView 同尺寸的采样锚点，确保 View 与玻璃使用同一窗口坐标系。
-        Box(Modifier.fillMaxSize().layerBackdrop(backdrop))
+    val scrimAlpha = if (MaterialTheme.colorScheme.usesDarkSurfaces()) 0.48f else 0.32f
+    Box(
+        Modifier
+            .fillMaxSize()
+            .onGloballyPositioned { overlayBoundsInWindow = it.boundsInWindow() },
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -223,7 +182,7 @@ private fun DownloadsTaskActionsOverlayContent(
                 .clickable(
                     interactionSource = null,
                     indication = null,
-                    onClick = { onCloseRequested(null) },
+                    onClick = { state.requestClose(null) },
                 )
                 .clearAndSetSemantics {},
         )
@@ -250,19 +209,19 @@ private fun DownloadsTaskActionsOverlayContent(
                     .blockTouchThrough()
                     .downloadsGlassSurface(
                         backdrop = backdrop,
-                        style = glassStyle,
+                        style = request.glassStyle,
                         shadow = modalGlassShadow,
                         layerBlock = panelLayerBlock,
                     )
                     .semantics {
                         dialog()
-                        paneTitle = state.title
+                        paneTitle = request.title
                     }
                     .padding(taskActionsPanelPadding),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 Text(
-                    text = state.title,
+                    text = request.title,
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,
@@ -277,12 +236,12 @@ private fun DownloadsTaskActionsOverlayContent(
                 TaskActionRow(
                     iconRes = R.drawable.ic_open_in_new_24,
                     text = stringResource(R.string.download_action_open),
-                    onClick = { onCloseRequested(DownloadsTaskAction.Open) },
+                    onClick = { state.requestClose(DownloadsTaskAction.Open) },
                 )
                 TaskActionRow(
                     iconRes = R.drawable.ic_share_24,
                     text = stringResource(R.string.download_action_share),
-                    onClick = { onCloseRequested(DownloadsTaskAction.Share) },
+                    onClick = { state.requestClose(DownloadsTaskAction.Share) },
                 )
             }
         }

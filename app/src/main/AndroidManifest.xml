@@ -48,6 +48,7 @@
 
         <activity
             android:name=".ui.MainActivity"
+            android:configChanges="uiMode"
             android:exported="true"
             android:theme="@style/Theme.BiliTools.Splash"
             android:windowSoftInputMode="adjustPan">

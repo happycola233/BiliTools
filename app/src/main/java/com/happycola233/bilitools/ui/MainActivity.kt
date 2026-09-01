@@ -1,69 +1,43 @@
 package com.happycola233.bilitools.ui
 
 import android.content.Intent
-import android.content.res.Configuration
-import android.graphics.Color
-import android.graphics.Typeface
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.ui.platform.ViewCompositionStrategy
-import androidx.core.content.res.ResourcesCompat
-import androidx.core.os.bundleOf
+import androidx.compose.runtime.remember
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.core.view.ViewCompat
-import androidx.core.view.ViewGroupCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.doOnPreDraw
-import androidx.core.view.isVisible
-import androidx.core.view.updatePadding
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
-import androidx.viewpager2.adapter.FragmentStateAdapter
-import androidx.viewpager2.widget.ViewPager2
-import com.happycola233.bilitools.BiliToolsApp
-import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.appContainer
-import com.happycola233.bilitools.data.UpdateCheckResult
-import com.happycola233.bilitools.databinding.ActivityMainBinding
-import com.happycola233.bilitools.ui.downloads.DownloadsFragment
-import com.happycola233.bilitools.ui.haptics.HapticEffect
-import com.happycola233.bilitools.ui.haptics.performAppHaptic
-import com.happycola233.bilitools.ui.liquidtabs.LiquidGlassStyle
-import com.happycola233.bilitools.ui.liquidtabs.MainLiquidBottomBar
-import com.happycola233.bilitools.ui.me.MeFragment
-import com.happycola233.bilitools.ui.parse.ParseFragment
-import com.happycola233.bilitools.ui.theme.rememberAndroidThemeColorScheme
-import com.happycola233.bilitools.ui.update.UpdateDialog
-import com.google.android.material.color.MaterialColors
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
+import com.happycola233.bilitools.ui.downloads.DownloadsViewModel
+import com.happycola233.bilitools.ui.login.LoginViewModel
+import com.happycola233.bilitools.ui.parse.ParseViewModel
+import com.happycola233.bilitools.ui.theme.BiliToolsTheme
 
 class MainActivity : AppCompatActivity() {
-    private lateinit var binding: ActivityMainBinding
-    private lateinit var appliedThemeSnapshot: ThemeSettingsSnapshot
-    private var pendingThemeRecreate = false
-    private var themeRecreateScheduled = false
-    private val pendingThemeRecreateRunnable = Runnable { runPendingThemeRecreate() }
-    private var launchFlashGuard: View? = null
-    private val launchFlashGuardTimeoutRunnable = Runnable { removeLaunchFlashGuard() }
-    private val liquidTabIndex = mutableIntStateOf(0)
-    private var liquidBarContentSet = false
-    private val brandTitleTypeface: Typeface? by lazy {
-        ResourcesCompat.getFont(this, R.font.google_sans_flex_600_rond100)
+    private val parseViewModel: ParseViewModel by viewModels {
+        AppViewModelFactory(applicationContext.appContainer)
+    }
+    private val downloadsViewModel: DownloadsViewModel by viewModels {
+        AppViewModelFactory(applicationContext.appContainer)
+    }
+    private val loginViewModel: LoginViewModel by viewModels {
+        AppViewModelFactory(applicationContext.appContainer)
     }
 
+    private val selectedTabIndex = mutableIntStateOf(MAIN_TAB_PARSE)
+    private var mainContentView: View? = null
+    private var launchFlashGuard: View? = null
+    private val launchFlashGuardTimeoutRunnable = Runnable { removeLaunchFlashGuard() }
+
     override fun onCreate(savedInstanceState: Bundle?) {
-        // 启动页背景色必须在 installSplashScreen() 把主题切到 postSplashScreenTheme 之前读取
+        // 启动页背景色必须在 installSplashScreen() 把主题切到 postSplashScreenTheme 之前读取。
         val splashBackgroundColor = resolveSplashScreenBackgroundColor()
         val splashScreen = installSplashScreen()
         val playLaunchSplashAnimation = savedInstanceState == null &&
@@ -73,107 +47,48 @@ class MainActivity : AppCompatActivity() {
             splashScreen.setOnExitAnimationListener { splashScreenView ->
                 MainLaunchSplashAnimator.play(
                     splashScreenView = splashScreenView,
-                    contentView = if (::binding.isInitialized) binding.root else null,
+                    contentView = mainContentView,
                 )
                 releaseLaunchFlashGuardAfterSplashDrawn()
             }
         }
-        enableBiliEdgeToEdge()
-        appliedThemeSnapshot = applySettingsThemeOverlays()
-        super.onCreate(savedInstanceState)
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        val bottomNavBaseBottomPadding = binding.bottomNav.paddingBottom
 
-        // Handle edge-to-edge manually.
-        // AppBar gets its own listener that returns CONSUMED so the Material library's
-        // internal AppBarLayout.onApplyWindowInsets() cannot re-apply top insets.
-        ViewCompat.setOnApplyWindowInsetsListener(binding.appBar) { v, windowInsets ->
-            val topInsets = windowInsets.getInsets(TOP_BAR_INSET_TYPES)
-            v.updatePadding(top = topInsets.top)
-            WindowInsetsCompat.CONSUMED
+        enableBiliEdgeToEdge()
+        applySettingsThemeOverlays()
+        super.onCreate(savedInstanceState)
+
+        selectedTabIndex.intValue = savedInstanceState
+            ?.getInt(STATE_SELECTED_TAB, MAIN_TAB_PARSE)
+            ?: MAIN_TAB_PARSE
+        handleOpenDownloadsIntent(intent)
+        handleExternalDownloadIntent(intent)
+
+        setContent {
+            val settings by applicationContext.appContainer.settingsRepository
+                .settings.collectAsState()
+            // Tab 状态通过稳定 provider 下沉到真正使用它的子组合，切页时不让整棵主壳
+            // 连同玻璃效果一起重组；页面宿主与两种底栏各自只刷新自己的最小范围。
+            val selectedTabIndexProvider = remember { { selectedTabIndex.intValue } }
+            val selectTab = remember { { index: Int -> selectedTabIndex.intValue = index } }
+            BiliToolsTheme(settings = settings) {
+                MainScreen(
+                    activity = this@MainActivity,
+                    checkForUpdates = savedInstanceState == null,
+                    settings = settings,
+                    selectedTabIndex = selectedTabIndexProvider,
+                    onTabSelected = selectTab,
+                    parseViewModel = parseViewModel,
+                    downloadsViewModel = downloadsViewModel,
+                    loginViewModel = loginViewModel,
+                    onOpenParseUrl = ::openParseUrl,
+                )
+            }
         }
-        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, windowInsets ->
-            val bottomInsets = windowInsets.getInsets(BOTTOM_BAR_INSET_TYPES)
-            binding.bottomNav.updatePadding(bottom = bottomNavBaseBottomPadding + bottomInsets.bottom)
-            windowInsets
-        }
-        ViewGroupCompat.installCompatInsetsDispatch(binding.root)
-        setContentView(binding.root)
+        mainContentView = findViewById<ViewGroup>(android.R.id.content).getChildAt(0)
+
         if (playLaunchSplashAnimation) {
             installLaunchFlashGuard(splashBackgroundColor)
         }
-        requestInsetsRefresh()
-
-        applyMainTitleTypeface(binding.viewPager.currentItem)
-
-        val pagerAdapter = MainPagerAdapter(this)
-        binding.viewPager.adapter = pagerAdapter
-        binding.viewPager.offscreenPageLimit = 1 // Keep adjacent page only to improve cold start
-        binding.viewPager.isUserInputEnabled = false // Disable swipe if desired, or keep true
-
-        binding.viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
-            override fun onPageSelected(position: Int) {
-                syncMainTabUi(position)
-            }
-        })
-
-        binding.bottomNav.setOnItemSelectedListener { item ->
-            val targetPosition = when (item.itemId) {
-                R.id.parseFragment -> 0
-                R.id.downloadsFragment -> 1
-                R.id.meFragment -> 2
-                else -> return@setOnItemSelectedListener true
-            }
-            selectMainTab(targetPosition)
-            true
-        }
-
-        // Disable long click toast on bottom navigation items
-        val menuView = binding.bottomNav.getChildAt(0) as? ViewGroup
-        menuView?.let {
-            for (i in 0 until it.childCount) {
-                it.getChildAt(i).setOnLongClickListener { true }
-            }
-        }
-
-        applyBottomBarStyle(
-            applicationContext.appContainer.settingsRepository
-                .currentSettings().liquidBottomTabsEnabled,
-        )
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                applicationContext.appContainer.settingsRepository.settings
-                    .map { it.liquidBottomTabsEnabled }
-                    .distinctUntilChanged()
-                    .collect { applyBottomBarStyle(it) }
-            }
-        }
-
-        applyMainSurfaceColors()
-        handleOpenDownloadsIntent(intent)
-        handleExternalDownloadIntent(intent)
-        if (savedInstanceState == null) {
-            checkForUpdatesInBackground()
-        }
-    }
-
-    override fun onStart() {
-        super.onStart()
-        updatePendingThemeRecreate()
-    }
-
-    override fun onResume() {
-        super.onResume()
-        requestInsetsRefresh()
-        schedulePendingThemeRecreateIfNeeded()
-    }
-
-    override fun onMultiWindowModeChanged(
-        isInMultiWindowMode: Boolean,
-        newConfig: Configuration,
-    ) {
-        super.onMultiWindowModeChanged(isInMultiWindowMode, newConfig)
-        requestInsetsRefresh()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -183,9 +98,14 @@ class MainActivity : AppCompatActivity() {
         handleExternalDownloadIntent(intent)
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putInt(STATE_SELECTED_TAB, selectedTabIndex.intValue)
+        super.onSaveInstanceState(outState)
+    }
+
     private fun handleOpenDownloadsIntent(sourceIntent: Intent?) {
         if (sourceIntent?.getBooleanExtra(EXTRA_OPEN_DOWNLOADS, false) != true) return
-        binding.viewPager.setCurrentItem(1, false)
+        selectedTabIndex.intValue = MAIN_TAB_DOWNLOADS
         sourceIntent.removeExtra(EXTRA_OPEN_DOWNLOADS)
     }
 
@@ -193,106 +113,13 @@ class MainActivity : AppCompatActivity() {
         val url = normalizeHttpUrl(
             sourceIntent?.getStringExtra(ExternalDownloadContract.EXTRA_URL),
         ) ?: return
-
-        binding.viewPager.setCurrentItem(0, false)
-        supportFragmentManager.setFragmentResult(
-            ExternalDownloadContract.RESULT_KEY,
-            bundleOf(ExternalDownloadContract.RESULT_URL to url),
-        )
+        openParseUrl(url)
         sourceIntent?.removeExtra(ExternalDownloadContract.EXTRA_URL)
     }
 
-    private fun selectMainTab(position: Int) {
-        // 重复点击当前 Tab 不算切换，不给反馈；但若气泡与真实页面失步，点击时校正回来
-        if (binding.viewPager.currentItem == position) {
-            liquidTabIndex.intValue = position
-            return
-        }
-        binding.root.performAppHaptic(HapticEffect.Select)
-        binding.viewPager.setCurrentItem(position, false)
-    }
-
-    /** 同步底栏选中态（Material 底栏与液态气泡）与标题到指定页面。 */
-    private fun syncMainTabUi(position: Int) {
-        val menuId = when (position) {
-            0 -> R.id.parseFragment
-            1 -> R.id.downloadsFragment
-            2 -> R.id.meFragment
-            else -> R.id.parseFragment
-        }
-        binding.bottomNav.menu.findItem(menuId).isChecked = true
-        liquidTabIndex.intValue = position
-
-        binding.collapsingToolbar.title = when (position) {
-            0 -> getString(R.string.app_name)
-            1 -> getString(R.string.nav_downloads)
-            2 -> getString(R.string.nav_me)
-            else -> getString(R.string.app_name)
-        }
-        applyMainTitleTypeface(position)
-    }
-
-    /** 解析页标题「BiliTools」使用 Google Sans Flex（ROND=100）品牌字体，其余页还原布局中定义的标题样式。 */
-    private fun applyMainTitleTypeface(position: Int) {
-        val brandTypeface = brandTitleTypeface?.takeIf { position == 0 }
-        if (brandTypeface != null) {
-            binding.collapsingToolbar.setCollapsedTitleTypeface(brandTypeface)
-            binding.collapsingToolbar.setExpandedTitleTypeface(brandTypeface)
-        } else {
-            binding.collapsingToolbar.setCollapsedTitleTextAppearance(
-                R.style.TextAppearance_BiliTools_Main_CollapsedTitle,
-            )
-            binding.collapsingToolbar.setExpandedTitleTextAppearance(
-                R.style.TextAppearance_BiliTools_Main_ExpandedTitle,
-            )
-        }
-    }
-
-    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
-        super.onRestoreInstanceState(savedInstanceState)
-        // ViewPager2 恢复页面位置时不会回调 onPageSelected（如切换深浅色主题触发的 recreate），
-        // 此处手动同步，避免液态气泡/标题停留在初始页
-        syncMainTabUi(binding.viewPager.currentItem)
-    }
-
-    private fun applyBottomBarStyle(liquidEnabled: Boolean) {
-        binding.bottomNav.isVisible = !liquidEnabled
-        binding.liquidBottomBar.isVisible = liquidEnabled
-        if (liquidEnabled) {
-            ensureLiquidBottomBarContent()
-        } else if (liquidBarContentSet) {
-            // 释放组合，停掉采样层的 PreDraw 监听，避免隐藏后继续做无谓的重录制
-            binding.liquidBottomBar.disposeComposition()
-            liquidBarContentSet = false
-        }
-    }
-
-    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
-    private fun ensureLiquidBottomBarContent() {
-        if (liquidBarContentSet) return
-        liquidBarContentSet = true
-        binding.liquidBottomBar.setViewCompositionStrategy(
-            ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed,
-        )
-        binding.liquidBottomBar.setContent {
-            MaterialExpressiveTheme(colorScheme = rememberAndroidThemeColorScheme()) {
-                val settings by applicationContext.appContainer.settingsRepository
-                    .settings.collectAsState()
-                MainLiquidBottomBar(
-                    selectedTabIndex = { liquidTabIndex.intValue },
-                    onTabSelected = ::selectMainTab,
-                    backgroundView = binding.viewPager,
-                    glassStyle = LiquidGlassStyle(
-                        blurRadiusDp = settings.liquidBarGlassBlurRadiusDp,
-                        refractionHeightDp = settings.liquidBarGlassRefractionHeightDp,
-                        refractionAmountFrac = settings.liquidBarGlassRefractionAmountFrac,
-                        chromaticAberration = settings.liquidBarGlassChromaticAberration,
-                    ),
-                    surfaceAlpha = settings.liquidBarGlassSurfaceAlpha,
-                    widthFraction = settings.liquidBarWidthFraction,
-                )
-            }
-        }
+    private fun openParseUrl(url: String) {
+        parseViewModel.submitExternalUrl(url)
+        selectedTabIndex.intValue = MAIN_TAB_PARSE
     }
 
     /**
@@ -318,9 +145,7 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * 防闪帧遮罩：Android 12+ 上注册 setOnExitAnimationListener 后，系统启动窗口移除与
-     * SplashScreenView 移交到应用窗口之间存在一帧竞态，启动越快（release 冷启动）越容易
-     * 在小电视动画中间闪出一帧首页。在内容之上、SplashScreenView 之下垫一层与启动页背景
-     * 同色的遮罩，让竞态帧显示的仍是启动页背景而不是首页内容。
+     * SplashScreenView 移交到应用窗口之间存在一帧竞态。遮罩让这一帧仍显示启动页背景。
      */
     private fun installLaunchFlashGuard(backgroundColor: Int?) {
         if (backgroundColor == null) return
@@ -334,8 +159,6 @@ class MainActivity : AppCompatActivity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
         )
         launchFlashGuard = guard
-        // 兜底：没有系统启动窗口的场景（如进程内重新启动 MainActivity）退场回调不会触发，
-        // 首帧绘制后限时移除遮罩，避免其永久盖住页面
         guard.doOnPreDraw {
             guard.postDelayed(
                 launchFlashGuardTimeoutRunnable,
@@ -344,7 +167,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** 退场回调已拿到 SplashScreenView，等两帧确保其绘制到应用窗口、盖住内容后再撤掉遮罩。 */
+    /** 退场回调已拿到 SplashScreenView，等两帧确保其盖住内容后再撤掉遮罩。 */
     private fun releaseLaunchFlashGuardAfterSplashDrawn() {
         if (launchFlashGuard == null) return
         val decorView = window.decorView
@@ -360,134 +183,11 @@ class MainActivity : AppCompatActivity() {
         (guard.parent as? ViewGroup)?.removeView(guard)
     }
 
-    private fun updatePendingThemeRecreate() {
-        val currentSnapshot = currentThemeSettingsSnapshot()
-        if (currentSnapshot == appliedThemeSnapshot) {
-            appliedThemeSnapshot = currentSnapshot
-            pendingThemeRecreate = false
-        } else {
-            pendingThemeRecreate = true
-        }
-    }
-
-    private fun schedulePendingThemeRecreateIfNeeded(delayMillis: Long = 0L) {
-        if (!pendingThemeRecreate || themeRecreateScheduled || !::binding.isInitialized) return
-        themeRecreateScheduled = true
-        binding.root.postDelayed(pendingThemeRecreateRunnable, delayMillis)
-    }
-
-    private fun runPendingThemeRecreate() {
-        themeRecreateScheduled = false
-        updatePendingThemeRecreate()
-        if (!pendingThemeRecreate || isFinishing || isDestroyed) return
-
-        // SettingsActivity remains started while its finish animation reveals this
-        // window. Keep the old page alive until no other activity is visible.
-        if (applicationHasAnotherVisibleActivity()) {
-            schedulePendingThemeRecreateIfNeeded(THEME_RECREATE_RETRY_DELAY_MILLIS)
-            return
-        }
-
-        themeRecreateScheduled = true
-        binding.root.postOnAnimation {
-            themeRecreateScheduled = false
-            updatePendingThemeRecreate()
-            if (!pendingThemeRecreate || isFinishing || isDestroyed) return@postOnAnimation
-            if (applicationHasAnotherVisibleActivity()) {
-                schedulePendingThemeRecreateIfNeeded(THEME_RECREATE_RETRY_DELAY_MILLIS)
-                return@postOnAnimation
-            }
-            recreate()
-        }
-    }
-
-    private fun currentThemeSettingsSnapshot(): ThemeSettingsSnapshot {
-        return applicationContext.currentThemeSettingsSnapshot(resources.configuration.uiMode)
-    }
-
-    private fun applicationHasAnotherVisibleActivity(): Boolean {
-        val app = application as? BiliToolsApp ?: return false
-        return app.visibleActivityCount > 1
-    }
-
-    private fun requestInsetsRefresh() {
-        if (!::binding.isInitialized) return
-        binding.root.post {
-            if (binding.root.isAttachedToWindow) {
-                ViewCompat.requestApplyInsets(binding.root)
-            }
-        }
-    }
-
-    private fun checkForUpdatesInBackground() {
-        lifecycleScope.launch {
-            when (val result = applicationContext.appContainer.updateRepository.checkForUpdate()) {
-                is UpdateCheckResult.UpdateAvailable -> {
-                    if (applicationContext.appContainer.settingsRepository.shouldIgnoreUpdate(
-                            result.release.versionName,
-                        )
-                    ) {
-                        return@launch
-                    }
-                    UpdateDialog.show(this@MainActivity, result.release, result.currentVersion)
-                }
-
-                is UpdateCheckResult.UpToDate -> Unit
-                is UpdateCheckResult.Failed -> Unit
-            }
-        }
-    }
-
-    /**
-     * 顶栏、根容器与 Material 底栏统一使用页面底色，让三个页面的 Compose 内容与外围 View 无缝拼接。
-     * 取色规则与 Compose 侧的 AppSurfaces.pageContainerColor 保持一致。
-     */
-    private fun applyMainSurfaceColors() {
-        val color = resolvePageContainerColor()
-        binding.root.setBackgroundColor(color)
-        binding.appBar.setBackgroundColor(color)
-        binding.collapsingToolbar.setBackgroundColor(color)
-        binding.collapsingToolbar.setContentScrimColor(color)
-        binding.collapsingToolbar.setStatusBarScrimColor(color)
-        binding.toolbar.setBackgroundColor(color)
-        binding.bottomNav.setBackgroundColor(color)
-    }
-
-    private fun resolvePageContainerColor(): Int {
-        val surface = resolveThemeColor(com.google.android.material.R.attr.colorSurface)
-        val background = resolveThemeColor(android.R.attr.colorBackground, surface)
-        return if (surface == Color.BLACK && background == Color.BLACK) {
-            surface
-        } else {
-            resolveThemeColor(com.google.android.material.R.attr.colorSurfaceContainer, surface)
-        }
-    }
-
-    private fun resolveThemeColor(attr: Int, fallback: Int = Color.BLACK): Int {
-        return MaterialColors.getColor(binding.root, attr, fallback)
-    }
-
     companion object {
         const val EXTRA_OPEN_DOWNLOADS = "extra_open_downloads"
-        private const val THEME_RECREATE_RETRY_DELAY_MILLIS = 48L
+        private const val STATE_SELECTED_TAB = "main_selected_tab"
+        private const val MAIN_TAB_PARSE = 0
+        private const val MAIN_TAB_DOWNLOADS = 1
         private const val LAUNCH_FLASH_GUARD_TIMEOUT_MILLIS = 400L
-        private val TOP_BAR_INSET_TYPES =
-            WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.displayCutout()
-        private val BOTTOM_BAR_INSET_TYPES =
-            WindowInsetsCompat.Type.navigationBars()
-    }
-}
-
-class MainPagerAdapter(activity: AppCompatActivity) : FragmentStateAdapter(activity) {
-    override fun getItemCount(): Int = 3
-
-    override fun createFragment(position: Int): androidx.fragment.app.Fragment {
-        return when (position) {
-            // Use factory so main mode and external mode share the same fragment class.
-            0 -> ParseFragment.newInstance()
-            1 -> DownloadsFragment()
-            2 -> MeFragment()
-            else -> throw IllegalArgumentException("Invalid position $position")
-        }
     }
 }

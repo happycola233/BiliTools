@@ -169,7 +169,7 @@ import com.happycola233.bilitools.ui.resolveOverlaySwatch
 import com.happycola233.bilitools.ui.theme.AppAccents
 import com.happycola233.bilitools.ui.theme.AppSurfaces
 import com.happycola233.bilitools.ui.theme.BiliToolsFonts
-import com.happycola233.bilitools.ui.theme.BiliToolsSettingsTheme
+import com.happycola233.bilitools.ui.theme.BiliToolsTheme
 import com.mikepenz.aboutlibraries.Libs
 import com.mikepenz.aboutlibraries.entity.Library
 import java.time.Instant
@@ -228,7 +228,7 @@ fun BiliToolsSettingsContent(
     onClearIssueReport: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    BiliToolsSettingsTheme(settings = settings) {
+    BiliToolsTheme(settings = settings) {
         NavDisplay(
             backStack = backStack,
             onBack = onNavigateBack,

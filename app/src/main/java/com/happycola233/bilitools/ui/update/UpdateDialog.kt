@@ -35,7 +35,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearWavyProgressIndicator
-import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
@@ -46,6 +45,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -81,7 +81,7 @@ import androidx.compose.ui.unit.sp
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.appContainer
 import com.happycola233.bilitools.data.ReleaseInfo
-import com.happycola233.bilitools.ui.theme.rememberAndroidThemeColorScheme
+import com.happycola233.bilitools.ui.theme.BiliToolsTheme
 import com.happycola233.bilitools.update.UpdateStartResult
 import kotlinx.coroutines.launch
 
@@ -95,8 +95,7 @@ object UpdateDialog {
     ) {
         if (activity.isFinishing || activity.isDestroyed) return
 
-        val appUpdateManager = activity.applicationContext.appContainer.appUpdateManager
-        val gitHubRouteManager = activity.applicationContext.appContainer.gitHubRouteManager
+        val settingsRepository = activity.applicationContext.appContainer.settingsRepository
         val container = activity.findViewById<ViewGroup>(android.R.id.content)
         container.findViewWithTag<ComposeView>(HOST_VIEW_TAG)?.let(container::removeView)
 
@@ -107,55 +106,76 @@ object UpdateDialog {
         container.addView(composeView)
 
         composeView.setContent {
-            val colorScheme = rememberAndroidThemeColorScheme()
-            @OptIn(ExperimentalMaterial3ExpressiveApi::class)
-            MaterialExpressiveTheme(colorScheme = colorScheme) {
-                UpdateDialogHost(
+            val settings by settingsRepository.settings.collectAsState()
+            BiliToolsTheme(settings = settings) {
+                UpdateDialogContent(
+                    activity = activity,
                     release = release,
                     currentVersion = currentVersion,
-                    onRemoveHost = {
+                    onDismiss = {
                         if (composeView.parent === container) {
                             container.removeView(composeView)
                         }
-                    },
-                    onOpenRelease = {
-                        val intent = Intent(
-                            Intent.ACTION_VIEW,
-                            Uri.parse(gitHubRouteManager.resolveReleasePageUrl(release.htmlUrl)),
-                        )
-                        runCatching {
-                            activity.startActivity(intent)
-                        }.onFailure {
-                            Toast.makeText(
-                                activity,
-                                activity.getString(R.string.update_dialog_open_release_failed),
-                                Toast.LENGTH_SHORT,
-                            ).show()
-                        }
-                    },
-                    activity = activity,
-                    onDownloadUpdateNow = {
-                        startUpdateDownload(
-                            activity = activity,
-                            release = release,
-                            appUpdateManager = appUpdateManager,
-                        )
-                    },
-                    onIgnoreUpdate = {
-                        appUpdateManager.ignoreRelease(release.versionName)
-                        Toast.makeText(
-                            activity,
-                            activity.getString(
-                                R.string.update_dialog_ignore_saved,
-                                buildVersionTag(release.versionName),
-                            ),
-                            Toast.LENGTH_SHORT,
-                        ).show()
                     },
                 )
             }
         }
     }
+}
+
+/** 可直接放进 Activity 现有 Compose 根的更新弹窗内容。 */
+@Composable
+fun UpdateDialogContent(
+    activity: AppCompatActivity,
+    release: ReleaseInfo,
+    currentVersion: String,
+    onDismiss: () -> Unit,
+) {
+    val appUpdateManager = remember(activity) {
+        activity.applicationContext.appContainer.appUpdateManager
+    }
+    val gitHubRouteManager = remember(activity) {
+        activity.applicationContext.appContainer.gitHubRouteManager
+    }
+    UpdateDialogHost(
+        activity = activity,
+        release = release,
+        currentVersion = currentVersion,
+        onRemoveHost = onDismiss,
+        onOpenRelease = {
+            val intent = Intent(
+                Intent.ACTION_VIEW,
+                Uri.parse(gitHubRouteManager.resolveReleasePageUrl(release.htmlUrl)),
+            )
+            runCatching {
+                activity.startActivity(intent)
+            }.onFailure {
+                Toast.makeText(
+                    activity,
+                    activity.getString(R.string.update_dialog_open_release_failed),
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+        },
+        onDownloadUpdateNow = {
+            startUpdateDownload(
+                activity = activity,
+                release = release,
+                appUpdateManager = appUpdateManager,
+            )
+        },
+        onIgnoreUpdate = {
+            appUpdateManager.ignoreRelease(release.versionName)
+            Toast.makeText(
+                activity,
+                activity.getString(
+                    R.string.update_dialog_ignore_saved,
+                    buildVersionTag(release.versionName),
+                ),
+                Toast.LENGTH_SHORT,
+            ).show()
+        },
+    )
 }
 
 private fun shouldRequestNotificationPermission(activity: AppCompatActivity): Boolean {

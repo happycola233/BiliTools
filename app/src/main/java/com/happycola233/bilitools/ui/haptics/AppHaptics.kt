@@ -212,9 +212,8 @@ class HapticThresholdGate {
 /**
  * Compose 侧的触感入口。
  *
- * 直接由 [LocalView] 派生，因此无需在每个 Compose 根挂载 Provider —— 本项目存在多个互相独立的
- * `setContent` 根（两个 Fragment 各自建主题、若干 Activity 走 `BiliToolsSettingsTheme`），
- * 逐个包 Provider 只会让根节点持续膨胀。
+ * 直接由 [LocalView] 派生，因此无需在 [BiliToolsTheme][com.happycola233.bilitools.ui.theme.BiliToolsTheme]
+ * 或页面根额外挂载 Provider。
  */
 @Composable
 fun rememberAppHaptics(): AppHaptics {
@@ -225,7 +224,7 @@ fun rememberAppHaptics(): AppHaptics {
 }
 
 /**
- * View 体系（如 BottomNavigationView）的触感入口，与 Compose 侧共用同一套语义与降级。
+ * 少量仍使用 View 的控件入口，与 Compose 侧共用同一套语义与降级。
  */
 fun View.performAppHaptic(effect: HapticEffect) {
     val level = context.applicationContext.appContainer.settingsRepository

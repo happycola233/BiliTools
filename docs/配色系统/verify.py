@@ -15,7 +15,10 @@ RES = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                    '..', '..', 'app', 'src', 'main', 'res')
 LIGHT_XML = os.path.join(RES, 'values', 'themes.xml')
 DARK_XML = os.path.join(RES, 'values-night', 'themes.xml')
-STYLES_XML = os.path.join(RES, 'values', 'styles.xml')
+MAIN_BOTTOM_BAR_KT = os.path.join(
+    os.path.dirname(RES), 'java', 'com', 'happycola233', 'bilitools', 'ui',
+    'liquidtabs', 'MainLiquidBottomBar.kt'
+)
 
 SCHEMES = ['Sakura', 'Coral', 'Apricot', 'Sand', 'Matcha', 'Mint', 'Seafoam',
            'Lagoon', 'Sky', 'Iris', 'Periwinkle', 'Lilac', 'Orchid']
@@ -81,17 +84,6 @@ def named_overlay(path, style_name):
             r'<item name="([\w:]+)">#FF([0-9A-Fa-f]{6})</item>', match.group(1)
         )
     }
-
-
-def style_body(path, style_name):
-    """回读一个 style 的原始内容，用于检查是否意外覆盖父样式的颜色契约。"""
-    text = io.open(path, encoding='utf-8').read()
-    match = re.search(
-        r'<style name="%s"[^>]*>(.*?)</style>' % re.escape(style_name),
-        text,
-        re.S,
-    )
-    return match.group(1) if match else None
 
 
 def lum(hexstr):
@@ -195,24 +187,19 @@ check(dark_switch_states >= 3.0, '深色开关开启 / 关闭轨道',
 
 print()
 print('五、普通底栏沿用 Material 3 Expressive 颜色契约')
-bottom_style = style_body(STYLES_XML, 'Widget.BiliTools.BottomNavigation')
-indicator_style = style_body(
-    STYLES_XML, 'Widget.BiliTools.BottomNavigation.ActiveIndicator'
-)
-check(bottom_style is not None, '普通底栏样式存在', '已找到自定义样式')
-if bottom_style is not None:
-    content_overrides = [
-        role for role in ('itemIconTint', 'itemTextColor')
-        if re.search(r'<item name="%s">' % role, bottom_style)
-    ]
-    check(not content_overrides, '底栏内容色继承父样式',
-          '未覆盖图标/文字 token' if not content_overrides
-          else '存在覆盖：%s' % ', '.join(content_overrides))
-check(indicator_style is not None, '底栏指示器样式存在', '已找到自定义样式')
-if indicator_style is not None:
-    indicator_override = re.search(r'<item name="android:color">', indicator_style)
-    check(not indicator_override, '底栏指示器色继承父样式',
-          '使用 colorSecondaryContainer token' if not indicator_override else '存在颜色覆盖')
+main_bottom_bar = io.open(MAIN_BOTTOM_BAR_KT, encoding='utf-8').read()
+material_bottom_bar = main_bottom_bar.split('fun MainMaterialBottomBar', 1)
+material_bottom_bar = material_bottom_bar[1] if len(material_bottom_bar) == 2 else ''
+check(bool(material_bottom_bar) and 'NavigationBar(' in material_bottom_bar,
+      'Compose 普通底栏存在', '已找到 MainMaterialBottomBar')
+check('containerColor = AppSurfaces.pageContainerColor' in material_bottom_bar and
+      'tonalElevation = 0.dp' in material_bottom_bar,
+      '底栏底色使用页面表面 token', 'pageContainerColor，且不叠加 tonal elevation')
+check('NavigationBarItem(' in material_bottom_bar and
+      'NavigationBarItemDefaults' not in material_bottom_bar,
+      '底栏内容色继承 M3 token', '未覆盖图标、文字或指示器颜色')
+check('alwaysShowLabel = true' in material_bottom_bar,
+      '普通底栏保持 labeled', '三个入口始终显示标签')
 
 print()
 print('六、悬浮元素按模式取色并浮在页面底之上')

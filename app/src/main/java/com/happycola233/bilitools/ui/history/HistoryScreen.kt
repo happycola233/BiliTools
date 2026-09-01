@@ -103,7 +103,7 @@ import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import com.happycola233.bilitools.ui.longPressAction
 import com.happycola233.bilitools.ui.theme.AppAccents
 import com.happycola233.bilitools.ui.theme.AppSurfaces
-import com.happycola233.bilitools.ui.theme.BiliToolsSettingsTheme
+import com.happycola233.bilitools.ui.theme.BiliToolsTheme
 import com.happycola233.bilitools.ui.theme.usesPureBlackSurfaces
 import java.time.Instant
 import java.time.LocalDate
@@ -135,7 +135,7 @@ fun BiliToolsHistoryContent(
     onCopyAuthorName: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    BiliToolsSettingsTheme(settings = settings) {
+    BiliToolsTheme(settings = settings) {
         val context = LocalContext.current
         val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
         var pageInput by rememberSaveable { mutableStateOf(state.page.toString()) }

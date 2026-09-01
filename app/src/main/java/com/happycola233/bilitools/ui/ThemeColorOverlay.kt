@@ -11,15 +11,7 @@ import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.appContainer
 import com.happycola233.bilitools.data.AppSettings
 import com.happycola233.bilitools.data.AppThemeColor
-import com.happycola233.bilitools.data.AppThemeMode
 import com.google.android.material.color.DynamicColors
-
-internal data class ThemeSettingsSnapshot(
-    val themeMode: AppThemeMode,
-    val themeColor: AppThemeColor,
-    val darkModePureBlack: Boolean,
-    val nightModeMask: Int,
-)
 
 @StyleRes
 internal fun AppThemeColor.overlayStyleResOrNull(): Int? {
@@ -97,27 +89,17 @@ internal fun AppSettings.darkPureBlackOverlayStyleResOrNull(uiMode: Int): Int? {
     }
 }
 
-internal fun Context.currentThemeSettingsSnapshot(uiMode: Int): ThemeSettingsSnapshot {
+/**
+ * 给 Activity 启动窗口及仍使用 View 的平台组件叠加当前配色。
+ * Compose 内容统一由 `BiliToolsTheme` 直接观察 AppSettings，不再比较 Activity 主题快照。
+ */
+internal fun AppCompatActivity.applySettingsThemeOverlays() {
     val settings = applicationContext.appContainer.settingsRepository.currentSettings()
-    return ThemeSettingsSnapshot(
-        themeMode = settings.themeMode,
-        themeColor = settings.themeColor,
-        darkModePureBlack = settings.darkModePureBlack,
-        nightModeMask = uiMode and Configuration.UI_MODE_NIGHT_MASK,
-    )
-}
-
-internal fun AppCompatActivity.applySettingsThemeOverlays(): ThemeSettingsSnapshot {
-    val snapshot = applicationContext.currentThemeSettingsSnapshot(resources.configuration.uiMode)
-    if (snapshot.themeColor == AppThemeColor.Dynamic) {
+    if (settings.themeColor == AppThemeColor.Dynamic) {
         DynamicColors.applyToActivityIfAvailable(this)
     } else {
-        snapshot.themeColor.overlayStyleResOrNull()?.let { theme.applyStyle(it, true) }
+        settings.themeColor.overlayStyleResOrNull()?.let { theme.applyStyle(it, true) }
     }
-    if (snapshot.darkModePureBlack &&
-        snapshot.nightModeMask == Configuration.UI_MODE_NIGHT_YES
-    ) {
-        theme.applyStyle(R.style.ThemeOverlay_BiliTools_DarkPureBlack, true)
-    }
-    return snapshot
+    settings.darkPureBlackOverlayStyleResOrNull(resources.configuration.uiMode)
+        ?.let { theme.applyStyle(it, true) }
 }

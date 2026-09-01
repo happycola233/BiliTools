@@ -47,12 +47,12 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.MaterialExpressiveTheme
-import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.LoadingIndicatorDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -75,8 +75,6 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -88,6 +86,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -106,8 +105,7 @@ import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import com.happycola233.bilitools.ui.theme.AppAccents
 import com.happycola233.bilitools.ui.theme.AppSurfaces
 import com.happycola233.bilitools.ui.theme.BiliToolsFonts
-import com.happycola233.bilitools.ui.theme.BiliToolsSettingsTheme
-import com.happycola233.bilitools.ui.theme.rememberAndroidThemeColorScheme
+import com.happycola233.bilitools.ui.theme.BiliToolsTheme
 import java.util.Locale
 import kotlin.math.abs
 import androidx.core.text.HtmlCompat
@@ -137,17 +135,11 @@ private data class RemoteImageRequest(
     val fadeInDurationMillis: Int,
 )
 
-/**
- * 配色取自宿主 Activity 的主题，与解析页、下载页以及主界面顶栏同源。
- *
- * 这里刻意不用 `BiliToolsSettingsTheme`：那套主题直接由 settings 驱动、切换配色时立刻生效，
- * 而顶栏是 View 体系、必须等 Activity 重建才换色，两者混用会让「我」页出现
- * 内容已变色、顶栏还是旧色的割裂感。
- */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+/** 主壳统一提供 [BiliToolsTheme]，页面内容不再创建嵌套主题。 */
 @Composable
 fun BiliToolsMeContent(
     loginState: LoginUiState,
+    contentTopPadding: Dp,
     onOpenLogin: () -> Unit,
     onOpenHistory: () -> Unit,
     onOpenFavorite: () -> Unit,
@@ -156,21 +148,17 @@ fun BiliToolsMeContent(
     onLogout: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    MaterialExpressiveTheme(
-        colorScheme = rememberAndroidThemeColorScheme(),
-        motionScheme = MotionScheme.expressive(),
-    ) {
-        MeOverviewScreen(
-            loginState = loginState,
-            onNavigateToLogin = onOpenLogin,
-            onOpenHistory = onOpenHistory,
-            onOpenFavorite = onOpenFavorite,
-            onOpenWatchLater = onOpenWatchLater,
-            onOpenSettings = onOpenSettings,
-            onLogout = onLogout,
-            modifier = modifier,
-        )
-    }
+    MeOverviewScreen(
+        loginState = loginState,
+        contentTopPadding = contentTopPadding,
+        onNavigateToLogin = onOpenLogin,
+        onOpenHistory = onOpenHistory,
+        onOpenFavorite = onOpenFavorite,
+        onOpenWatchLater = onOpenWatchLater,
+        onOpenSettings = onOpenSettings,
+        onLogout = onLogout,
+        modifier = modifier,
+    )
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -189,7 +177,7 @@ fun BiliToolsLoginContent(
     onDismissError: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    BiliToolsSettingsTheme(settings = settings) {
+    BiliToolsTheme(settings = settings) {
         LoginSubscreen(
             state = state,
             onPrepareLogin = onPrepareLogin,
@@ -209,6 +197,7 @@ fun BiliToolsLoginContent(
 @Composable
 private fun MeOverviewScreen(
     loginState: LoginUiState,
+    contentTopPadding: Dp,
     onNavigateToLogin: () -> Unit,
     onOpenHistory: () -> Unit,
     onOpenFavorite: () -> Unit,
@@ -322,19 +311,16 @@ private fun MeOverviewScreen(
     }
 
     MePageContainer(modifier = modifier) {
-        val nestedScrollInterop = rememberNestedScrollInteropConnection()
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(2.dp),
             // 页面全出血绘制，内容从主界面底栏后方滚过，底部预留底栏净空
             contentPadding = PaddingValues(
                 start = 16.dp,
-                top = 14.dp,
+                top = contentTopPadding + 14.dp,
                 end = 16.dp,
                 bottom = 14.dp + mainBottomBarBottomInset(),
             ),
-            modifier = Modifier
-                .fillMaxSize()
-                .nestedScroll(nestedScrollInterop),
+            modifier = Modifier.fillMaxSize(),
         ) {
             item {
                 if (isLoggedIn) {
@@ -428,7 +414,6 @@ private fun LoginSubscreen(
     }
 
     MePageContainer(modifier = modifier) {
-        val nestedScrollInterop = rememberNestedScrollInteropConnection()
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(2.dp),
             // safeDrawingPadding 已含系统导航栏 inset，这里只需再预留底栏本体高度
@@ -441,8 +426,7 @@ private fun LoginSubscreen(
             modifier = Modifier
                 .fillMaxSize()
                 .safeDrawingPadding()
-                .imePadding()
-                .nestedScroll(nestedScrollInterop),
+                .imePadding(),
         ) {
             item { LoginHeader(onBack = onBack) }
             item { Spacer(Modifier.height(8.dp)) }
@@ -1148,6 +1132,7 @@ private fun ProfileCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ProfileLoadingCard(
     modifier: Modifier = Modifier,
@@ -1163,11 +1148,10 @@ private fun ProfileLoadingCard(
                 .fillMaxWidth()
                 .height(132.dp),
         ) {
-            AndroidView(
-                factory = { context ->
-                    android.view.LayoutInflater.from(context)
-                        .inflate(R.layout.view_expressive_loading_indicator, null, false)
-                },
+            // Compose 指示器直接观察 ColorScheme，配色切换时不会滞留 AndroidView 创建时的旧色。
+            LoadingIndicator(
+                color = MaterialTheme.colorScheme.primary,
+                polygons = LoadingIndicatorDefaults.IndeterminateIndicatorPolygons,
             )
         }
     }

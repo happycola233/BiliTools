@@ -47,7 +47,7 @@ python docs/配色系统/preview.py      # 出图目视确认
 
 另有两个不属于这十三套的开关：
 
-- **动态取色**（`AppThemeColor.Dynamic`，默认值）：API 31+ 上走 `DynamicColors.applyToActivityIfAvailable()` 取系统壁纸色。此时下面所有参数都不生效，配色由系统给。
+- **动态取色**（`AppThemeColor.Dynamic`，默认值）：API 31+ 上 Compose 主题使用 Material 动态配色主题读取系统壁纸色，Activity 启动窗口与 View 层仍由 `DynamicColors.applyToActivityIfAvailable()` 同步。此时下面所有参数都不生效，配色由系统给。
 - **纯黑深色模式**：`ThemeOverlay.BiliTools.DarkPureBlack`，在深色配色之上再叠一层，把中性色阶压到纯黑附近。
 
 ---
@@ -214,7 +214,9 @@ M3 的 **fixed 色组**正是为这种场景设计的：它的定义就是「不
 
 **`ToggleFloatingActionButton` 不向子内容提供内容色。** 它的实现只做了加阴影、画容器、调 `content()` 三件事，既没有 `CompositionLocalProvider`，也不会自动套 `ToggleFloatingActionButtonDefaults.animateIcon`。里面的 `Icon` 如果不写 `tint`，会回落到 Compose 库的默认值 **`Color.Black`**，和 colorScheme 完全脱钩。`DownloadsScreenContent.kt` 的汉堡按钮曾长期是纯黑图标。
 
-**`tonalElevation` 会叠 `surfaceTint`。** 两个主题构建器都把 `surfaceTint` 赋成了 `primary`，浅色模式下那是 T36 的深色，给 `Surface` 设非零 `tonalElevation` 会让底色明显偏色偏暗、偏离表面色阶。层次一律用 `shadowElevation` 表达，全项目不使用 `tonalElevation`。
+**`tonalElevation` 会叠 `surfaceTint`。** 全局主题构建器把 `surfaceTint` 赋成了 `primary`，浅色模式下那是 T36 的深色，给 `Surface` 设非零 `tonalElevation` 会让底色明显偏色偏暗、偏离表面色阶。层次一律用 `shadowElevation` 表达，全项目不使用 `tonalElevation`。
+
+**`AndroidView.factory` 只负责创建，不会随 Compose 配色重建。** 主界面不再依赖 Activity `recreate()` 后，嵌在 Compose 中且从 View theme 取色的控件必须在 `update` 中把当前 `MaterialTheme.colorScheme` 同步回 View，或直接改用等价的 Compose 组件。下载进度条按前一种方式处理；“我”页加载动画使用 Compose `LoadingIndicator`，两者都能随配色即时刷新。
 
 **开关与滑条的滑块都要按模式取色。** 开关不在滑块里放状态图标。启用时，浅色模式的开启态使用 `primary` 轨道与 `onPrimary` 滑块，关闭态也使用 `onPrimary` 滑块；深色模式开启态使用 `fill` 轨道与 `onFill` 滑块，关闭态滑块使用 `outline`，与 Material 默认的未选中滑块角色一致。普通浅色和深色模式的关闭态轨道使用 `surfaceContainerHigh`，不画描边；纯黑模式的卡片底本身就是 `surfaceContainerHigh`，所以关闭态必须升到 `surfaceContainerHighest` 并恢复 `outline` 描边，避免轨道与卡片重合。禁用关闭态仍不画描边。滑条未选段也使用 `surfaceContainerHigh`，让细轨道在卡片上仍清晰可见；浅色模式用 `onFill` 深色滑块，避免糊进近白卡片，深色模式用 `fill` 浅色滑块，与已选轨道保持连续的强调色。
 
@@ -231,15 +233,16 @@ M3 的 **fixed 色组**正是为这种场景设计的：它的定义就是「不
 | `res/values/themes.xml` | 基础主题 + 十三套 overlay（浅色）+ 纯黑 overlay，**生成器产出** |
 | `res/values-night/themes.xml` | 同上（深色），**生成器产出** |
 | `res/values/colors.xml` | 基线（樱粉）色号 + 开屏页色号，**生成器产出** |
-| `res/values/styles.xml` | View 层控件样式；底栏仅覆盖尺寸与形状，颜色继承 Material 3 Expressive token |
+| `res/values/styles.xml` | 仍保留的 View 层控件样式 |
 | `ui/theme/AppAccents.kt` | 填充面 / 前景色的语义封装，各控件的 `*Colors()` 都在这 |
 | `ui/theme/AppSurfaces.kt` | 三层表面语义 + 深浅/纯黑判定 |
-| `ui/ThemeColorOverlay.kt` | 枚举 → overlay 样式、枚举 → 中文名、overlay 取色、主题叠加 |
-| `ui/theme/ComposeTheme.kt` | 从 View 主题读出 `ColorScheme`（`rememberAndroidThemeColorScheme`），需 `recreate()` 生效 |
-| `ui/theme/SettingsComposeTheme.kt` | 设置页专用，由 `AppSettings` 驱动，改设置即时生效 |
+| `ui/ThemeColorOverlay.kt` | 枚举 → overlay 样式、枚举 → 中文名、overlay 取色，以及启动窗口 / View 层的 Activity 主题叠加 |
+| `ui/theme/BiliToolsTheme.kt` | 全应用唯一 Compose 主题入口，由 `AppSettings` 驱动并完整解析 XML 颜色角色 |
 | `data/SettingsRepository.kt` | `AppThemeColor` 枚举与旧值迁移表 |
 
-两个主题构建器都必须覆盖**全部**角色。曾经漏掉 `inverseSurface` / `inverseOnSurface` / `inversePrimary`，它们一直停在 Compose 基线的紫色——当时没有组件用到所以没暴露，一旦加 `Snackbar` 或 `RichTooltip` 就会蹦出一块与配色无关的紫。新增角色时记得同步这两个文件和生成器的 `COLOR_REF`。
+所有 Compose 根都使用 `BiliToolsTheme`：配色与纯黑开关直接随 `AppSettings` 重组，深浅模式由 `Resources.getSystem()` 判断，并订阅 `LocalConfiguration` 接收系统 `uiMode` 变化。`MainActivity` 在 Manifest 中自行处理 `uiMode`，因此主题变化不再通过快照比对、延迟 `recreate()` 刷新；Activity theme overlay 只负责启动窗口和仍存在的 View 层组件。
+
+主题构建器必须覆盖**全部**角色。曾经漏掉 `inverseSurface` / `inverseOnSurface` / `inversePrimary`，它们一直停在 Compose 基线的紫色——当时没有组件用到所以没暴露，一旦加 `Snackbar` 或 `RichTooltip` 就会蹦出一块与配色无关的紫。新增角色时记得同步 `BiliToolsTheme.kt` 和生成器的 `COLOR_REF`。
 
 ### 旧值迁移
 

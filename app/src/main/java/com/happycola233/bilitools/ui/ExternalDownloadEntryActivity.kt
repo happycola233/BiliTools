@@ -2,35 +2,73 @@ package com.happycola233.bilitools.ui
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.View
+import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.os.bundleOf
-import androidx.fragment.app.commitNow
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.appContainer
-import com.happycola233.bilitools.ui.parse.ParseFragment
-import com.google.android.material.appbar.MaterialToolbar
+import com.happycola233.bilitools.ui.parse.ParseRoute
+import com.happycola233.bilitools.ui.parse.ParseViewModel
+import com.happycola233.bilitools.ui.theme.BiliToolsTheme
 
 /**
- * Public entry for external apps that want to hand over a URL to BiliTools.
+ * 供其他应用分享或打开 URL 的公开入口。
  *
- * This activity is exported and uses a dialog/translucent theme so users can complete
- * "download & export" without a full-screen jump to MainActivity.
+ * Activity 使用透明对话框主题，让用户在不完整跳入主界面的情况下完成解析与下载；
+ * 任务成功加入下载队列后立即关闭，回到来源应用继续操作。
  */
-class ExternalDownloadEntryActivity : AppCompatActivity(), ParseFragment.ExternalDownloadHost {
+class ExternalDownloadEntryActivity : AppCompatActivity() {
+    private val viewModel: ParseViewModel by viewModels {
+        AppViewModelFactory(applicationContext.appContainer)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Keep visual style aligned with app settings (theme color/pure black) before inflate.
         applySettingsThemeOverlays()
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_external_download_entry)
-        // Tap outside or toolbar back closes this transient UI and returns to source app.
-        findViewById<View>(R.id.touch_outside).setOnClickListener { finish() }
-        findViewById<MaterialToolbar>(R.id.external_toolbar).setNavigationOnClickListener { finish() }
 
-        // Always host ParseFragment in external mode; it owns parse/load/download logic.
-        ensureParseFragment()
-        if (savedInstanceState == null) {
-            dispatchExternalUrl(intent)
+        val initialUrl = intent.extractExternalDownloadUrl()
+        if (initialUrl == null) {
+            finish()
+            return
+        }
+        // 普通配置变更沿用 Activity ViewModel；进程恢复时 ViewModel 为空，重新消费原始 intent。
+        if (viewModel.state.value.inputText.isBlank()) {
+            viewModel.submitExternalUrl(initialUrl)
+        }
+
+        setContent {
+            val settings by applicationContext.appContainer.settingsRepository.settings.collectAsState()
+            BiliToolsTheme(settings = settings) {
+                ExternalDownloadEntryContent(
+                    viewModel = viewModel,
+                    onDismiss = ::finish,
+                )
+            }
         }
     }
 
@@ -40,40 +78,76 @@ class ExternalDownloadEntryActivity : AppCompatActivity(), ParseFragment.Externa
         dispatchExternalUrl(intent)
     }
 
-    override fun onExternalDownloadQueued() {
-        // ParseFragment notifies when at least one download task is enqueued.
-        // Close immediately so user lands back in caller app while download continues in background.
-        finish()
-    }
-
-    private fun ensureParseFragment() {
-        if (supportFragmentManager.findFragmentByTag(PARSE_TAG) != null) return
-        supportFragmentManager.commitNow {
-            setReorderingAllowed(true)
-            replace(
-                R.id.external_parse_container,
-                ParseFragment.newInstance(externalMode = true),
-                PARSE_TAG,
-            )
-        }
-    }
-
-    private fun dispatchExternalUrl(sourceIntent: Intent?) {
-        // Normalize/extract a URL from ACTION_VIEW or ACTION_SEND payload.
-        val url = sourceIntent?.extractExternalDownloadUrl()
-        if (url.isNullOrBlank()) {
+    private fun dispatchExternalUrl(sourceIntent: Intent) {
+        val url = sourceIntent.extractExternalDownloadUrl()
+        if (url == null) {
             finish()
             return
         }
-        // Push URL into fragment via FragmentResult so we can reuse existing ParseFragment pipeline.
-        supportFragmentManager.setFragmentResult(
-            ExternalDownloadContract.RESULT_KEY,
-            bundleOf(ExternalDownloadContract.RESULT_URL to url),
-        )
+        viewModel.submitExternalUrl(url)
     }
+}
 
-    companion object {
-        // Stable tag to avoid adding duplicate fragment instances after configuration changes.
-        private const val PARSE_TAG = "external_parse"
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ExternalDownloadEntryContent(
+    viewModel: ParseViewModel,
+    onDismiss: () -> Unit,
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0x1F000000))
+                .pointerInput(onDismiss) {
+                    detectTapGestures { onDismiss() }
+                },
+        )
+
+        Surface(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxSize()
+                .padding(
+                    start = 12.dp,
+                    top = 44.dp,
+                    end = 12.dp,
+                    bottom = 16.dp,
+                )
+                // 消费面板空白处的点击，避免穿透到底层遮罩并关闭入口。
+                .pointerInput(Unit) { detectTapGestures {} },
+            shape = MaterialTheme.shapes.extraLarge,
+            color = MaterialTheme.colorScheme.surfaceContainer,
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = stringResource(R.string.parse_section_options),
+                            fontWeight = FontWeight.Bold,
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onDismiss) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_arrow_back_24),
+                                contentDescription = stringResource(R.string.download_cancel),
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    ),
+                )
+                Box(modifier = Modifier.weight(1f)) {
+                    ParseRoute(
+                        viewModel = viewModel,
+                        externalMode = true,
+                        // 下载已经交给后台任务，关闭临时入口即可回到来源应用。
+                        onExternalDownloadQueued = onDismiss,
+                    )
+                }
+            }
+        }
     }
 }

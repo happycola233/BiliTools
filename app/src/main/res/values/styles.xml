@@ -1,25 +1,4 @@
 <resources>
-    <style name="Widget.BiliTools.BottomNavigation" parent="Widget.Material3Expressive.BottomNavigationView">
-        <item name="itemActiveIndicatorStyle">@style/Widget.BiliTools.BottomNavigation.ActiveIndicator</item>
-        <!-- 图标与文字颜色沿用 Material 3 Expressive 的导航栏语义角色 -->
-        <item name="itemIconSize">24dp</item>
-        <item name="android:minHeight">80dp</item>
-        <item name="itemPaddingTop">12dp</item>
-        <item name="itemPaddingBottom">12dp</item>
-    </style>
-
-    <style name="Widget.BiliTools.BottomNavigation.ActiveIndicator"
-        parent="Widget.Material3Expressive.BottomNavigationView.ActiveIndicator">
-        <item name="android:width">64dp</item>
-        <item name="android:height">32dp</item>
-        <!-- 指示器颜色继承父样式的 colorSecondaryContainer，仅定制尺寸与形状 -->
-        <item name="shapeAppearance">@style/ShapeAppearance.BiliTools.Indicator</item>
-    </style>
-
-    <style name="ShapeAppearance.BiliTools.Indicator" parent="ShapeAppearance.Material3.Corner.Full">
-        <item name="cornerSize">16dp</item>
-    </style>
-
     <style name="ShapeAppearance.BiliTools.Cover" parent="ShapeAppearance.Material3.Corner.Medium">
         <item name="cornerSize">12dp</item>
     </style>
@@ -56,10 +35,6 @@
         <item name="android:textStyle">bold</item>
     </style>
 
-    <style name="TextAppearance.BiliTools.External.ToolbarTitle" parent="TextAppearance.Material3.TitleLarge">
-        <item name="android:textStyle">bold</item>
-    </style>
-
     <style name="TextAppearance.BiliTools.History.ItemTitle" parent="TextAppearance.Material3.TitleSmall">
         <item name="android:textStyle">bold</item>
         <item name="android:textSize">15sp</item>
@@ -79,11 +54,4 @@
         <item name="android:includeFontPadding">false</item>
     </style>
 
-    <style name="TextAppearance.BiliTools.Main.CollapsedTitle" parent="TextAppearance.Material3.TitleLarge">
-        <item name="android:textStyle">bold</item>
-    </style>
-
-    <style name="TextAppearance.BiliTools.Main.ExpandedTitle" parent="TextAppearance.Material3.HeadlineMedium">
-        <item name="android:textStyle">bold</item>
-    </style>
 </resources>

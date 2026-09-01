@@ -47,7 +47,7 @@ import com.happycola233.bilitools.core.appContainer
 import com.happycola233.bilitools.ui.applySettingsThemeOverlays
 import com.happycola233.bilitools.ui.enableBiliEdgeToEdge
 import com.happycola233.bilitools.ui.theme.AppSurfaces
-import com.happycola233.bilitools.ui.theme.BiliToolsSettingsTheme
+import com.happycola233.bilitools.ui.theme.BiliToolsTheme
 
 class StreamFormatGuideActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,7 +66,7 @@ class StreamFormatGuideActivity : AppCompatActivity() {
             }
             val settings by settingsRepository.settings.collectAsState()
 
-            BiliToolsSettingsTheme(settings = settings) {
+            BiliToolsTheme(settings = settings) {
                 StreamFormatGuideScreen(onBack = ::finish)
             }
         }

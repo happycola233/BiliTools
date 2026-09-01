@@ -8,8 +8,6 @@ import android.text.style.ForegroundColorSpan
 import android.text.style.StyleSpan
 import android.text.style.UnderlineSpan
 import android.widget.TextView
-import androidx.annotation.AttrRes
-import androidx.annotation.ColorInt
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
@@ -25,7 +23,6 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -37,14 +34,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -65,7 +60,6 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -86,7 +80,6 @@ import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleFloatingActionButton
-import com.google.android.material.color.MaterialColors
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.model.DownloadGroup
 import com.happycola233.bilitools.data.model.DownloadItem
@@ -115,10 +108,6 @@ sealed interface DownloadsDialogState {
         val deleteFile: Boolean,
     ) : DownloadsDialogState
 
-    data class TaskActions(
-        val itemId: Long,
-        val title: String,
-    ) : DownloadsDialogState
 }
 
 enum class DownloadsTaskAction {
@@ -142,7 +131,7 @@ fun DownloadsScreenContent(
     batchClearEnabled: Boolean,
     batchDeleteEnabled: Boolean,
     dialogState: DownloadsDialogState?,
-    controlsOffsetPx: Float,
+    contentTopPadding: Dp,
     resumeAllCount: Int,
     pauseAllCount: Int,
     glassDebugEnabled: Boolean,
@@ -192,17 +181,19 @@ fun DownloadsScreenContent(
     onBarGlassChromaticAberrationChange: (Boolean) -> Unit,
     onBarGlassSurfaceAlphaChange: (Float) -> Unit,
     onBarGlassReset: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val backdrop = rememberLayerBackdrop()
     val density = LocalDensity.current
     // 页面全出血绘制，内容从主界面底栏后方滚过，列表与底部悬浮控件均需预留底栏净空
     val mainBarBottomInset = mainBottomBarBottomInset()
-    val controlsBottomPadding = FloatingControlsDefaults.BottomPadding + mainBarBottomInset
+    val controlsBottomPadding = FloatingControlsDefaults.MainScreenBottomPadding + mainBarBottomInset
     val panelBottomPadding = controlsBottomPadding + 8.dp
-    val controlsOffsetDp = with(density) { controlsOffsetPx.toDp() }
     var panelHeightPx by remember { mutableStateOf(0) }
     val baseBottomPaddingPx =
-        with(density) { (FloatingControlsDefaults.ListBottomPadding + mainBarBottomInset).roundToPx() }
+        with(density) {
+            (FloatingControlsDefaults.DownloadsListBottomPadding + mainBarBottomInset).roundToPx()
+        }
     val extraBottomPaddingPx =
         if (selectionMode) panelHeightPx + with(density) { 20.dp.roundToPx() } else 0
     val targetListBottomPaddingDp = with(density) { (baseBottomPaddingPx + extraBottomPaddingPx).toDp() }
@@ -221,7 +212,7 @@ fun DownloadsScreenContent(
     )
     var debugExpanded by remember { mutableStateOf(false) }
 
-    Box(Modifier.fillMaxSize()) {
+    Box(modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -235,7 +226,8 @@ fun DownloadsScreenContent(
                 expandedGroupIds = expandedGroupIds,
                 collapsedSections = collapsedSections,
                 swipedGroupId = swipedGroupId,
-                listBottomPadding = PaddingValues(bottom = listBottomPaddingDp),
+                contentTopPadding = contentTopPadding,
+                listBottomPadding = listBottomPaddingDp,
                 onToggleSection = onToggleSection,
                 onToggleGroupExpanded = onToggleGroupExpanded,
                 onSwipedGroupChange = onSwipedGroupChange,
@@ -255,7 +247,7 @@ fun DownloadsScreenContent(
             DownloadsEmptyState(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = listBottomPaddingDp),
+                    .padding(top = contentTopPadding, bottom = listBottomPaddingDp),
             )
         }
 
@@ -291,7 +283,6 @@ fun DownloadsScreenContent(
                 hintHtml = batchHintHtml,
                 clearEnabled = batchClearEnabled,
                 deleteEnabled = batchDeleteEnabled,
-                controlsOffset = controlsOffsetDp,
                 bottomPadding = panelBottomPadding,
                 glassStyle = downloadsGlassStyle,
                 onExitSelection = onExitSelection,
@@ -321,7 +312,6 @@ fun DownloadsScreenContent(
             DownloadsManageFab(
                 modifier = Modifier,
                 bottomPadding = controlsBottomPadding,
-                controlsOffset = controlsOffsetDp,
                 resumeAllCount = resumeAllCount,
                 pauseAllCount = pauseAllCount,
                 onBatchManage = onBatchManage,
@@ -341,7 +331,7 @@ fun DownloadsScreenContent(
             GlassDebugPanel(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(top = 12.dp, end = 12.dp),
+                    .padding(top = contentTopPadding + 12.dp, end = 12.dp),
                 expanded = debugExpanded,
                 onToggleExpand = { debugExpanded = !debugExpanded },
                 cornerRadiusDp = glassCornerRadiusDp,
@@ -375,10 +365,7 @@ fun DownloadsScreenContent(
 
 @Composable
 private fun DownloadsEmptyState(modifier: Modifier = Modifier) {
-    val textColor = materialColor(
-        com.google.android.material.R.attr.colorOnSurfaceVariant,
-        0xFF6B6F76.toInt(),
-    )
+    val textColor = MaterialTheme.colorScheme.onSurfaceVariant
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -409,7 +396,6 @@ private fun DownloadsDeleteDialog(
         is DownloadsDialogState.BatchDelete,
         -> dialogState
 
-        is DownloadsDialogState.TaskActions,
         null,
         -> return
     }
@@ -425,7 +411,6 @@ private fun DownloadsDeleteDialog(
                 R.string.downloads_multi_confirm_clear_title
             },
         )
-        is DownloadsDialogState.TaskActions -> return
     }
     val message = when (state) {
         is DownloadsDialogState.DeleteTask -> AnnotatedString(
@@ -444,13 +429,11 @@ private fun DownloadsDeleteDialog(
                 state.groupIds.size,
             ),
         )
-        is DownloadsDialogState.TaskActions -> return
     }
     val showCheckbox = when (state) {
         is DownloadsDialogState.DeleteTask -> state.canDeleteFile
         is DownloadsDialogState.DeleteGroup -> state.canDeleteFile
         is DownloadsDialogState.BatchDelete -> false
-        is DownloadsDialogState.TaskActions -> return
     }
 
     AlertDialog(
@@ -517,7 +500,6 @@ private fun DownloadsDeleteDialog(
 private fun DownloadsManageFab(
     modifier: Modifier = Modifier,
     bottomPadding: Dp,
-    controlsOffset: Dp,
     resumeAllCount: Int,
     pauseAllCount: Int,
     onBatchManage: () -> Unit,
@@ -558,8 +540,7 @@ private fun DownloadsManageFab(
             }
         },
         modifier = modifier
-            .padding(bottom = FloatingControlsDefaults.menuFabBottomPadding(bottomPadding))
-            .offset(y = controlsOffset),
+            .padding(bottom = FloatingControlsDefaults.menuFabBottomPadding(bottomPadding)),
     ) {
         FloatingActionButtonMenuItem(
             onClick = { expanded = false; haptics.confirm(); onClearAll() },
@@ -609,7 +590,6 @@ private fun DownloadsBatchGlassPanel(
     hintHtml: String,
     clearEnabled: Boolean,
     deleteEnabled: Boolean,
-    controlsOffset: Dp,
     bottomPadding: Dp,
     glassStyle: DownloadsGlassStyle,
     onExitSelection: () -> Unit,
@@ -618,21 +598,14 @@ private fun DownloadsBatchGlassPanel(
     onDeleteFiles: () -> Unit,
     onHeightChanged: (Int) -> Unit,
 ) {
-    val panelTextColor = materialColor(
-        com.google.android.material.R.attr.colorOnSurface,
-        0xFF101418.toInt(),
-    )
+    val panelTextColor = MaterialTheme.colorScheme.onSurface
     val actionTextColor = MaterialTheme.colorScheme.primary
-    val panelSubTextColor = materialColor(
-        com.google.android.material.R.attr.colorOnSurfaceVariant,
-        0xFF58616B.toInt(),
-    )
+    val panelSubTextColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     Column(
         modifier = modifier
             .padding(horizontal = 16.dp)
             .padding(bottom = bottomPadding)
-            .offset(y = controlsOffset)
             .blockTouchThrough()
             .onSizeChanged { onHeightChanged(it.height) }
             .downloadsGlassSurface(backdrop = backdrop, style = glassStyle)
@@ -1138,16 +1111,4 @@ private fun htmlToAnnotatedString(rawHtml: String): AnnotatedString {
 
 private fun formatFloat(value: Float): String {
     return String.format(Locale.US, "%.2f", value)
-}
-
-
-@Composable
-private fun materialColor(
-    @AttrRes attr: Int,
-    @ColorInt fallback: Int,
-): Color {
-    val view = LocalView.current
-    return remember(view, attr, fallback) {
-        Color(MaterialColors.getColor(view, attr, fallback))
-    }
 }
