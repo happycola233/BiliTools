@@ -279,8 +279,23 @@ class SettingsRepository(context: Context) {
     fun setThemeColor(color: AppThemeColor) {
         val current = _settings.value
         if (current.themeColor == color) return
-        prefs.edit().putString(KEY_THEME_COLOR, color.value).apply()
+        val editor = prefs.edit().putString(KEY_THEME_COLOR, color.value)
+        manualThemeColorToRemember(current.themeColor, color)?.let { manualColor ->
+            editor.putString(KEY_LAST_MANUAL_THEME_COLOR, manualColor.value)
+        }
+        editor.apply()
         _settings.value = current.copy(themeColor = color)
+    }
+
+    fun setDynamicColorEnabled(enabled: Boolean) {
+        val currentColor = _settings.value.themeColor
+        setThemeColor(
+            resolveThemeColorAfterDynamicToggle(
+                enabled = enabled,
+                currentColor = currentColor,
+                lastManualColorValue = prefs.getString(KEY_LAST_MANUAL_THEME_COLOR, null),
+            ),
+        )
     }
 
     fun setDarkModePureBlack(enabled: Boolean) {
@@ -931,6 +946,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_CONVERT_VIDEO_TO_MP4 = "convert_video_to_mp4"
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_THEME_COLOR = "theme_color"
+        private const val KEY_LAST_MANUAL_THEME_COLOR = "last_manual_theme_color"
         private const val KEY_DARK_MODE_PURE_BLACK = "dark_mode_pure_black"
         private const val KEY_LAUNCH_SPLASH_ANIMATION_ENABLED = "launch_splash_animation_enabled"
         private const val KEY_LIQUID_BOTTOM_TABS_ENABLED = "liquid_bottom_tabs_enabled"
@@ -981,4 +997,27 @@ class SettingsRepository(context: Context) {
         private const val KEY_ISSUE_REPORT_LAST_EXPORTED_AT = "issue_report_last_exported_at"
         private const val KEY_IGNORED_UPDATE_VERSION = "ignored_update_version"
     }
+}
+
+/** 选择动态取色时记住切换前的手动方案，直接选择色块时记住新方案。 */
+internal fun manualThemeColorToRemember(
+    currentColor: AppThemeColor,
+    selectedColor: AppThemeColor,
+): AppThemeColor? = when {
+    selectedColor != AppThemeColor.Dynamic -> selectedColor
+    currentColor != AppThemeColor.Dynamic -> currentColor
+    else -> null
+}
+
+internal fun resolveThemeColorAfterDynamicToggle(
+    enabled: Boolean,
+    currentColor: AppThemeColor,
+    lastManualColorValue: String?,
+): AppThemeColor {
+    if (enabled) return AppThemeColor.Dynamic
+    if (currentColor != AppThemeColor.Dynamic) return currentColor
+
+    return AppThemeColor.fromValue(lastManualColorValue)
+        .takeUnless { it == AppThemeColor.Dynamic }
+        ?: AppThemeColor.Sakura
 }

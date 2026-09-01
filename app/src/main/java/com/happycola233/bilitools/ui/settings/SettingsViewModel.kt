@@ -89,6 +89,10 @@ class SettingsViewModel(
         settingsRepository.setThemeColor(color)
     }
 
+    fun setDynamicColorEnabled(enabled: Boolean) {
+        settingsRepository.setDynamicColorEnabled(enabled)
+    }
+
     fun setDarkModePureBlack(enabled: Boolean) {
         settingsRepository.setDarkModePureBlack(enabled)
     }

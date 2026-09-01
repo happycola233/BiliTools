@@ -200,6 +200,7 @@ fun BiliToolsSettingsContent(
     onCheckUpdate: () -> Unit,
     onOpenDownloadLocationPicker: (String) -> Unit,
     onThemeModeChange: (AppThemeMode) -> Unit,
+    onDynamicColorEnabledChange: (Boolean) -> Unit,
     onThemeColorChange: (AppThemeColor) -> Unit,
     onLiveActivityStyleNotificationChange: (Boolean) -> Unit,
     onDefaultDownloadQualityChange: (DefaultDownloadQualitySettings) -> Unit,
@@ -313,6 +314,7 @@ fun BiliToolsSettingsContent(
                     AppearanceSettingsScreen(
                         settings = settings,
                         onThemeModeChange = onThemeModeChange,
+                        onDynamicColorEnabledChange = onDynamicColorEnabledChange,
                         onThemeColorChange = onThemeColorChange,
                         onBlackThemeChange = onBlackThemeChange,
                         onLiquidBottomTabsChange = onLiquidBottomTabsChange,
@@ -805,6 +807,7 @@ private fun MaxConcurrentDownloadsListItem(
 private fun AppearanceSettingsScreen(
     settings: AppSettings,
     onThemeModeChange: (AppThemeMode) -> Unit,
+    onDynamicColorEnabledChange: (Boolean) -> Unit,
     onThemeColorChange: (AppThemeColor) -> Unit,
     onBlackThemeChange: (Boolean) -> Unit,
     onLiquidBottomTabsChange: (Boolean) -> Unit,
@@ -844,6 +847,7 @@ private fun AppearanceSettingsScreen(
                     color = settings.themeColor,
                     items = 3,
                     index = 1,
+                    onDynamicColorEnabledChange = onDynamicColorEnabledChange,
                     onColorChange = onThemeColorChange,
                 )
             }
@@ -3044,6 +3048,7 @@ private fun ColorSchemePickerListItem(
     color: AppThemeColor,
     items: Int,
     index: Int,
+    onDynamicColorEnabledChange: (Boolean) -> Unit,
     onColorChange: (AppThemeColor) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -3075,9 +3080,7 @@ private fun ColorSchemePickerListItem(
                     val checked = color == AppThemeColor.Dynamic
                     Switch(
                         checked = checked,
-                        onCheckedChange = {
-                            onColorChange(if (it) AppThemeColor.Dynamic else AppThemeColor.Sakura)
-                        },
+                        onCheckedChange = onDynamicColorEnabledChange,
                         colors = AppAccents.switchColors(),
                     )
                 },

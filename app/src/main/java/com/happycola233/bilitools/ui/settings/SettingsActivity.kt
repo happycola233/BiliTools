@@ -162,6 +162,7 @@ class SettingsActivity : AppCompatActivity() {
                 onThemeModeChange = { mode ->
                     viewModel.setThemeMode(mode, applyImmediately = false)
                 },
+                onDynamicColorEnabledChange = viewModel::setDynamicColorEnabled,
                 onThemeColorChange = { color ->
                     if (settings.themeColor != color) {
                         viewModel.setThemeColor(color)
