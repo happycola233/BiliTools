@@ -12,12 +12,10 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
@@ -254,24 +252,18 @@ fun DownloadsScreenContent(
         AnimatedVisibility(
             visible = selectionMode,
             modifier = Modifier.align(Alignment.BottomCenter),
+            // 面板内容会自行执行高度动画。这里若再使用从底部展开的尺寸动画，首次快速全选时
+            // 两层裁剪边界会短暂不同步，横向截断刚变高的内容。
             enter =
                 fadeIn(animationSpec = motionScheme.fastEffectsSpec()) +
                     slideInVertically(
                         initialOffsetY = { it / 2 },
-                        animationSpec = motionScheme.defaultSpatialSpec(),
-                    ) +
-                    expandVertically(
-                        expandFrom = Alignment.Bottom,
                         animationSpec = motionScheme.defaultSpatialSpec(),
                     ),
             exit =
                 fadeOut(animationSpec = motionScheme.fastEffectsSpec()) +
                     slideOutVertically(
                         targetOffsetY = { it / 2 },
-                        animationSpec = motionScheme.fastSpatialSpec(),
-                    ) +
-                    shrinkVertically(
-                        shrinkTowards = Alignment.Bottom,
                         animationSpec = motionScheme.fastSpatialSpec(),
                     ),
         ) {
