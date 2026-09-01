@@ -1859,13 +1859,14 @@ private fun MetadataContributorRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 9.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         UserIdentityLabel(
             name = member.name,
             avatarUrl = member.avatar,
-            modifier = Modifier.weight(1f),
+            // fill = false：昵称只占自身宽度，把角色胶囊紧贴在昵称右侧而非推到行尾。
+            modifier = Modifier.weight(1f, fill = false),
             onClick = if (member.mid > 0L) {
                 { onOpenUpper(member.mid) }
             } else {
@@ -1875,17 +1876,33 @@ private fun MetadataContributorRow(
             onLongClick = { onCopyUpperName(member.name) },
         )
         member.role?.takeIf(String::isNotBlank)?.let { role ->
-            LongPressCopyText(
-                text = role,
-                copyActionLabel = stringResource(R.string.parse_metadata_copy_value),
-                onCopy = onCopyValue,
-                style = ParseTextStyles.supporting,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+            ContributorRoleChip(role = role, onCopyValue = onCopyValue)
         }
     }
+}
+
+/** 合作成员的角色胶囊标签，紧跟在昵称之后。 */
+@Composable
+private fun ContributorRoleChip(
+    role: String,
+    onCopyValue: (String) -> Unit,
+) {
+    Text(
+        text = role,
+        style = ParseTextStyles.supporting,
+        color = MaterialTheme.colorScheme.onSecondaryContainer,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier
+            .clip(RoundedCornerShape(percent = 50))
+            .background(MaterialTheme.colorScheme.secondaryContainer)
+            .longPressAction(
+                interactionKey = role,
+                actionLabel = stringResource(R.string.parse_metadata_copy_value),
+                onLongPress = { onCopyValue(role) },
+            )
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+    )
 }
 
 @Composable
