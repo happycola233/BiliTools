@@ -456,7 +456,8 @@ class LoginViewModel(
                                 isRiskSmsMode = true,
                                 riskPrefillPhone = prefillPhone,
                                 riskLockPhoneInput = !maskedPhone.isNullOrBlank(),
-                                errorText = loginResult.message.takeIf { msg -> msg.isNotBlank() },
+                                // 风控说明由后续确认弹窗承载，避免同一内容再次显示为顶部错误横幅。
+                                errorText = null,
                             )
                         }
                         _events.emit(LoginEvent.RiskVerificationRequired(loginResult.message))
