@@ -1032,8 +1032,8 @@ private fun refineHintText(spanned: CharSequence): CharSequence {
             .trim()
 
     return SpannableStringBuilder(normalized).apply {
-        applyBoldToken("\u6e05\u9664\u8bb0\u5f55")
-        applyBoldToken("\u5220\u9664\u6587\u4ef6")
+        applyBoldToken("清除记录")
+        applyBoldToken("删除文件")
     }
 }
 
