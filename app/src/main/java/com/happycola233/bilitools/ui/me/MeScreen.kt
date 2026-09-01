@@ -38,28 +38,33 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.ButtonShapes
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.LoadingIndicatorDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.ToggleButton
-import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -72,17 +77,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -121,7 +131,8 @@ private data class MeActionItem(
 private val LoginPanelDefaultHeight = 438.dp
 private val QrStatusSlotMinHeight = 44.dp
 private val LoginFormControlHeight = 56.dp
-private val LoginFormControlShape = RoundedCornerShape(18.dp)
+private val LoginFormControlShape = RoundedCornerShape(16.dp)
+private val LoginProgressIndicatorSize = 20.dp
 private val ProfileCardContentPadding = 16.dp
 private val ProfileCardSectionSpacing = 14.dp
 private val ProfileCardHeaderSpacing = 12.dp
@@ -436,7 +447,7 @@ private fun LoginSubscreen(
                     onTabChange = onTabChange,
                 )
             }
-            item { Spacer(Modifier.height(40.dp)) }
+            item { Spacer(Modifier.height(20.dp)) }
             item {
                 LoginPanelCard(
                     state = state,
@@ -488,7 +499,7 @@ private fun LoginHeader(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 24.dp),
+            .padding(vertical = 20.dp),
     ) {
         FilledTonalIconButton(
             onClick = onBack,
@@ -533,8 +544,10 @@ private fun LoginTabSelector(
         LoginTab.Password to R.string.login_tab_password,
         LoginTab.Sms to R.string.login_tab_sms,
     )
-    val tabColors = ToggleButtonDefaults.toggleButtonColors(
-        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+    val haptics = rememberAppHaptics()
+    // 按钮组直接铺在页面底色上，未选中项取卡片底色，与返回按钮、面板卡片同层
+    val tabColors = AppAccents.toggleButtonColors(
+        containerColor = AppSurfaces.cardContainerColor,
         contentColor = MaterialTheme.colorScheme.onSurface,
     )
     Row(
@@ -544,7 +557,10 @@ private fun LoginTabSelector(
         tabs.forEachIndexed { index, (tab, labelRes) ->
             ToggleButton(
                 checked = tab == selectedTab,
-                onCheckedChange = { onTabChange(tab) },
+                onCheckedChange = {
+                    haptics.select()
+                    onTabChange(tab)
+                },
                 shapes = when (index) {
                     0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
                     tabs.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
@@ -630,7 +646,7 @@ private fun LoginPanelCard(
                 LoginTab.Password -> PasswordLoginPanel(
                     account = account,
                     password = password,
-                    enabled = !state.isLoggingIn,
+                    isLoggingIn = state.isLoggingIn,
                     onAccountChange = onAccountChange,
                     onPasswordChange = onPasswordChange,
                     onLogin = onRequestPasswordLogin,
@@ -659,7 +675,6 @@ private fun QrLoginPanel(
     onRefreshQr: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val qrPrompt = stringResource(R.string.login_status_scan)
     val qrScannedStatus = stringResource(R.string.login_status_scanned)
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -668,12 +683,10 @@ private fun QrLoginPanel(
             .fillMaxSize()
             .padding(horizontal = 20.dp, vertical = 24.dp),
     ) {
-        LoginPanelSubtitle(text = qrPrompt)
-        Spacer(Modifier.height(10.dp))
-
         Surface(
+            // 二维码需要白底黑码才好扫，这里固定不跟随深浅模式
             color = Color.White,
-            shape = RoundedCornerShape(28.dp),
+            shape = RoundedCornerShape(24.dp),
             modifier = Modifier.size(220.dp),
         ) {
             Box(
@@ -701,37 +714,34 @@ private fun QrLoginPanel(
                 }
             }
         }
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(18.dp))
 
+        // 扫码引导与轮询状态共用同一行，二维码上方不再重复一句同义标题
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = QrStatusSlotMinHeight),
         ) {
-            if (state.qrStatusText != qrPrompt) {
-                Text(
-                    text = state.qrStatusText,
-                    style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 18.sp),
-                    color = if (state.qrStatusText == qrScannedStatus) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
+            Text(
+                text = state.qrStatusText,
+                style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 18.sp),
+                color = if (state.qrStatusText == qrScannedStatus) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
 
-        OutlinedButton(
+        LoginTonalButton(
+            text = stringResource(R.string.login_refresh),
             onClick = onRefreshQr,
-            shapes = ButtonDefaults.shapes(),
-            modifier = Modifier.widthIn(min = 160.dp),
-        ) {
-            Text(stringResource(R.string.login_refresh))
-        }
+            modifier = Modifier.widthIn(min = 168.dp),
+        )
     }
 }
 
@@ -740,12 +750,22 @@ private fun QrLoginPanel(
 private fun PasswordLoginPanel(
     account: String,
     password: String,
-    enabled: Boolean,
+    isLoggingIn: Boolean,
     onAccountChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onLogin: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val focusManager = LocalFocusManager.current
+    var passwordVisible by rememberSaveable { mutableStateOf(false) }
+    val fieldColors = loginFieldColors()
+    val enabled = !isLoggingIn
+    val canSubmit = enabled && account.isNotBlank() && password.isNotBlank()
+    val submit = {
+        focusManager.clearFocus()
+        onLogin()
+    }
+
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
         modifier = modifier
@@ -760,9 +780,16 @@ private fun PasswordLoginPanel(
             value = account,
             onValueChange = onAccountChange,
             placeholder = { Text(stringResource(R.string.login_account_hint)) },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Email,
+                imeAction = ImeAction.Next,
+            ),
+            keyboardActions = KeyboardActions(
+                onNext = { focusManager.moveFocus(FocusDirection.Next) },
+            ),
             singleLine = true,
             enabled = enabled,
+            colors = fieldColors,
             textStyle = MaterialTheme.typography.bodyLarge,
             shape = LoginFormControlShape,
             modifier = Modifier
@@ -773,10 +800,40 @@ private fun PasswordLoginPanel(
             value = password,
             onValueChange = onPasswordChange,
             placeholder = { Text(stringResource(R.string.login_password_hint)) },
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            visualTransformation = if (passwordVisible) {
+                VisualTransformation.None
+            } else {
+                PasswordVisualTransformation()
+            },
+            trailingIcon = {
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(
+                        painter = painterResource(
+                            if (passwordVisible) {
+                                R.drawable.ic_visibility_off_24
+                            } else {
+                                R.drawable.ic_visibility_24
+                            },
+                        ),
+                        contentDescription = stringResource(
+                            if (passwordVisible) {
+                                R.string.login_password_hide
+                            } else {
+                                R.string.login_password_show
+                            },
+                        ),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Done,
+            ),
+            keyboardActions = KeyboardActions(onDone = { if (canSubmit) submit() }),
             singleLine = true,
             enabled = enabled,
+            colors = fieldColors,
             textStyle = MaterialTheme.typography.bodyLarge,
             shape = LoginFormControlShape,
             modifier = Modifier
@@ -784,7 +841,7 @@ private fun PasswordLoginPanel(
                 .height(LoginFormControlHeight),
         )
         Surface(
-            color = MaterialTheme.colorScheme.surfaceContainerHighest,
+            color = AppSurfaces.insetContainerColor,
             shape = MaterialTheme.shapes.large,
             modifier = Modifier.fillMaxWidth(),
         ) {
@@ -805,15 +862,11 @@ private fun PasswordLoginPanel(
                 )
             }
         }
-        Button(
-            onClick = onLogin,
-            shapes = ButtonDefaults.shapes(),
-            colors = AppAccents.filledButtonColors(),
-            enabled = enabled,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(stringResource(R.string.login_action))
-        }
+        LoginSubmitButton(
+            loading = isLoggingIn,
+            enabled = canSubmit,
+            onClick = submit,
+        )
     }
 }
 
@@ -832,11 +885,18 @@ private fun SmsLoginPanel(
     onSetCountryId: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val focusManager = LocalFocusManager.current
+    val fieldColors = loginFieldColors()
     val lockContactInput = state.isRiskSmsMode && state.riskLockPhoneInput
     val selectedCountryLabel = state.countries.firstOrNull { it.id == state.selectedCountryId }?.label
         ?: "+${state.selectedCountryId}"
     val countrySelectorEnabled = !lockContactInput && state.countries.isNotEmpty()
     val requestSmsEnabled = !state.isSendingSms
+    val canSubmit = !state.isLoggingIn && phone.isNotBlank() && smsCode.isNotBlank()
+    val submit = {
+        focusManager.clearFocus()
+        onLogin()
+    }
     val formButtonShapes = ButtonDefaults.shapesFor(LoginFormControlHeight).copy(
         shape = LoginFormControlShape,
     )
@@ -859,14 +919,11 @@ private fun SmsLoginPanel(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Box(modifier = Modifier.width(countrySelectorWidth)) {
-                OutlinedButton(
+                FilledTonalButton(
                     onClick = { onCountryMenuExpandedChange(true) },
                     shapes = formButtonShapes,
                     enabled = countrySelectorEnabled,
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                        disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                    ),
+                    colors = loginTonalButtonColors(),
                     contentPadding = PaddingValues(0.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -911,9 +968,16 @@ private fun SmsLoginPanel(
                 value = phone,
                 onValueChange = onPhoneChange,
                 placeholder = { Text(stringResource(R.string.login_phone_hint)) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Phone,
+                    imeAction = ImeAction.Next,
+                ),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Next) },
+                ),
                 singleLine = true,
                 enabled = !lockContactInput,
+                colors = fieldColors,
                 textStyle = MaterialTheme.typography.bodyLarge,
                 shape = LoginFormControlShape,
                 modifier = Modifier
@@ -931,49 +995,158 @@ private fun SmsLoginPanel(
                 value = smsCode,
                 onValueChange = onSmsCodeChange,
                 placeholder = { Text(stringResource(R.string.login_sms_code_hint)) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Done,
+                ),
+                keyboardActions = KeyboardActions(onDone = { if (canSubmit) submit() }),
                 singleLine = true,
+                colors = fieldColors,
                 textStyle = MaterialTheme.typography.bodyLarge,
                 shape = LoginFormControlShape,
                 modifier = Modifier
                     .weight(1f)
                     .height(LoginFormControlHeight),
             )
-            OutlinedButton(
+            LoginTonalButton(
+                text = stringResource(R.string.login_send_sms),
                 onClick = onRequestSmsCode,
-                shapes = formButtonShapes,
                 enabled = requestSmsEnabled,
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                    disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                ),
-                contentPadding = PaddingValues(0.dp),
+                loading = state.isSendingSms,
+                // 获取验证码是表单里的强调操作，用前景强调色与旁边的中性控件区分
+                contentColor = MaterialTheme.colorScheme.primary,
+                textStyle = MaterialTheme.typography.bodyMedium,
+                shapes = formButtonShapes,
                 modifier = Modifier
                     .height(LoginFormControlHeight)
                     .width(requestSmsButtonWidth),
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 18.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.login_send_sms),
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                    )
-                }
-            }
+            )
         }
 
-        Button(
-            onClick = onLogin,
-            shapes = ButtonDefaults.shapes(),
-            colors = AppAccents.filledButtonColors(),
-            enabled = !state.isLoggingIn,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
+        LoginSubmitButton(
+            loading = state.isLoggingIn,
+            enabled = canSubmit,
+            onClick = submit,
+        )
+    }
+}
+
+/**
+ * 登录表单输入框配色：用卡片内嵌的实底容器承载输入区，聚焦时底色抬一档。
+ *
+ * Material 3 默认的 1dp/2dp 描边压在卡片上视觉过重，与全站内嵌控件（解析页搜索框、设置页下拉框）
+ * 的观感也不一致，因此这里去掉描边、改用 [AppSurfaces] 的内嵌层配色。
+ */
+@Composable
+private fun loginFieldColors(): TextFieldColors {
+    val insetColor = AppSurfaces.insetContainerColor
+    return OutlinedTextFieldDefaults.colors(
+        focusedContainerColor = AppSurfaces.insetActiveContainerColor,
+        unfocusedContainerColor = insetColor,
+        disabledContainerColor = insetColor,
+        focusedBorderColor = Color.Transparent,
+        unfocusedBorderColor = Color.Transparent,
+        disabledBorderColor = Color.Transparent,
+    )
+}
+
+/**
+ * 登录面板里次级按钮的配色，与同排输入框共用内嵌层底色。
+ *
+ * [keepContainerWhenDisabled] 供忙碌态使用：此时按钮不可点，但外观要保持不变，
+ * 否则容器会退成禁用灰、把里面的进度指示压得看不清。
+ */
+@Composable
+private fun loginTonalButtonColors(
+    contentColor: Color = MaterialTheme.colorScheme.onSurface,
+    keepContainerWhenDisabled: Boolean = false,
+): ButtonColors {
+    val containerColor = AppSurfaces.insetContainerColor
+    return if (keepContainerWhenDisabled) {
+        ButtonDefaults.filledTonalButtonColors(
+            containerColor = containerColor,
+            contentColor = contentColor,
+            disabledContainerColor = containerColor,
+            disabledContentColor = contentColor,
+        )
+    } else {
+        ButtonDefaults.filledTonalButtonColors(
+            containerColor = containerColor,
+            contentColor = contentColor,
+        )
+    }
+}
+
+/** 登录面板里的次级操作按钮：与输入框同层的实底容器，忙碌时用进度指示替换文案。 */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun LoginTonalButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    loading: Boolean = false,
+    contentColor: Color = MaterialTheme.colorScheme.onSurface,
+    textStyle: TextStyle = MaterialTheme.typography.labelLarge,
+    shapes: ButtonShapes = ButtonDefaults.shapes(),
+) {
+    FilledTonalButton(
+        onClick = onClick,
+        shapes = shapes,
+        enabled = enabled && !loading,
+        colors = loginTonalButtonColors(
+            contentColor = contentColor,
+            keepContainerWhenDisabled = loading,
+        ),
+        modifier = modifier,
+    ) {
+        if (loading) {
+            CircularProgressIndicator(
+                strokeWidth = 2.dp,
+                color = contentColor,
+                modifier = Modifier.size(LoginProgressIndicatorSize),
+            )
+        } else {
+            Text(
+                text = text,
+                style = textStyle,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+/** 登录主按钮：提交中换成进度指示，既阻止重复提交也给出明确反馈。 */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun LoginSubmitButton(
+    loading: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Button(
+        onClick = onClick,
+        shapes = ButtonDefaults.shapes(),
+        // 提交中按钮不可点，但要保住强调色容器，否则进度指示会落在禁用灰上
+        colors = if (loading) {
+            ButtonDefaults.buttonColors(
+                disabledContainerColor = AppAccents.fill,
+                disabledContentColor = AppAccents.onFill,
+            )
+        } else {
+            AppAccents.filledButtonColors()
+        },
+        enabled = enabled && !loading,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        if (loading) {
+            CircularProgressIndicator(
+                strokeWidth = 2.dp,
+                color = AppAccents.onFill,
+                modifier = Modifier.size(LoginProgressIndicatorSize),
+            )
+        } else {
             Text(stringResource(R.string.login_action))
         }
     }
@@ -986,8 +1159,8 @@ private fun LoginPanelSubtitle(
 ) {
     Text(
         text = text,
-        style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.Bold,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.onSurface,
         textAlign = TextAlign.Center,
         modifier = modifier.padding(bottom = 8.dp),

@@ -82,11 +82,21 @@ internal object AppAccents {
         return ButtonDefaults.buttonColors(containerColor = fill, contentColor = onFill)
     }
 
-    /** 分段按钮组配色：未选中容器沿用 M3 默认值（当前为 `surfaceContainer`），选中胶囊使用 [fill]。 */
+    /**
+     * 分段按钮组配色：选中胶囊使用 [fill]。
+     *
+     * 未选中容器默认沿用 M3 默认值（当前为 `surfaceContainer`）；直接铺在页面底色上的按钮组需要
+     * 传入 [containerColor]，否则未选中项会与页面底色重合。
+     */
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     @Composable
-    fun toggleButtonColors(): ToggleButtonColors {
+    fun toggleButtonColors(
+        containerColor: Color = Color.Unspecified,
+        contentColor: Color = Color.Unspecified,
+    ): ToggleButtonColors {
         return ToggleButtonDefaults.toggleButtonColors(
+            containerColor = containerColor,
+            contentColor = contentColor,
             checkedContainerColor = fill,
             checkedContentColor = onFill,
         )
