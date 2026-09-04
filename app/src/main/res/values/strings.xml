@@ -611,11 +611,6 @@
     <string name="settings_check_update_desc_failed">检查失败，点击重试</string>
     <string name="settings_check_update_toast_latest">当前已是最新版本</string>
     <string name="settings_check_update_toast_failed">检查更新失败：%1$s</string>
-    <string name="settings_about_desc"><![CDATA[
-<b>本APP开源于</b>：<a href="https://github.com/happycola233/BiliTools"><img src="ic_github_invertocat_black"/>happycola233/BiliTools</a><br/>
-<b>上游项目</b>：<a href="https://github.com/btjawa/BiliTools"><img src="ic_github_invertocat_black"/>btjawa/BiliTools</a>（本项目基于其复刻与改进）<br/>
-<b>开源协议</b>：<a href="https://github.com/happycola233/BiliTools/blob/main/LICENSE">GPL-3.0-or-later</a>
-]]></string>
     <string name="settings_license_title">开源协议</string>
     <string name="settings_license_summary">GPL-3.0-or-later</string>
     <string name="settings_opensource_licenses_title">开源许可证</string>

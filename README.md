@@ -10,9 +10,6 @@
   </p>
 </div>
 
-> [!NOTE]  
-> 🌟 本项目复刻自 [btjawa/BiliTools](https://github.com/btjawa/BiliTools)，免费开源。
-
 ## 📸 APP 截图
 
 采用全新的 **Material Design Expressive** 设计语言，为您提供更加灵动、沉浸与现代化的视觉与使用体验：
