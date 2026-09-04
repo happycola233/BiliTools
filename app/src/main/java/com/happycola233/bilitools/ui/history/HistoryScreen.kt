@@ -252,7 +252,7 @@ fun BiliToolsHistoryContent(
                                         modifier = Modifier.padding(end = 4.dp),
                                     ) {
                                         Icon(
-                                            painter = painterResource(R.drawable.ic_tune_24),
+                                            painter = painterResource(R.drawable.ic_filter_list_24),
                                             contentDescription = stringResource(R.string.history_more_filters),
                                         )
                                     }
