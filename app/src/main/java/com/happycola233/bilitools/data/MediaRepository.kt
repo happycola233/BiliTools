@@ -2062,6 +2062,8 @@ class MediaRepository(
                 resolution = page.dimension.toMediaResolution()
                     ?: if (page.page == 1) dimension.toMediaResolution() else null,
                 cid = page.cid.takeIf { it > 0L },
+                firstFrameUrl = page.firstFrame?.trim()?.takeIf(String::isNotBlank)
+                    ?.let(::normalizeCoverUrl),
                 submittedAt = page.ctime?.takeIf { it > 0L }
                     ?: if (page.page == 1) ctime?.takeIf { it > 0L } else null,
             )
@@ -2290,6 +2292,7 @@ private data class VideoPageInfo(
     @Json(name = "duration") val duration: Int,
     @Json(name = "ctime") val ctime: Long?,
     @Json(name = "dimension") val dimension: VideoDimension? = null,
+    @Json(name = "first_frame") val firstFrame: String? = null,
 )
 
 private data class UgcSeasonInfo(

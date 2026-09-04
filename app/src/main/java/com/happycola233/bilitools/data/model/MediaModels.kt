@@ -88,6 +88,9 @@ data class MediaVideoPart(
     val duration: Int? = null,
     val resolution: MediaResolution? = null,
     val cid: Long? = null,
+    /** 分 P 首帧预览图，对应 view 接口 `pages[].first_frame`；老稿件可能没有。 */
+    val firstFrameUrl: String? = null,
+    /** 分 P 的 `ctime`，语义与 [MediaMetadata.submittedAt] 相同，同样不保证准确。 */
     val submittedAt: Long? = null,
 )
 
@@ -124,7 +127,14 @@ data class MediaMetadata(
     val dynamicText: String? = null,
     val videoParts: List<MediaVideoPart> = emptyList(),
     val resolution: MediaResolution? = null,
+    /** 稿件发布时间，对应 view 接口 `pubdate`；B 站官方页面展示的就是这个时间。 */
     val publishedAt: Long? = null,
+    /**
+     * 对应 view 接口 `ctime`。API 文档称其为「用户投稿时间」，但实测并不可靠：
+     * 大量稿件的 ctime 与 pubdate 完全相同（更像是审核通过时间），
+     * 一些很老的稿件 ctime 会落在 2017 年（疑似历史数据迁移时被覆盖），
+     * B 站官方页面也从不展示它。展示层应把它标注为「投稿/过审时间」并提示可能不准确。
+     */
     val submittedAt: Long? = null,
     val mediaId: Long? = null,
     val contentKind: String? = null,

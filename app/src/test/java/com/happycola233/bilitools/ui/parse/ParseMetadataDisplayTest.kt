@@ -53,6 +53,7 @@ class ParseMetadataDisplayTest {
                         duration = 1_200,
                         resolution = MediaResolution(1_920, 1_080),
                         cid = 1001,
+                        firstFrameUrl = "https://i0.hdslb.com/bfs/storyff/p1_firsti.jpg",
                         submittedAt = 1_700_000_001L,
                     ),
                     MediaVideoPart(
@@ -88,17 +89,28 @@ class ParseMetadataDisplayTest {
         assertFalse(display.summarySlots.any { it.contains("内容可能引发不适") })
         assertTrue(display.allRows().any { it.name == "警告" && it.value == "内容可能引发不适" })
         assertTrue(display.allRows().any { it.name == "撞车跳转" && it.value == "BV1L9Uoa9EUx" })
-        assertTrue(display.allRows().any { it.name == "AV" && it.value == "av170001" })
+        assertTrue(display.allRows().any { it.name == "AV" && it.value == "AV170001" })
         assertTrue(display.allRows().any { it.name == "cid" && it.value == "279786" })
         assertTrue(display.allRows().any { it.name == "分区（旧）" && "原创音乐" in it.value })
         assertTrue(display.allRows().any { it.name == "分区（新）" && "人力VOCALOID" in it.value })
         assertTrue(display.allRows().any { it.name == "视频状态" && it.value == "定时发布" })
         assertTrue(display.allRows().any { it.name == "播放" && it.value == "1234567" })
         assertTrue(display.allRows().any { it.name == "发布时间" && it.value == "2023-11-15 06:13:20" })
-        assertTrue(display.allRows().any { it.name == "投稿时间" && it.value == "2023-11-15 07:13:20" })
+        assertTrue(display.allRows().any {
+            it.name == "投稿/过审时间" && it.value == "2023-11-15 07:13:20" && it.note == "可能不准确"
+        })
         assertTrue(display.allRows().any { it.name == "分辨率" && it.value == "1920×1080" })
         val partSection = display.sections.filterIsInstance<ParseMetadataSection.Groups>().single()
         assertEquals(listOf("P1", "P2", "P3"), partSection.groups.map(ParseMetadataGroup::title))
+        assertEquals(
+            listOf("第一段", "第二段", "第三段"),
+            partSection.groups.map(ParseMetadataGroup::subtitle),
+        )
+        assertEquals(
+            listOf("https://i0.hdslb.com/bfs/storyff/p1_firsti.jpg", null, null),
+            partSection.groups.map(ParseMetadataGroup::previewUrl),
+        )
+        assertFalse(display.allRows().any { it.name == "标题" })
         assertEquals(
             1,
             display.allRows().count { it.value.contains("全站排行榜最高第 13 名") },

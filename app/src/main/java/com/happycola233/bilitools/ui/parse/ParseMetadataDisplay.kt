@@ -44,13 +44,19 @@ internal sealed interface ParseMetadataSection {
 }
 
 internal data class ParseMetadataGroup(
+    /** 分组编号标签，例如 `P1`。 */
     val title: String,
+    /** 分组正标题（分 P 标题），随预览图一起放在分组头部而不是作为普通行。 */
+    val subtitle: String? = null,
+    val previewUrl: String? = null,
     val rows: List<ParseMetadataRow>,
 )
 
 internal data class ParseMetadataRow(
     val name: String,
     val value: String,
+    /** 附在取值下方的补充说明，例如提示该字段可能不准确。 */
+    val note: String? = null,
 )
 
 /**
@@ -192,7 +198,7 @@ private fun MutableList<ParseMetadataSection>.addVideoSections(
         "标识",
         rowsOf(
             "BV" to item.bvid,
-            "AV" to item.aid?.let { "av$it" },
+            "AV" to item.aid?.let { "AV$it" },
             "cid" to if (isMultiPart) {
                 null
             } else {
@@ -238,8 +244,7 @@ private fun MutableList<ParseMetadataSection>.addVideoSections(
             "发布时间" to formatEpochSeconds(
                 metadata.publishedAt ?: item.pubTime.takeIf { it > 0L },
             ),
-            "投稿时间" to formatEpochSeconds(metadata.submittedAt),
-        ),
+        ) + listOfNotNull(submittedAtRow(metadata.submittedAt)),
     )?.let(::add)
 
     val honorRows = buildList {
@@ -276,15 +281,15 @@ private fun MutableList<ParseMetadataSection>.addVideoSections(
     val partGroups = metadata.videoParts.takeIf { isMultiPart }.orEmpty().map { part ->
         ParseMetadataGroup(
             title = "P${part.page}",
+            subtitle = part.title?.trim()?.takeIf(String::isNotBlank),
+            previewUrl = part.firstFrameUrl,
             rows = rowsOf(
-                "标题" to part.title,
                 "时长" to formatDuration(part.duration),
                 "分辨率" to formatResolution(part.resolution),
                 "cid" to part.cid?.toString(),
-                "投稿时间" to formatEpochSeconds(part.submittedAt),
-            ),
+            ) + listOfNotNull(submittedAtRow(part.submittedAt)),
         )
-    }.filter { it.rows.isNotEmpty() }
+    }.filter { it.rows.isNotEmpty() || it.subtitle != null }
     if (partGroups.isNotEmpty()) {
         add(ParseMetadataSection.Groups("分 P", partGroups))
     }
@@ -305,7 +310,7 @@ private fun MutableList<ParseMetadataSection>.addBangumiSections(
             "ss" to item.ssid?.let { "ss$it" },
             "md" to (item.mdid?.let { "md$it" } ?: metadata.mediaId?.let { "md$it" }),
             "BV" to item.bvid,
-            "AV" to item.aid?.let { "av$it" },
+            "AV" to item.aid?.let { "AV$it" },
             "cid" to item.cid?.toString(),
         ),
     )?.let(::add)
@@ -384,7 +389,7 @@ private fun MutableList<ParseMetadataSection>.addMusicSections(
         rowsOf(
             "au" to item.sid?.let { "au$it" },
             "关联稿件" to item.bvid,
-            "关联 AV" to item.aid?.takeIf { it > 0L }?.let { "av$it" },
+            "关联 AV" to item.aid?.takeIf { it > 0L }?.let { "AV$it" },
             "关联 cid" to item.cid?.takeIf { it > 0L }?.toString(),
             "所在歌单" to item.amid?.let { "am$it" },
         ),
@@ -603,6 +608,16 @@ private fun formatDuration(seconds: Int?): String? {
 private fun formatEpochSeconds(epochSeconds: Long?): String? {
     val timestamp = epochSeconds?.takeIf { it > 0L } ?: return null
     return METADATA_TIME_FORMATTER.format(Instant.ofEpochSecond(timestamp))
+}
+
+/**
+ * view 接口 `ctime` 的展示行。API 文档把 ctime 描述为「用户投稿时间」，但实测并不可靠
+ * （常与 pubdate 完全一致、老稿件会落在 2017 年，官方页面也只展示 pubdate，详见
+ * [MediaMetadata.submittedAt]），因此写成「投稿/过审时间」而非确切的「投稿时间」，并附上可能不准确的提示。
+ */
+private fun submittedAtRow(epochSeconds: Long?): ParseMetadataRow? {
+    val value = formatEpochSeconds(epochSeconds) ?: return null
+    return ParseMetadataRow(name = "投稿/过审时间", value = value, note = "可能不准确")
 }
 
 private fun formatResolution(resolution: MediaResolution?): String? {

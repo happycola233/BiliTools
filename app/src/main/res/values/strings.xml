@@ -87,6 +87,8 @@
     <string name="parse_metadata_identifier_copied">已复制 %1$s</string>
     <string name="parse_metadata_details_title">详细信息</string>
     <string name="parse_metadata_copy_value">复制此项</string>
+    <string name="parse_metadata_part_preview_desc">分 P 预览图</string>
+    <string name="parse_metadata_copy_part_preview_url">复制预览图链接</string>
     <string name="parse_metadata_value_clip_label">BiliTools 详细信息</string>
     <string name="parse_metadata_value_copied">内容已复制到剪贴板</string>
     <string name="parse_section_options">下载与导出</string>

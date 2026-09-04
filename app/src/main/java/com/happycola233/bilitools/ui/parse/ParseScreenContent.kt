@@ -41,6 +41,7 @@ import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -115,6 +116,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.node.DelegatableNode
 import androidx.compose.ui.platform.LocalContext
@@ -141,6 +143,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withLink
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Velocity
@@ -218,6 +221,20 @@ private val copyDialogPreviewScrollbarTrackWidthActive = 6.dp
 private val copyDialogPreviewScrollbarThumbWidth = 4.dp
 private val copyDialogPreviewScrollbarThumbWidthActive = 9.dp
 private val copyDialogPreviewScrollbarMinThumbHeight = 52.dp
+private val metadataSheetHorizontalPadding = 24.dp
+private val metadataSectionDividerSpacing = 18.dp
+private val metadataSectionHeaderSpacing = 12.dp
+
+/** 分区分隔线只需隐约可见，取 outlineVariant 再压低透明度，浅色与深色下都不抢眼。 */
+private const val metadataSectionDividerAlpha = 0.45f
+private val metadataGroupSpacing = 20.dp
+private val metadataGroupHeaderSpacing = 12.dp
+private val metadataPartPreviewWidth = 96.dp
+private val metadataRowSpacing = 12.dp
+private val metadataRowLabelGap = 20.dp
+
+/** 键值表的字段名列最多占内容宽度的比例，超出则字段名换行，避免把取值挤得过窄。 */
+private const val metadataRowLabelMaxWidthFraction = 0.4f
 
 /** 复制预览是纯文本滚动，没有天然的离散档位，这里用固定滚动距离作为触感节拍。 */
 private val copyDialogPreviewScrollbarTickStep = 56.dp
@@ -1641,9 +1658,9 @@ private fun MetadataDetailsBottomSheet(
                 .filterIsInstance<ParseMetadataSection.Groups>()
                 .sumOf { it.groups.size } > 3
             val contentPadding = PaddingValues(
-                start = 20.dp,
+                start = metadataSheetHorizontalPadding,
                 top = 4.dp,
-                end = 20.dp,
+                end = metadataSheetHorizontalPadding,
                 bottom = 32.dp,
             )
 
@@ -1660,18 +1677,17 @@ private fun MetadataDetailsBottomSheet(
                     metadata.sections.forEachIndexed { sectionIndex, section ->
                         item(key = "section-header:$sectionIndex:${section.title}") {
                             MetadataDetailsSectionHeader(
-                                section = section,
-                                showTopDivider = sectionIndex > 0,
+                                title = section.title,
+                                isFirst = sectionIndex == 0,
                             )
                         }
+                        // 键值表需要整表测量才能对齐字段名列，合作成员行数有限，二者整段作为一个条目；
+                        // 分 P 数量不定，逐组懒加载。
                         when (section) {
-                            is ParseMetadataSection.Values -> itemsIndexed(
-                                items = section.rows,
-                                key = { rowIndex, row ->
-                                    "section:$sectionIndex:row:$rowIndex:${row.name}"
-                                },
-                            ) { _, row ->
-                                MetadataDetailValueRow(row = row, onCopyValue = onCopyValue)
+                            is ParseMetadataSection.Values -> item(
+                                key = "section:$sectionIndex:values",
+                            ) {
+                                MetadataKeyValueTable(rows = section.rows, onCopyValue = onCopyValue)
                             }
                             is ParseMetadataSection.Groups -> itemsIndexed(
                                 items = section.groups,
@@ -1681,18 +1697,17 @@ private fun MetadataDetailsBottomSheet(
                             ) { groupIndex, group ->
                                 MetadataDetailsGroup(
                                     group = group,
-                                    showTopDivider = groupIndex > 0,
                                     onCopyValue = onCopyValue,
+                                    modifier = Modifier.padding(
+                                        top = if (groupIndex > 0) metadataGroupSpacing else 0.dp,
+                                    ),
                                 )
                             }
-                            is ParseMetadataSection.Contributors -> itemsIndexed(
-                                items = section.members,
-                                key = { memberIndex, member ->
-                                    "section:$sectionIndex:member:$memberIndex:${member.mid}"
-                                },
-                            ) { _, member ->
-                                MetadataContributorRow(
-                                    member = member,
+                            is ParseMetadataSection.Contributors -> item(
+                                key = "section:$sectionIndex:contributors",
+                            ) {
+                                MetadataContributorRows(
+                                    members = section.members,
                                     onOpenUpper = onOpenUpper,
                                     onCopyUpperName = onCopyUpperName,
                                     onCopyValue = onCopyValue,
@@ -1711,9 +1726,12 @@ private fun MetadataDetailsBottomSheet(
                 ) {
                     MetadataDetailsTitle()
                     metadata.sections.forEachIndexed { index, section ->
-                        MetadataDetailsSection(
+                        MetadataDetailsSectionHeader(
+                            title = section.title,
+                            isFirst = index == 0,
+                        )
+                        MetadataDetailsSectionContent(
                             section = section,
-                            showTopDivider = index > 0,
                             onOpenUpper = onOpenUpper,
                             onCopyUpperName = onCopyUpperName,
                             onCopyValue = onCopyValue,
@@ -1737,29 +1755,190 @@ private fun MetadataDetailsTitle() {
 }
 
 @Composable
-private fun MetadataDetailsSection(
+private fun MetadataDetailsSectionContent(
     section: ParseMetadataSection,
-    showTopDivider: Boolean,
     onOpenUpper: (Long) -> Unit,
     onCopyUpperName: (String) -> Unit,
     onCopyValue: (String) -> Unit,
 ) {
-    MetadataDetailsSectionHeader(
-        section = section,
-        showTopDivider = showTopDivider,
-    )
     when (section) {
-        is ParseMetadataSection.Values -> section.rows.forEach { row ->
-            MetadataDetailValueRow(row = row, onCopyValue = onCopyValue)
+        is ParseMetadataSection.Values -> MetadataKeyValueTable(
+            rows = section.rows,
+            onCopyValue = onCopyValue,
+        )
+        is ParseMetadataSection.Groups -> Column(
+            verticalArrangement = Arrangement.spacedBy(metadataGroupSpacing),
+        ) {
+            section.groups.forEach { group ->
+                MetadataDetailsGroup(group = group, onCopyValue = onCopyValue)
+            }
         }
-        is ParseMetadataSection.Groups -> section.groups.forEachIndexed { groupIndex, group ->
-            MetadataDetailsGroup(
-                group = group,
-                showTopDivider = groupIndex > 0,
-                onCopyValue = onCopyValue,
-            )
+        is ParseMetadataSection.Contributors -> MetadataContributorRows(
+            members = section.members,
+            onOpenUpper = onOpenUpper,
+            onCopyUpperName = onCopyUpperName,
+            onCopyValue = onCopyValue,
+        )
+    }
+}
+
+/** 分区之间只用一条很轻的分隔线加留白区分，不加底框，保持面板通透。 */
+@Composable
+private fun MetadataDetailsSectionHeader(
+    title: String,
+    isFirst: Boolean,
+) {
+    if (!isFirst) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = metadataSectionDividerSpacing)
+                .height(1.dp)
+                .background(
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = metadataSectionDividerAlpha),
+                ),
+        )
+    }
+    Text(
+        text = title,
+        style = ParseTextStyles.sectionLabel,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.padding(bottom = metadataSectionHeaderSpacing),
+    )
+}
+
+@Composable
+private fun MetadataDetailsGroup(
+    group: ParseMetadataGroup,
+    onCopyValue: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(metadataGroupHeaderSpacing),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            group.previewUrl?.let { previewUrl ->
+                AsyncImage(
+                    model = previewUrl,
+                    contentDescription = stringResource(R.string.parse_metadata_part_preview_desc),
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .width(metadataPartPreviewWidth)
+                        .aspectRatio(16f / 9f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(AppSurfaces.insetContainerColor)
+                        .longPressAction(
+                            interactionKey = previewUrl,
+                            actionLabel = stringResource(
+                                R.string.parse_metadata_copy_part_preview_url,
+                            ),
+                            onLongPress = { onCopyValue(previewUrl) },
+                        ),
+                )
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = group.title,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                group.subtitle?.let { subtitle ->
+                    LongPressCopyText(
+                        text = subtitle,
+                        copyActionLabel = stringResource(R.string.parse_metadata_copy_value),
+                        onCopy = onCopyValue,
+                        style = ParseTextStyles.body,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
         }
-        is ParseMetadataSection.Contributors -> section.members.forEach { member ->
+        if (group.rows.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(metadataGroupHeaderSpacing))
+            MetadataKeyValueTable(rows = group.rows, onCopyValue = onCopyValue)
+        }
+    }
+}
+
+/**
+ * 字段名与取值两列对齐的键值表：字段名列取本表中最宽的一项，让同一分区内所有取值左边缘对齐；
+ * 取值可换行，附注（若有）以次级文字贴在取值下方。
+ */
+@Composable
+private fun MetadataKeyValueTable(
+    rows: List<ParseMetadataRow>,
+    onCopyValue: (String) -> Unit,
+) {
+    val copyActionLabel = stringResource(R.string.parse_metadata_copy_value)
+    Layout(
+        modifier = Modifier.fillMaxWidth(),
+        content = {
+            rows.forEach { row ->
+                Text(
+                    text = row.name,
+                    style = ParseTextStyles.body,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Column {
+                    LongPressCopyText(
+                        text = row.value,
+                        copyActionLabel = copyActionLabel,
+                        onCopy = onCopyValue,
+                        style = ParseTextStyles.body,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    row.note?.let { note ->
+                        Text(
+                            text = note,
+                            style = ParseTextStyles.supporting,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        },
+    ) { measurables, constraints ->
+        // 每行依次发出「字段名、取值」两个节点，按偶/奇下标拆成两列。
+        val labelMeasurables = measurables.filterIndexed { index, _ -> index % 2 == 0 }
+        val valueMeasurables = measurables.filterIndexed { index, _ -> index % 2 == 1 }
+        val labelGap = metadataRowLabelGap.roundToPx()
+        val rowSpacing = metadataRowSpacing.roundToPx()
+        val labelMaxWidth = (constraints.maxWidth * metadataRowLabelMaxWidthFraction).toInt()
+        val labels = labelMeasurables.map { it.measure(Constraints(maxWidth = labelMaxWidth)) }
+        val labelColumnWidth = labels.maxOf { it.width }
+        val valueWidth = constraints.maxWidth - labelColumnWidth - labelGap
+        val values = valueMeasurables.map {
+            it.measure(Constraints(minWidth = valueWidth, maxWidth = valueWidth))
+        }
+        val rowHeights = labels.indices.map { maxOf(labels[it].height, values[it].height) }
+        val totalHeight = rowHeights.sum() + rowSpacing * (rowHeights.size - 1)
+        layout(constraints.maxWidth, totalHeight) {
+            var y = 0
+            rowHeights.forEachIndexed { index, rowHeight ->
+                labels[index].placeRelative(0, y)
+                values[index].placeRelative(labelColumnWidth + labelGap, y)
+                y += rowHeight + rowSpacing
+            }
+        }
+    }
+}
+
+@Composable
+private fun MetadataContributorRows(
+    members: List<com.happycola233.bilitools.data.model.MediaContributor>,
+    onOpenUpper: (Long) -> Unit,
+    onCopyUpperName: (String) -> Unit,
+    onCopyValue: (String) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(metadataRowSpacing)) {
+        members.forEach { member ->
             MetadataContributorRow(
                 member = member,
                 onOpenUpper = onOpenUpper,
@@ -1771,87 +1950,6 @@ private fun MetadataDetailsSection(
 }
 
 @Composable
-private fun MetadataDetailsSectionHeader(
-    section: ParseMetadataSection,
-    showTopDivider: Boolean,
-) {
-    if (showTopDivider) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 14.dp)
-                .height(1.dp)
-                .background(MaterialTheme.colorScheme.outlineVariant),
-        )
-    }
-    Text(
-        text = section.title,
-        style = ParseTextStyles.sectionLabel,
-        color = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.padding(bottom = 6.dp),
-    )
-}
-
-@Composable
-private fun MetadataDetailsGroup(
-    group: ParseMetadataGroup,
-    showTopDivider: Boolean,
-    onCopyValue: (String) -> Unit,
-) {
-    if (showTopDivider) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 7.dp)
-                .height(1.dp)
-                .background(MaterialTheme.colorScheme.outlineVariant),
-        )
-    }
-    Text(
-        text = group.title,
-        style = MaterialTheme.typography.labelLarge,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(top = 7.dp, bottom = 1.dp),
-    )
-    group.rows.forEach { row ->
-        MetadataDetailValueRow(row = row, onCopyValue = onCopyValue)
-    }
-}
-
-@Composable
-private fun MetadataDetailValueRow(
-    row: ParseMetadataRow,
-    onCopyValue: (String) -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 9.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Text(
-            text = row.name,
-            modifier = Modifier.alignByBaseline(),
-            style = ParseTextStyles.body,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            softWrap = false,
-        )
-        LongPressCopyText(
-            text = row.value,
-            copyActionLabel = stringResource(R.string.parse_metadata_copy_value),
-            onCopy = onCopyValue,
-            style = ParseTextStyles.body,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier
-                .weight(1f)
-                .alignByBaseline(),
-        )
-    }
-}
-
-@Composable
 private fun MetadataContributorRow(
     member: com.happycola233.bilitools.data.model.MediaContributor,
     onOpenUpper: (Long) -> Unit,
@@ -1859,9 +1957,7 @@ private fun MetadataContributorRow(
     onCopyValue: (String) -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 9.dp),
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
