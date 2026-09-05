@@ -50,6 +50,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.BasicText
@@ -93,6 +96,7 @@ import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -106,6 +110,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
@@ -124,13 +131,11 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -923,7 +928,7 @@ private fun AppearanceSettingsScreen(
     ExperimentalLayoutApi::class,
 )
 @Composable
-private fun NamingSettingsScreen(
+internal fun NamingSettingsScreen(
     settings: AppSettings,
     onTopLevelFolderModeChange: (TopLevelFolderMode) -> Unit,
     onOverwriteExistingFilesChange: (Boolean) -> Unit,
@@ -937,6 +942,9 @@ private fun NamingSettingsScreen(
 ) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val previewContexts = rememberNamingPreviewContexts()
+    val listState = rememberLazyListState()
+    val viewportBounds = remember { mutableStateOf(Rect.Zero) }
+    var expandedScopeNames by rememberSaveable { mutableStateOf(emptyList<String>()) }
     var showRestoreDefaultsConfirmDialog by rememberSaveable { mutableStateOf(false) }
     var selectedShapeName by rememberSaveable { mutableStateOf(NamingShape.Video.name) }
 
@@ -948,6 +956,26 @@ private fun NamingSettingsScreen(
     val selectedShape = shapeOptions
         .firstOrNull { it.name == selectedShapeName }
         ?: NamingShape.Video
+
+    val scopes = selectedShape.supportedScopes.filter {
+        it != NamingTemplateScope.TopFolder || showTopLevelFolderTemplate
+    }
+    val groupItems = scopes.size + 1
+    val editorStates = scopes.associateWith { scope ->
+        key(scope) {
+            rememberNamingTemplateEditorState(
+                shape = selectedShape,
+                scope = scope,
+                value = settings.naming.template(selectedShape, scope),
+                onValueChange = { onTemplateChange(selectedShape, scope, it) },
+            ).also { state ->
+                state.viewportBounds = {
+                    val bounds = viewportBounds.value
+                    bounds.copy(top = bounds.top + listState.layoutInfo.beforeContentPadding)
+                }
+            }
+        }
+    }
 
     if (showRestoreDefaultsConfirmDialog) {
         AppAlertDialog(
@@ -981,16 +1009,19 @@ private fun NamingSettingsScreen(
         subtitle = stringResource(R.string.settings_screen_title),
         onBack = onBack,
         scrollBehavior = scrollBehavior,
-        modifier = modifier,
+        modifier = modifier.imePadding(),
     ) { innerPadding ->
         LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            state = listState,
             contentPadding = innerPadding,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp)
+                .onGloballyPositioned {
+                    viewportBounds.value = it.boundsInWindow()
+                },
         ) {
-            item { Spacer(Modifier.height(14.dp)) }
+            item { Spacer(Modifier.height(26.dp)) }
 
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -1024,6 +1055,7 @@ private fun NamingSettingsScreen(
                 }
             }
 
+            item { Spacer(Modifier.height(12.dp)) }
             item {
                 TopLevelFolderModeListItem(
                     mode = settings.naming.topLevelFolderMode,
@@ -1033,46 +1065,71 @@ private fun NamingSettingsScreen(
                 )
             }
 
-            // 形态选择器与它控制的三层模板串成一组，视觉上是同一块内容。
-            item {
-                val scopes = buildList {
-                    if (showTopLevelFolderTemplate) add(NamingTemplateScope.TopFolder)
-                    if (NamingTemplateScope.ItemFolder in selectedShape.supportedScopes) {
-                        add(NamingTemplateScope.ItemFolder)
-                    }
-                    if (NamingTemplateScope.File in selectedShape.supportedScopes) {
-                        add(NamingTemplateScope.File)
-                    }
-                }
-                val groupItems = scopes.size + 1
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    NamingShapeSelectorCard(
-                        shapes = shapeOptions,
-                        selected = selectedShape,
-                        customizedShapes = settings.naming.overrides.keys,
-                        onSelect = { selectedShapeName = it.name },
-                        containerShape = SettingsExpressiveShapes.groupShape(0, groupItems),
+            item { Spacer(Modifier.height(12.dp)) }
+            item(key = "namingShapeSelector") {
+                NamingShapeSelectorCard(
+                    shapes = shapeOptions,
+                    selected = selectedShape,
+                    customizedShapes = settings.naming.overrides.keys,
+                    onSelect = { selectedShapeName = it.name },
+                    containerShape = SettingsExpressiveShapes.groupShape(0, groupItems),
+                )
+            }
+            // 编辑区与变量区使用独立、稳定的列表项，插入后的高度变化不会破坏变量区锚点。
+            scopes.forEachIndexed { index, scope ->
+                val editorState = editorStates.getValue(scope)
+                val expanded = scope.name in expandedScopeNames
+                val controlsKey = "${selectedShape.name}:${scope.name}:tokens"
+                item(key = "${selectedShape.name}:${scope.name}:editor") {
+                    val containerShape = SettingsExpressiveShapes.groupShape(index + 1, groupItems)
+                    NamingTemplateEditorPanel(
+                        state = editorState,
+                        scope = scope,
+                        source = settings.naming.templateSource(selectedShape, scope),
+                        previewContext = previewContexts.getValue(selectedShape),
+                        previewExtension = namingPreviewExtension(selectedShape, scope),
+                        cleanSeparators = settings.naming.cleanSeparators,
+                        containerShape = if (expanded) {
+                            containerShape.copy(
+                                bottomStart = CornerSize(0.dp),
+                                bottomEnd = CornerSize(0.dp),
+                            )
+                        } else {
+                            containerShape
+                        },
+                        expanded = expanded,
+                        onExpandedChange = {
+                            expandedScopeNames = if (expanded) {
+                                expandedScopeNames - scope.name
+                            } else {
+                                expandedScopeNames + scope.name
+                            }
+                        },
+                        onReset = { onTemplateReset(selectedShape, scope) },
+                        modifier = Modifier.padding(top = 2.dp),
                     )
-                    scopes.fastForEachIndexed { index, scope ->
-                        NamingTemplateEditorPanel(
+                }
+                item(key = controlsKey) {
+                    NamingTemplateExpansion(expanded) {
+                        NamingTemplateTokenPanel(
                             shape = selectedShape,
                             scope = scope,
-                            value = settings.naming.template(selectedShape, scope),
-                            source = settings.naming.templateSource(selectedShape, scope),
-                            previewContext = previewContexts.getValue(selectedShape),
-                            previewExtension = namingPreviewExtension(selectedShape, scope),
-                            cleanSeparators = settings.naming.cleanSeparators,
-                            containerShape = SettingsExpressiveShapes.groupShape(
-                                index = index + 1,
-                                items = groupItems,
-                            ),
-                            onValueChange = { onTemplateChange(selectedShape, scope, it) },
-                            onReset = { onTemplateReset(selectedShape, scope) },
+                            containerShape = SettingsExpressiveShapes.groupShape(index + 1, groupItems)
+                                .copy(topStart = CornerSize(0.dp), topEnd = CornerSize(0.dp)),
+                            onInsertToken = {
+                                editorState.prepareInsertion(listState, controlsKey)
+                                editorState.insertToken(it)
+                            },
+                            onWrapSelection = {
+                                editorState.prepareInsertion(listState, controlsKey)
+                                editorState.wrapSelectionAsOptional()
+                            },
                         )
                     }
                 }
             }
 
+            item { Spacer(Modifier.height(12.dp)) }
             item {
                 ClickableListItem(
                     items = 1,
@@ -1088,7 +1145,7 @@ private fun NamingSettingsScreen(
                 )
             }
 
-            item { Spacer(Modifier.height(12.dp)) }
+            item { Spacer(Modifier.height(24.dp)) }
         }
     }
 }
@@ -1254,50 +1311,33 @@ private fun NamingShapeChip(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun NamingTemplateEditorPanel(
-    shape: NamingShape,
+    state: NamingTemplateEditorState,
     scope: NamingTemplateScope,
-    value: String,
     source: NamingTemplateSource,
     previewContext: NamingContext,
     previewExtension: String?,
     cleanSeparators: Boolean,
     containerShape: CornerBasedShape,
-    onValueChange: (String) -> Unit,
+    expanded: Boolean,
+    onExpandedChange: () -> Unit,
     onReset: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var expanded by rememberSaveable(scope.name) { mutableStateOf(false) }
-    var textFieldValue by remember(shape, scope) {
-        mutableStateOf(
-            TextFieldValue(
-                text = value,
-                selection = TextRange(value.length),
-            ),
-        )
-    }
-    LaunchedEffect(value) {
-        if (value != textFieldValue.text) {
-            val safeCursor = textFieldValue.selection.start.coerceAtMost(value.length)
-            textFieldValue = TextFieldValue(
-                text = value,
-                selection = TextRange(safeCursor),
-            )
-        }
-    }
-    val previewSegments = remember(textFieldValue.text) {
-        NamingRenderer.previewSegments(textFieldValue.text)
+    val template = state.textFieldState.text.toString()
+    val previewSegments = remember(template) {
+        NamingRenderer.previewSegments(template)
     }
     val previewValue = remember(
-        textFieldValue.text,
+        template,
         previewContext,
         previewExtension,
         cleanSeparators,
     ) {
         val rendered = NamingRenderer.renderComponent(
-            template = textFieldValue.text,
+            template = template,
             context = previewContext,
             cleanSeparators = cleanSeparators,
         )
@@ -1309,7 +1349,6 @@ private fun NamingTemplateEditorPanel(
             )
         } ?: rendered
     }
-    val tokenSections = remember(shape, scope) { namingTokenSections(shape, scope) }
     val interactionSource = remember { MutableInteractionSource() }
     val expandedRotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
@@ -1358,51 +1397,27 @@ private fun NamingTemplateEditorPanel(
                 colors = SettingsExpressiveDefaults.listItemColors,
                 modifier = Modifier.clickable(
                     interactionSource = interactionSource,
-                    onClick = { expanded = !expanded },
+                    onClick = onExpandedChange,
                 ),
             )
 
-            AnimatedVisibility(
-                visible = expanded,
-                enter = fadeIn(
-                    animationSpec = tween(
-                        durationMillis = 120,
-                        easing = FastOutSlowInEasing,
-                    ),
-                ) +
-                    expandVertically(
-                        animationSpec = tween(
-                            durationMillis = 220,
-                            easing = FastOutSlowInEasing,
-                        ),
-                    ),
-                exit = fadeOut(
-                    animationSpec = tween(
-                        durationMillis = 90,
-                        easing = FastOutLinearInEasing,
-                    ),
-                ) +
-                    shrinkVertically(
-                        animationSpec = tween(
-                            durationMillis = 180,
-                            easing = FastOutLinearInEasing,
-                        ),
-                    ),
-            ) {
-                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
+            NamingTemplateExpansion(expanded) {
+                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                     Spacer(Modifier.height(14.dp))
                     OutlinedTextField(
-                        value = textFieldValue,
-                        onValueChange = {
-                            textFieldValue = it
-                            onValueChange(it.text)
-                        },
+                        state = state.textFieldState,
+                        inputTransformation = { state.suppressRelocation = false },
                         label = {
                             Text(stringResource(R.string.settings_naming_template_editor_label))
                         },
-                        minLines = 2,
-                        maxLines = 4,
-                        modifier = Modifier.fillMaxWidth(),
+                        lineLimits = TextFieldLineLimits.MultiLine(
+                            minHeightInLines = 2,
+                            maxHeightInLines = 4,
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .namingEditorRelocation(state)
+                            .onGloballyPositioned { state.coordinates = it },
                     )
 
                     Spacer(Modifier.height(12.dp))
@@ -1428,75 +1443,116 @@ private fun NamingTemplateEditorPanel(
                             Text(stringResource(R.string.settings_naming_clear_custom))
                         }
                     }
+                }
+            }
+        }
+    }
+}
 
-                    Spacer(Modifier.height(14.dp))
-                    Text(
-                        text = stringResource(R.string.settings_naming_token_usage_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun NamingTemplateTokenPanel(
+    shape: NamingShape,
+    scope: NamingTemplateScope,
+    containerShape: CornerBasedShape,
+    onInsertToken: (NamingToken) -> Unit,
+    onWrapSelection: () -> Unit,
+) {
+    val tokenSections = remember(shape, scope) { namingTokenSections(shape, scope) }
+    Surface(
+        color = AppSurfaces.cardContainerColor,
+        shape = containerShape,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
+            Spacer(Modifier.height(14.dp))
+            Text(
+                text = stringResource(R.string.settings_naming_token_usage_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
 
-                    Spacer(Modifier.height(20.dp))
-                    Text(
-                        text = stringResource(R.string.settings_naming_group_optional),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
+            Spacer(Modifier.height(20.dp))
+            Text(
+                text = stringResource(R.string.settings_naming_group_optional),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = stringResource(R.string.settings_naming_group_optional_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(8.dp))
+            NamingTokenChip(
+                text = stringResource(R.string.settings_naming_optional_chip),
+                accent = true,
+                onClick = onWrapSelection,
+            )
+
+            tokenSections.forEach { section ->
+                Spacer(Modifier.height(24.dp))
+                Text(
+                    text = namingTokenGroupLabel(section.group),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                namingTokenGroupDescription(section.group)?.let { description ->
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = stringResource(R.string.settings_naming_group_optional_desc),
+                        text = description,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Spacer(Modifier.height(8.dp))
-                    NamingTokenChip(
-                        text = stringResource(R.string.settings_naming_optional_chip),
-                        accent = true,
-                        onClick = {
-                            val wrapped = wrapSelectionAsOptional(textFieldValue)
-                            textFieldValue = wrapped
-                            onValueChange(wrapped.text)
-                        },
-                    )
-
-                    tokenSections.forEach { section ->
-                        Spacer(Modifier.height(24.dp))
-                        Text(
-                            text = namingTokenGroupLabel(section.group),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
+                }
+                Spacer(Modifier.height(8.dp))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    section.tokens.forEach { token ->
+                        NamingTokenChip(
+                            text = namingTokenButtonLabel(token),
+                            onClick = { onInsertToken(token) },
                         )
-                        namingTokenGroupDescription(section.group)?.let { description ->
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                text = description,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Spacer(Modifier.height(8.dp))
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            section.tokens.forEach { token ->
-                                NamingTokenChip(
-                                    text = namingTokenButtonLabel(token),
-                                    onClick = {
-                                        val inserted = insertTokenAtSelection(
-                                            current = textFieldValue,
-                                            token = token,
-                                        )
-                                        textFieldValue = inserted
-                                        onValueChange(inserted.text)
-                                    },
-                                )
-                            }
-                        }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun NamingTemplateExpansion(expanded: Boolean, content: @Composable () -> Unit) {
+    AnimatedVisibility(
+        visible = expanded,
+        enter = fadeIn(
+            animationSpec = tween(
+                durationMillis = 120,
+                easing = FastOutSlowInEasing,
+            ),
+        ) +
+            expandVertically(
+                animationSpec = tween(
+                    durationMillis = 220,
+                    easing = FastOutSlowInEasing,
+                ),
+            ),
+        exit = fadeOut(
+            animationSpec = tween(
+                durationMillis = 90,
+                easing = FastOutLinearInEasing,
+            ),
+        ) +
+            shrinkVertically(
+                animationSpec = tween(
+                    durationMillis = 180,
+                    easing = FastOutLinearInEasing,
+                ),
+            ),
+    ) {
+        content()
     }
 }
 
@@ -1810,40 +1866,6 @@ private fun namingTokenSections(
         val tokens = available.filter { it.group == group }
         if (tokens.isEmpty()) null else NamingTokenSection(group = group, tokens = tokens)
     }
-}
-
-private fun insertTokenAtSelection(
-    current: TextFieldValue,
-    token: NamingToken,
-): TextFieldValue {
-    val insertion = "{${token.key}}"
-    val start = minOf(current.selection.start, current.selection.end)
-    val end = maxOf(current.selection.start, current.selection.end)
-    val next = buildString {
-        append(current.text.substring(0, start))
-        append(insertion)
-        append(current.text.substring(end))
-    }
-    return TextFieldValue(
-        text = next,
-        selection = TextRange(start + insertion.length),
-    )
-}
-
-/** 把选中内容包成可选片段；没有选中时插入一对空标记并把光标停在里面。 */
-private fun wrapSelectionAsOptional(current: TextFieldValue): TextFieldValue {
-    val start = minOf(current.selection.start, current.selection.end)
-    val end = maxOf(current.selection.start, current.selection.end)
-    val selected = current.text.substring(start, end)
-    val next = buildString {
-        append(current.text.substring(0, start))
-        append(NamingRenderer.wrapAsOptional(selected))
-        append(current.text.substring(end))
-    }
-    return TextFieldValue(
-        text = next,
-        selection = TextRange(start + 2 + selected.length),
-    )
 }
 
 @Composable
