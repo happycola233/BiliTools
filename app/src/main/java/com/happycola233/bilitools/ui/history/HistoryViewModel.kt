@@ -9,6 +9,7 @@ import com.happycola233.bilitools.data.AuthRepository
 import com.happycola233.bilitools.data.ExtrasRepository
 import com.happycola233.bilitools.data.model.HistoryItem
 import com.happycola233.bilitools.data.model.HistorySearchParams
+import com.happycola233.bilitools.data.model.HistorySearchResult
 import com.happycola233.bilitools.data.model.HistoryTab
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -55,19 +56,63 @@ data class HistoryFilter(
     val customEndUtcMillis: Long? = null,
 )
 
+/** 已加载的一页历史记录；[HistoryUiState.pages] 中按页码升序且连续。 */
+data class HistoryLoadedPage(
+    val page: Int,
+    val items: List<HistoryItem>,
+)
+
+/** 请求列表滚动到 [page] 的第一条；[id] 单调递增，保证重复跳转同一页也能触发。 */
+data class HistoryScrollRequest(
+    val page: Int,
+    val id: Int,
+)
+
 data class HistoryUiState(
     val isLoggedIn: Boolean = false,
+    /** 整体重载：刷新、切换分类、筛选、跳转到尚未加载的页。 */
     val loading: Boolean = false,
+    /** 滑到列表底部后自动追加下一页。 */
+    val appending: Boolean = false,
+    /** 在列表顶部继续下拉时向前加载上一页。 */
+    val prepending: Boolean = false,
+    /** 追加下一页失败；停在底部时不再自动重试，改为用户点击重试。 */
+    val appendFailed: Boolean = false,
     val tabs: List<HistoryTab> = emptyList(),
     val selectedBusiness: String? = null,
+    /** 当前页：列表顶部可见项所属的页码，随滚动变化。 */
     val page: Int = 1,
     val totalPages: Int = 0,
     val total: Int = 0,
+    /** 最后一个已加载页之后是否还有更多。 */
     val hasMore: Boolean = false,
-    val items: List<HistoryItem> = emptyList(),
+    /** 已加载的连续页，按页码升序。 */
+    val pages: List<HistoryLoadedPage> = emptyList(),
+    val scrollRequest: HistoryScrollRequest? = null,
     val filter: HistoryFilter = HistoryFilter(),
     val errorText: String? = null,
-)
+) {
+    val firstLoadedPage: Int? get() = pages.firstOrNull()?.page
+    val lastLoadedPage: Int? get() = pages.lastOrNull()?.page
+    val isEmpty: Boolean get() = pages.all { it.items.isEmpty() }
+
+    val canLoadPrevPage: Boolean get() = (firstLoadedPage ?: 1) > 1
+    val canLoadNextPage: Boolean
+        get() {
+            val last = lastLoadedPage ?: return false
+            return hasMore && (totalPages <= 0 || last < totalPages)
+        }
+
+    val canGoPrev: Boolean get() = page > 1
+    val canGoNext: Boolean get() = page < (lastLoadedPage ?: page) || canLoadNextPage
+}
+
+/**
+ * 列表项唯一键：既作为 LazyColumn 的 key，也用于跨页去重
+ * （翻页期间产生的新记录会让相邻两页出现同一条）。
+ */
+internal val HistoryItem.listKey: String
+    get() = "${bvid ?: uri ?: oid ?: title}-$viewAt"
 
 class HistoryViewModel(
     private val authRepository: AuthRepository,
@@ -77,18 +122,17 @@ class HistoryViewModel(
     private val _state = MutableStateFlow(HistoryUiState())
     val state: StateFlow<HistoryUiState> = _state.asStateFlow()
 
-    private var loadJob: Job? = null
+    private var reloadJob: Job? = null
+    private var appendJob: Job? = null
+    private var prependJob: Job? = null
+    private var scrollRequestId = 0
 
     init {
         refresh()
     }
 
     fun refresh() {
-        loadHistory(refreshTabs = true, targetPage = 1)
-    }
-
-    fun retry() {
-        loadHistory(refreshTabs = false, targetPage = _state.value.page)
+        reload(refreshTabs = true, targetPage = 1)
     }
 
     fun selectBusiness(type: String) {
@@ -100,36 +144,100 @@ class HistoryViewModel(
                 errorText = null,
             )
         }
-        loadHistory(refreshTabs = false, targetPage = 1)
+        reload(refreshTabs = false, targetPage = 1)
     }
 
+    /** 跳转到某页：已加载则直接滚动到该页第一条，否则丢弃现有内容从该页重新加载。 */
     fun goToPage(page: Int) {
-        val maxPage = _state.value.totalPages.takeIf { it > 0 } ?: Int.MAX_VALUE
+        val current = _state.value
+        val maxPage = current.totalPages.takeIf { it > 0 } ?: Int.MAX_VALUE
         val target = page.coerceIn(1, maxPage)
-        if (target == _state.value.page) return
+        if (target == current.page) return
+        if (current.pages.any { it.page == target }) {
+            _state.update {
+                it.copy(
+                    page = target,
+                    scrollRequest = nextScrollRequest(target),
+                    errorText = null,
+                )
+            }
+            return
+        }
         _state.update { it.copy(page = target, errorText = null) }
-        loadHistory(refreshTabs = false, targetPage = target)
+        reload(refreshTabs = false, targetPage = target)
     }
 
     fun goToNextPage() {
-        if (!_state.value.hasMore || (
-                _state.value.totalPages > 0 &&
-                    _state.value.page >= _state.value.totalPages
-            )
-        ) {
-            return
-        }
+        if (!_state.value.canGoNext) return
         goToPage(_state.value.page + 1)
     }
 
     fun goToPrevPage() {
-        if (_state.value.page <= 1) return
+        if (!_state.value.canGoPrev) return
         goToPage(_state.value.page - 1)
+    }
+
+    /** 列表滚动后同步顶部可见项所属页码；整体重载期间以目标页为准，忽略旧列表的上报。 */
+    fun onVisiblePageChange(page: Int) {
+        _state.update {
+            if (it.loading || it.page == page) it else it.copy(page = page)
+        }
+    }
+
+    /** 滑到底部：在已加载内容之后追加下一页。 */
+    fun loadNextPage() {
+        val current = _state.value
+        val last = current.lastLoadedPage ?: return
+        if (current.loading || current.appending || !current.canLoadNextPage) return
+        appendJob = viewModelScope.launch {
+            _state.update { it.copy(appending = true, appendFailed = false, errorText = null) }
+            try {
+                val result = fetchPage(last + 1)
+                _state.update {
+                    it.copy(
+                        appending = false,
+                        pages = it.pages + HistoryLoadedPage(last + 1, result.list.distinctFrom(it.pages)),
+                        hasMore = result.hasMore && result.list.isNotEmpty(),
+                        total = result.total,
+                        totalPages = result.totalPages,
+                    )
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Throwable) {
+                failLoad(error) { it.copy(appending = false, appendFailed = true) }
+            }
+        }
+    }
+
+    /** 顶部继续下拉：在已加载内容之前插入上一页。 */
+    fun loadPrevPage() {
+        val current = _state.value
+        val first = current.firstLoadedPage ?: return
+        if (current.loading || current.prepending || !current.canLoadPrevPage) return
+        prependJob = viewModelScope.launch {
+            _state.update { it.copy(prepending = true, errorText = null) }
+            try {
+                val result = fetchPage(first - 1)
+                _state.update {
+                    it.copy(
+                        prepending = false,
+                        pages = listOf(HistoryLoadedPage(first - 1, result.list.distinctFrom(it.pages))) + it.pages,
+                        total = result.total,
+                        totalPages = result.totalPages,
+                    )
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Throwable) {
+                failLoad(error) { it.copy(prepending = false) }
+            }
+        }
     }
 
     fun applyFilter(filter: HistoryFilter) {
         _state.update { it.copy(filter = filter, page = 1, errorText = null) }
-        loadHistory(refreshTabs = false, targetPage = 1)
+        reload(refreshTabs = false, targetPage = 1)
     }
 
     fun refreshLoginState() {
@@ -138,42 +246,17 @@ class HistoryViewModel(
             if (loggedIn) {
                 refresh()
             } else {
-                _state.update {
-                    it.copy(
-                        isLoggedIn = false,
-                        loading = false,
-                        tabs = emptyList(),
-                        selectedBusiness = null,
-                        page = 1,
-                        totalPages = 0,
-                        total = 0,
-                        hasMore = false,
-                        items = emptyList(),
-                        errorText = strings.get(R.string.history_login_required),
-                    )
-                }
+                cancelAllLoads()
+                _state.update { it.loggedOut() }
             }
         }
     }
 
-    private fun loadHistory(refreshTabs: Boolean, targetPage: Int) {
-        loadJob?.cancel()
-        loadJob = viewModelScope.launch {
+    private fun reload(refreshTabs: Boolean, targetPage: Int) {
+        cancelAllLoads()
+        reloadJob = viewModelScope.launch {
             if (!authRepository.isLoggedIn()) {
-                _state.update {
-                    it.copy(
-                        isLoggedIn = false,
-                        loading = false,
-                        tabs = emptyList(),
-                        selectedBusiness = null,
-                        page = 1,
-                        totalPages = 0,
-                        total = 0,
-                        hasMore = false,
-                        items = emptyList(),
-                        errorText = strings.get(R.string.history_login_required),
-                    )
-                }
+                _state.update { it.loggedOut() }
                 return@launch
             }
 
@@ -207,6 +290,9 @@ class HistoryViewModel(
                     it.copy(
                         isLoggedIn = true,
                         loading = true,
+                        appending = false,
+                        prepending = false,
+                        appendFailed = false,
                         tabs = tabs,
                         selectedBusiness = selectedBusiness,
                         page = page,
@@ -214,11 +300,7 @@ class HistoryViewModel(
                     )
                 }
 
-                val request = _state.value.filter.toSearchParams(
-                    page = page,
-                    business = selectedBusiness ?: DEFAULT_HISTORY_BUSINESS,
-                )
-                val result = extrasRepository.getHistorySearch(request)
+                val result = fetchPage(page)
 
                 _state.update {
                     it.copy(
@@ -226,53 +308,73 @@ class HistoryViewModel(
                         loading = false,
                         tabs = tabs,
                         selectedBusiness = selectedBusiness,
-                        page = result.page.coerceAtLeast(1),
+                        page = page,
                         totalPages = result.totalPages,
                         total = result.total,
-                        hasMore = result.hasMore,
-                        items = result.list,
+                        hasMore = result.hasMore && result.list.isNotEmpty(),
+                        pages = listOf(HistoryLoadedPage(page, result.list)),
+                        scrollRequest = nextScrollRequest(page),
                         errorText = null,
                     )
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
-            } catch (error: BiliHttpException) {
-                if (error.code == -101) {
-                    _state.update {
-                        it.copy(
-                            isLoggedIn = false,
-                            loading = false,
-                            tabs = emptyList(),
-                            selectedBusiness = null,
-                            page = 1,
-                            totalPages = 0,
-                            total = 0,
-                            hasMore = false,
-                            items = emptyList(),
-                            errorText = strings.get(R.string.history_login_required),
-                        )
-                    }
-                } else {
-                    _state.update {
-                        it.copy(
-                            isLoggedIn = true,
-                            loading = false,
-                            errorText = error.message ?: strings.get(R.string.history_error_load),
-                            items = if (it.items.isNotEmpty()) it.items else emptyList(),
-                        )
-                    }
-                }
             } catch (error: Throwable) {
-                _state.update {
-                    it.copy(
-                        isLoggedIn = true,
-                        loading = false,
-                        errorText = error.message ?: strings.get(R.string.history_error_load),
-                        items = if (it.items.isNotEmpty()) it.items else emptyList(),
-                    )
-                }
+                failLoad(error) { it.copy(loading = false) }
             }
         }
+    }
+
+    private suspend fun fetchPage(page: Int): HistorySearchResult {
+        val current = _state.value
+        val request = current.filter.toSearchParams(
+            page = page,
+            business = current.selectedBusiness ?: DEFAULT_HISTORY_BUSINESS,
+        )
+        return extrasRepository.getHistorySearch(request)
+    }
+
+    private fun failLoad(error: Throwable, resetProgress: (HistoryUiState) -> HistoryUiState) {
+        if (error is BiliHttpException && error.code == -101) {
+            _state.update { it.loggedOut() }
+            return
+        }
+        val message = error.message ?: strings.get(R.string.history_error_load)
+        _state.update { resetProgress(it).copy(isLoggedIn = true, errorText = message) }
+    }
+
+    private fun cancelAllLoads() {
+        reloadJob?.cancel()
+        appendJob?.cancel()
+        prependJob?.cancel()
+    }
+
+    private fun nextScrollRequest(page: Int): HistoryScrollRequest {
+        return HistoryScrollRequest(page = page, id = ++scrollRequestId)
+    }
+
+    private fun HistoryUiState.loggedOut(): HistoryUiState {
+        return copy(
+            isLoggedIn = false,
+            loading = false,
+            appending = false,
+            prepending = false,
+            appendFailed = false,
+            tabs = emptyList(),
+            selectedBusiness = null,
+            page = 1,
+            totalPages = 0,
+            total = 0,
+            hasMore = false,
+            pages = emptyList(),
+            errorText = strings.get(R.string.history_login_required),
+        )
+    }
+
+    /** 去掉已存在于 [loaded] 各页中的记录，保证列表 key 唯一。 */
+    private fun List<HistoryItem>.distinctFrom(loaded: List<HistoryLoadedPage>): List<HistoryItem> {
+        val existing = loaded.flatMapTo(HashSet()) { page -> page.items.map { it.listKey } }
+        return filter { it.listKey !in existing }
     }
 
     private fun HistoryFilter.toSearchParams(

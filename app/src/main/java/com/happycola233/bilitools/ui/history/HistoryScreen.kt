@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -68,13 +67,18 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -111,6 +115,7 @@ import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlinx.coroutines.flow.filter
 
 private data class HistoryToggleOption<T>(
     val value: T,
@@ -128,6 +133,9 @@ fun BiliToolsHistoryContent(
     onGoToPage: (Int) -> Unit,
     onGoToPrevPage: () -> Unit,
     onGoToNextPage: () -> Unit,
+    onVisiblePageChange: (Int) -> Unit,
+    onLoadNextPage: () -> Unit,
+    onLoadPrevPage: () -> Unit,
     onApplyFilter: (HistoryFilter) -> Unit,
     onDownload: (HistoryItem) -> Unit,
     onOpenAuthor: (HistoryItem) -> Unit,
@@ -153,8 +161,8 @@ fun BiliToolsHistoryContent(
             }
         }
 
-        LaunchedEffect(state.errorText, state.items.size) {
-            if (!state.errorText.isNullOrBlank() && state.items.isNotEmpty()) {
+        LaunchedEffect(state.errorText, state.isEmpty) {
+            if (!state.errorText.isNullOrBlank() && !state.isEmpty) {
                 if (state.errorText != lastToastError) {
                     Toast.makeText(context, state.errorText, Toast.LENGTH_SHORT).show()
                     lastToastError = state.errorText
@@ -275,7 +283,8 @@ fun BiliToolsHistoryContent(
                                     HistoryPagerCard(
                                         page = state.page,
                                         totalPages = state.totalPages,
-                                        hasMore = state.hasMore,
+                                        canGoPrev = state.canGoPrev,
+                                        canGoNext = state.canGoNext,
                                         loading = state.loading,
                                         pageInput = pageInput,
                                         onPageInputChange = { input ->
@@ -323,6 +332,9 @@ fun BiliToolsHistoryContent(
                 HistoryBody(
                     state = state,
                     innerPadding = innerPadding,
+                    onVisiblePageChange = onVisiblePageChange,
+                    onLoadNextPage = onLoadNextPage,
+                    onLoadPrevPage = onLoadPrevPage,
                     onDownload = onDownload,
                     onOpenAuthor = onOpenAuthor,
                     onCopyTitle = onCopyTitle,
@@ -444,25 +456,78 @@ private fun HistoryBusinessTabs(
     }
 }
 
+/** 展开后的列表项，携带所属页码以便按滚动位置推算当前页。 */
+private data class HistoryListEntry(
+    val page: Int,
+    val item: HistoryItem,
+)
+
+/** 距底部还剩多少项时开始预加载下一页。 */
+private const val HISTORY_APPEND_PREFETCH_DISTANCE = 4
+
 @Composable
 private fun HistoryBody(
     state: HistoryUiState,
     innerPadding: PaddingValues,
+    onVisiblePageChange: (Int) -> Unit,
+    onLoadNextPage: () -> Unit,
+    onLoadPrevPage: () -> Unit,
     onDownload: (HistoryItem) -> Unit,
     onOpenAuthor: (HistoryItem) -> Unit,
     onCopyTitle: (String) -> Unit,
     onCopyAuthorName: (String) -> Unit,
 ) {
     val listState = rememberLazyListState()
+    val entries = remember(state.pages) {
+        state.pages.flatMap { loaded -> loaded.items.map { HistoryListEntry(loaded.page, it) } }
+    }
 
-    LaunchedEffect(state.page) {
-        if (listState.firstVisibleItemIndex != 0 || listState.firstVisibleItemScrollOffset != 0) {
-            listState.scrollToItem(0)
+    // 跳页：把目标页第一条滚到列表顶部；记录已处理的请求，避免重建界面时覆盖恢复的滚动位置
+    var handledScrollRequestId by rememberSaveable { mutableStateOf(0) }
+    LaunchedEffect(state.scrollRequest) {
+        val request = state.scrollRequest ?: return@LaunchedEffect
+        if (request.id <= handledScrollRequestId) return@LaunchedEffect
+        val index = entries.indexOfFirst { it.page == request.page }
+        if (index >= 0) {
+            handledScrollRequestId = request.id
+            listState.scrollToItem(index)
+        }
+    }
+
+    // 顶部可见项所属页 → 页码显示随滚动变化
+    LaunchedEffect(listState, entries) {
+        snapshotFlow { listState.firstVisibleItemIndex }
+            .collect { index -> entries.getOrNull(index)?.page?.let(onVisiblePageChange) }
+    }
+
+    // 接近底部时自动追加下一页；追加失败后停止自动触发，等待用户点击页脚重试
+    val autoAppendEnabled = state.canLoadNextPage && !state.appendFailed && !state.loading && entries.isNotEmpty()
+    LaunchedEffect(listState, entries.size, autoAppendEnabled) {
+        if (!autoAppendEnabled) return@LaunchedEffect
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }
+            .filter { lastVisibleIndex -> lastVisibleIndex >= entries.size - HISTORY_APPEND_PREFETCH_DISTANCE }
+            .collect { onLoadNextPage() }
+    }
+
+    // 列表已到顶仍被手指继续下拉（列表消费不掉的向下位移）→ 向前加载上一页
+    val prependEnabled by rememberUpdatedState(state.canLoadPrevPage && !state.prepending && !state.loading)
+    val prependConnection = remember(onLoadPrevPage) {
+        object : NestedScrollConnection {
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset {
+                if (prependEnabled && source == NestedScrollSource.UserInput && available.y > 0f) {
+                    onLoadPrevPage()
+                }
+                return Offset.Zero
+            }
         }
     }
 
     when {
-        state.loading && state.items.isEmpty() -> {
+        state.loading && entries.isEmpty() -> {
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -475,7 +540,7 @@ private fun HistoryBody(
             }
         }
 
-        state.items.isEmpty() -> {
+        entries.isEmpty() -> {
             HistoryEmptyState(
                 text = when {
                     !state.isLoggedIn -> stringResource(R.string.history_login_required)
@@ -489,46 +554,122 @@ private fun HistoryBody(
         }
 
         else -> {
-            LazyColumn(
-                state = listState,
-                contentPadding = PaddingValues(
-                    start = 16.dp,
-                    top = innerPadding.calculateTopPadding() + 10.dp,
-                    end = 16.dp,
-                    bottom = innerPadding.calculateBottomPadding() + 32.dp,
-                ),
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                itemsIndexed(
-                    items = state.items,
-                    key = { _, item ->
-                        "${item.bvid ?: item.uri ?: item.oid ?: item.title}-${item.viewAt}"
-                    },
-                ) { index, item ->
-                    val previousItem = state.items.getOrNull(index - 1)
-                    val showSectionHeader =
-                        previousItem == null || !isSameHistorySection(item.viewAt, previousItem.viewAt)
+            Box(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(
+                    state = listState,
+                    contentPadding = PaddingValues(
+                        start = 16.dp,
+                        top = innerPadding.calculateTopPadding() + 10.dp,
+                        end = 16.dp,
+                        bottom = innerPadding.calculateBottomPadding() + 32.dp,
+                    ),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .nestedScroll(prependConnection),
+                ) {
+                    itemsIndexed(
+                        items = entries,
+                        key = { _, entry -> entry.item.listKey },
+                    ) { index, entry ->
+                        val item = entry.item
+                        val previousItem = entries.getOrNull(index - 1)?.item
+                        val showSectionHeader =
+                            previousItem == null || !isSameHistorySection(item.viewAt, previousItem.viewAt)
 
-                    if (showSectionHeader) {
-                        HistoryDateHeader(
-                            title = formatHistorySectionTitle(item.viewAt),
-                            modifier = Modifier.padding(
-                                top = if (index == 0) 2.dp else 14.dp,
-                                bottom = 8.dp,
-                            ),
+                        if (showSectionHeader) {
+                            HistoryDateHeader(
+                                title = formatHistorySectionTitle(item.viewAt),
+                                modifier = Modifier.padding(
+                                    top = if (index == 0) 2.dp else 14.dp,
+                                    bottom = 8.dp,
+                                ),
+                            )
+                        }
+
+                        HistoryItemCard(
+                            item = item,
+                            onDownload = { onDownload(item) },
+                            onOpenAuthor = { onOpenAuthor(item) },
+                            onCopyTitle = onCopyTitle,
+                            onCopyAuthorName = onCopyAuthorName,
+                            showDivider = index != entries.lastIndex,
                         )
                     }
 
-                    HistoryItemCard(
-                        item = item,
-                        onDownload = { onDownload(item) },
-                        onOpenAuthor = { onOpenAuthor(item) },
-                        onCopyTitle = onCopyTitle,
-                        onCopyAuthorName = onCopyAuthorName,
-                        showDivider = index != state.items.lastIndex,
-                    )
+                    item(key = "history_list_footer") {
+                        HistoryListFooter(
+                            canLoadNextPage = state.canLoadNextPage,
+                            appendFailed = state.appendFailed,
+                            onRetry = onLoadNextPage,
+                        )
+                    }
+                }
+
+                AnimatedVisibility(
+                    visible = state.prepending,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = innerPadding.calculateTopPadding() + 12.dp),
+                ) {
+                    HistoryLoadingPill(text = stringResource(R.string.history_loading_prev_page))
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun HistoryListFooter(
+    canLoadNextPage: Boolean,
+    appendFailed: Boolean,
+    onRetry: () -> Unit,
+) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 16.dp, bottom = 8.dp),
+    ) {
+        when {
+            appendFailed -> {
+                TextButton(onClick = onRetry) {
+                    Text(text = stringResource(R.string.history_load_more_failed))
+                }
+            }
+
+            canLoadNextPage -> {
+                HistoryExpressiveLoadingIndicator(modifier = Modifier.size(32.dp))
+            }
+
+            else -> {
+                Text(
+                    text = stringResource(R.string.history_no_more),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HistoryLoadingPill(text: String) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = CircleShape,
+        shadowElevation = 2.dp,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(start = 10.dp, end = 14.dp, top = 6.dp, bottom = 6.dp),
+        ) {
+            HistoryExpressiveLoadingIndicator(modifier = Modifier.size(24.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
         }
     }
 }
@@ -618,7 +759,8 @@ private fun HistoryExpressiveLoadingIndicator(
 private fun HistoryPagerCard(
     page: Int,
     totalPages: Int,
-    hasMore: Boolean,
+    canGoPrev: Boolean,
+    canGoNext: Boolean,
     loading: Boolean,
     pageInput: String,
     onPageInputChange: (String) -> Unit,
@@ -653,7 +795,7 @@ private fun HistoryPagerCard(
                     haptics.tap()
                     onPrev()
                 },
-                enabled = page > 1 && !loading,
+                enabled = canGoPrev && !loading,
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                 modifier = Modifier.height(38.dp),
             ) {
@@ -714,7 +856,7 @@ private fun HistoryPagerCard(
                     haptics.tap()
                     onNext()
                 },
-                enabled = hasMore && !loading,
+                enabled = canGoNext && !loading,
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                 modifier = Modifier.height(38.dp),
             ) {
