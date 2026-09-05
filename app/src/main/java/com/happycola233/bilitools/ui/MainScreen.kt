@@ -1,6 +1,5 @@
 package com.happycola233.bilitools.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.WindowInsets
@@ -43,7 +42,6 @@ import com.happycola233.bilitools.ui.login.LoginViewModel
 import com.happycola233.bilitools.ui.me.MeRoute
 import com.happycola233.bilitools.ui.parse.ParseRoute
 import com.happycola233.bilitools.ui.parse.ParseViewModel
-import com.happycola233.bilitools.ui.theme.AppSurfaces
 import com.happycola233.bilitools.ui.theme.BiliToolsFonts
 import com.happycola233.bilitools.ui.update.UpdateDialogContent
 import com.kyant.backdrop.backdrops.layerBackdrop
@@ -88,9 +86,7 @@ fun MainScreen(
     }
 
     Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(AppSurfaces.pageContainerColor),
+        modifier = modifier.fillMaxSize(),
     ) {
         MainContentLayer(
             selectedTabIndex = selectedTabIndex,
