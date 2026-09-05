@@ -137,7 +137,7 @@ fun BiliToolsHistoryContent(
 ) {
     BiliToolsTheme(settings = settings) {
         val context = LocalContext.current
-        val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+        val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
         var pageInput by rememberSaveable { mutableStateOf(state.page.toString()) }
         var pageInputFocused by remember { mutableStateOf(false) }
         var filterSheetVisible by rememberSaveable { mutableStateOf(false) }

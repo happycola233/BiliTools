@@ -414,7 +414,6 @@ private fun MainSettingsScreen(
     onNavigate: (SettingsDestination) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val primaryEntries = remember {
         listOf(
             SettingsEntry(
@@ -456,7 +455,6 @@ private fun MainSettingsScreen(
         title = stringResource(R.string.settings_screen_title),
         subtitle = stringResource(R.string.app_name),
         onBack = onBack,
-        scrollBehavior = scrollBehavior,
         modifier = modifier,
     ) { innerPadding ->
         LazyColumn(
@@ -532,12 +530,10 @@ private fun GeneralSettingsScreen(
     } else {
         "当前系统不支持 Live Update 能力。"
     }
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     SettingsScaffold(
         title = stringResource(R.string.settings_general_title),
         subtitle = stringResource(R.string.settings_screen_title),
         onBack = onBack,
-        scrollBehavior = scrollBehavior,
         modifier = modifier,
     ) { innerPadding ->
         LazyColumn(
@@ -620,12 +616,10 @@ private fun DownloadSettingsScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     SettingsScaffold(
         title = stringResource(R.string.settings_download_title),
         subtitle = stringResource(R.string.settings_screen_title),
         onBack = onBack,
-        scrollBehavior = scrollBehavior,
         modifier = modifier,
     ) { innerPadding ->
         LazyColumn(
@@ -821,12 +815,10 @@ private fun AppearanceSettingsScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     SettingsScaffold(
         title = stringResource(R.string.settings_appearance_title),
         subtitle = stringResource(R.string.settings_screen_title),
         onBack = onBack,
-        scrollBehavior = scrollBehavior,
         modifier = modifier,
     ) { innerPadding ->
         LazyColumn(
@@ -940,7 +932,6 @@ internal fun NamingSettingsScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val previewContexts = rememberNamingPreviewContexts()
     val listState = rememberLazyListState()
     val viewportBounds = remember { mutableStateOf(Rect.Zero) }
@@ -1008,7 +999,6 @@ internal fun NamingSettingsScreen(
         title = stringResource(R.string.settings_naming_title),
         subtitle = stringResource(R.string.settings_screen_title),
         onBack = onBack,
-        scrollBehavior = scrollBehavior,
         modifier = modifier.imePadding(),
     ) { innerPadding ->
         LazyColumn(
@@ -2149,7 +2139,6 @@ private fun AboutSettingsScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     var showLicense by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
@@ -2189,7 +2178,6 @@ private fun AboutSettingsScreen(
         title = stringResource(R.string.settings_about_title),
         subtitle = stringResource(R.string.app_name),
         onBack = onBack,
-        scrollBehavior = scrollBehavior,
         modifier = modifier,
     ) { innerPadding ->
         LazyColumn(
@@ -2594,7 +2582,6 @@ private fun DefaultDownloadQualityScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     var draft by remember(settings.defaultDownloadQuality) {
         mutableStateOf(settings.defaultDownloadQuality)
     }
@@ -2631,7 +2618,6 @@ private fun DefaultDownloadQualityScreen(
         title = stringResource(R.string.settings_default_download_quality),
         subtitle = stringResource(R.string.settings_general_title),
         onBack = onBack,
-        scrollBehavior = scrollBehavior,
         modifier = modifier,
     ) { innerPadding ->
         LazyColumn(
@@ -3396,7 +3382,6 @@ private fun OpenSourceLicensesScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val context = LocalContext.current
     // aboutlibraries.json 由 AboutLibraries Gradle 插件在构建期生成并打进 res/raw
     val libraries = remember {
@@ -3410,7 +3395,6 @@ private fun OpenSourceLicensesScreen(
         title = stringResource(R.string.settings_opensource_licenses_title),
         subtitle = stringResource(R.string.settings_about_title),
         onBack = onBack,
-        scrollBehavior = scrollBehavior,
         modifier = modifier,
     ) { innerPadding ->
         LazyColumn(
@@ -3598,10 +3582,11 @@ private fun SettingsScaffold(
     title: String,
     subtitle: String,
     onBack: () -> Unit,
-    scrollBehavior: androidx.compose.material3.TopAppBarScrollBehavior,
     modifier: Modifier = Modifier,
     content: @Composable (PaddingValues) -> Unit,
 ) {
+    // 所有设置页统一在内容滚回顶部后展开顶栏，与主页保持一致。
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
