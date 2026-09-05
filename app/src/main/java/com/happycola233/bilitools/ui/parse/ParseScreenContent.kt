@@ -1264,6 +1264,8 @@ private fun SearchInputBar(
                         .padding(horizontal = 14.dp),
                     singleLine = true,
                     textStyle = textStyle,
+                    // BasicTextField 不写 cursorBrush 会回落到 Compose 默认的纯黑，深色模式下看不见
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Uri,
                         imeAction = ImeAction.Done,

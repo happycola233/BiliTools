@@ -237,6 +237,8 @@ M3 的 **fixed 色组**正是为这种场景设计的：它的定义就是「不
 
 **`ToggleFloatingActionButton` 不向子内容提供内容色。** 它的实现只做了加阴影、画容器、调 `content()` 三件事，既没有 `CompositionLocalProvider`，也不会自动套 `ToggleFloatingActionButtonDefaults.animateIcon`。里面的 `Icon` 如果不写 `tint`，会回落到 Compose 库的默认值 **`Color.Black`**，和 colorScheme 完全脱钩。`DownloadsScreenContent.kt` 的汉堡按钮就是这样显式着色的。
 
+**`BasicTextField` 的光标默认是纯黑。** 不写 `cursorBrush` 时它回落到 Compose 库的默认值 `SolidColor(Color.Black)`，深色模式下光标直接看不见。项目里的三处 `BasicTextField`（解析输入框、分页跳转框、历史搜索框）都显式给 `SolidColor(colorScheme.primary)`。用 `OutlinedTextField` / `TextField` 不会踩到，它们的 `cursorColor` 默认就是 `primary`。
+
 **`tonalElevation` 会叠 `surfaceTint`。** 全局主题构建器把 `surfaceTint` 赋成了 `primary`，浅色模式下那是 T40 的深色，给 `Surface` 设非零 `tonalElevation` 会让底色明显偏色偏暗、偏离表面色阶。层次一律用 `shadowElevation` 表达，全项目不使用 `tonalElevation`。
 
 **`AndroidView.factory` 只负责创建，不会随 Compose 配色重建。** 主界面不再依赖 Activity `recreate()` 后，嵌在 Compose 中且从 View theme 取色的控件必须在 `update` 中把当前 `MaterialTheme.colorScheme` 同步回 View，或直接改用等价的 Compose 组件。下载进度条按前一种方式处理；「我」页加载动画使用 Compose `LoadingIndicator`，两者都能随配色即时刷新。
