@@ -39,3 +39,6 @@ Thumbs.db
 # Development files
 .devfiles/
 .tmp/
+
+# Node dependencies of the color-system generator
+node_modules/

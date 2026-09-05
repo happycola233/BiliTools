@@ -6,9 +6,9 @@ import org.junit.Test
 
 class ThemeColorPreferenceTest {
     @Test
-    fun disablingDynamicColorWithoutManualSelectionUsesSakura() {
+    fun disablingDynamicColorWithoutManualSelectionUsesPeriwinkle() {
         assertEquals(
-            AppThemeColor.Sakura,
+            AppThemeColor.Periwinkle,
             resolveThemeColorAfterDynamicToggle(
                 enabled = false,
                 currentColor = AppThemeColor.Dynamic,

@@ -40,15 +40,10 @@ internal object AppDialogDefaults {
             }
         }
 
+    /** 深色底与模态底只差三档明度，遮罩要压得比 Material 默认的 32% 更深才能把二者拉开。 */
     val scrimAlpha: Float
         @Composable
-        get() = with(MaterialTheme.colorScheme) {
-            when {
-                usesPureBlackSurfaces() -> 0.48f
-                usesDarkSurfaces() -> 0.42f
-                else -> 0.32f
-            }
-        }
+        get() = if (MaterialTheme.colorScheme.usesDarkSurfaces()) 0.48f else 0.32f
 }
 
 /** Material [AlertDialog] 的应用级入口，浅色沿用默认观感，深色统一提升模态层级。 */

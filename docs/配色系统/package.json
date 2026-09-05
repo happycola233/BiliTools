@@ -1,0 +1,9 @@
+{
+  "name": "bilitools-color-system",
+  "private": true,
+  "description": "BiliTools 配色生成器的依赖声明；在本目录执行 npm ci 后运行 node gen_themes.mjs",
+  "type": "module",
+  "dependencies": {
+    "@material/material-color-utilities": "0.4.0"
+  }
+}

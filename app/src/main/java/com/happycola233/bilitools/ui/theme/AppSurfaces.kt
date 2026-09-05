@@ -4,6 +4,7 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 
 /**
@@ -11,16 +12,14 @@ import androidx.compose.ui.graphics.luminance
  *
  * 1. [pageContainerColor]：页面底色，托住上面的卡片；
  * 2. [cardContainerColor]：卡片与列表项底色，浮在页面之上；
- * 3. [insetContainerColor]：卡片内嵌区域（输入框、下拉框、次级列表、展开的子项）底色，沉在卡片之下。
+ * 3. [insetContainerColor]：卡片内嵌区域（输入框、下拉框、次级列表、展开的子项）底色，介于卡片与页面之间；
  * 4. [modalContainerColor]：对话框等模态容器底色，位于当前内容之上。
  *
- * 深色配色下容器色阶随层级变亮，方向与浅色相反；纯黑深色模式又把 surface 与 background 压到了
- * #000000，标准色阶不足以拉开上述层次。因此每层都按浅色、深色、纯黑分别取相邻档位，
- * 保证三种模式下层与层的间距观感一致。
+ * 表面梯度沿用 Material 3 Expressive 的档位（浅色卡片 T98 / 内嵌 T95 / 页面 T94 / 激活与模态 T90，
+ * 深色卡片 T18 / 内嵌 T12 / 页面 T9 / 激活与模态 T15），与系统动态取色下的结构一致。
+ * 纯黑深色模式把 surface 与 background 压到了 #000000，标准色阶不足以拉开层次，因此单独取相邻档位。
  *
- * 界面代码只应该用这三个语义名，不要直接取 `surfaceContainer*`——浅色模式的档位分配是
- * 被色域天花板逼出来的（卡片底放弃色相改用纯白换取亮度，内嵌层则刻意沉到了页面底之下），
- * 照直觉挑档会踩坑。来历见 `docs/配色系统/README.md` 第四节。
+ * 界面代码只应该用这几个语义名，不要直接取 `surfaceContainer*`。来历见 `docs/配色系统/README.md` 第四节。
  */
 internal object AppSurfaces {
     val pageContainerColor: Color
@@ -35,43 +34,36 @@ internal object AppSurfaces {
             if (usesPureBlackSurfaces()) surfaceContainerHigh else surfaceBright
         }
 
-    /**
-     * 模态容器在深色下升到最高容器色阶，避免纯黑模式中与同为
-     * `surfaceContainerHigh` 的卡片重合。浅色保留 Material 3 默认档位，不改变现有观感。
-     */
+    /** 模态容器取最高容器色阶，纯黑模式下也不会与同为 `surfaceContainerHigh` 的卡片重合。 */
     val modalContainerColor: Color
         @Composable
-        get() = with(MaterialTheme.colorScheme) {
-            if (usesDarkSurfaces()) surfaceContainerHighest else surfaceContainerHigh
-        }
+        get() = MaterialTheme.colorScheme.surfaceContainerHighest
 
-    /** 只比 [cardContainerColor] 沉一档，刚好读出内嵌关系又不至于像在卡片上挖了个洞。 */
+    /**
+     * 浅色取 `surfaceContainerLow`（T96）与 `surfaceContainer`（T94）的中点：T96 对 T98 卡片只有 1.05:1，
+     * 内嵌区域几乎看不出；T94 又在近白卡片上压出一块明显的灰，中点 T95（约 1.07:1）刚好读作一层轻凹陷，
+     * 输入框另有 `outlineVariant` 描边勾出边界。深色取 `surfaceContainerHigh`（T12，对 T18 卡片 1.17:1），
+     * 比页面 T9 略浮、比卡片沉，方向与浅色一致。纯黑取 `surfaceContainer`（#101010）。
+     */
     val insetContainerColor: Color
         @Composable
         get() = with(MaterialTheme.colorScheme) {
             when {
                 usesPureBlackSurfaces() -> surfaceContainer
                 usesDarkSurfaces() -> surfaceContainerHigh
-                else -> surfaceContainerLow
+                else -> lerp(surfaceContainerLow, surfaceContainer, 0.5f)
             }
         }
 
     /**
-     * 内嵌控件的展开/激活态底色，在 [insetContainerColor] 之上再抬一档以强调当前焦点。
-     *
-     * 浅色下刻意不取 `surfaceContainer`：那是页面底色，为了淡雅被抬得离 `surfaceContainerLow` 很近，
-     * 焦点态会读不出来。
+     * 内嵌控件的展开/激活态底色，在 [insetContainerColor] 之上再拉开一档以强调当前焦点
+     * （浅色 T95 → T90，深色 T12 → T15，纯黑 #101010 → #171717）。
      */
     val insetActiveContainerColor: Color
         @Composable
         get() = with(MaterialTheme.colorScheme) {
-            when {
-                usesPureBlackSurfaces() -> surfaceContainerHigh
-                usesDarkSurfaces() -> surfaceContainerHighest
-                else -> surfaceContainerHigh
-            }
+            if (usesPureBlackSurfaces()) surfaceContainerHigh else surfaceContainerHighest
         }
-
 }
 
 /** 判断当前是否为纯黑深色模式。配色由 XML 主题叠加而来，这里以最终颜色值反推，保证 View 层与 Compose 层判定一致。 */

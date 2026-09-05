@@ -507,10 +507,9 @@ private fun DownloadsManageFab(
     // 回落到 Compose 库默认的纯黑，与配色方案彻底脱钩。
     val menuButtonContainerColor = AppAccents.floatingActionContainer
     val menuButtonContentColor = AppAccents.onFloatingActionContainer
-    // 展开的操作项浅色模式使用更轻的 fixed 容器，深色模式保持原样；
-    // 右下角主菜单按钮继续保留独立的 FAB 配色。
-    val menuItemContainerColor = AppAccents.floatingActionMenuItemContainer
-    val menuItemContentColor = AppAccents.onFloatingActionMenuItemContainer
+    // 展开的操作项与主菜单按钮同色
+    val menuItemContainerColor = menuButtonContainerColor
+    val menuItemContentColor = menuButtonContentColor
 
     FloatingActionButtonMenu(
         expanded = expanded,

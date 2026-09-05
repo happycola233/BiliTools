@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """配色视觉预览：回读出货的 XML，渲染色板与界面 mock。
 
-改完 gen_themes.py 之后，verify.py 只能保证数值达标，「好不好看」得看图。
+改完 gen_themes.mjs 之后，verify.py 只能保证数值达标，「好不好看」得看图。
 产出两张 PNG 到 .tmp/：
 
   palette.png  十三套配色的填充色 / 前景色 / 表面四层色板，浅深并排
@@ -19,10 +19,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 RES = os.path.join(HERE, '..', '..', 'app', 'src', 'main', 'res')
 OUT_DIR = os.path.join(HERE, '..', '..', '.tmp')
 
-SCHEMES = [('Sakura', '樱粉'), ('Coral', '珊瑚'), ('Apricot', '蜜杏'), ('Sand', '沙金'),
-           ('Matcha', '抹茶'), ('Mint', '青苹'), ('Seafoam', '薄荷'), ('Lagoon', '湖蓝'),
-           ('Sky', '天蓝'), ('Iris', '鸢尾'), ('Periwinkle', '蓝紫'), ('Lilac', '丁香'),
-           ('Orchid', '藕荷')]
+SCHEMES = [('Periwinkle', '蓝紫'), ('Iris', '鸢尾'), ('Sky', '天蓝'), ('Lagoon', '湖蓝'),
+           ('Seafoam', '薄荷'), ('Mint', '青苹'), ('Matcha', '抹茶'), ('Sand', '沙金'),
+           ('Apricot', '蜜杏'), ('Coral', '珊瑚'), ('Sakura', '樱粉'), ('Orchid', '藕荷'),
+           ('Lilac', '丁香')]
 
 FONT_DIR = os.path.join(os.environ.get('WINDIR', r'C:\Windows'), 'Fonts')
 F = ImageFont.truetype(os.path.join(FONT_DIR, 'msyh.ttc'), 19)
@@ -145,10 +145,11 @@ def draw_bottom_navigation(d, x, y, width, theme):
 
 
 def draw_palette():
-    """每套配色一行：填充色、其上内容色、前景色，以及表面四层。"""
-    common_cols = ['colorPrimaryFixedDim', 'colorOnPrimaryFixed', 'colorPrimary',
-                   'colorSurfaceBright', 'colorSurfaceContainer']
-    heads = ['填充面', '面上内容', '前景色', '卡片底', '页面底', '内嵌底', '模态底']
+    """每套配色一行：填充色、其上内容色、前景色，以及表面各层。"""
+    cols = ['colorPrimaryFixedDim', 'colorOnPrimaryFixed', 'colorPrimary',
+            'colorSurfaceBright', 'colorSurfaceContainerLow', 'colorSurfaceContainer',
+            'colorSurfaceContainerHigh', 'colorSurfaceContainerHighest']
+    heads = ['填充面', '面上内容', '前景色', '卡片底', 'Low', '页面底', 'High', '激活/模态底']
     row_h, cell_w, gap = 52, 132, 8
     width = 2 * (170 + len(heads) * (cell_w + gap)) + 60
     img = Image.new('RGB', (width, 130 + len(SCHEMES) * row_h), '#FFFFFF')
@@ -157,10 +158,6 @@ def draw_palette():
            font=FB, fill='#111111')
 
     for side, (mode, src) in enumerate((('浅色模式', LIGHT), ('深色模式', DARK))):
-        cols = common_cols + [
-            'colorSurfaceContainerLow' if side == 0 else 'colorSurfaceContainerHigh',
-            'colorSurfaceContainerHigh' if side == 0 else 'colorSurfaceContainerHighest',
-        ]
         ox = 28 + side * (170 + len(heads) * (cell_w + gap) + 30)
         d.text((ox, 66), mode, font=FB, fill='#111111')
         for i, head in enumerate(heads):
@@ -180,7 +177,7 @@ def draw_palette():
 
 def draw_mock():
     """典型界面：并排检查浅色、深色与纯黑模式下的常用组件和模态层。"""
-    shown = ['Sakura', 'Matcha', 'Lagoon', 'Lilac']
+    shown = ['Periwinkle', 'Sakura', 'Matcha', 'Lagoon']
     modes = (
         ('浅色', LIGHT, False, False),
         ('深色', DARK, True, False),
@@ -197,17 +194,20 @@ def draw_mock():
             t = src[style]
             ox = 28 + side * (panel_w + 34)
             oy = 68 + r * (panel_h + 24)
+            # 内嵌层与 AppSurfaces.insetContainerColor 一致：浅色取 Low/Container 中点，
+            # 深色取 High，纯黑取 Container
             if pure_black:
                 page, card, inset = (t['colorSurface'], t['colorSurfaceContainerHigh'],
                                      t['colorSurfaceContainer'])
-            else:
+            elif dark:
                 page, card, inset = (t['colorSurfaceContainer'], t['colorSurfaceBright'],
-                                     t['colorSurfaceContainerLow' if not dark
-                                       else 'colorSurfaceContainerHigh'])
+                                     t['colorSurfaceContainerHigh'])
+            else:
+                page, card = t['colorSurfaceContainer'], t['colorSurfaceBright']
+                inset = blend_hex(t['colorSurfaceContainerLow'], page, 0.5)
             fill, on_fill = t['colorPrimaryFixedDim'], t['colorOnPrimaryFixed']
             ink, sub = t['colorOnSurface'], t['colorOnSurfaceVariant']
-            error = '#FFB4AB' if dark else '#BA1A1A'
-            error_container = '#93000A' if dark else '#FFDAD6'
+            error, error_container = t['colorError'], t['colorErrorContainer']
 
             d.rounded_rectangle([ox, oy, ox + panel_w, oy + panel_h], radius=20, fill=page)
             d.text((ox + 20, oy + 12), '%s  %s' % (style, mode_name),
@@ -226,18 +226,19 @@ def draw_mock():
             d.rounded_rectangle([ox + 180, oy + 142, ox + 320, oy + 180], radius=14,
                                 fill=t['colorSecondaryContainer'])
             d.text((ox + 214, oy + 152), '复制', font=FS, fill=t['colorOnSecondaryContainer'])
-            # 开关：同时画关闭与开启态；纯黑关闭态使用更高一档轨道并恢复描边
+            # 开关：同时画关闭与开启态；关闭轨道取离卡片最远的容器档位
+            # （浅色与纯黑 Highest、深色 High），纯黑另加描边；关闭滑块统一 outline
             sx, sy = ox + 326, oy + 146
             unchecked_track = t[
-                'colorSurfaceContainerHighest' if pure_black else 'colorSurfaceContainerHigh'
+                'colorSurfaceContainerHigh' if dark and not pure_black
+                else 'colorSurfaceContainerHighest'
             ]
-            unchecked_thumb = t['colorOutline'] if dark else t['colorOnPrimary']
             draw_switch(
                 d,
                 sx,
                 sy,
                 unchecked_track,
-                unchecked_thumb,
+                t['colorOutline'],
                 checked=False,
                 border=t['colorOutline'] if pure_black else None,
             )
@@ -275,7 +276,7 @@ def draw_mock():
                 fill=error_container,
             )
 
-            scrim_alpha = 0.48 if pure_black else 0.42 if dark else 0.32
+            scrim_alpha = 0.48 if dark else 0.32
             apply_black_scrim(
                 img,
                 [ox, modal_top, ox + panel_w, oy + panel_h],
@@ -283,9 +284,7 @@ def draw_mock():
             )
             d = ImageDraw.Draw(img)
 
-            modal_fill = t[
-                'colorSurfaceContainerHighest' if dark else 'colorSurfaceContainerHigh'
-            ]
+            modal_fill = t['colorSurfaceContainerHighest']
             outline_alpha = 0.50 if pure_black else 0.30 if dark else 0
             modal_outline = (
                 blend_hex(t['colorOutlineVariant'], modal_fill, outline_alpha)

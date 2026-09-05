@@ -38,8 +38,8 @@ import androidx.compose.ui.graphics.Color
  *
  * 悬浮按钮（FAB）浅色模式使用 [floatingActionContainer]，与次级操作保持同一强调层级；
  * 深色模式则回到 [fill]，避免 `secondaryContainer` 或 `primaryContainer` 这类暗色容器
- * 糊进深色页面里（实测只有 1.88:1）。下载页 FAB 菜单展开后的带文案操作项不跟随主菜单
- * 按钮取色：浅色模式使用更轻的 `primaryFixed`，深色模式继续使用 [fill]。
+ * 糊进深色页面里（对页面底达不到 3:1）。下载页 FAB 菜单展开后的操作项与主菜单按钮同色，
+ * 不要换成 `primaryFixed`：那是 C14 的低彩度档，在浅色页面上读作灰块。
  *
  * 完整的参数取值、色域约束与实测对比度见 `docs/配色系统/README.md`。
  */
@@ -65,16 +65,6 @@ internal object AppAccents {
         get() = with(MaterialTheme.colorScheme) {
             if (usesDarkSurfaces()) onPrimaryFixed else onSecondaryContainer
         }
-
-    /** 下载页展开菜单项：浅色使用较轻的 fixed 容器，深色保留高对比度的固定填充色。 */
-    val floatingActionMenuItemContainer: Color
-        @Composable
-        get() = with(MaterialTheme.colorScheme) {
-            if (usesDarkSurfaces()) primaryFixedDim else primaryFixed
-        }
-
-    val onFloatingActionMenuItemContainer: Color
-        @Composable get() = MaterialTheme.colorScheme.onPrimaryFixed
 
     /** 主按钮配色，深浅模式同色 */
     @Composable
@@ -114,11 +104,21 @@ internal object AppAccents {
     }
 
     /**
+     * 开关关闭态与滑条未选段的轨道色：取离卡片底最远的容器档位。
+     * 浅色卡片 T98 下 `surfaceContainerHighest`（T90）比 `surfaceContainerHigh`（T92）拉得更开；
+     * 深色卡片 T18 下反过来，`surfaceContainerHigh`（T12）比 `surfaceContainerHighest`（T15）更远；
+     * 纯黑卡片就是 `surfaceContainerHigh`，只能升到 `surfaceContainerHighest`。
+     */
+    val inactiveTrackColor: Color
+        @Composable
+        get() = with(MaterialTheme.colorScheme) {
+            if (usesDarkSurfaces() && !usesPureBlackSurfaces()) surfaceContainerHigh else surfaceContainerHighest
+        }
+
+    /**
      * 开关配色。浅色模式的开启态使用 `primary` 轨道与 `onPrimary` 滑块，强化与卡片底的层次；
-     * 深色模式继续使用 [fill] 轨道与 [onFill] 滑块。普通浅色与深色模式的关闭态轨道使用
-     * `surfaceContainerHigh` 且不画描边；纯黑模式改用 `surfaceContainerHighest` 轨道与 `outline`
-     * 描边，避免轨道和同为 `surfaceContainerHigh` 的卡片底重合。浅色模式关闭态滑块使用
-     * `onPrimary`，深色模式使用 `outline`。
+     * 深色模式继续使用 [fill] 轨道与 [onFill] 滑块。关闭态使用 [inactiveTrackColor] 轨道与
+     * M3 标准的 `outline` 滑块；只有纯黑模式画 `outline` 描边，避免轨道和卡片底糊在一起。
      * 禁用态保留 M3 的降强调配色，但关闭态同样不画描边。
      */
     @Composable
@@ -126,25 +126,18 @@ internal object AppAccents {
         val colorScheme = MaterialTheme.colorScheme
         val darkSurfaces = colorScheme.usesDarkSurfaces()
         val pureBlackSurfaces = colorScheme.usesPureBlackSurfaces()
-        val checkedThumbColor = if (darkSurfaces) onFill else colorScheme.onPrimary
-        val checkedTrackColor = if (darkSurfaces) fill else colorScheme.primary
-        val uncheckedThumbColor = if (darkSurfaces) colorScheme.outline else checkedThumbColor
         return SwitchDefaults.colors(
-            checkedThumbColor = checkedThumbColor,
-            checkedTrackColor = checkedTrackColor,
-            uncheckedThumbColor = uncheckedThumbColor,
-            uncheckedTrackColor = if (pureBlackSurfaces) {
-                colorScheme.surfaceContainerHighest
-            } else {
-                colorScheme.surfaceContainerHigh
-            },
+            checkedThumbColor = if (darkSurfaces) onFill else colorScheme.onPrimary,
+            checkedTrackColor = if (darkSurfaces) fill else colorScheme.primary,
+            uncheckedThumbColor = colorScheme.outline,
+            uncheckedTrackColor = inactiveTrackColor,
             uncheckedBorderColor = if (pureBlackSurfaces) colorScheme.outline else Color.Transparent,
             disabledUncheckedBorderColor = Color.Transparent,
         )
     }
 
     /**
-     * 滑条的启用态配色。已选段使用 [fill]，未选段使用 `surfaceContainerHigh`；滑块按模式取色：
+     * 滑条的启用态配色。已选段使用 [fill]，未选段使用 [inactiveTrackColor]；滑块按模式取色：
      * 浅色模式使用 [onFill]，避免滑块糊进近白卡片；深色模式使用 [fill]，
      * 让滑块保持明亮并与活动轨道形成连续的强调色。
      */
@@ -155,7 +148,7 @@ internal object AppAccents {
             thumbColor = if (darkSurfaces) fill else onFill,
             activeTrackColor = fill,
             activeTickColor = onFill,
-            inactiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            inactiveTrackColor = inactiveTrackColor,
         )
     }
 }

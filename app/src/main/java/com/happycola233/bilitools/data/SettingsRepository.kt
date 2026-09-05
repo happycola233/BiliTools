@@ -145,22 +145,22 @@ enum class AppThemeMode(val value: String) {
     }
 }
 
-/** 按色相环顺序排列，设置页的色块也按这个顺序展示 */
+/** 默认方案「蓝紫」居首，之后沿色相环由冷到暖排到紫色收尾；设置页的色块也按这个顺序展示 */
 enum class AppThemeColor(val value: String) {
     Dynamic("dynamic"),
-    Sakura("sakura"),
-    Coral("coral"),
-    Apricot("apricot"),
-    Sand("sand"),
-    Matcha("matcha"),
-    Mint("mint"),
-    Seafoam("seafoam"),
-    Lagoon("lagoon"),
-    Sky("sky"),
-    Iris("iris"),
     Periwinkle("periwinkle"),
-    Lilac("lilac"),
+    Iris("iris"),
+    Sky("sky"),
+    Lagoon("lagoon"),
+    Seafoam("seafoam"),
+    Mint("mint"),
+    Matcha("matcha"),
+    Sand("sand"),
+    Apricot("apricot"),
+    Coral("coral"),
+    Sakura("sakura"),
     Orchid("orchid"),
+    Lilac("lilac"),
     ;
 
     companion object {
@@ -1039,5 +1039,5 @@ internal fun resolveThemeColorAfterDynamicToggle(
 
     return AppThemeColor.fromValue(lastManualColorValue)
         .takeUnless { it == AppThemeColor.Dynamic }
-        ?: AppThemeColor.Sakura
+        ?: AppThemeColor.Periwinkle
 }
