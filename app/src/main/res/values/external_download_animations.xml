@@ -1,0 +1,9 @@
+<resources>
+    <!-- 浮窗及遮罩由 Compose 同步播放进退场动画，窗口层不再叠加默认动画。 -->
+    <style name="Animation.BiliTools.ExternalDownload" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@null</item>
+        <item name="android:activityOpenExitAnimation">@null</item>
+        <item name="android:activityCloseEnterAnimation">@null</item>
+        <item name="android:activityCloseExitAnimation">@null</item>
+    </style>
+</resources>
