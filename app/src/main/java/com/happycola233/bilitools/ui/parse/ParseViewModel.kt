@@ -1472,15 +1472,6 @@ class ParseViewModel(
                                 snapshot.selectedCodec,
                                 snapshot.resolutionMode,
                             )
-                            val mergeVideo = if (playUrlInfo.format == StreamFormat.Dash &&
-                                outputType == OutputType.AudioVideo) {
-                                selectVideoStreamForMerge(
-                                    playUrlInfo.video,
-                                    selectedVideo,
-                                )
-                            } else {
-                                selectedVideo
-                            }
                             val selectedAudio = selectAudioStream(
                                 playUrlInfo.audio,
                                 snapshot.selectedAudioId,
@@ -1508,7 +1499,7 @@ class ParseViewModel(
                                     null
                                 }
                                 OutputType.AudioVideo -> when {
-                                    mergeVideo == null -> strings.get(R.string.download_unavailable_video)
+                                    selectedVideo == null -> strings.get(R.string.download_unavailable_video)
                                     playUrlInfo.format == StreamFormat.Dash && selectedAudio == null ->
                                         strings.get(R.string.download_unavailable_audio_video)
                                     else -> null
@@ -1517,8 +1508,9 @@ class ParseViewModel(
                             if (unavailableReason == null) {
                                 val outputVideoCodec = when (outputType) {
                                     OutputType.AudioOnly -> null
-                                    OutputType.VideoOnly -> selectedVideo?.codec ?: snapshot.selectedCodec
-                                    OutputType.AudioVideo -> mergeVideo?.codec ?: selectedVideo?.codec ?: snapshot.selectedCodec
+                                    OutputType.VideoOnly,
+                                    OutputType.AudioVideo,
+                                    -> selectedVideo?.codec ?: snapshot.selectedCodec
                                 }
                                 when (outputType) {
                                     OutputType.AudioOnly -> {
@@ -1580,7 +1572,7 @@ class ParseViewModel(
                                     }
                                     OutputType.AudioVideo -> {
                                         if (playUrlInfo.format == StreamFormat.Dash && selectedAudio != null) {
-                                            val mediaParams = buildMediaParams(mergeVideo, outputVideoCodec, selectedAudio)
+                                            val mediaParams = buildMediaParams(selectedVideo, outputVideoCodec, selectedAudio)
                                             val mergedExtension = extensionForMergedOutput(selectedAudio)
                                             val mergedNamingContext = buildNamingContext(
                                                 info = info,
@@ -1602,13 +1594,13 @@ class ParseViewModel(
                                                 groupId,
                                                 downloadTitle,
                                                 outputName,
-                                                mergeVideo!!.url,
+                                                selectedVideo!!.url,
                                                 selectedAudio.url,
                                                 mediaParams,
                                                 embeddedMetadata = embeddedMetadata,
                                             )
                                         } else {
-                                            val mediaParams = buildMediaParams(mergeVideo, outputVideoCodec, selectedAudio)
+                                            val mediaParams = buildMediaParams(selectedVideo, outputVideoCodec, selectedAudio)
                                             val mergedNamingContext = buildNamingContext(
                                                 info = info,
                                                 item = item,
@@ -1617,20 +1609,20 @@ class ParseViewModel(
                                                 taskType = DownloadTaskType.AudioVideo,
                                                 taskLabel = downloadTitle,
                                                 mediaParams = mediaParams,
-                                                formatLabel = mapStreamFormatLabel(mergeVideo!!.format),
+                                                formatLabel = mapStreamFormatLabel(selectedVideo!!.format),
                                             )
                                             val videoName = resolveTemplateFileName(
                                                 item = item,
                                                 namingSession = namingSession,
                                                 context = mergedNamingContext,
-                                                extension = extensionForVideoStream(mergeVideo),
+                                                extension = extensionForVideoStream(selectedVideo),
                                             )
                                             downloadRepository.enqueue(
                                                 groupId,
                                                 DownloadTaskType.AudioVideo,
                                                 downloadTitle,
                                                 videoName,
-                                                mergeVideo.url,
+                                                selectedVideo.url,
                                                 mediaParams,
                                                 embeddedMetadata = embeddedMetadata,
                                             )
@@ -3182,25 +3174,6 @@ class ParseViewModel(
         return codecCandidates.maxByOrNull { it.bandwidth ?: 0 }
             ?: resolutionCandidates.maxByOrNull { it.bandwidth ?: 0 }
             ?: streams.first()
-    }
-
-    private fun selectVideoStreamForMerge(
-        state: ParseUiState,
-        current: VideoStream?,
-    ): VideoStream? {
-        return selectVideoStreamForMerge(state.videoStreams, current)
-    }
-
-    private fun selectVideoStreamForMerge(
-        streams: List<VideoStream>,
-        current: VideoStream?,
-    ): VideoStream? {
-        if (current == null) return null
-        if (current.codec != VideoCodec.Av1) return current
-        val sameResolution = streams.filter { it.id == current.id }
-        return sameResolution.firstOrNull { it.codec == VideoCodec.Avc }
-            ?: sameResolution.firstOrNull { it.codec == VideoCodec.Hevc }
-            ?: current
     }
 
     private fun selectAudioStream(state: ParseUiState): AudioStream? {

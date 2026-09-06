@@ -1860,7 +1860,6 @@ class DownloadRepository(
                 val stream = selectVideoStreamForRetry(
                     streams = resolved.playUrlInfo.video,
                     params = item.mediaParams,
-                    preferMergeCompatible = false,
                 ) ?: return null
                 stream.url
             }
@@ -1875,7 +1874,6 @@ class DownloadRepository(
         val video = selectVideoStreamForRetry(
             streams = resolved.playUrlInfo.video,
             params = item.mediaParams,
-            preferMergeCompatible = true,
         ) ?: return null
         val audio = selectAudioStreamForRetry(
             streams = resolved.playUrlInfo.audio,
@@ -1979,7 +1977,6 @@ class DownloadRepository(
     private fun selectVideoStreamForRetry(
         streams: List<VideoStream>,
         params: DownloadMediaParams?,
-        preferMergeCompatible: Boolean,
     ): VideoStream? {
         if (streams.isEmpty()) return null
         var candidates = streams
@@ -1999,16 +1996,9 @@ class DownloadRepository(
             }
         }
 
-        var selected = candidates.maxByOrNull { it.bandwidth ?: 0L }
+        return candidates.maxByOrNull { it.bandwidth ?: 0L }
             ?: streams.maxByOrNull { it.bandwidth ?: 0L }
             ?: streams.first()
-        if (preferMergeCompatible && selected.codec == VideoCodec.Av1) {
-            val sameResolution = streams.filter { it.id == selected.id }
-            selected = sameResolution.firstOrNull { it.codec == VideoCodec.Avc }
-                ?: sameResolution.firstOrNull { it.codec == VideoCodec.Hevc }
-                ?: selected
-        }
-        return selected
     }
 
     private fun selectAudioStreamForRetry(
