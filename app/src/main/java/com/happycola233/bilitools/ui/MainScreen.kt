@@ -3,9 +3,11 @@ package com.happycola233.bilitools.ui
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TopAppBarDefaults
@@ -137,8 +139,6 @@ private fun MainContentLayer(
     onOpenParseUrl: (String) -> Unit,
 ) {
     val selectedIndex = selectedTabIndex()
-    val safeTopPadding = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
-    val contentTopPadding = safeTopPadding + MainTopBarExpandedHeight
     val focusManager = LocalFocusManager.current
 
     LaunchedEffect(selectedIndex) {
@@ -156,19 +156,22 @@ private fun MainContentLayer(
             .nestedScroll(scrollBehavior.nestedScrollConnection),
     ) {
         Box(
-            modifier = Modifier.collapsingTopBarOffset { scrollBehavior.state.heightOffset },
+            modifier = Modifier
+                // 与顶栏在同一帧处理顶部 Insets；页面只需预留顶栏本体高度。
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+                .collapsingTopBarOffset { scrollBehavior.state.heightOffset },
         ) {
             MainTabHost(active = selectedIndex == TAB_PARSE) {
                 ParseRoute(
                     viewModel = parseViewModel,
-                    contentTopPadding = contentTopPadding,
+                    contentTopPadding = MainTopBarExpandedHeight,
                 )
             }
 
             MainTabHost(active = selectedIndex == TAB_DOWNLOADS) {
                 DownloadsRoute(
                     viewModel = downloadsViewModel,
-                    contentTopPadding = contentTopPadding,
+                    contentTopPadding = MainTopBarExpandedHeight,
                     taskActionsOverlayState = taskActionsOverlayState,
                     modifier = Modifier.fillMaxSize(),
                 )
@@ -177,7 +180,7 @@ private fun MainContentLayer(
             MainTabHost(active = selectedIndex == TAB_ME) {
                 MeRoute(
                     viewModel = loginViewModel,
-                    contentTopPadding = contentTopPadding,
+                    contentTopPadding = MainTopBarExpandedHeight,
                     onOpenParseUrl = onOpenParseUrl,
                     modifier = Modifier.fillMaxSize(),
                 )

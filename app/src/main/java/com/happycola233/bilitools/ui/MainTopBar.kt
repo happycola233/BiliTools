@@ -1,9 +1,11 @@
 package com.happycola233.bilitools.ui
 
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -56,7 +58,6 @@ internal fun MainCollapsingTopBar(
     val typography = MaterialTheme.typography
     val containerColor = AppSurfaces.pageContainerColor
     val titleColor = MaterialTheme.colorScheme.onSurface
-    val insetTop = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
 
     val expandedHeightPx: Int
     val collapsedHeightPx: Int
@@ -64,8 +65,8 @@ internal fun MainCollapsingTopBar(
     val expandedBaselineMarginPx: Float
     val collapsedTitleScale: Float
     with(LocalDensity.current) {
-        expandedHeightPx = (insetTop + MainTopBarExpandedHeight).roundToPx()
-        collapsedHeightPx = (insetTop + MainTopBarCollapsedHeight).roundToPx()
+        expandedHeightPx = MainTopBarExpandedHeight.roundToPx()
+        collapsedHeightPx = MainTopBarCollapsedHeight.roundToPx()
         titleStartPaddingPx = MainTopBarTitleStartPadding.roundToPx()
         expandedBaselineMarginPx = MainTopBarExpandedTitleBaselineMargin.toPx()
         collapsedTitleScale =
@@ -80,7 +81,10 @@ internal fun MainCollapsingTopBar(
     Layout(
         modifier = modifier
             .fillMaxWidth()
-            .drawBehind { drawRect(containerColor) },
+            .drawBehind { drawRect(containerColor) }
+            // Insets 在组合之后、布局之前更新；交给布局修饰符处理，避免启动首帧标题位置跳动。
+            // 背景放在 padding 外侧，让状态栏区域继续使用顶栏底色。
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)),
         content = {
             Text(
                 text = title,
