@@ -1249,10 +1249,7 @@ private fun ProfileCard(
                                 level = userInfo.level,
                                 isSeniorMember = userInfo.isSeniorMember,
                             )
-                            VipLabel(
-                                userInfo = userInfo,
-                                showVipBadge = showVipBadge,
-                            )
+                            VipLabel(userInfo = userInfo)
                         }
 
                         Text(
@@ -1356,10 +1353,9 @@ private fun LevelBadge(
 @Composable
 private fun VipLabel(
     userInfo: UserInfo,
-    showVipBadge: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    if (showVipBadge && !userInfo.vipLabelImageUrl.isNullOrBlank()) {
+    if (!userInfo.vipLabelImageUrl.isNullOrBlank()) {
         RemoteImage(
             model = userInfo.vipLabelImageUrl,
             contentDescription = stringResource(R.string.login_vip_label_desc),

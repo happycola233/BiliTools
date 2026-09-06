@@ -305,12 +305,16 @@ class AuthRepository(
             level = accountInfo?.level ?: data.levelInfo?.currentLevel,
             isSeniorMember = (accountInfo?.isSeniorMember ?: data.isSeniorMember) == 1,
             sign = accountInfo?.sign ?: data.sign,
-            vipLabel = data.vipLabel?.text ?: accountInfo?.vip?.label?.text,
-            vipLabelImageUrl = normalizeImageUrl(accountInfo?.vip?.label?.imgLabelHansStatic),
+            vipLabel = data.vipLabel?.text?.takeIf { it.isNotBlank() }
+                ?: accountInfo?.vip?.label?.text,
+            vipLabelImageUrl = normalizeUrl(
+                accountInfo?.vip?.label?.imgLabelHansStatic
+                    ?: data.vipLabel?.imgLabelHansStatic,
+            ),
             vipStatus = accountInfo?.vip?.status ?: data.vipStatus,
             vipType = accountInfo?.vip?.type ?: data.vipType,
             vipAvatarSubscript = accountInfo?.vip?.avatarSubscript ?: data.vipAvatarSubscript,
-            topPhotoUrl = normalizeImageUrl(accountInfo?.topPhoto?.lImg),
+            topPhotoUrl = normalizeUrl(accountInfo?.topPhoto?.lImg),
             coins = accountInfo?.coins,
             following = stat?.following,
             follower = stat?.follower,
@@ -320,23 +324,7 @@ class AuthRepository(
 
     fun logout() = cookieStore.clear()
 
-    private fun normalizeUrl(url: String?): String? {
-        if (url.isNullOrBlank()) return null
-        return when {
-            url.startsWith("//") -> "https:$url"
-            url.startsWith("http://") -> "https://${url.removePrefix("http://")}"
-            else -> url
-        }
-    }
-
-    private fun normalizeImageUrl(url: String?): String? {
-        if (url.isNullOrBlank()) return null
-        return when {
-            url.startsWith("http") -> url
-            url.startsWith("//") -> "https:$url"
-            else -> "https:$url"
-        }
-    }
+    private fun normalizeUrl(url: String?): String? = normalizeBiliHttpsUrl(url)
 
     private suspend fun fetchAccountInfo(mid: Long): UserInfoData? {
         val url = wbiSigner.signedUrl(
@@ -591,6 +579,7 @@ private data class NavLevelInfo(
 
 private data class NavVipLabel(
     @Json(name = "text") val text: String?,
+    @Json(name = "img_label_uri_hans_static") val imgLabelHansStatic: String?,
 )
 
 private data class UserInfoResponse(
@@ -640,3 +629,15 @@ private data class UserStatData(
     @Json(name = "follower") val follower: Int?,
     @Json(name = "dynamic_count") val dynamicCount: Int?,
 )
+
+/** 头像、封面、会员标等 CDN 地址统一成 https，避免 Android 拦截明文 http。 */
+internal fun normalizeBiliHttpsUrl(url: String?): String? {
+    val trimmed = url?.trim().orEmpty()
+    if (trimmed.isBlank()) return null
+    return when {
+        trimmed.startsWith("//") -> "https:$trimmed"
+        trimmed.startsWith("http://", ignoreCase = true) ->
+            "https://${trimmed.substringAfter("://")}"
+        else -> trimmed
+    }
+}
