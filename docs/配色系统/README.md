@@ -6,6 +6,9 @@
 - `android16_default_monet.json` —— Android 16 模拟器实测的系统默认 Monet 色表。生成器启动时先用它自检，确认依赖的官方库与平台实现一致。
 - `verify.py` —— 回归校验。直接回读出货的 XML，核对十三套配色的对比度、层次分离度与角色一致性。
 - `preview.py` —— 视觉预览。渲染色板与界面 mock，改完参数先看图再编译。
+- `readme_palette.py` —— README 色卡。回读出货的 XML，产出 `docs/assets/palette-light.svg` / `palette-dark.svg` 及对应的 `-mobile.svg`。桌面以两行展示，宽度不超过 600px 时切换为三列；色块、底色条和圆点分别展示主题色、页面 / 卡片 / 内嵌底色与强调色。改完配色后重跑一次同步展示图。
+
+README 按页面主题自动显示浅色或深色色卡。四张 SVG 均使用透明画布，不绘制外层圆角背景，文字色与对应的页面主题匹配。
 
 生成器依赖官方 `@material/material-color-utilities`（Node），预览脚本依赖 `pillow`，校验脚本只用 Python 标准库：
 
@@ -20,6 +23,7 @@ pip install pillow
 node docs/配色系统/gen_themes.mjs    # 自检官方库 → 重新产出三个 XML → 打印与官方方案的偏差表
 python docs/配色系统/verify.py       # 回读校验，看有没有指标掉出门槛
 python docs/配色系统/preview.py      # 出图目视确认（.tmp/palette.png、.tmp/mock.png）
+python docs/配色系统/readme_palette.py  # 同步 README 色卡（docs/assets/palette-*.svg）
 ./gradlew :app:assembleDebug
 ```
 

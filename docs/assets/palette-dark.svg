@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1008 484" width="1008" height="484" role="img" aria-labelledby="palette-title palette-desc">
+<title id="palette-title">BiliTools 十三套配色（深色模式）</title>
+<desc id="palette-desc">蓝紫为默认配色。每枚色卡展示主题色、页面与卡片底色、配色名称、色号，以及链接与图标的强调色。</desc>
+<text x="24" y="24" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#9198A1" text-anchor="start">13 种配色 / 深色</text>
+<g id="swatch-Periwinkle">
+<title>蓝紫 · Periwinkle · #B1C2F2</title>
+<rect x="24" y="52" width="120" height="88" rx="22" fill="#B1C2F2"/>
+<rect x="34" y="62" width="42" height="22" rx="11" fill="#CED3E6"/>
+<text x="55" y="77" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="12" font-weight="500" fill="#1A233A" text-anchor="middle">默认</text>
+<rect x="24" y="148" width="36" height="8" rx="4" fill="#19191B"/>
+<rect x="66" y="148" width="36" height="8" rx="4" fill="#2C2C2E"/>
+<rect x="108" y="148" width="36" height="8" rx="4" fill="#1F1F22"/>
+<text x="24" y="186" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="19" font-weight="500" fill="#F0F6FC" text-anchor="start">蓝紫</text>
+<circle cx="139" cy="179" r="4" fill="#B8C6EE"/>
+<text x="24" y="206" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#9198A1" text-anchor="start">Periwinkle</text>
+<text x="24" y="225" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" font-weight="400" fill="#9198A1" text-anchor="start">#B1C2F2</text>
+</g>
+<g id="swatch-Iris">
+<title>鸢尾 · Iris · #A8C9F2</title>
+<rect x="164" y="52" width="120" height="88" rx="22" fill="#A8C9F2"/>
+<rect x="164" y="148" width="36" height="8" rx="4" fill="#191A1B"/>
+<rect x="206" y="148" width="36" height="8" rx="4" fill="#2B2C2E"/>
+<rect x="248" y="148" width="36" height="8" rx="4" fill="#1F2022"/>
+<text x="164" y="186" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="19" font-weight="500" fill="#F0F6FC" text-anchor="start">鸢尾</text>
+<circle cx="279" cy="179" r="4" fill="#ADC9EB"/>
+<text x="164" y="206" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#9198A1" text-anchor="start">Iris</text>
+<text x="164" y="225" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" font-weight="400" fill="#9198A1" text-anchor="start">#A8C9F2</text>
+</g>
+<g id="swatch-Sky">
+<title>天蓝 · Sky · #A3D8F2</title>
+<rect x="304" y="52" width="120" height="88" rx="22" fill="#A3D8F2"/>
+<rect x="304" y="148" width="36" height="8" rx="4" fill="#191A1A"/>
+<rect x="346" y="148" width="36" height="8" rx="4" fill="#2B2C2D"/>
+<rect x="388" y="148" width="36" height="8" rx="4" fill="#1E2021"/>
+<text x="304" y="186" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="19" font-weight="500" fill="#F0F6FC" text-anchor="start">天蓝</text>
+<circle cx="419" cy="179" r="4" fill="#A2CDE2"/>
+<text x="304" y="206" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#9198A1" text-anchor="start">Sky</text>
+<text x="304" y="225" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" font-weight="400" fill="#9198A1" text-anchor="start">#A3D8F2</text>
+</g>
+<g id="swatch-Lagoon">
+<title>湖蓝 · Lagoon · #A5E5E9</title>
+<rect x="444" y="52" width="120" height="88" rx="22" fill="#A5E5E9"/>
+<rect x="444" y="148" width="36" height="8" rx="4" fill="#181A1A"/>
+<rect x="486" y="148" width="36" height="8" rx="4" fill="#2A2D2D"/>
+<rect x="528" y="148" width="36" height="8" rx="4" fill="#1D2020"/>
+<text x="444" y="186" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="19" font-weight="500" fill="#F0F6FC" text-anchor="start">湖蓝</text>
+<circle cx="559" cy="179" r="4" fill="#9CD0D4"/>
+<text x="444" y="206" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#9198A1" text-anchor="start">Lagoon</text>
+<text x="444" y="225" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" font-weight="400" fill="#9198A1" text-anchor="start">#A5E5E9</text>
+</g>
+<g id="swatch-Seafoam">
+<title>薄荷 · Seafoam · #A8E7D4</title>
+<rect x="584" y="52" width="120" height="88" rx="22" fill="#A8E7D4"/>
+<rect x="584" y="148" width="36" height="8" rx="4" fill="#181A19"/>
+<rect x="626" y="148" width="36" height="8" rx="4" fill="#2A2D2B"/>
+<rect x="668" y="148" width="36" height="8" rx="4" fill="#1D201F"/>
+<text x="584" y="186" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="19" font-weight="500" fill="#F0F6FC" text-anchor="start">薄荷</text>
+<circle cx="699" cy="179" r="4" fill="#9ED1C1"/>
+<text x="584" y="206" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#9198A1" text-anchor="start">Seafoam</text>
+<text x="584" y="225" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" font-weight="400" fill="#9198A1" text-anchor="start">#A8E7D4</text>
+</g>
+<g id="swatch-Mint">
+<title>青苹 · Mint · #B7E6BA</title>
+<rect x="724" y="52" width="120" height="88" rx="22" fill="#B7E6BA"/>
+<rect x="724" y="148" width="36" height="8" rx="4" fill="#181A18"/>
+<rect x="766" y="148" width="36" height="8" rx="4" fill="#2A2D2A"/>
+<rect x="808" y="148" width="36" height="8" rx="4" fill="#1E201D"/>
+<text x="724" y="186" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="19" font-weight="500" fill="#F0F6FC" text-anchor="start">青苹</text>
+<circle cx="839" cy="179" r="4" fill="#AAD0AC"/>
+<text x="724" y="206" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#9198A1" text-anchor="start">Mint</text>
+<text x="724" y="225" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" font-weight="400" fill="#9198A1" text-anchor="start">#B7E6BA</text>
+</g>
+<g id="swatch-Matcha">
+<title>抹茶 · Matcha · #D0E1A1</title>
+<rect x="864" y="52" width="120" height="88" rx="22" fill="#D0E1A1"/>
+<rect x="864" y="148" width="36" height="8" rx="4" fill="#1A1A18"/>
+<rect x="906" y="148" width="36" height="8" rx="4" fill="#2C2C2A"/>
+<rect x="948" y="148" width="36" height="8" rx="4" fill="#20201D"/>
+<text x="864" y="186" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="19" font-weight="500" fill="#F0F6FC" text-anchor="start">抹茶</text>
+<circle cx="979" cy="179" r="4" fill="#BFCD96"/>
+<text x="864" y="206" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#9198A1" text-anchor="start">Matcha</text>
+<text x="864" y="225" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" font-weight="400" fill="#9198A1" text-anchor="start">#D0E1A1</text>
+</g>
+<g id="swatch-Sand">
+<title>沙金 · Sand · #F2D48B</title>
+<rect x="94" y="252" width="120" height="88" rx="22" fill="#F2D48B"/>
+<rect x="94" y="348" width="36" height="8" rx="4" fill="#1A1918"/>
+<rect x="136" y="348" width="36" height="8" rx="4" fill="#2D2C2A"/>
+<rect x="178" y="348" width="36" height="8" rx="4" fill="#211F1E"/>
+<text x="94" y="386" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="19" font-weight="500" fill="#F0F6FC" text-anchor="start">沙金</text>
+<circle cx="209" cy="379" r="4" fill="#DEC487"/>
+<text x="94" y="406" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#9198A1" text-anchor="start">Sand</text>
+<text x="94" y="425" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" font-weight="400" fill="#9198A1" text-anchor="start">#F2D48B</text>
+</g>
+<g id="swatch-Apricot">
+<title>蜜杏 · Apricot · #F2B781</title>
+<rect x="234" y="252" width="120" height="88" rx="22" fill="#F2B781"/>
+<rect x="234" y="348" width="36" height="8" rx="4" fill="#1B1919"/>
+<rect x="276" y="348" width="36" height="8" rx="4" fill="#2D2C2B"/>
+<rect x="318" y="348" width="36" height="8" rx="4" fill="#211F1E"/>
+<text x="234" y="386" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="19" font-weight="500" fill="#F0F6FC" text-anchor="start">蜜杏</text>
+<circle cx="349" cy="379" r="4" fill="#F1BC8E"/>
+<text x="234" y="406" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#9198A1" text-anchor="start">Apricot</text>
+<text x="234" y="425" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" font-weight="400" fill="#9198A1" text-anchor="start">#F2B781</text>
+</g>
+<g id="swatch-Coral">
+<title>珊瑚 · Coral · #FAAF9D</title>
+<rect x="374" y="252" width="120" height="88" rx="22" fill="#FAAF9D"/>
+<rect x="374" y="348" width="36" height="8" rx="4" fill="#1B1919"/>
+<rect x="416" y="348" width="36" height="8" rx="4" fill="#2E2B2B"/>
+<rect x="458" y="348" width="36" height="8" rx="4" fill="#211F1E"/>
+<text x="374" y="386" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="19" font-weight="500" fill="#F0F6FC" text-anchor="start">珊瑚</text>
+<circle cx="489" cy="379" r="4" fill="#F9B7A6"/>
+<text x="374" y="406" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#9198A1" text-anchor="start">Coral</text>
+<text x="374" y="425" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" font-weight="400" fill="#9198A1" text-anchor="start">#FAAF9D</text>
+</g>
+<g id="swatch-Sakura">
+<title>樱粉 · Sakura · #F5AEBD</title>
+<rect x="514" y="252" width="120" height="88" rx="22" fill="#F5AEBD"/>
+<rect x="514" y="348" width="36" height="8" rx="4" fill="#1B1919"/>
+<rect x="556" y="348" width="36" height="8" rx="4" fill="#2E2B2C"/>
+<rect x="598" y="348" width="36" height="8" rx="4" fill="#221F1F"/>
+<text x="514" y="386" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="19" font-weight="500" fill="#F0F6FC" text-anchor="start">樱粉</text>
+<circle cx="629" cy="379" r="4" fill="#F5B6C2"/>
+<text x="514" y="406" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#9198A1" text-anchor="start">Sakura</text>
+<text x="514" y="425" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" font-weight="400" fill="#9198A1" text-anchor="start">#F5AEBD</text>
+</g>
+<g id="swatch-Orchid">
+<title>藕荷 · Orchid · #F2C0EB</title>
+<rect x="654" y="252" width="120" height="88" rx="22" fill="#F2C0EB"/>
+<rect x="654" y="348" width="36" height="8" rx="4" fill="#1B191A"/>
+<rect x="696" y="348" width="36" height="8" rx="4" fill="#2E2B2D"/>
+<rect x="738" y="348" width="36" height="8" rx="4" fill="#221F20"/>
+<text x="654" y="386" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="19" font-weight="500" fill="#F0F6FC" text-anchor="start">藕荷</text>
+<circle cx="769" cy="379" r="4" fill="#E4BADE"/>
+<text x="654" y="406" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#9198A1" text-anchor="start">Orchid</text>
+<text x="654" y="425" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" font-weight="400" fill="#9198A1" text-anchor="start">#F2C0EB</text>
+</g>
+<g id="swatch-Lilac">
+<title>丁香 · Lilac · #D0BDF2</title>
+<rect x="794" y="252" width="120" height="88" rx="22" fill="#D0BDF2"/>
+<rect x="794" y="348" width="36" height="8" rx="4" fill="#1A191B"/>
+<rect x="836" y="348" width="36" height="8" rx="4" fill="#2D2B2E"/>
+<rect x="878" y="348" width="36" height="8" rx="4" fill="#201F22"/>
+<text x="794" y="386" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="19" font-weight="500" fill="#F0F6FC" text-anchor="start">丁香</text>
+<circle cx="909" cy="379" r="4" fill="#D0BFEB"/>
+<text x="794" y="406" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#9198A1" text-anchor="start">Lilac</text>
+<text x="794" y="425" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" font-weight="400" fill="#9198A1" text-anchor="start">#D0BDF2</text>
+</g>
+<rect x="304" y="450" width="14" height="14" rx="5" fill="#B1C2F2"/>
+<text x="326" y="461" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#9198A1" text-anchor="start">主题色</text>
+<rect x="398" y="453" width="9" height="9" rx="3" fill="#19191B"/>
+<rect x="410" y="453" width="9" height="9" rx="3" fill="#2C2C2E"/>
+<rect x="422" y="453" width="9" height="9" rx="3" fill="#1F1F22"/>
+<text x="442" y="461" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#9198A1" text-anchor="start">页面 · 卡片 · 内嵌</text>
+<circle cx="618" cy="457" r="4" fill="#B8C6EE"/>
+<text x="632" y="461" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#9198A1" text-anchor="start">链接与图标</text>
+</svg>
