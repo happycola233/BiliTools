@@ -119,7 +119,7 @@ class UpdateRepository(
                     if (!response.isSuccessful) {
                         throw IOException("HTTP ${response.code}")
                     }
-                    val payload = response.body?.string().orEmpty()
+                    val payload = response.body.string()
                     val parsed = latestAdapter.fromJson(payload)
                         ?: throw IOException("Empty release response")
 

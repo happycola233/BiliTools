@@ -99,9 +99,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import coil.decode.DataSource
-import coil.decode.SvgDecoder
-import coil.load
+import coil3.decode.DataSource
+import coil3.load
+import coil3.request.error
+import coil3.request.fallback
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.AppSettings
 import com.happycola233.bilitools.data.model.UserInfo
@@ -346,7 +347,7 @@ private fun MeOverviewScreen(
                         items = 1,
                         index = 0,
                         leadingContent = { MeItemIcon(R.drawable.ic_info_24) },
-                        headlineContent = {
+                        content = {
                             MeItemTitle(stringResource(R.string.me_login_entry_title))
                         },
                         supportingContent = {
@@ -369,7 +370,7 @@ private fun MeOverviewScreen(
                     index = index,
                     enabled = item.enabled,
                     leadingContent = { MeItemIcon(item.iconRes) },
-                    headlineContent = { MeItemTitle(stringResource(item.titleRes)) },
+                    content = { MeItemTitle(stringResource(item.titleRes)) },
                     supportingContent = { Text(stringResource(item.summaryRes)) },
                     trailingContent = { MeItemIcon(R.drawable.ic_chevron_right_24) },
                     onClick = item.onClick,
@@ -384,7 +385,7 @@ private fun MeOverviewScreen(
                     items = manageItems.size,
                     index = index,
                     leadingContent = { MeItemIcon(item.iconRes) },
-                    headlineContent = { MeItemTitle(stringResource(item.titleRes)) },
+                    content = { MeItemTitle(stringResource(item.titleRes)) },
                     supportingContent = { Text(stringResource(item.summaryRes)) },
                     trailingContent = { MeItemIcon(R.drawable.ic_chevron_right_24) },
                     onClick = item.onClick,
@@ -1445,7 +1446,6 @@ private fun RemoteImage(
                     }
 
                     else -> imageView.load(model) {
-                        decoderFactory(SvgDecoder.Factory())
                         if (fallbackRes != null) {
                             fallback(fallbackRes)
                             error(fallbackRes)
@@ -1555,7 +1555,7 @@ private fun MeClickableListItem(
     index: Int,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    headlineContent: @Composable () -> Unit,
+    content: @Composable () -> Unit,
     supportingContent: (@Composable () -> Unit)? = null,
     leadingContent: (@Composable () -> Unit)? = null,
     trailingContent: (@Composable () -> Unit)? = null,
@@ -1588,7 +1588,7 @@ private fun MeClickableListItem(
     )
 
     ListItem(
-        headlineContent = headlineContent,
+        content = content,
         supportingContent = supportingContent,
         leadingContent = leadingContent,
         trailingContent = trailingContent,

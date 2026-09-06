@@ -53,6 +53,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -61,7 +62,7 @@ import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDateRangePickerState
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -96,7 +97,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
+import coil3.compose.AsyncImage
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.AppSettings
 import com.happycola233.bilitools.data.model.HistoryItem
@@ -1117,7 +1118,10 @@ private fun HistoryFilterBottomSheet(
     onApply: () -> Unit,
     onPickCustomRange: () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+    )
     val durationOptions = listOf(
         HistoryToggleOption(
             HistoryDurationFilter.All,
@@ -1288,7 +1292,7 @@ private fun <T> HistoryFilterToggleSection(
     selected: T,
     onSelect: (T) -> Unit,
 ) {
-    val toggleColors = ToggleButtonDefaults.toggleButtonColors(
+    val toggleColors = ToggleButtonDefaults.colors(
         containerColor = HistoryExpressiveDefaults.toggleContainerColor,
         contentColor = MaterialTheme.colorScheme.onSurface,
         checkedContainerColor = AppAccents.fill,

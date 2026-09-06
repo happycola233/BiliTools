@@ -472,7 +472,7 @@ private fun MainSettingsScreen(
                     items = primaryEntries.size,
                     index = index,
                     leadingContent = { SettingsItemIcon(entry.iconRes) },
-                    headlineContent = {
+                    content = {
                         SettingsItemTitle(stringResource(entry.titleRes))
                     },
                     supportingContent = {
@@ -496,7 +496,7 @@ private fun MainSettingsScreen(
                     items = 1,
                     index = 0,
                     leadingContent = { SettingsItemIcon(aboutEntry.iconRes) },
-                    headlineContent = {
+                    content = {
                         SettingsItemTitle(stringResource(aboutEntry.titleRes))
                     },
                     supportingContent = { Text(stringResource(aboutEntry.summaryRes)) },
@@ -549,7 +549,7 @@ private fun GeneralSettingsScreen(
                     items = 4,
                     index = 0,
                     leadingContent = { SettingsItemIcon(R.drawable.ic_high_quality_24) },
-                    headlineContent = {
+                    content = {
                         SettingsItemTitle(stringResource(R.string.settings_default_download_quality))
                     },
                     supportingContent = {
@@ -645,7 +645,7 @@ private fun DownloadSettingsScreen(
                     items = 2,
                     index = 0,
                     leadingContent = { SettingsItemIcon(R.drawable.ic_folder_24) },
-                    headlineContent = {
+                    content = {
                         SettingsItemTitle(stringResource(R.string.settings_download_location))
                     },
                     supportingContent = {
@@ -1125,7 +1125,7 @@ internal fun NamingSettingsScreen(
                     items = 1,
                     index = 0,
                     leadingContent = { SettingsItemIcon(R.drawable.ic_refresh_24) },
-                    headlineContent = {
+                    content = {
                         SettingsItemTitle(stringResource(R.string.settings_naming_restore_defaults))
                     },
                     supportingContent = {
@@ -1176,7 +1176,7 @@ private fun TopLevelFolderModeListItem(
             leadingContent = {
                 SettingsItemIcon(R.drawable.ic_folder_managed_24)
             },
-            headlineContent = {
+            content = {
                 SettingsItemTitle(stringResource(R.string.settings_naming_top_level_folder_mode_title))
             },
             supportingContent = {
@@ -1235,7 +1235,7 @@ private fun NamingShapeSelectorCard(
         Column {
             ListItem(
                 leadingContent = { SettingsItemIcon(R.drawable.ic_tune_24) },
-                headlineContent = {
+                content = {
                     SettingsItemTitle(stringResource(R.string.settings_naming_shape_title))
                 },
                 supportingContent = {
@@ -1357,7 +1357,7 @@ private fun NamingTemplateEditorPanel(
         Column {
             ListItem(
                 leadingContent = { SettingsItemIcon(namingScopeIcon(scope)) },
-                headlineContent = {
+                content = {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -2244,7 +2244,7 @@ private fun AboutSettingsScreen(
                     items = 3,
                     index = 0,
                     leadingContent = { SettingsItemIcon(R.drawable.ic_update_24) },
-                    headlineContent = {
+                    content = {
                         SettingsItemTitle(stringResource(R.string.settings_check_update_title))
                     },
                     supportingContent = {
@@ -2263,7 +2263,7 @@ private fun AboutSettingsScreen(
                     items = 3,
                     index = 1,
                     leadingContent = { SettingsItemIcon(R.drawable.ic_gavel_24) },
-                    headlineContent = {
+                    content = {
                         SettingsItemTitle(stringResource(R.string.settings_license_title))
                     },
                     supportingContent = { Text(stringResource(R.string.settings_license_summary)) },
@@ -2276,7 +2276,7 @@ private fun AboutSettingsScreen(
                     items = 3,
                     index = 2,
                     leadingContent = { SettingsItemIcon(R.drawable.ic_code_24) },
-                    headlineContent = {
+                    content = {
                         SettingsItemTitle(stringResource(R.string.settings_opensource_licenses_title))
                     },
                     supportingContent = {
@@ -2308,7 +2308,7 @@ private fun AboutSettingsScreen(
                     items = 3,
                     index = 1,
                     leadingContent = { SettingsItemIcon(R.drawable.ic_save_alt_24) },
-                    headlineContent = {
+                    content = {
                         SettingsItemTitle(stringResource(R.string.settings_issue_report_export_title))
                     },
                     supportingContent = {
@@ -2327,7 +2327,7 @@ private fun AboutSettingsScreen(
                     items = 3,
                     index = 2,
                     leadingContent = { SettingsItemIcon(R.drawable.ic_delete_sweep_24) },
-                    headlineContent = {
+                    content = {
                         SettingsItemTitle(stringResource(R.string.settings_issue_report_clear_title))
                     },
                     supportingContent = {
@@ -2950,7 +2950,7 @@ private fun ThemePickerListItem(
                     SettingsItemIcon(iconRes)
                 }
             },
-            headlineContent = {
+            content = {
                 SettingsItemTitle(stringResource(R.string.settings_theme))
             },
             colors = SettingsExpressiveDefaults.listItemColors,
@@ -3010,7 +3010,7 @@ private fun HapticFeedbackPickerListItem(
     ) {
         ListItem(
             leadingContent = { SettingsItemIcon(R.drawable.ic_mobile_vibrate_24) },
-            headlineContent = {
+            content = {
                 SettingsItemTitle(stringResource(R.string.settings_haptic_feedback))
             },
             supportingContent = { Text(stringResource(R.string.settings_haptic_feedback_desc)) },
@@ -3080,7 +3080,7 @@ private fun ColorSchemePickerListItem(
                 leadingContent = {
                     SettingsItemIcon(R.drawable.ic_colors_24)
                 },
-                headlineContent = {
+                content = {
                     SettingsItemTitle(stringResource(R.string.settings_dynamic_color_title))
                 },
                 supportingContent = { Text(stringResource(R.string.settings_dynamic_color_desc)) },
@@ -3102,7 +3102,7 @@ private fun ColorSchemePickerListItem(
             leadingContent = {
                 SettingsItemIcon(R.drawable.ic_palette_24)
             },
-            headlineContent = {
+            content = {
                 SettingsItemTitle(stringResource(R.string.settings_color_scheme_title))
             },
             supportingContent = { Text(stringResource(color.displayNameRes())) },
@@ -3219,7 +3219,7 @@ private fun ExpressiveSliderListItem(
 
     ListItem(
         leadingContent = { SettingsItemIcon(iconRes) },
-        headlineContent = {
+        content = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 SettingsItemTitle(title, modifier = Modifier.weight(1f))
                 Text(
@@ -3303,7 +3303,7 @@ private fun ExpressiveSwitchListItem(
     val haptics = rememberAppHaptics()
     ListItem(
         leadingContent = { SettingsItemIcon(iconRes) },
-        headlineContent = { SettingsItemTitle(title) },
+        content = { SettingsItemTitle(title) },
         supportingContent = { Text(description) },
         trailingContent = {
             Switch(
@@ -3328,7 +3328,7 @@ private fun ExpressiveSwitchListItem(
 private fun ClickableListItem(
     items: Int,
     index: Int,
-    headlineContent: @Composable () -> Unit,
+    content: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     supportingContent: (@Composable () -> Unit)? = null,
     leadingContent: (@Composable () -> Unit)? = null,
@@ -3351,7 +3351,7 @@ private fun ClickableListItem(
     )
 
     ListItem(
-        headlineContent = headlineContent,
+        content = content,
         supportingContent = supportingContent,
         leadingContent = leadingContent,
         trailingContent = trailingContent,

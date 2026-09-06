@@ -1708,7 +1708,7 @@ class DownloadRepository(
                     schedulePersist()
                 }
                 val append = resumed && existing > 0 && response.code == 206
-                val body = response.body ?: throw RuntimeException("Empty body")
+                val body = response.body
                 FileOutputStream(target.tempFile, append).use { output ->
                     body.byteStream().use { input ->
                         var lastUpdateTime = SystemClock.elapsedRealtime()
@@ -2103,7 +2103,7 @@ class DownloadRepository(
         if (total != null) {
             return total
         }
-        val length = response.body?.contentLength() ?: -1L
+        val length = response.body.contentLength()
         return if (length > 0) {
             if (response.code == 206) existing + length else length
         } else {
@@ -3828,7 +3828,7 @@ class DownloadRepository(
         return runCatching {
             httpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return null
-                val bytes = response.body?.bytes() ?: return null
+                val bytes = response.body.bytes()
                 val file = File(tempDir, "cover-${System.currentTimeMillis()}.jpg")
                 file.writeBytes(bytes)
                 file

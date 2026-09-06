@@ -89,14 +89,14 @@ class BiliHttpClient(
     private fun execute(request: Request): String {
         client.newCall(request).execute().use { response ->
             ensureSuccess(response)
-            return response.body?.string().orEmpty()
+            return response.body.string()
         }
     }
 
     private fun executeBytes(request: Request): ByteArray {
         client.newCall(request).execute().use { response ->
             ensureSuccess(response)
-            return response.body?.bytes() ?: ByteArray(0)
+            return response.body.bytes()
         }
     }
 

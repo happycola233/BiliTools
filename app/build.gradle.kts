@@ -261,7 +261,7 @@ android {
     }
 }
 
-val renameReleaseApks by tasks.registering(RenameReleaseApksTask::class) {
+val renameReleaseApks = tasks.register<RenameReleaseApksTask>("renameReleaseApks") {
     primaryMetadataFile.set(layout.buildDirectory.file("outputs/apk/release/output-metadata.json"))
     ideRedirectDirectory.set(layout.buildDirectory.dir("intermediates/apk_ide_redirect_file/release"))
     fallbackMetadataFile.set(layout.projectDirectory.file("release/output-metadata.json"))
@@ -312,6 +312,8 @@ dependencies {
     implementation(libs.coil)
     implementation(libs.coil.compose)
     implementation(libs.coil.svg)
+    implementation(libs.coil.network.okhttp)
+    implementation(libs.coil.network.cache.control)
     implementation(libs.markwon.core)
     implementation(libs.aboutlibraries.core)
     implementation(libs.jaudiotagger)

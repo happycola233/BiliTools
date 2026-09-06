@@ -84,7 +84,7 @@ internal object AppAccents {
         containerColor: Color = Color.Unspecified,
         contentColor: Color = Color.Unspecified,
     ): ToggleButtonColors {
-        return ToggleButtonDefaults.toggleButtonColors(
+        return ToggleButtonDefaults.colors(
             containerColor = containerColor,
             contentColor = contentColor,
             checkedContainerColor = fill,

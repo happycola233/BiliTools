@@ -201,7 +201,7 @@ class UpdateDownloadService : Service() {
                 if (!response.isSuccessful) {
                     throw IOException("HTTP ${response.code}")
                 }
-                val body = response.body ?: throw IOException("Empty download body")
+                val body = response.body
                 val totalBytes = body.contentLength().takeIf { it > 0L } ?: request.assetSizeBytes
 
                 body.byteStream().buffered().use { input ->

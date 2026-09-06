@@ -38,11 +38,11 @@ import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
-import androidx.compose.material3.SplitButton
+import androidx.compose.material3.SplitButtonLayout
 import androidx.compose.material3.SplitButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -245,7 +245,7 @@ private fun UpdateDialogHost(
     onIgnoreUpdate: () -> Unit,
 ) {
     var isVisible by remember { mutableStateOf(true) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
     val coroutineScope = rememberCoroutineScope()
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -419,7 +419,7 @@ private fun UpdateActionButtons(
                     primaryActionHeight = with(density) { size.height.toDp() }
                 },
             ) {
-                SplitButton(
+                SplitButtonLayout(
                     leadingButton = {
                         SplitButtonDefaults.LeadingButton(
                             onClick = onDownloadUpdate,
