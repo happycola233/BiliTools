@@ -107,6 +107,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInWindow
@@ -761,7 +762,10 @@ private fun MaxConcurrentDownloadsListItem(
         ListItem(
             verticalAlignment = Alignment.CenterVertically,
             leadingContent = {
-                SettingsItemIcon(R.drawable.ic_arrow_shape_up_stack_2_24)
+                SettingsItemIcon(
+                    iconRes = R.drawable.ic_arrow_shape_up_stack_2_24,
+                    modifier = Modifier.rotate(180f),
+                )
             },
             supportingContent = {
                 Text(stringResource(R.string.settings_max_concurrent_downloads_desc))
@@ -1235,7 +1239,7 @@ private fun NamingShapeSelectorCard(
         Column {
             ListItem(
                 verticalAlignment = Alignment.CenterVertically,
-                leadingContent = { SettingsItemIcon(R.drawable.ic_tune_24) },
+                leadingContent = { SettingsItemIcon(R.drawable.ic_style_24) },
                 content = {
                     SettingsItemTitle(stringResource(R.string.settings_naming_shape_title))
                 },
