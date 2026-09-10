@@ -40,7 +40,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -48,7 +47,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.imePadding
@@ -761,6 +759,7 @@ private fun MaxConcurrentDownloadsListItem(
         modifier = modifier.clip(SettingsExpressiveShapes.groupShape(index = 0, items = 1)),
     ) {
         ListItem(
+            verticalAlignment = Alignment.CenterVertically,
             leadingContent = {
                 SettingsItemIcon(R.drawable.ic_arrow_shape_up_stack_2_24)
             },
@@ -1173,6 +1172,7 @@ private fun TopLevelFolderModeListItem(
         modifier = modifier.clip(SettingsExpressiveShapes.groupShape(index, items)),
     ) {
         ListItem(
+            verticalAlignment = Alignment.CenterVertically,
             leadingContent = {
                 SettingsItemIcon(R.drawable.ic_folder_managed_24)
             },
@@ -1234,6 +1234,7 @@ private fun NamingShapeSelectorCard(
     ) {
         Column {
             ListItem(
+                verticalAlignment = Alignment.CenterVertically,
                 leadingContent = { SettingsItemIcon(R.drawable.ic_tune_24) },
                 content = {
                     SettingsItemTitle(stringResource(R.string.settings_naming_shape_title))
@@ -1356,6 +1357,7 @@ private fun NamingTemplateEditorPanel(
     ) {
         Column {
             ListItem(
+                verticalAlignment = Alignment.CenterVertically,
                 leadingContent = { SettingsItemIcon(namingScopeIcon(scope)) },
                 content = {
                     Row(
@@ -2529,17 +2531,11 @@ private fun SettingsItemIcon(
     @DrawableRes iconRes: Int,
     modifier: Modifier = Modifier,
 ) {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = modifier
-            .fillMaxHeight()
-            .wrapContentHeight(Alignment.CenterVertically),
-    ) {
-        Icon(
-            painter = painterResource(iconRes),
-            contentDescription = null,
-        )
-    }
+    Icon(
+        painter = painterResource(iconRes),
+        contentDescription = null,
+        modifier = modifier,
+    )
 }
 
 @Composable
@@ -2945,6 +2941,7 @@ private fun ThemePickerListItem(
         modifier = modifier.clip(SettingsExpressiveShapes.groupShape(index, items)),
     ) {
         ListItem(
+            verticalAlignment = Alignment.CenterVertically,
             leadingContent = {
                 AnimatedContent(targetState = options.first { it.mode == mode }.iconRes) { iconRes ->
                     SettingsItemIcon(iconRes)
@@ -3009,6 +3006,7 @@ private fun HapticFeedbackPickerListItem(
         modifier = modifier.clip(SettingsExpressiveShapes.groupShape(index, items)),
     ) {
         ListItem(
+            verticalAlignment = Alignment.CenterVertically,
             leadingContent = { SettingsItemIcon(R.drawable.ic_mobile_vibrate_24) },
             content = {
                 SettingsItemTitle(stringResource(R.string.settings_haptic_feedback))
@@ -3077,6 +3075,7 @@ private fun ColorSchemePickerListItem(
     ) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             ListItem(
+                verticalAlignment = Alignment.CenterVertically,
                 leadingContent = {
                     SettingsItemIcon(R.drawable.ic_colors_24)
                 },
@@ -3099,6 +3098,7 @@ private fun ColorSchemePickerListItem(
         }
 
         ListItem(
+            verticalAlignment = Alignment.CenterVertically,
             leadingContent = {
                 SettingsItemIcon(R.drawable.ic_palette_24)
             },
@@ -3218,6 +3218,7 @@ private fun ExpressiveSliderListItem(
     }
 
     ListItem(
+        verticalAlignment = Alignment.CenterVertically,
         leadingContent = { SettingsItemIcon(iconRes) },
         content = {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -3302,6 +3303,8 @@ private fun ExpressiveSwitchListItem(
 ) {
     val haptics = rememberAppHaptics()
     ListItem(
+        // 默认对齐会在说明换行、行高增大后切到顶部；设置项始终以整行内容居中。
+        verticalAlignment = Alignment.CenterVertically,
         leadingContent = { SettingsItemIcon(iconRes) },
         content = { SettingsItemTitle(title) },
         supportingContent = { Text(description) },
@@ -3351,6 +3354,7 @@ private fun ClickableListItem(
     )
 
     ListItem(
+        verticalAlignment = Alignment.CenterVertically,
         content = content,
         supportingContent = supportingContent,
         leadingContent = leadingContent,
