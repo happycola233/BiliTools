@@ -1,15 +1,24 @@
 package com.happycola233.bilitools.ui.downloads
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.GraphicsLayerScope
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import com.happycola233.bilitools.data.AppSettings
+import com.happycola233.bilitools.ui.AppDialogDefaults
+import com.happycola233.bilitools.ui.appDialogBorder
+import com.happycola233.bilitools.ui.isLiquidGlassSupported
+import com.happycola233.bilitools.ui.theme.AppSurfaces
 import com.happycola233.bilitools.ui.theme.usesDarkSurfaces
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.drawBackdrop
@@ -49,24 +58,43 @@ private val modalGlassShadowValue = Shadow(radius = 24.dp, color = Color.Black.c
 internal val modalGlassShadow: () -> Shadow = { modalGlassShadowValue }
 
 /**
- * 批量管理浮窗与任务操作弹窗共用的 Backdrop 玻璃表面，避免两处效果和调试参数逐渐分叉。
+ * 批量管理与任务菜单共用的面板表面。两种风格只替换绘制，不改变内容测量、圆角和触摸区域。
  *
  * [layerBlock] 用于缩放/淡入等浮窗自身的变换：交给 Backdrop 处理后，采样背景会被反向变换抵消，
  * 折射内容始终与真实页面对齐，不会出现背景跟着一起缩放的割裂感。
  */
 @Composable
-internal fun Modifier.downloadsGlassSurface(
+internal fun Modifier.downloadsPanelSurface(
     backdrop: Backdrop,
     style: DownloadsGlassStyle,
+    liquidGlassEnabled: Boolean,
     shadow: () -> Shadow = defaultGlassShadow,
     layerBlock: (GraphicsLayerScope.() -> Unit)? = null,
 ): Modifier {
+    val shape = RoundedCornerShape(style.cornerRadiusDp.dp)
+    if (!liquidGlassEnabled || !isLiquidGlassSupported()) {
+        // 浅色浮层使用随配色变化的近白卡片色，避免模态容器的灰底显得发闷；深色保留原有层次。
+        val containerColor = if (MaterialTheme.colorScheme.usesDarkSurfaces()) {
+            AppDialogDefaults.containerColor
+        } else {
+            AppSurfaces.cardContainerColor
+        }
+        // Material 背景完全不透明，不读取玻璃透明度或采样底层内容；边缘沿用应用对话框的配方。
+        // 保留同一层缩放和淡入淡出，让背景、投影、描边与文字一起运动。
+        return this
+            .then(if (layerBlock != null) Modifier.graphicsLayer(layerBlock) else Modifier)
+            .shadow(elevation = 8.dp, shape = shape, clip = false)
+            .background(containerColor, shape)
+            .appDialogBorder(shape)
+            .clip(shape)
+    }
+
     val isLightTheme = !MaterialTheme.colorScheme.usesDarkSurfaces()
     val luminance = if (isLightTheme) 0.58f else 0.42f
     val surfaceOverlayColor = if (isLightTheme) Color.White else Color.Black
     return drawBackdrop(
         backdrop = backdrop,
-        shape = { androidx.compose.foundation.shape.RoundedCornerShape(style.cornerRadiusDp.dp) },
+        shape = { shape },
         effects = {
             val adjustedLuminance =
                 (luminance * 2f - 1f).let { sign(it) * it * it }

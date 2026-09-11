@@ -63,6 +63,7 @@ data class AppSettings(
     val darkModePureBlack: Boolean = true,
     val launchSplashAnimationEnabled: Boolean = true,
     val liquidBottomTabsEnabled: Boolean = true,
+    val liquidGlassPanelsEnabled: Boolean = true,
     val liquidBarWidthFraction: Float = SettingsRepository.DEFAULT_LIQUID_BAR_WIDTH_FRACTION,
     val liquidBarGlassBlurRadiusDp: Float = SettingsRepository.DEFAULT_LIQUID_BAR_GLASS_BLUR_RADIUS_DP,
     val liquidBarGlassRefractionHeightDp: Float = SettingsRepository.DEFAULT_LIQUID_BAR_GLASS_REFRACTION_HEIGHT_DP,
@@ -329,6 +330,13 @@ class SettingsRepository(context: Context) {
         if (current.liquidBottomTabsEnabled == enabled) return
         prefs.edit().putBoolean(KEY_LIQUID_BOTTOM_TABS_ENABLED, enabled).apply()
         _settings.value = current.copy(liquidBottomTabsEnabled = enabled)
+    }
+
+    fun setLiquidGlassPanelsEnabled(enabled: Boolean) {
+        val current = _settings.value
+        if (current.liquidGlassPanelsEnabled == enabled) return
+        prefs.edit().putBoolean(KEY_LIQUID_GLASS_PANELS_ENABLED, enabled).apply()
+        _settings.value = current.copy(liquidGlassPanelsEnabled = enabled)
     }
 
     fun setLiquidBarWidthFraction(value: Float) {
@@ -652,6 +660,10 @@ class SettingsRepository(context: Context) {
             ),
             liquidBottomTabsEnabled = prefs.getBoolean(
                 KEY_LIQUID_BOTTOM_TABS_ENABLED,
+                true,
+            ),
+            liquidGlassPanelsEnabled = prefs.getBoolean(
+                KEY_LIQUID_GLASS_PANELS_ENABLED,
                 true,
             ),
             liquidBarWidthFraction = prefs.getFloat(
@@ -994,6 +1006,7 @@ class SettingsRepository(context: Context) {
             MIGRATION_VERSION_V3_0_ENABLE_PURE_BLACK
         private const val KEY_LAUNCH_SPLASH_ANIMATION_ENABLED = "launch_splash_animation_enabled"
         private const val KEY_LIQUID_BOTTOM_TABS_ENABLED = "liquid_bottom_tabs_enabled"
+        private const val KEY_LIQUID_GLASS_PANELS_ENABLED = "liquid_glass_panels_enabled"
         private const val KEY_LIQUID_BAR_WIDTH_FRACTION = "liquid_bar_width_fraction"
         private const val KEY_LIQUID_BAR_GLASS_BLUR_RADIUS_DP = "liquid_bar_glass_blur_radius_dp"
         private const val KEY_LIQUID_BAR_GLASS_REFRACTION_HEIGHT_DP =

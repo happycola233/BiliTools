@@ -42,7 +42,7 @@ import java.util.Locale
  *
  * 任务操作菜单需要位于主壳最上层才能覆盖底栏并采样完整背景，因此本路由只向
  * [taskActionsOverlayState] 提交请求；主壳负责在内容和底栏之后组合
- * [DownloadsTaskActionsGlassOverlay]。
+ * [DownloadsTaskActionsOverlay]。
  */
 @Composable
 internal fun DownloadsRoute(
@@ -152,6 +152,7 @@ internal fun DownloadsRoute(
         contentTopPadding = contentTopPadding,
         resumeAllCount = manageState.startableCount,
         pauseAllCount = manageState.pausableCount,
+        liquidGlassPanelsEnabled = settings.liquidGlassPanelsEnabled,
         glassDebugEnabled = settings.downloadsGlassDebugEnabled,
         glassCornerRadiusDp = settings.downloadsGlassCornerRadiusDp,
         glassBlurRadiusDp = settings.downloadsGlassBlurRadiusDp,

@@ -112,6 +112,10 @@ class SettingsViewModel(
         settingsRepository.setLiquidBottomTabsEnabled(enabled)
     }
 
+    fun setLiquidGlassPanelsEnabled(enabled: Boolean) {
+        settingsRepository.setLiquidGlassPanelsEnabled(enabled)
+    }
+
     fun setLiquidBarWidthFraction(value: Float) {
         settingsRepository.setLiquidBarWidthFraction(value)
     }

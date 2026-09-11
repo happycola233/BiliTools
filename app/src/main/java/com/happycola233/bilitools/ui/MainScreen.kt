@@ -33,7 +33,7 @@ import com.happycola233.bilitools.data.AppSettings
 import com.happycola233.bilitools.data.ReleaseInfo
 import com.happycola233.bilitools.data.UpdateCheckResult
 import com.happycola233.bilitools.ui.downloads.DownloadsRoute
-import com.happycola233.bilitools.ui.downloads.DownloadsTaskActionsGlassOverlay
+import com.happycola233.bilitools.ui.downloads.DownloadsTaskActionsOverlay
 import com.happycola233.bilitools.ui.downloads.DownloadsTaskActionsOverlayState
 import com.happycola233.bilitools.ui.downloads.DownloadsViewModel
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
@@ -113,9 +113,10 @@ fun MainScreen(
             checkForUpdates = checkForUpdates,
         )
 
-        DownloadsTaskActionsGlassOverlay(
+        DownloadsTaskActionsOverlay(
             state = taskActionsOverlayState,
             backdrop = contentBackdrop,
+            liquidGlassEnabled = settings.liquidGlassPanelsEnabled,
         )
     }
 }
@@ -273,7 +274,7 @@ private fun BoxScope.MainBottomBarOverlay(
     onTabSelected: (Int) -> Unit,
     contentBackdrop: LayerBackdrop,
 ) {
-    if (settings.liquidBottomTabsEnabled) {
+    if (settings.liquidBottomTabsEnabled && isLiquidGlassSupported()) {
         MainLiquidBottomBar(
             selectedTabIndex = selectedTabIndex,
             onTabSelected = onTabSelected,

@@ -169,6 +169,7 @@ import com.happycola233.bilitools.ui.AppAlertDialog
 import com.happycola233.bilitools.ui.BiliTvLaunchMotion
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import com.happycola233.bilitools.ui.displayNameRes
+import com.happycola233.bilitools.ui.isLiquidGlassSupported
 import com.happycola233.bilitools.ui.overlayStyleResOrNull
 import com.happycola233.bilitools.ui.resolveOverlaySwatch
 import com.happycola233.bilitools.ui.theme.AppAccents
@@ -227,6 +228,7 @@ fun BiliToolsSettingsContent(
     onBlackThemeChange: (Boolean) -> Unit,
     onLaunchSplashAnimationChange: (Boolean) -> Unit,
     onLiquidBottomTabsChange: (Boolean) -> Unit,
+    onLiquidGlassPanelsChange: (Boolean) -> Unit,
     onLiquidBarWidthChange: (Float) -> Unit,
     onHapticFeedbackLevelChange: (HapticFeedbackLevel) -> Unit,
     onGlassDebugChange: (Boolean) -> Unit,
@@ -334,6 +336,7 @@ fun BiliToolsSettingsContent(
                         onThemeColorChange = onThemeColorChange,
                         onBlackThemeChange = onBlackThemeChange,
                         onLiquidBottomTabsChange = onLiquidBottomTabsChange,
+                        onLiquidGlassPanelsChange = onLiquidGlassPanelsChange,
                         onLiquidBarWidthChange = onLiquidBarWidthChange,
                         onGlassDebugChange = onGlassDebugChange,
                         onBack = onNavigateBack,
@@ -834,18 +837,20 @@ private fun MaxConcurrentDownloadsListItem(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun AppearanceSettingsScreen(
+internal fun AppearanceSettingsScreen(
     settings: AppSettings,
     onThemeModeChange: (AppThemeMode) -> Unit,
     onDynamicColorEnabledChange: (Boolean) -> Unit,
     onThemeColorChange: (AppThemeColor) -> Unit,
     onBlackThemeChange: (Boolean) -> Unit,
     onLiquidBottomTabsChange: (Boolean) -> Unit,
+    onLiquidGlassPanelsChange: (Boolean) -> Unit,
     onLiquidBarWidthChange: (Float) -> Unit,
     onGlassDebugChange: (Boolean) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val liquidGlassSupported = isLiquidGlassSupported()
     SettingsScaffold(
         title = stringResource(R.string.settings_appearance_title),
         subtitle = stringResource(R.string.settings_screen_title),
@@ -894,16 +899,19 @@ private fun AppearanceSettingsScreen(
 
             item { Spacer(Modifier.height(12.dp)) }
 
-            // 液态玻璃相关设置独立一组；开启液态底栏时追加「底栏宽度」滑条项
-            val liquidBarWidthVisible = settings.liquidBottomTabsEnabled
-            val liquidGroupItems = if (liquidBarWidthVisible) 3 else 2
+            // 开关保存用户偏好；只有实际使用液态底栏时才显示宽度调节。
+            val liquidBarWidthVisible = settings.liquidBottomTabsEnabled && liquidGlassSupported
+            val liquidGroupItems = if (liquidBarWidthVisible) 4 else 3
 
             item {
                 ExpressiveSwitchListItem(
                     checked = settings.liquidBottomTabsEnabled,
                     iconRes = R.drawable.ic_bottom_navigation_24,
                     title = stringResource(R.string.settings_liquid_bottom_tabs),
-                    description = stringResource(R.string.settings_liquid_bottom_tabs_desc),
+                    description = stringResource(
+                        if (liquidGlassSupported) R.string.settings_liquid_bottom_tabs_desc
+                        else R.string.settings_liquid_bottom_tabs_unavailable_desc,
+                    ),
                     items = liquidGroupItems,
                     index = 0,
                     onCheckedChange = onLiquidBottomTabsChange,
@@ -930,12 +938,27 @@ private fun AppearanceSettingsScreen(
 
             item {
                 ExpressiveSwitchListItem(
+                    checked = settings.liquidGlassPanelsEnabled,
+                    iconRes = R.drawable.ic_select_window_rounded_24,
+                    title = stringResource(R.string.settings_liquid_glass_panels),
+                    description = stringResource(
+                        if (liquidGlassSupported) R.string.settings_liquid_glass_panels_desc
+                        else R.string.settings_liquid_glass_panels_unavailable_desc,
+                    ),
+                    items = liquidGroupItems,
+                    index = if (liquidBarWidthVisible) 2 else 1,
+                    onCheckedChange = onLiquidGlassPanelsChange,
+                )
+            }
+
+            item {
+                ExpressiveSwitchListItem(
                     checked = settings.downloadsGlassDebugEnabled,
                     iconRes = R.drawable.ic_blur_on_24,
                     title = stringResource(R.string.settings_downloads_glass_debug),
                     description = stringResource(R.string.settings_downloads_glass_debug_desc),
                     items = liquidGroupItems,
-                    index = if (liquidBarWidthVisible) 2 else 1,
+                    index = liquidGroupItems - 1,
                     onCheckedChange = onGlassDebugChange,
                 )
             }

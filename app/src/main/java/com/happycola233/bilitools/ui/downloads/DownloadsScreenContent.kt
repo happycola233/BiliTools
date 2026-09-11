@@ -132,6 +132,7 @@ fun DownloadsScreenContent(
     contentTopPadding: Dp,
     resumeAllCount: Int,
     pauseAllCount: Int,
+    liquidGlassPanelsEnabled: Boolean,
     glassDebugEnabled: Boolean,
     glassCornerRadiusDp: Float,
     glassBlurRadiusDp: Float,
@@ -267,7 +268,7 @@ fun DownloadsScreenContent(
                         animationSpec = motionScheme.fastSpatialSpec(),
                     ),
         ) {
-            DownloadsBatchGlassPanel(
+            DownloadsBatchPanel(
                 modifier = Modifier,
                 backdrop = backdrop,
                 statusText = batchStatusText,
@@ -277,6 +278,7 @@ fun DownloadsScreenContent(
                 deleteEnabled = batchDeleteEnabled,
                 bottomPadding = panelBottomPadding,
                 glassStyle = downloadsGlassStyle,
+                liquidGlassEnabled = liquidGlassPanelsEnabled,
                 onExitSelection = onExitSelection,
                 onSelectAll = onSelectAll,
                 onClearRecords = onClearRecords,
@@ -577,7 +579,7 @@ private fun DownloadsManageFab(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun DownloadsBatchGlassPanel(
+internal fun DownloadsBatchPanel(
     modifier: Modifier = Modifier,
     backdrop: com.kyant.backdrop.backdrops.LayerBackdrop,
     statusText: String,
@@ -587,6 +589,7 @@ private fun DownloadsBatchGlassPanel(
     deleteEnabled: Boolean,
     bottomPadding: Dp,
     glassStyle: DownloadsGlassStyle,
+    liquidGlassEnabled: Boolean,
     onExitSelection: () -> Unit,
     onSelectAll: () -> Unit,
     onClearRecords: () -> Unit,
@@ -603,7 +606,11 @@ private fun DownloadsBatchGlassPanel(
             .padding(bottom = bottomPadding)
             .blockTouchThrough()
             .onSizeChanged { onHeightChanged(it.height) }
-            .downloadsGlassSurface(backdrop = backdrop, style = glassStyle)
+            .downloadsPanelSurface(
+                backdrop = backdrop,
+                style = glassStyle,
+                liquidGlassEnabled = liquidGlassEnabled,
+            )
             .padding(horizontal = 20.dp, vertical = 16.dp)
             .animateContentSize(
                 animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),

@@ -50,8 +50,8 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import com.happycola233.bilitools.R
+import com.happycola233.bilitools.ui.AppDialogDefaults
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
-import com.happycola233.bilitools.ui.theme.usesDarkSurfaces
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import kotlin.math.roundToInt
 
@@ -134,13 +134,14 @@ internal class DownloadsTaskActionsOverlayState {
 }
 
 /**
- * 与主壳同树的最上层任务菜单。玻璃直接读取主内容层的 [backdrop]，不再创建 View 宿主，
+ * 与主壳同树的最上层任务菜单。启用玻璃时直接读取主内容层的 [backdrop]，不再创建 View 宿主，
  * 也不会把 scrim 或菜单自身重新录进采样层。
  */
 @Composable
-internal fun DownloadsTaskActionsGlassOverlay(
+internal fun DownloadsTaskActionsOverlay(
     state: DownloadsTaskActionsOverlayState,
     backdrop: LayerBackdrop,
+    liquidGlassEnabled: Boolean,
 ) {
     val request = state.request ?: return
     BackHandler(enabled = state.visible) { state.requestClose(null) }
@@ -164,7 +165,7 @@ internal fun DownloadsTaskActionsGlassOverlay(
         }
     }
 
-    val scrimAlpha = if (MaterialTheme.colorScheme.usesDarkSurfaces()) 0.48f else 0.32f
+    val scrimAlpha = AppDialogDefaults.scrimAlpha
     Box(
         Modifier
             .fillMaxSize()
@@ -207,9 +208,10 @@ internal fun DownloadsTaskActionsGlassOverlay(
                     .widthIn(min = taskActionsMinWidth, max = taskActionsMaxWidth)
                     .width(IntrinsicSize.Max)
                     .blockTouchThrough()
-                    .downloadsGlassSurface(
+                    .downloadsPanelSurface(
                         backdrop = backdrop,
                         style = request.glassStyle,
+                        liquidGlassEnabled = liquidGlassEnabled,
                         shadow = modalGlassShadow,
                         layerBlock = panelLayerBlock,
                     )
