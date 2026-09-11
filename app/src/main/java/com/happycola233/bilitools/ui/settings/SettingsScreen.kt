@@ -904,35 +904,39 @@ internal fun AppearanceSettingsScreen(
             val liquidGroupItems = if (liquidBarWidthVisible) 4 else 3
 
             item {
-                ExpressiveSwitchListItem(
-                    checked = settings.liquidBottomTabsEnabled,
-                    iconRes = R.drawable.ic_bottom_navigation_24,
-                    title = stringResource(R.string.settings_liquid_bottom_tabs),
-                    description = stringResource(
-                        if (liquidGlassSupported) R.string.settings_liquid_bottom_tabs_desc
-                        else R.string.settings_liquid_bottom_tabs_unavailable_desc,
-                    ),
-                    items = liquidGroupItems,
-                    index = 0,
-                    onCheckedChange = onLiquidBottomTabsChange,
-                )
-            }
-
-            if (liquidBarWidthVisible) {
-                item {
-                    ExpressiveSliderListItem(
-                        value = settings.liquidBarWidthFraction,
-                        valueRange =
-                            SettingsRepository.MIN_LIQUID_BAR_WIDTH_FRACTION..1f,
-                        steps = 7,
-                        iconRes = R.drawable.ic_width_24,
-                        title = stringResource(R.string.settings_liquid_bar_width),
-                        description = stringResource(R.string.settings_liquid_bar_width_desc),
-                        valueLabel = "${(settings.liquidBarWidthFraction * 100).roundToInt()}%",
+                // 宽度项与开关共用列表项，间距也参与收展，避免隐藏后留下额外空隙。
+                Column {
+                    ExpressiveSwitchListItem(
+                        checked = settings.liquidBottomTabsEnabled,
+                        iconRes = R.drawable.ic_bottom_navigation_24,
+                        title = stringResource(R.string.settings_liquid_bottom_tabs),
+                        description = stringResource(
+                            if (liquidGlassSupported) R.string.settings_liquid_bottom_tabs_desc
+                            else R.string.settings_liquid_bottom_tabs_unavailable_desc,
+                        ),
                         items = liquidGroupItems,
-                        index = 1,
-                        onValueChange = onLiquidBarWidthChange,
+                        index = 0,
+                        onCheckedChange = onLiquidBottomTabsChange,
                     )
+                    SettingsContentExpansion(
+                        expanded = liquidBarWidthVisible,
+                        verticalAlignment = Alignment.Top,
+                    ) {
+                        ExpressiveSliderListItem(
+                            value = settings.liquidBarWidthFraction,
+                            valueRange =
+                                SettingsRepository.MIN_LIQUID_BAR_WIDTH_FRACTION..1f,
+                            steps = 7,
+                            iconRes = R.drawable.ic_width_24,
+                            title = stringResource(R.string.settings_liquid_bar_width),
+                            description = stringResource(R.string.settings_liquid_bar_width_desc),
+                            valueLabel = "${(settings.liquidBarWidthFraction * 100).roundToInt()}%",
+                            items = liquidGroupItems,
+                            index = 1,
+                            onValueChange = onLiquidBarWidthChange,
+                            modifier = Modifier.padding(top = 2.dp),
+                        )
+                    }
                 }
             }
 
@@ -1154,7 +1158,7 @@ internal fun NamingSettingsScreen(
                     )
                 }
                 item(key = controlsKey) {
-                    NamingTemplateExpansion(expanded) {
+                    SettingsContentExpansion(expanded) {
                         NamingTemplateTokenPanel(
                             shape = selectedShape,
                             scope = scope,
@@ -1448,7 +1452,7 @@ private fun NamingTemplateEditorPanel(
                 ),
             )
 
-            NamingTemplateExpansion(expanded) {
+            SettingsContentExpansion(expanded) {
                 Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                     Spacer(Modifier.height(14.dp))
                     OutlinedTextField(
@@ -1571,7 +1575,11 @@ private fun NamingTemplateTokenPanel(
 }
 
 @Composable
-private fun NamingTemplateExpansion(expanded: Boolean, content: @Composable () -> Unit) {
+private fun SettingsContentExpansion(
+    expanded: Boolean,
+    verticalAlignment: Alignment.Vertical = Alignment.Bottom,
+    content: @Composable () -> Unit,
+) {
     AnimatedVisibility(
         visible = expanded,
         enter = fadeIn(
@@ -1581,6 +1589,7 @@ private fun NamingTemplateExpansion(expanded: Boolean, content: @Composable () -
             ),
         ) +
             expandVertically(
+                expandFrom = verticalAlignment,
                 animationSpec = tween(
                     durationMillis = 220,
                     easing = FastOutSlowInEasing,
@@ -1593,6 +1602,7 @@ private fun NamingTemplateExpansion(expanded: Boolean, content: @Composable () -
             ),
         ) +
             shrinkVertically(
+                shrinkTowards = verticalAlignment,
                 animationSpec = tween(
                     durationMillis = 180,
                     easing = FastOutLinearInEasing,
