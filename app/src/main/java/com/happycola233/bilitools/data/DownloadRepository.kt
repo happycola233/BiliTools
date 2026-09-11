@@ -62,11 +62,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import org.jaudiotagger.audio.AudioFile
-import org.jaudiotagger.audio.AudioFileIO
-import org.jaudiotagger.audio.mp4.Mp4TagReader
-import org.jaudiotagger.tag.FieldKey
-import org.jaudiotagger.tag.images.ArtworkFactory
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -1940,9 +1935,15 @@ class DownloadRepository(
         if (candidates.isEmpty()) return null
 
         val meta = item.embeddedMetadata
+        meta?.subtitleCid?.let { cid ->
+            candidates.firstOrNull { it.cid == cid }?.let { return it }
+        }
         val trackNumber = meta?.trackNumber
-        if (trackNumber != null) {
-            candidates.firstOrNull { it.index + 1 == trackNumber }?.let { return it }
+        if (trackNumber != null && info.type == MediaType.Video) {
+            candidates.firstOrNull { (it.page ?: (it.index + 1)) == trackNumber }?.let { return it }
+        }
+        meta?.originalUrl?.let { url ->
+            candidates.firstOrNull { it.url == url }?.let { return it }
         }
 
         val metaTitle = meta?.title?.trim().orEmpty()
@@ -3713,142 +3714,24 @@ class DownloadRepository(
         }
     }
 
-    private fun applyEmbeddedMetadataIfPossible(item: DownloadItem, tempFile: File) {
-        if (!settingsRepository.shouldAddMetadata()) return
-        val metadata = item.embeddedMetadata ?: return
-        if (!tempFile.exists()) return
-
-        val ext = item.fileName.substringAfterLast('.', "").lowercase(Locale.US)
-        val supported = ext == "mp3" || ext == "m4a" || ext == "mp4" || ext == "flac"
-        if (!supported) return
-
-        runCatching {
-            val audioFile = readTagWritableAudioFile(tempFile, ext)
-            val tag = audioFile.tagOrCreateAndSetDefault
-
-            setTagField(tag, FieldKey.TITLE, metadata.title)
-            setTagField(tag, FieldKey.ALBUM, metadata.album)
-            setTagField(tag, FieldKey.ARTIST, metadata.artist)
-            setTagField(tag, FieldKey.ALBUM_ARTIST, metadata.albumArtist)
-            setTagField(tag, FieldKey.COMMENT, metadata.comment)
-
-            val year = metadata.year ?: metadata.date?.take(4)?.toIntOrNull()
-            if (year != null) {
-                setTagField(tag, FieldKey.YEAR, year.toString())
-            }
-
-            val genre = metadata.tags
-                .map { it.trim() }
-                .filter { it.isNotBlank() }
-                .joinToString("; ")
-                .takeIf { it.isNotBlank() }
-            setTagField(tag, FieldKey.GENRE, genre)
-
-            metadata.trackNumber?.let { setTagField(tag, FieldKey.TRACK, it.toString()) }
-            metadata.trackTotal?.let { setTagField(tag, FieldKey.TRACK_TOTAL, it.toString()) }
-
-            setOptionalTagField(tag, "DATE", metadata.date)
-            setFirstAvailableTagField(
-                tag,
-                listOf(
-                    "URL_OFFICIAL_RELEASE_SITE",
-                    "URL_OFFICIAL_WEBSITE",
-                    "WEBSITE_URL",
-                    "URL",
-                    "ORIGINAL_URL",
-                ),
-                metadata.originalUrl,
-            )
-
-            val coverUrl = metadata.coverUrl?.takeIf { it.isNotBlank() }
-            val coverFile = coverUrl?.let { downloadCoverToTempFile(it) }
-            if (coverFile != null) {
-                runCatching {
-                    val artwork = ArtworkFactory.createArtworkFromFile(coverFile)
-                    tag.deleteArtworkField()
-                    tag.setField(artwork)
-                }
-                runCatching { coverFile.delete() }
-            }
-
-            audioFile.commit()
+    private suspend fun applyEmbeddedMetadataIfPossible(item: DownloadItem, tempFile: File) {
+        val settings = settingsRepository.currentSettings()
+        updateTaskIf(item.id, { it.metadataWarning != null }) { it.copy(metadataWarning = null) }
+        if (!settings.addMetadata || item.embeddedMetadata == null) return
+        updateTaskIf(item.id, { it.status == DownloadStatus.Running || it.status == DownloadStatus.Merging }) {
+            it.copy(statusDetail = context.getString(R.string.download_detail_metadata), metadataWarning = null)
         }
-    }
-
-    private fun readTagWritableAudioFile(file: File, ext: String): AudioFile {
-        val parsed = runCatching { AudioFileIO.read(file) }.getOrElse { readErr ->
-            if (ext != "mp4") {
-                throw readErr
-            }
-            // jaudiotagger rejects MP4 video in audio-header parsing; read tag directly.
-            val tag = Mp4TagReader().read(file.toPath())
-            AudioFile(file, null, tag)
-        }
-        parsed.setExt(ext)
-        return parsed
-    }
-
-    private fun setTagField(tag: org.jaudiotagger.tag.Tag, key: FieldKey, value: String?) {
-        val text = value?.trim()?.takeIf { it.isNotBlank() } ?: return
-        runCatching { tag.setField(key, text) }
-    }
-
-    private fun setOptionalTagField(tag: org.jaudiotagger.tag.Tag, keyName: String, value: String?) {
-        val text = value?.trim()?.takeIf { it.isNotBlank() } ?: return
-        val key = runCatching { FieldKey.valueOf(keyName) }.getOrNull() ?: return
-        runCatching { tag.setField(key, text) }
-    }
-
-    private fun setFirstAvailableTagField(
-        tag: org.jaudiotagger.tag.Tag,
-        keyNames: List<String>,
-        value: String?,
-    ) {
-        val text = value?.trim()?.takeIf { it.isNotBlank() } ?: return
-        for (name in keyNames) {
-            val key = runCatching { FieldKey.valueOf(name) }.getOrNull() ?: continue
-            if (runCatching { tag.setField(key, text) }.isSuccess) return
-        }
-    }
-
-    private fun downloadCoverToTempFile(rawUrl: String): File? {
-        val url = normalizeCoverUrl(rawUrl)
-        if (url.isBlank()) return null
-        val request = Request.Builder().url(url).get().build()
-        return runCatching {
-            httpClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return null
-                val bytes = response.body.bytes()
-                val file = File(tempDir, "cover-${System.currentTimeMillis()}.jpg")
-                file.writeBytes(bytes)
-                file
-            }
-        }.getOrNull()
-    }
-
-    private fun normalizeCoverUrl(url: String): String {
-        val trimmed = url.trim()
-        if (trimmed.isBlank()) return ""
-        val normalized = when {
-            trimmed.startsWith("//") -> "https:$trimmed"
-            trimmed.startsWith("http://") -> "https://${trimmed.removePrefix("http://")}"
-            else -> trimmed
-        }
-        if (normalized.contains("@")) return normalized
-        val q = normalized.indexOf('?')
-        val h = normalized.indexOf('#')
-        val cut = when {
-            q >= 0 && h >= 0 -> minOf(q, h)
-            q >= 0 -> q
-            h >= 0 -> h
-            else -> -1
-        }
-        return if (cut >= 0) {
-            val prefix = normalized.substring(0, cut)
-            val suffix = normalized.substring(cut)
-            "$prefix@.jpg$suffix"
-        } else {
-            "$normalized@.jpg"
+        val issues = DownloadMetadataWriter(httpClient, extrasRepository).write(tempFile, item, settings.metadata)
+        val warning = issues.map { issue ->
+            context.getString(when (issue) {
+                MetadataWriteIssue.Cover -> R.string.download_metadata_cover_failed
+                MetadataWriteIssue.Lyrics -> R.string.download_metadata_lyrics_failed
+                MetadataWriteIssue.Tags -> R.string.download_metadata_tags_failed
+                MetadataWriteIssue.UnsupportedFormat -> R.string.download_metadata_unsupported
+            })
+        }.joinToString("；").takeIf(String::isNotBlank)
+        updateTaskIf(item.id, { it.status == DownloadStatus.Running || it.status == DownloadStatus.Merging }) {
+            it.copy(metadataWarning = warning)
         }
     }
 

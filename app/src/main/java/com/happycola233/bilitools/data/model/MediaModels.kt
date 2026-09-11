@@ -152,6 +152,8 @@ data class MediaMetadata(
     val tags: List<String> = emptyList(),
     val createdAt: Long? = null,
     val collectionId: Long? = null,
+    /** UGC 合集的作品名；不用于收藏夹、歌单或空间列表。 */
+    val collectionTitle: String? = null,
     val invalid: Boolean = false,
 )
 
@@ -203,6 +205,8 @@ data class MediaItem(
     val sectionTitle: String? = null,
     /** 音频作者，常与 UP 主不同。 */
     val artist: String? = null,
+    /** 音频区 song/info 的原始 LRC 地址，与关联视频字幕无关。 */
+    val lyricUrl: String? = null,
     val aid: Long? = null,
     val bvid: String? = null,
     val cid: Long? = null,

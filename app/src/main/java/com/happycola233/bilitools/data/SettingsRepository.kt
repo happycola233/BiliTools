@@ -54,6 +54,7 @@ data class DefaultDownloadQualitySettings(
 
 data class AppSettings(
     val addMetadata: Boolean = true,
+    val metadata: DownloadMetadataSettings = DownloadMetadataSettings(),
     val convertXmlDanmakuToAss: Boolean = true,
     val convertAudioToMp3: Boolean = false,
     val convertVideoToMp4: Boolean = false,
@@ -239,6 +240,17 @@ class SettingsRepository(context: Context) {
         if (current.addMetadata == enabled) return
         prefs.edit().putBoolean(KEY_ADD_METADATA, enabled).apply()
         _settings.value = current.copy(addMetadata = enabled)
+    }
+
+    fun setDownloadMetadata(settings: DownloadMetadataSettings) {
+        prefs.edit()
+            .putBoolean(KEY_METADATA_COVER, settings.embedCover)
+            .putBoolean(KEY_METADATA_LYRICS, settings.embedLyrics)
+            .putString(KEY_METADATA_SUBTITLE_LYRICS, settings.subtitleLyrics.value)
+            .putBoolean(KEY_METADATA_UPLOADER_ARTIST, settings.useUploaderAsArtist)
+            .putBoolean(KEY_METADATA_COLLECTION_ALBUM, settings.useCollectionAsAlbum)
+            .apply()
+        _settings.value = _settings.value.copy(metadata = settings)
     }
 
     fun setConvertXmlDanmakuToAss(enabled: Boolean) {
@@ -617,6 +629,13 @@ class SettingsRepository(context: Context) {
         migrateSettings()
         return AppSettings(
             addMetadata = prefs.getBoolean(KEY_ADD_METADATA, true),
+            metadata = DownloadMetadataSettings(
+                embedCover = prefs.getBoolean(KEY_METADATA_COVER, true),
+                embedLyrics = prefs.getBoolean(KEY_METADATA_LYRICS, true),
+                subtitleLyrics = SubtitleLyricsMode.fromValue(prefs.getString(KEY_METADATA_SUBTITLE_LYRICS, null)),
+                useUploaderAsArtist = prefs.getBoolean(KEY_METADATA_UPLOADER_ARTIST, true),
+                useCollectionAsAlbum = prefs.getBoolean(KEY_METADATA_COLLECTION_ALBUM, true),
+            ),
             convertXmlDanmakuToAss = prefs.getBoolean(KEY_CONVERT_XML_DANMAKU_TO_ASS, true),
             convertAudioToMp3 = prefs.getBoolean(KEY_CONVERT_AUDIO_TO_MP3, false),
             convertVideoToMp4 = prefs.getBoolean(KEY_CONVERT_VIDEO_TO_MP4, false),
@@ -956,6 +975,11 @@ class SettingsRepository(context: Context) {
 
         private const val PREFS_NAME = "app_settings"
         private const val KEY_ADD_METADATA = "add_metadata"
+        private const val KEY_METADATA_COVER = "metadata_cover"
+        private const val KEY_METADATA_LYRICS = "metadata_lyrics"
+        private const val KEY_METADATA_SUBTITLE_LYRICS = "metadata_subtitle_lyrics"
+        private const val KEY_METADATA_UPLOADER_ARTIST = "metadata_uploader_artist"
+        private const val KEY_METADATA_COLLECTION_ALBUM = "metadata_collection_album"
         private const val KEY_CONVERT_XML_DANMAKU_TO_ASS = "convert_xml_danmaku_to_ass"
         private const val KEY_CONVERT_AUDIO_TO_MP3 = "convert_audio_to_mp3"
         private const val KEY_CONVERT_VIDEO_TO_MP4 = "convert_video_to_mp4"

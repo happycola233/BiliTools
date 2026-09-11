@@ -13,6 +13,21 @@ class SubtitleSelectionTest {
     )
 
     @Test
+    fun lyricsFollowOnlyVisibleExplicitSubtitleLanguage() {
+        val single = ParseUiState(
+            selectedItemIndices = listOf(0),
+            subtitleEnabled = true,
+            subtitleLanguageSelection = SubtitleLanguageSelection.Language("en-US"),
+        )
+        assertEquals("en-US", single.preferredLyricsSubtitleLanguage)
+        assertNull(single.copy(subtitleEnabled = false).preferredLyricsSubtitleLanguage)
+        assertNull(single.copy(subtitleLanguageSelection = SubtitleLanguageSelection.All).preferredLyricsSubtitleLanguage)
+        assertNull(single.copy(subtitleLanguageSelection = null).preferredLyricsSubtitleLanguage)
+        // 多选页面隐藏了语言控件，不允许此前的单选语言暗中控制每个文件的歌词。
+        assertNull(single.copy(selectedItemIndices = listOf(0, 1)).preferredLyricsSubtitleLanguage)
+    }
+
+    @Test
     fun selectedLanguage_onlyReturnsExactMatch() {
         val selected = selectSubtitles(
             subtitles = subtitles,

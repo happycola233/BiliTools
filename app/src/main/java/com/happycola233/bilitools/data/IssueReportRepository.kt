@@ -219,6 +219,7 @@ class IssueReportRepository(
 
     private fun StringBuilder.appendSettingsSummary(settings: AppSettings) {
         appendKeyValue("addMetadata", settings.addMetadata.toString())
+        appendKeyValue("metadata", settings.metadata.toString())
         appendKeyValue("convertXmlDanmakuToAss", settings.convertXmlDanmakuToAss.toString())
         appendKeyValue("convertAudioToMp3", settings.convertAudioToMp3.toString())
         appendKeyValue("convertVideoToMp4", settings.convertVideoToMp4.toString())

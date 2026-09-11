@@ -40,6 +40,7 @@ class ExtrasRepository(
                 lan = it.lan,
                 name = it.lanDoc,
                 url = normalizeUrl(it.subtitleUrl),
+                isAi = it.aiType != 0 || it.lan.startsWith("ai-"),
             )
         }
     }
@@ -63,6 +64,23 @@ class ExtrasRepository(
             }
         }
         return srt.toByteArray(Charsets.UTF_8)
+    }
+
+    suspend fun getSubtitleLyrics(subtitle: SubtitleInfo): String? {
+        val body = httpClient.get(normalizeUrl(subtitle.url).toHttpUrl())
+        val detail = httpClient.adapter(SubtitleDetail::class.java).fromJson(body)
+            ?: throw BiliHttpException("Empty subtitle", -1)
+        return subtitlesToLrc(detail.body.map { LyricsSubtitleLine(it.from, it.to, it.content) })
+    }
+
+    suspend fun getMusicLyrics(sid: Long): String? {
+        val url = "https://www.bilibili.com/audio/music-service-c/web/song/lyric".toHttpUrl()
+            .newBuilder().addQueryParameter("sid", sid.toString()).build()
+        val body = httpClient.get(url)
+        val response = httpClient.adapter(MusicLyricsResponse::class.java).fromJson(body)
+            ?: throw BiliHttpException("Empty lyrics response", -1)
+        if (response.code != 0) throw BiliHttpException(response.msg ?: "Lyrics unavailable", response.code)
+        return response.data?.let(::normalizeOriginalLyrics)
     }
 
     suspend fun hasAiSummary(aid: Long, cid: Long): Boolean {
@@ -444,6 +462,13 @@ private data class PlayerSubtitle(
     @param:Json(name = "lan") val lan: String,
     @param:Json(name = "lan_doc") val lanDoc: String,
     @param:Json(name = "subtitle_url") val subtitleUrl: String,
+    @param:Json(name = "ai_type") val aiType: Int = 0,
+)
+
+private data class MusicLyricsResponse(
+    val code: Int,
+    val msg: String? = null,
+    val data: String? = null,
 )
 
 private data class AiSummaryResponse(

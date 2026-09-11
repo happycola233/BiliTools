@@ -176,6 +176,33 @@ class MediaRepository(
         return if (type == MediaType.Video) ensureVideoCid(item) else item
     }
 
+    /** 列表条目只有摘要；写入文件前取得该稿件自身的详情，避免混入列表创建者的信息。 */
+    suspend fun resolveItemForMetadata(item: MediaItem, detailsCache: MutableMap<String, MediaInfo>): MediaItem {
+        if (item.metadata.presentationDetailsComplete) return item
+        val cacheKey = when (item.type) {
+            MediaType.Video -> "video:${item.bvid?.takeIf(String::isNotBlank) ?: item.aid}"
+            MediaType.Music -> "music:${item.sid}"
+            else -> return item
+        }
+        // 同一批下载的多个分 P 共用详情，避免每一 P 都重复请求 view 和标签接口。
+        val detail = detailsCache[cacheKey] ?: when (item.type) {
+            MediaType.Video -> fetchVideoInfo(
+                item.bvid?.takeIf(String::isNotBlank) ?: "av${item.aid ?: return item}",
+                MediaQueryOptions(),
+            )
+            MediaType.Music -> fetchMusicInfo("au${item.sid ?: return item}", MediaQueryOptions())
+        }.also { detailsCache[cacheKey] = it }
+        val resolved = if (item.type == MediaType.Video && item.cid != null) {
+            detail.list.firstOrNull { it.cid == item.cid }
+        } else detail.list.firstOrNull()
+        if (resolved == null) return item
+        return resolved.copy(
+            index = item.index,
+            isTarget = item.isTarget,
+            upper = resolved.upper ?: detail.nfo.upper,
+        )
+    }
+
     private suspend fun fetchVideoInfo(
         id: String,
         options: MediaQueryOptions,
@@ -244,6 +271,7 @@ class MediaRepository(
                 page = page.page,
                 pageCount = basePageCount,
                 workTitle = workTitle,
+                upper = data.owner?.let { createMediaUpper(it.name, it.mid, it.face) },
                 sectionTitle = sectionOfTarget?.title,
                 metadata = videoMetadata,
             )
@@ -264,6 +292,7 @@ class MediaRepository(
                 page = 1,
                 pageCount = 1,
                 workTitle = workTitle,
+                upper = data.owner?.let { createMediaUpper(it.name, it.mid, it.face) },
                 sectionTitle = sectionOfTarget?.title,
                 metadata = videoMetadata,
             ),
@@ -308,6 +337,7 @@ class MediaRepository(
                                 totalDuration = episodeDuration,
                                 partCount = episodePartCount,
                                 collectionId = ugcSeason?.id,
+                                collectionTitle = ugcSeason?.title,
                             )
                         },
                     )
@@ -332,6 +362,7 @@ class MediaRepository(
                         pageCount = targetEpisode.pages.size,
                         workTitle = targetEpisode.title,
                         sectionTitle = sectionOfTarget.title,
+                        upper = targetEpisode.arc.author?.let { createMediaUpper(it.name, it.mid, it.face) },
                         metadata = if (targetEpisode.aid == data.aid) {
                             videoMetadata
                         } else {
@@ -341,6 +372,7 @@ class MediaRepository(
                                 partCount = targetEpisode.arc.videos?.takeIf { it > 0 }
                                     ?: targetEpisode.pages.size.takeIf { it > 0 },
                                 collectionId = ugcSeason?.id,
+                                collectionTitle = ugcSeason?.title,
                             )
                         },
                     )
@@ -770,6 +802,7 @@ class MediaRepository(
                 index = 0,
                 workTitle = data.title,
                 artist = data.author,
+                lyricUrl = data.lyric,
                 metadata = musicMetadata,
             ),
         )
@@ -851,6 +884,7 @@ class MediaRepository(
                 index = index,
                 workTitle = item.title,
                 artist = item.author,
+                lyricUrl = item.lyric,
                 amid = data.menuId,
                 metadata = MediaMetadata(
                     presentationDetailsComplete = true,
@@ -1525,6 +1559,7 @@ class MediaRepository(
                 index = index,
                 workTitle = item.title,
                 artist = item.author,
+                lyricUrl = item.lyric,
                 sourceMid = upperMid,
                 metadata = MediaMetadata(
                     presentationDetailsComplete = true,
@@ -1839,7 +1874,7 @@ class MediaRepository(
                 title = title,
                 cid = page.cid,
                 duration = page.duration,
-                pubTime = page.ctime ?: item.pubTime,
+                pubTime = item.pubTime,
                 isTarget = index == 0,
                 index = pageIndex,
                 page = page.page,
@@ -2121,6 +2156,7 @@ class MediaRepository(
             },
             tags = tags.map(String::trim).filter(String::isNotBlank).distinct(),
             collectionId = ugcSeason?.id,
+            collectionTitle = ugcSeason?.title,
         )
     }
 
@@ -2544,6 +2580,7 @@ private data class MusicInfoData(
     @Json(name = "uid") val uid: Long,
     @Json(name = "uname") val uname: String,
     @Json(name = "author") val author: String? = null,
+    @Json(name = "lyric") val lyric: String? = null,
     @Json(name = "title") val title: String,
     @Json(name = "cover") val cover: String,
     @Json(name = "intro") val intro: String,

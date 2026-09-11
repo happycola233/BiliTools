@@ -171,6 +171,7 @@ class SettingsActivity : AppCompatActivity() {
                 onLiveActivityStyleNotificationChange = viewModel::setLiveActivityStyleNotificationEnabled,
                 onDefaultDownloadQualityChange = viewModel::setDefaultDownloadQuality,
                 onAddMetadataChange = viewModel::setAddMetadata,
+                onDownloadMetadataChange = viewModel::setDownloadMetadata,
                 onConvertXmlDanmakuToAssChange = viewModel::setConvertXmlDanmakuToAss,
                 onConvertAudioToMp3Change = viewModel::setConvertAudioToMp3,
                 onConvertVideoToMp4Change = viewModel::setConvertVideoToMp4,

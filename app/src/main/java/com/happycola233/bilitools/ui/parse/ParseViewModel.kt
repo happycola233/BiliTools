@@ -32,7 +32,7 @@ import com.happycola233.bilitools.data.SettingsRepository
 import com.happycola233.bilitools.data.TopLevelFolderMode
 import com.happycola233.bilitools.data.model.AudioStream
 import com.happycola233.bilitools.data.model.DownloadMediaParams
-import com.happycola233.bilitools.data.model.DownloadEmbeddedMetadata
+import com.happycola233.bilitools.data.buildEmbeddedMetadata
 import com.happycola233.bilitools.data.model.DownloadExtraTaskOperation
 import com.happycola233.bilitools.data.model.DownloadExtraTaskSpec
 import com.happycola233.bilitools.data.model.DownloadTaskType
@@ -426,6 +426,12 @@ data class ParseUiState(
     val opusImagesEffectivelyEnabled: Boolean
         get() = opusImagesEnabled && (isMultiSelect || opusImagesAvailable != false)
 }
+
+// 批量下载的语言控件不可见，不能沿用之前单选时的隐藏值；每个音频文件自行选择字幕。
+internal val ParseUiState.preferredLyricsSubtitleLanguage: String?
+    get() = if (subtitleEnabled && !isMultiSelect) {
+        (subtitleLanguageSelection as? SubtitleLanguageSelection.Language)?.lan
+    } else null
 
 internal fun ParseUiState.canAutoLoadStream(): Boolean {
     return !loading &&
@@ -1410,6 +1416,7 @@ class ParseViewModel(
                         info = info,
                         items = preparedTargets.map(PreparedDownloadTarget::item),
                     )
+                    val metadataDetailsCache = mutableMapOf<String, MediaInfo>()
                     preparedTargets.forEachIndexed { batchIndex, preparedTarget ->
                         val batchOrdinal = batchIndex + 1
                         val opusDocument = preparedTarget.opusDocument
@@ -1440,17 +1447,22 @@ class ParseViewModel(
                             item.coverUrl,
                             relativePath = requestedGroupRelativePath,
                         )
-                        val trackTotal = when {
-                            (item.pageCount ?: 0) > 0 -> item.pageCount
-                            !info.paged && info.list.size > 1 -> info.list.size
-                            else -> null
+                        val metadataItem = if (snapshot.outputType != null && settingsRepository.shouldAddMetadata()) {
+                            try {
+                                mediaRepository.resolveItemForMetadata(item, metadataDetailsCache)
+                            } catch (error: CancellationException) {
+                                throw error
+                            } catch (error: Exception) {
+                                AppLog.w(TAG, "[metadata] detail unavailable for ${item.publicContentId()}", error)
+                                item
+                            }
+                        } else {
+                            item
                         }
                         val embeddedMetadata = buildEmbeddedMetadata(
                             info = info,
-                            item = item,
-                            fallbackAlbum = item.workTitle?.takeIf { it.isNotBlank() }
-                                ?: groupLabel.title,
-                            trackTotal = trackTotal,
+                            item = metadataItem,
+                            preferredSubtitleLanguage = snapshot.preferredLyricsSubtitleLanguage,
                         )
 
                         val outputType = snapshot.outputType
@@ -2893,13 +2905,14 @@ class ParseViewModel(
             publishedAt = detailedMetadata.publishedAt ?: original.metadata.publishedAt,
             tags = detailedMetadata.tags.ifEmpty { original.metadata.tags },
             collectionId = detailedMetadata.collectionId ?: original.metadata.collectionId,
+            collectionTitle = detailedMetadata.collectionTitle ?: original.metadata.collectionTitle,
             invalid = detailedMetadata.invalid || original.metadata.invalid,
         )
         val stat = detailedItem?.stat?.takeIf(::hasAnyStat)
             ?: detailedInfo.nfo.stat.takeIf(::hasAnyStat)
             ?: original.stat
-        val description = detailedItem?.description?.trim()?.takeIf(String::isNotBlank)
-            ?: detailedInfo.nfo.intro?.trim()?.takeIf(String::isNotBlank)
+        val description = detailedItem?.description?.trim()
+            ?: detailedInfo.nfo.intro?.trim()?.takeIf { it.isNotBlank() && !detailedInfo.collection }
             ?: original.description
         val useDetailedOpusTitle = containerType == MediaType.UserOpus &&
             (original.title.isBlank() || original.title.startsWith("图文_"))
@@ -2933,6 +2946,7 @@ class ParseViewModel(
             pubTime = detailedItem?.pubTime?.takeIf { it > 0L } ?: original.pubTime,
             upper = upper,
             artist = detailedItem?.artist?.takeIf(String::isNotBlank) ?: original.artist,
+            lyricUrl = detailedItem?.lyricUrl?.takeIf(String::isNotBlank) ?: original.lyricUrl,
             aid = detailedItem?.aid ?: original.aid,
             bvid = detailedItem?.bvid?.takeIf(String::isNotBlank) ?: original.bvid,
             cid = detailedItem?.cid ?: original.cid,
@@ -3469,64 +3483,6 @@ class ParseViewModel(
     private fun buildAudioFileName(base: String, stream: AudioStream): String {
         val bitrate = mapAudioLabel(stream.id)
         return sanitizeFileName("$base-$bitrate.m4a")
-    }
-
-    private fun buildEmbeddedMetadata(
-        info: MediaInfo,
-        item: MediaItem,
-        fallbackAlbum: String,
-        trackTotal: Int?,
-    ): DownloadEmbeddedMetadata {
-        val album = info.nfo.showTitle
-            ?.trim()
-            ?.takeIf { it.isNotBlank() }
-            ?: fallbackAlbum.trim().takeIf { it.isNotBlank() }
-
-        val title = item.title.trim().takeIf { it.isNotBlank() } ?: album
-        val artist = item.resolvedUpper(info)?.name?.trim()?.takeIf { it.isNotBlank() }
-        val comment = item.description.trim().takeIf { it.isNotBlank() }
-            ?: info.nfo.intro?.trim()?.takeIf { it.isNotBlank() }
-
-        val ts = item.pubTime.takeIf { it > 0 } ?: info.nfo.premiered
-        val date = ts?.let { formatShanghaiDate(it) }
-        val year = date?.take(4)?.toIntOrNull()
-
-        val tags = info.nfo.tags.map { it.trim() }.filter { it.isNotBlank() }
-
-        val normalizedTotal = trackTotal?.takeIf { it > 0 }
-        val trackNumber = normalizedTotal
-            ?.takeIf { it > 1 }
-            ?.let { item.index + 1 }
-            ?.takeIf { it > 0 }
-
-        val originalUrl = item.url.trim().takeIf { it.isNotBlank() }
-            ?: info.nfo.url?.trim()?.takeIf { it.isNotBlank() }
-        val coverUrl = item.coverUrl.trim().takeIf { it.isNotBlank() }
-            ?: info.nfo.thumbs.firstOrNull()?.url?.trim()?.takeIf { it.isNotBlank() }
-
-        return DownloadEmbeddedMetadata(
-            title = title,
-            album = album,
-            artist = artist,
-            albumArtist = artist,
-            comment = comment,
-            date = date,
-            year = year,
-            tags = tags,
-            trackNumber = trackNumber,
-            trackTotal = normalizedTotal,
-            originalUrl = originalUrl,
-            coverUrl = coverUrl,
-        )
-    }
-
-    private fun formatShanghaiDate(epochSeconds: Long): String {
-        val offset = java.time.ZoneOffset.ofHours(8)
-        return java.time.Instant
-            .ofEpochSecond(epochSeconds)
-            .atOffset(offset)
-            .toLocalDate()
-            .toString()
     }
 
     private fun addUnavailableExtraTask(

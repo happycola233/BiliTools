@@ -1507,7 +1507,10 @@ private fun buildTaskDetailText(
         DownloadStatus.Success -> if (item.outputMissing) {
             context.getString(R.string.download_status_missing)
         } else {
-            context.getString(R.string.download_status_success)
+            listOfNotNull(
+                context.getString(R.string.download_status_success),
+                item.metadataWarning,
+            ).joinToString(" · ")
         }
 
         DownloadStatus.Cancelled -> context.getString(R.string.download_status_cancelled)

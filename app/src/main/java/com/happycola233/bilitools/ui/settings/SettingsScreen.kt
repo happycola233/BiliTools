@@ -159,6 +159,7 @@ import com.happycola233.bilitools.data.AppThemeColor
 import com.happycola233.bilitools.data.AppThemeMode
 import com.happycola233.bilitools.data.DefaultDownloadQualitySettings
 import com.happycola233.bilitools.data.DefaultDownloadVideoCodec
+import com.happycola233.bilitools.data.DownloadMetadataSettings
 import com.happycola233.bilitools.data.DownloadQualityMode
 import com.happycola233.bilitools.data.HapticFeedbackLevel
 import com.happycola233.bilitools.data.IssueReportLogState
@@ -209,6 +210,7 @@ fun BiliToolsSettingsContent(
     onLiveActivityStyleNotificationChange: (Boolean) -> Unit,
     onDefaultDownloadQualityChange: (DefaultDownloadQualitySettings) -> Unit,
     onAddMetadataChange: (Boolean) -> Unit,
+    onDownloadMetadataChange: (DownloadMetadataSettings) -> Unit,
     onConvertXmlDanmakuToAssChange: (Boolean) -> Unit,
     onConvertAudioToMp3Change: (Boolean) -> Unit,
     onConvertVideoToMp4Change: (Boolean) -> Unit,
@@ -268,7 +270,6 @@ fun BiliToolsSettingsContent(
                         onLiveActivityStyleNotificationChange = onLiveActivityStyleNotificationChange,
                         onHapticFeedbackLevelChange = onHapticFeedbackLevelChange,
                         onLaunchSplashAnimationChange = onLaunchSplashAnimationChange,
-                        onNavigate = onNavigate,
                         onBack = onNavigateBack,
                         modifier = modifier,
                     )
@@ -287,13 +288,24 @@ fun BiliToolsSettingsContent(
                     DownloadSettingsScreen(
                         settings = settings,
                         onOpenDownloadLocationPicker = onOpenDownloadLocationPicker,
+                        onOpenDefaultDownloadQuality = { onNavigate(SettingsDestination.DefaultDownloadQuality) },
                         onAddMetadataChange = onAddMetadataChange,
+                        onOpenMetadataOptions = { onNavigate(SettingsDestination.Metadata) },
                         onConvertXmlDanmakuToAssChange = onConvertXmlDanmakuToAssChange,
                         onConvertAudioToMp3Change = onConvertAudioToMp3Change,
                         onConvertVideoToMp4Change = onConvertVideoToMp4Change,
                         onMaxConcurrentDownloadsChange = onMaxConcurrentDownloadsChange,
                         onConfirmCellularChange = onConfirmCellularChange,
                         onHideInAlbumChange = onHideInAlbumChange,
+                        onBack = onNavigateBack,
+                        modifier = modifier,
+                    )
+                }
+
+                entry<SettingsDestination.Metadata> {
+                    MetadataSettingsScreen(
+                        settings = settings,
+                        onSettingsChange = onDownloadMetadataChange,
                         onBack = onNavigateBack,
                         modifier = modifier,
                     )
@@ -519,7 +531,6 @@ private fun GeneralSettingsScreen(
     onLiveActivityStyleNotificationChange: (Boolean) -> Unit,
     onHapticFeedbackLevelChange: (HapticFeedbackLevel) -> Unit,
     onLaunchSplashAnimationChange: (Boolean) -> Unit,
-    onNavigate: (SettingsDestination) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -544,43 +555,10 @@ private fun GeneralSettingsScreen(
         ) {
             item { Spacer(Modifier.height(14.dp)) }
             item {
-                ClickableListItem(
-                    items = 4,
-                    index = 0,
-                    leadingContent = { SettingsItemIcon(R.drawable.ic_high_quality_24) },
-                    content = {
-                        SettingsItemTitle(stringResource(R.string.settings_default_download_quality))
-                    },
-                    supportingContent = {
-                        Text(
-                            text = defaultDownloadQualitySummary(settings.defaultDownloadQuality),
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    },
-                    trailingContent = {
-                        SettingsItemIcon(R.drawable.ic_chevron_right_24)
-                    },
-                    onClick = { onNavigate(SettingsDestination.DefaultDownloadQuality) },
-                )
-            }
-            item {
-                ExpressiveSwitchListItem(
-                    checked = liveUpdateChecked,
-                    iconRes = R.drawable.ic_dynamic_feed_24,
-                    title = stringResource(R.string.settings_live_activity_style_notification),
-                    description = liveUpdateDescription,
-                    enabled = liveUpdateSupported,
-                    items = 4,
-                    index = 1,
-                    onCheckedChange = onLiveActivityStyleNotificationChange,
-                )
-            }
-            item {
                 HapticFeedbackPickerListItem(
                     level = settings.hapticFeedbackLevel,
-                    items = 4,
-                    index = 2,
+                    items = 3,
+                    index = 0,
                     onLevelChange = onHapticFeedbackLevelChange,
                 )
             }
@@ -590,9 +568,21 @@ private fun GeneralSettingsScreen(
                     iconRes = R.drawable.ic_animation_24,
                     title = stringResource(R.string.settings_launch_splash_animation),
                     description = stringResource(R.string.settings_launch_splash_animation_desc),
-                    items = 4,
-                    index = 3,
+                    items = 3,
+                    index = 1,
                     onCheckedChange = onLaunchSplashAnimationChange,
+                )
+            }
+            item {
+                ExpressiveSwitchListItem(
+                    checked = liveUpdateChecked,
+                    iconRes = R.drawable.ic_dynamic_feed_24,
+                    title = stringResource(R.string.settings_live_activity_style_notification),
+                    description = liveUpdateDescription,
+                    enabled = liveUpdateSupported,
+                    items = 3,
+                    index = 2,
+                    onCheckedChange = onLiveActivityStyleNotificationChange,
                 )
             }
             item { Spacer(Modifier.height(12.dp)) }
@@ -602,10 +592,12 @@ private fun GeneralSettingsScreen(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun DownloadSettingsScreen(
+internal fun DownloadSettingsScreen(
     settings: AppSettings,
     onOpenDownloadLocationPicker: (String) -> Unit,
+    onOpenDefaultDownloadQuality: () -> Unit,
     onAddMetadataChange: (Boolean) -> Unit,
+    onOpenMetadataOptions: () -> Unit,
     onConvertXmlDanmakuToAssChange: (Boolean) -> Unit,
     onConvertAudioToMp3Change: (Boolean) -> Unit,
     onConvertVideoToMp4Change: (Boolean) -> Unit,
@@ -631,17 +623,8 @@ private fun DownloadSettingsScreen(
             item { Spacer(Modifier.height(14.dp)) }
 
             item {
-                MaxConcurrentDownloadsListItem(
-                    value = settings.maxConcurrentDownloads,
-                    onValueChange = onMaxConcurrentDownloadsChange,
-                )
-            }
-
-            item { Spacer(Modifier.height(12.dp)) }
-
-            item {
                 ClickableListItem(
-                    items = 2,
+                    items = 3,
                     index = 0,
                     leadingContent = { SettingsItemIcon(R.drawable.ic_folder_24) },
                     content = {
@@ -665,14 +648,57 @@ private fun DownloadSettingsScreen(
             }
 
             item {
+                MaxConcurrentDownloadsListItem(
+                    value = settings.maxConcurrentDownloads,
+                    onValueChange = onMaxConcurrentDownloadsChange,
+                    items = 3,
+                    index = 1,
+                )
+            }
+
+            item {
+                ClickableListItem(
+                    items = 3,
+                    index = 2,
+                    leadingContent = { SettingsItemIcon(R.drawable.ic_high_quality_24) },
+                    content = {
+                        SettingsItemTitle(stringResource(R.string.settings_default_download_quality))
+                    },
+                    supportingContent = {
+                        Text(
+                            text = defaultDownloadQualitySummary(settings.defaultDownloadQuality),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
+                    trailingContent = { SettingsItemIcon(R.drawable.ic_chevron_right_24) },
+                    onClick = onOpenDefaultDownloadQuality,
+                )
+            }
+
+            item { Spacer(Modifier.height(12.dp)) }
+
+            item {
                 ExpressiveSwitchListItem(
                     checked = settings.addMetadata,
                     iconRes = R.drawable.ic_metadata_24,
                     title = stringResource(R.string.settings_add_metadata),
                     description = stringResource(R.string.settings_add_metadata_desc),
                     items = 2,
-                    index = 1,
+                    index = 0,
                     onCheckedChange = onAddMetadataChange,
+                )
+            }
+
+            item {
+                ClickableListItem(
+                    items = 2,
+                    index = 1,
+                    leadingContent = { SettingsItemIcon(R.drawable.ic_tune_24) },
+                    content = { SettingsItemTitle(stringResource(R.string.settings_metadata_options)) },
+                    supportingContent = { Text(stringResource(R.string.settings_metadata_options_desc)) },
+                    trailingContent = { SettingsItemIcon(R.drawable.ic_chevron_right_24) },
+                    onClick = onOpenMetadataOptions,
                 )
             }
 
@@ -750,6 +776,8 @@ private fun DownloadSettingsScreen(
 private fun MaxConcurrentDownloadsListItem(
     value: Int,
     onValueChange: (Int) -> Unit,
+    items: Int,
+    index: Int,
     modifier: Modifier = Modifier,
 ) {
     val options = remember {
@@ -757,7 +785,7 @@ private fun MaxConcurrentDownloadsListItem(
             .toList()
     }
     Column(
-        modifier = modifier.clip(SettingsExpressiveShapes.groupShape(index = 0, items = 1)),
+        modifier = modifier.clip(SettingsExpressiveShapes.groupShape(index, items)),
     ) {
         ListItem(
             verticalAlignment = Alignment.CenterVertically,
@@ -781,13 +809,13 @@ private fun MaxConcurrentDownloadsListItem(
                 .background(SettingsExpressiveDefaults.listItemColors.containerColor)
                 .padding(start = 52.dp, end = 16.dp, bottom = 12.dp),
         ) {
-            options.fastForEachIndexed { index, option ->
+            options.fastForEachIndexed { optionIndex, option ->
                 ToggleButton(
                     checked = option == value,
                     onCheckedChange = { checked ->
                         if (checked) onValueChange(option)
                     },
-                    shapes = when (index) {
+                    shapes = when (optionIndex) {
                         0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
                         options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
                         else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
@@ -2531,7 +2559,7 @@ private val aboutIconSettleEasing = Easing { fraction ->
 }
 
 @Composable
-private fun SettingsItemIcon(
+internal fun SettingsItemIcon(
     @DrawableRes iconRes: Int,
     modifier: Modifier = Modifier,
 ) {
@@ -2543,7 +2571,7 @@ private fun SettingsItemIcon(
 }
 
 @Composable
-private fun SettingsItemTitle(
+internal fun SettingsItemTitle(
     text: String,
     modifier: Modifier = Modifier,
 ) {
@@ -2616,7 +2644,7 @@ private fun DefaultDownloadQualityScreen(
 
     SettingsScaffold(
         title = stringResource(R.string.settings_default_download_quality),
-        subtitle = stringResource(R.string.settings_general_title),
+        subtitle = stringResource(R.string.settings_download_title),
         onBack = onBack,
         modifier = modifier,
     ) { innerPadding ->
@@ -2820,11 +2848,13 @@ private fun DefaultQualitySectionTitle(title: String) {
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun <T> ConnectedToggleButtons(
+internal fun <T> ConnectedToggleButtons(
     options: List<T>,
     selected: T,
     onSelect: (T) -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    contentPadding: PaddingValues = ToggleButtonDefaults.contentPaddingFor(ToggleButtonDefaults.MinHeight),
     label: @Composable (T) -> Unit,
 ) {
     Row(
@@ -2835,6 +2865,8 @@ private fun <T> ConnectedToggleButtons(
             ToggleButton(
                 checked = option == selected,
                 onCheckedChange = { onSelect(option) },
+                enabled = enabled,
+                contentPadding = contentPadding,
                 modifier = Modifier
                     .weight(1f)
                     .semantics { role = Role.RadioButton },
@@ -3294,7 +3326,7 @@ private fun ExpressiveSliderListItem(
 }
 
 @Composable
-private fun ExpressiveSwitchListItem(
+internal fun ExpressiveSwitchListItem(
     checked: Boolean,
     @DrawableRes iconRes: Int,
     title: String,
@@ -3586,7 +3618,7 @@ private fun formatIssueReportTimestamp(epochMillis: Long?): String? {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun SettingsScaffold(
+internal fun SettingsScaffold(
     title: String,
     subtitle: String,
     onBack: () -> Unit,

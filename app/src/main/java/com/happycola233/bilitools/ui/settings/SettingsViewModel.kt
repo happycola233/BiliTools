@@ -8,6 +8,7 @@ import com.happycola233.bilitools.core.naming.NamingShape
 import com.happycola233.bilitools.core.naming.NamingTemplateScope
 import com.happycola233.bilitools.data.AppThemeColor
 import com.happycola233.bilitools.data.AppThemeMode
+import com.happycola233.bilitools.data.DownloadMetadataSettings
 import com.happycola233.bilitools.data.DefaultDownloadQualitySettings
 import com.happycola233.bilitools.data.HapticFeedbackLevel
 import com.happycola233.bilitools.data.IssueReportRepository
@@ -19,6 +20,7 @@ sealed class SettingsDestination : NavKey {
     data object General : SettingsDestination()
     data object DefaultDownloadQuality : SettingsDestination()
     data object Download : SettingsDestination()
+    data object Metadata : SettingsDestination()
     data object Naming : SettingsDestination()
     data object Appearance : SettingsDestination()
     data object About : SettingsDestination()
@@ -37,9 +39,10 @@ class SettingsViewModel(
         if (backStack.lastOrNull() == destination) return
         // 允许在二级页面之上继续下钻的三级页面
         val isThirdLevel =
+            (destination == SettingsDestination.Metadata && backStack.lastOrNull() == SettingsDestination.Download) ||
             (
                 destination == SettingsDestination.DefaultDownloadQuality &&
-                    backStack.lastOrNull() == SettingsDestination.General
+                    backStack.lastOrNull() == SettingsDestination.Download
                 ) ||
                 (
                     destination == SettingsDestination.OpenSourceLicenses &&
@@ -63,6 +66,10 @@ class SettingsViewModel(
         if (backStack.size > 1) {
             backStack.removeAt(backStack.lastIndex)
         }
+    }
+
+    fun setDownloadMetadata(settings: DownloadMetadataSettings) {
+        settingsRepository.setDownloadMetadata(settings)
     }
 
     fun setAddMetadata(enabled: Boolean) {

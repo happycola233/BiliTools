@@ -154,6 +154,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.happycola233.bilitools.R
+import com.happycola233.bilitools.data.DownloadMetadataSettings
 import com.happycola233.bilitools.data.model.MediaInfo
 import com.happycola233.bilitools.data.model.MediaItem
 import com.happycola233.bilitools.data.model.MediaStat
@@ -330,6 +331,7 @@ private object ParseTextStyles {
 @Composable
 fun ParseScreenContent(
     state: ParseUiState,
+    metadataSettings: DownloadMetadataSettings?,
     inputText: String,
     contentTopPadding: Dp,
     externalMode: Boolean,
@@ -476,6 +478,7 @@ fun ParseScreenContent(
                     AnimatedOptionsVisibility(visible = showOptions) {
                         ParseOptionsCard(
                             state = state,
+                            metadataSettings = metadataSettings,
                             info = info,
                             selectedItem = item,
                             onFormatChange = onFormatChange,
@@ -3093,6 +3096,7 @@ private fun PageItemRow(
 @Composable
 private fun ParseOptionsCard(
     state: ParseUiState,
+    metadataSettings: DownloadMetadataSettings?,
     info: MediaInfo,
     selectedItem: MediaItem?,
     onFormatChange: (StreamFormat) -> Unit,
@@ -3240,6 +3244,7 @@ private fun ParseOptionsCard(
                             audioEnabled = streamControlsEnabled && isDash && hasAudio,
                             onOutputTypeChange = onOutputTypeChange,
                         )
+                        ParseLyricsSummary(state, metadataSettings)
                     }
 
                     OptionsSection(title = stringResource(R.string.parse_stream_format)) {

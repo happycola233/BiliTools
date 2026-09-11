@@ -57,6 +57,7 @@ fun ParseRoute(
     val settingsRepository = remember(context) {
         context.applicationContext.appContainer.settingsRepository
     }
+    val settings by settingsRepository.settings.collectAsState()
     val currentOnExternalDownloadQueued by rememberUpdatedState(onExternalDownloadQueued)
     var showCellularConfirmation by rememberSaveable { mutableStateOf(false) }
 
@@ -97,6 +98,7 @@ fun ParseRoute(
     val copyDialog = state.copyDialog
     ParseScreenContent(
         state = state,
+        metadataSettings = settings.metadata.takeIf { settings.addMetadata },
         inputText = state.inputText,
         contentTopPadding = contentTopPadding,
         externalMode = externalMode,

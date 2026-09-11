@@ -78,6 +78,7 @@ data class SubtitleInfo(
     val lan: String,
     val name: String,
     val url: String,
+    val isAi: Boolean = false,
 )
 
 data class UserInfo(
@@ -182,6 +183,7 @@ data class DownloadItem(
     val statusDetail: String? = null,
     val mediaParams: DownloadMediaParams? = null,
     val embeddedMetadata: DownloadEmbeddedMetadata? = null,
+    val metadataWarning: String? = null,
 )
 
 data class DownloadMediaParams(
@@ -194,15 +196,21 @@ data class DownloadEmbeddedMetadata(
     val title: String? = null,
     val album: String? = null,
     val artist: String? = null,
-    val albumArtist: String? = null,
     val comment: String? = null,
-    val date: String? = null,
-    val year: Int? = null,
     val tags: List<String> = emptyList(),
     val trackNumber: Int? = null,
     val trackTotal: Int? = null,
     val originalUrl: String? = null,
     val coverUrl: String? = null,
+    val artistIsUploader: Boolean = false,
+    val albumIsCollection: Boolean = false,
+    val uploader: String? = null,
+    val publishedDate: String? = null,
+    val lyricUrl: String? = null,
+    val musicSid: Long? = null,
+    val subtitleAid: Long? = null,
+    val subtitleCid: Long? = null,
+    val preferredSubtitleLanguage: String? = null,
 )
 
 data class DownloadGroup(
