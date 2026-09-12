@@ -119,7 +119,7 @@
     <string name="parse_error_failed">解析失败，请稍后重试</string>
     <string name="parse_stream_format">流媒体格式</string>
     <string name="parse_stream_format_hint_prefix">请勿随意修改。若确实需要更改，请先阅读：</string>
-    <string name="parse_stream_format_hint_suffix">，并确保你了解自己正在做什么</string>
+    <string name="parse_stream_format_hint_suffix">，并确保你了解自己正在做什么。</string>
     <string name="format_dash">DASH 格式</string>
     <string name="format_mp4">MP4 格式</string>
     <string name="format_flv">FLV 格式</string>
@@ -128,7 +128,7 @@
     <string name="parse_resolution_mode_highest">全部使用最高分辨率</string>
     <string name="parse_resolution_mode_lowest">全部使用最低分辨率</string>
     <string name="parse_resolution_mode_fixed">指定固定分辨率</string>
-    <string name="parse_quality_multi_hint">指定固定分辨率或音频比特率时，若某条目不存在，将自动回退到该条目的最高可用值。</string>
+    <string name="parse_quality_multi_hint">若某条目不支持指定档位，将使用该条目的最高可用档位。</string>
     <string name="parse_bitrate_mode_label">音频比特率策略</string>
     <string name="parse_bitrate_mode_highest">全部使用最高音频比特率</string>
     <string name="parse_bitrate_mode_lowest">全部使用最低音频比特率</string>
@@ -137,7 +137,7 @@
     <string name="output_video">仅视频</string>
     <string name="output_audio">仅音频</string>
     <string name="parse_resolution_label">分辨率</string>
-    <string name="parse_codec_label">编码格式</string>
+    <string name="parse_video_codec_label">视频编码</string>
     <string name="parse_bitrate_label">音频比特率</string>
     <string name="parse_misc_label">杂项</string>
     <string name="parse_opus_label">图文</string>
@@ -510,7 +510,7 @@
     <string name="settings_default_download_quality_summary_format">%1$s / %2$s / %3$s</string>
     <string name="settings_default_download_quality_dialog_desc">当前解析视频时默认选择的下载质量：</string>
     <string name="settings_default_quality_resolution_title">分辨率</string>
-    <string name="settings_default_quality_codec_title">编码格式</string>
+    <string name="settings_default_quality_video_codec_title">视频编码</string>
     <string name="settings_default_quality_audio_title">音频比特率</string>
     <string name="settings_default_quality_mode_highest">最高</string>
     <string name="settings_default_quality_mode_lowest">最低</string>

@@ -2743,7 +2743,7 @@ private fun DefaultDownloadQualityScreen(
             item {
                 DefaultQualityCard {
                     DefaultQualitySectionTitle(
-                        title = stringResource(R.string.settings_default_quality_codec_title),
+                        title = stringResource(R.string.settings_default_quality_video_codec_title),
                     )
                     HorizontalConnectedToggleButtons(
                         options = codecOptions,

@@ -3,6 +3,7 @@ package com.happycola233.bilitools.ui.parse
 import android.content.Intent
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -3130,7 +3131,6 @@ private fun ParseOptionsCard(
         mediaCapabilities.supportsAiSummaryExport
     val hasPrimaryOptions = mediaCapabilities.supportsOpusExport ||
         mediaCapabilities.supportsPlaybackStream
-    val formatEnabled = state.outputType != null && streamControlsEnabled
     val hasVideo = state.videoStreams.isNotEmpty()
     val hasAudio = state.audioStreams.isNotEmpty()
     val activeFormat = if (state.streamLoading) {
@@ -3140,13 +3140,6 @@ private fun ParseOptionsCard(
     }
     val isDash = activeFormat == StreamFormat.Dash
     val allowAv = if (isDash) hasVideo && hasAudio else hasVideo
-    val resolutionModeEnabled = isMultiSelect && formatEnabled && hasVideo
-    val bitrateModeEnabled = isMultiSelect && formatEnabled && hasAudio
-    val resolutionEnabled =
-        formatEnabled && hasVideo && (!isMultiSelect || state.resolutionMode == QualityMode.Fixed)
-    val bitrateEnabled =
-        formatEnabled && hasAudio && (!isMultiSelect || state.audioBitrateMode == QualityMode.Fixed)
-    val codecEnabled = formatEnabled && hasVideo
     val copyEnabledBase = state.selectedItemIndices.isNotEmpty() &&
         controlsEnabled &&
         !state.streamLoading &&
@@ -3186,6 +3179,10 @@ private fun ParseOptionsCard(
         state.subtitleList.isNotEmpty()
     val sizeSpec = tween<IntSize>(
         durationMillis = parseContentAnimationDurationMillis,
+        easing = FastOutSlowInEasing,
+    )
+    val fadeSpec = tween<Float>(
+        durationMillis = optionsVisibilityAnimationDurationMillis,
         easing = FastOutSlowInEasing,
     )
 
@@ -3236,42 +3233,80 @@ private fun ParseOptionsCard(
                 }
 
                 if (mediaCapabilities.supportsPlaybackStream) {
-                    OptionsSection(title = stringResource(R.string.parse_output_type)) {
-                        Column {
-                            ConnectedOutputButtons(
-                                selected = state.outputType,
-                                audioVideoEnabled = streamControlsEnabled && allowAv,
-                                videoEnabled = streamControlsEnabled && isDash && hasVideo,
-                                audioEnabled = streamControlsEnabled && isDash && hasAudio,
-                                onOutputTypeChange = onOutputTypeChange,
-                            )
-                            ParseLyricsSummary(state, metadataSettings)
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        OptionsSection(title = stringResource(R.string.parse_output_type)) {
+                            Column {
+                                ConnectedOutputButtons(
+                                    selected = state.outputType,
+                                    audioVideoEnabled = streamControlsEnabled && allowAv,
+                                    videoEnabled = streamControlsEnabled && isDash && hasVideo,
+                                    audioEnabled = streamControlsEnabled && isDash && hasAudio,
+                                    onOutputTypeChange = onOutputTypeChange,
+                                )
+                                ParseLyricsSummary(state, metadataSettings)
+                            }
+                        }
+
+                        AnimatedContent(
+                            targetState = state,
+                            contentKey = { it.outputType },
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.TopStart,
+                            transitionSpec = {
+                                (fadeIn(animationSpec = fadeSpec) togetherWith
+                                    fadeOut(animationSpec = fadeSpec)).using(
+                                    SizeTransform(sizeAnimationSpec = { _, _ -> sizeSpec }),
+                                )
+                            },
+                            label = "ParseOutputOptions",
+                        ) { animatedState ->
+                            // 退场内容保留原来的输出类型，避免控件先消失再播放动画。
+                            val animatedControlsEnabled = streamControlsEnabled &&
+                                animatedState.outputType == state.outputType
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(
+                                        top = if (animatedState.outputType != null) {
+                                            optionsCardSectionSpacing
+                                        } else {
+                                            0.dp
+                                        },
+                                    ),
+                                verticalArrangement = Arrangement.spacedBy(optionsCardSectionSpacing),
+                            ) {
+                                // 单轨输出依赖 DASH 的独立音视频流，只有音视频输出需要选择流媒体格式。
+                                if (animatedState.outputType == OutputType.AudioVideo) {
+                                    OptionsSection(title = stringResource(R.string.parse_stream_format)) {
+                                        StreamFormatHint()
+                                        ConnectedFormatButtons(
+                                            selected = animatedState.format,
+                                            enabled = animatedControlsEnabled,
+                                            onFormatChange = onFormatChange,
+                                        )
+                                        AnimatedOptionsVisibility(visible = !animatedState.warning.isNullOrBlank()) {
+                                            HelperText(
+                                                text = animatedState.warning.orEmpty(),
+                                                icon = painterResource(R.drawable.ic_info_24),
+                                            )
+                                        }
+                                    }
+                                }
+
+                                if (animatedState.outputType != null) {
+                                    QualityControls(
+                                        state = animatedState,
+                                        enabled = animatedControlsEnabled,
+                                        onResolutionModeChange = onResolutionModeChange,
+                                        onAudioBitrateModeChange = onAudioBitrateModeChange,
+                                        onResolutionChange = onResolutionChange,
+                                        onCodecChange = onCodecChange,
+                                        onAudioBitrateChange = onAudioBitrateChange,
+                                    )
+                                }
+                            }
                         }
                     }
-
-                    OptionsSection(title = stringResource(R.string.parse_stream_format)) {
-                        ConnectedFormatButtons(
-                            selected = state.format,
-                            enabled = formatEnabled,
-                            onFormatChange = onFormatChange,
-                        )
-                        StreamFormatHint()
-                    }
-
-                    QualityControls(
-                        state = state,
-                        isMultiSelect = isMultiSelect,
-                        resolutionModeEnabled = resolutionModeEnabled,
-                        bitrateModeEnabled = bitrateModeEnabled,
-                        resolutionEnabled = resolutionEnabled,
-                        codecEnabled = codecEnabled,
-                        bitrateEnabled = bitrateEnabled,
-                        onResolutionModeChange = onResolutionModeChange,
-                        onAudioBitrateModeChange = onAudioBitrateModeChange,
-                        onResolutionChange = onResolutionChange,
-                        onCodecChange = onCodecChange,
-                        onAudioBitrateChange = onAudioBitrateChange,
-                    )
                 }
 
                 if (supportsMiscExport) {
@@ -3482,18 +3517,21 @@ private fun ParseOptionsCard(
 @Composable
 private fun QualityControls(
     state: ParseUiState,
-    isMultiSelect: Boolean,
-    resolutionModeEnabled: Boolean,
-    bitrateModeEnabled: Boolean,
-    resolutionEnabled: Boolean,
-    codecEnabled: Boolean,
-    bitrateEnabled: Boolean,
+    enabled: Boolean,
     onResolutionModeChange: (QualityMode) -> Unit,
     onAudioBitrateModeChange: (QualityMode) -> Unit,
     onResolutionChange: (Int) -> Unit,
     onCodecChange: (VideoCodec) -> Unit,
     onAudioBitrateChange: (Int) -> Unit,
 ) {
+    val isMultiSelect = state.isMultiSelect
+    // 隐藏当前输出不会使用的参数，保留选择以便切回对应输出类型时恢复。
+    val showVideoQuality = state.videoStreams.isNotEmpty() &&
+        (state.outputType == OutputType.AudioVideo || state.outputType == OutputType.VideoOnly)
+    val showAudioQuality = state.audioStreams.isNotEmpty() &&
+        (state.outputType == OutputType.AudioVideo || state.outputType == OutputType.AudioOnly)
+    if (!showVideoQuality && !showAudioQuality) return
+
     val resolutionModes = resolutionModeOptions()
     val bitrateModes = bitrateModeOptions()
 
@@ -3504,22 +3542,26 @@ private fun QualityControls(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    CompactSelectionField(
-                        label = stringResource(R.string.parse_resolution_mode_label),
-                        value = resolutionModes.first { it.value == state.resolutionMode }.label,
-                        enabled = resolutionModeEnabled,
-                        options = resolutionModes,
-                        onOptionSelected = { onResolutionModeChange(it.value) },
-                        modifier = Modifier.weight(1f),
-                    )
-                    CompactSelectionField(
-                        label = stringResource(R.string.parse_bitrate_mode_label),
-                        value = bitrateModes.first { it.value == state.audioBitrateMode }.label,
-                        enabled = bitrateModeEnabled,
-                        options = bitrateModes,
-                        onOptionSelected = { onAudioBitrateModeChange(it.value) },
-                        modifier = Modifier.weight(1f),
-                    )
+                    if (showVideoQuality) {
+                        CompactSelectionField(
+                            label = stringResource(R.string.parse_resolution_mode_label),
+                            value = resolutionModes.first { it.value == state.resolutionMode }.label,
+                            enabled = enabled,
+                            options = resolutionModes,
+                            onOptionSelected = { onResolutionModeChange(it.value) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    if (showAudioQuality) {
+                        CompactSelectionField(
+                            label = stringResource(R.string.parse_bitrate_mode_label),
+                            value = bitrateModes.first { it.value == state.audioBitrateMode }.label,
+                            enabled = enabled,
+                            options = bitrateModes,
+                            onOptionSelected = { onAudioBitrateModeChange(it.value) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
                 Spacer(Modifier.height(8.dp))
             }
@@ -3529,46 +3571,40 @@ private fun QualityControls(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            CompactSelectionField(
-                label = stringResource(R.string.parse_resolution_label),
-                value = state.resolutions.firstOrNull { it.id == state.selectedResolutionId }?.label.orEmpty(),
-                enabled = resolutionEnabled,
-                options = state.resolutions.map { DropdownOption(it.label, it) },
-                onOptionSelected = { onResolutionChange(it.value.id) },
-                modifier = Modifier.weight(1f),
-            )
-            CompactSelectionField(
-                label = stringResource(R.string.parse_codec_label),
-                value = state.codecs.firstOrNull { it.codec == state.selectedCodec }?.label.orEmpty(),
-                enabled = codecEnabled,
-                options = state.codecs.map { DropdownOption(it.label, it) },
-                onOptionSelected = { onCodecChange(it.value.codec) },
-                modifier = Modifier.weight(1f),
-            )
-            CompactSelectionField(
-                label = stringResource(R.string.parse_bitrate_label),
-                value = state.audioBitrates.firstOrNull { it.id == state.selectedAudioId }?.label.orEmpty(),
-                enabled = bitrateEnabled,
-                options = state.audioBitrates.map { DropdownOption(it.label, it) },
-                onOptionSelected = { onAudioBitrateChange(it.value.id) },
-                modifier = Modifier.weight(1f),
-            )
+            if (showVideoQuality) {
+                CompactSelectionField(
+                    label = stringResource(R.string.parse_resolution_label),
+                    value = state.resolutions.firstOrNull { it.id == state.selectedResolutionId }?.label.orEmpty(),
+                    enabled = enabled && (!isMultiSelect || state.resolutionMode == QualityMode.Fixed),
+                    options = state.resolutions.map { DropdownOption(it.label, it) },
+                    onOptionSelected = { onResolutionChange(it.value.id) },
+                    modifier = Modifier.weight(1f),
+                )
+                CompactSelectionField(
+                    label = stringResource(R.string.parse_video_codec_label),
+                    value = state.codecs.firstOrNull { it.codec == state.selectedCodec }?.label.orEmpty(),
+                    enabled = enabled,
+                    options = state.codecs.map { DropdownOption(it.label, it) },
+                    onOptionSelected = { onCodecChange(it.value.codec) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            if (showAudioQuality) {
+                CompactSelectionField(
+                    label = stringResource(R.string.parse_bitrate_label),
+                    value = state.audioBitrates.firstOrNull { it.id == state.selectedAudioId }?.label.orEmpty(),
+                    enabled = enabled && (!isMultiSelect || state.audioBitrateMode == QualityMode.Fixed),
+                    options = state.audioBitrates.map { DropdownOption(it.label, it) },
+                    onOptionSelected = { onAudioBitrateChange(it.value.id) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
 
         AnimatedOptionsVisibility(visible = isMultiSelect) {
             Column {
                 Spacer(Modifier.height(8.dp))
                 HelperText(text = stringResource(R.string.parse_quality_multi_hint))
-            }
-        }
-
-        AnimatedOptionsVisibility(visible = !state.warning.isNullOrBlank()) {
-            Column {
-                Spacer(Modifier.height(8.dp))
-                HelperText(
-                    text = state.warning.orEmpty(),
-                    icon = painterResource(R.drawable.ic_info_24),
-                )
             }
         }
     }
