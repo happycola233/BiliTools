@@ -39,6 +39,11 @@ internal object AppSurfaces {
         @Composable
         get() = MaterialTheme.colorScheme.surfaceContainerHighest
 
+    /** 轻量浮层在浅色使用近白表面，靠投影体现层次；深色沿用模态容器色阶。 */
+    val floatingPanelContainerColor: Color
+        @Composable
+        get() = if (MaterialTheme.colorScheme.usesDarkSurfaces()) modalContainerColor else cardContainerColor
+
     /**
      * 浅色取 `surfaceContainerLow`（T96）与 `surfaceContainer`（T94）的中点：T96 对 T98 卡片只有 1.05:1，
      * 内嵌区域几乎看不出；T94 又在近白卡片上压出一块明显的灰，中点 T95（约 1.07:1）刚好读作一层轻凹陷，

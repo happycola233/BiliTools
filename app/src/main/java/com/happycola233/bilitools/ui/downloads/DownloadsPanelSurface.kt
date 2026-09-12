@@ -15,7 +15,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import com.happycola233.bilitools.data.AppSettings
-import com.happycola233.bilitools.ui.AppDialogDefaults
 import com.happycola233.bilitools.ui.appDialogBorder
 import com.happycola233.bilitools.ui.isLiquidGlassSupported
 import com.happycola233.bilitools.ui.theme.AppSurfaces
@@ -73,18 +72,12 @@ internal fun Modifier.downloadsPanelSurface(
 ): Modifier {
     val shape = RoundedCornerShape(style.cornerRadiusDp.dp)
     if (!liquidGlassEnabled || !isLiquidGlassSupported()) {
-        // 浅色浮层使用随配色变化的近白卡片色，避免模态容器的灰底显得发闷；深色保留原有层次。
-        val containerColor = if (MaterialTheme.colorScheme.usesDarkSurfaces()) {
-            AppDialogDefaults.containerColor
-        } else {
-            AppSurfaces.cardContainerColor
-        }
         // Material 背景完全不透明，不读取玻璃透明度或采样底层内容；边缘沿用应用对话框的配方。
         // 保留同一层缩放和淡入淡出，让背景、投影、描边与文字一起运动。
         return this
             .then(if (layerBlock != null) Modifier.graphicsLayer(layerBlock) else Modifier)
             .shadow(elevation = 8.dp, shape = shape, clip = false)
-            .background(containerColor, shape)
+            .background(AppSurfaces.floatingPanelContainerColor, shape)
             .appDialogBorder(shape)
             .clip(shape)
     }

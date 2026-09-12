@@ -71,9 +71,9 @@ class MetadataSettingsTest {
         val after = compose.onNodeWithText("后续内容")
         val collapsedTop = after.getUnclippedBoundsInRoot().top.value
         compose.mainClock.autoAdvance = false
-        compose.onNodeWithText("歌词语言如何选择").performClick()
+        compose.onNodeWithText("APP 将如何选择歌词语言？").performClick()
         compose.mainClock.advanceTimeBy(96)
-        val firstParagraph = "字幕转歌词时，每个音频文件只嵌入一种语言。"
+        val firstParagraph = "每个音频文件只嵌入一种语言的歌词。"
         val midwayBounds = compose.onNodeWithText(firstParagraph).getUnclippedBoundsInRoot()
         capture("expansion-midway")
         compose.mainClock.advanceTimeBy(1500)
@@ -83,7 +83,7 @@ class MetadataSettingsTest {
         assertEquals("展开时不改变文本换行宽度", expandedBounds.right.value, midwayBounds.right.value, 0.5f)
         capture("expansion-open")
 
-        compose.onNodeWithText("歌词语言如何选择").performClick()
+        compose.onNodeWithText("APP 将如何选择歌词语言？").performClick()
         var previousTop = after.getUnclippedBoundsInRoot().top.value
         var removalObserved = false
         repeat(100) {
@@ -166,11 +166,11 @@ class MetadataSettingsTest {
         compose.onNodeWithText("允许 AI").performScrollTo().performClick().assertIsOn()
         compose.runOnIdle { assertEquals(SubtitleLyricsMode.PreferManual, settings.metadata.subtitleLyrics) }
         compose.onNodeWithText("允许使用 B 站 AI 字幕；自动选择时优先人工字幕。").assertExists()
-        compose.onNodeWithText("歌词语言如何选择").performScrollTo().performClick()
-        compose.onNodeWithText("字幕转歌词时，每个音频文件只嵌入一种语言。").performScrollTo().assertExists()
+        compose.onNodeWithText("APP 将如何选择歌词语言？").performScrollTo().performClick()
+        compose.onNodeWithText("每个音频文件只嵌入一种语言的歌词。").performScrollTo().assertExists()
         compose.onNodeWithText("其余情况将自动选择", substring = true).performScrollTo().assertExists()
         capture("language-${theme.name.lowercase()}-$fontScale")
-        compose.onNodeWithText("歌词语言如何选择").performScrollTo().performClick()
+        compose.onNodeWithText("APP 将如何选择歌词语言？").performScrollTo().performClick()
         compose.runOnIdle { settings = settings.copy(metadata = settings.metadata.copy(embedLyrics = false)) }
         compose.onNodeWithText("允许 AI").performScrollTo().assertIsNotEnabled().assertIsOn()
         capture("disabled-${theme.name.lowercase()}-$fontScale")

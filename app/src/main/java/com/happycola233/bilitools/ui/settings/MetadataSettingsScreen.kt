@@ -41,6 +41,7 @@ import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.AppSettings
 import com.happycola233.bilitools.data.DownloadMetadataSettings
 import com.happycola233.bilitools.data.SubtitleLyricsMode
+import com.happycola233.bilitools.ui.LyricsLanguageExplanationContent
 import com.happycola233.bilitools.ui.theme.AppSurfaces
 
 @Composable
@@ -209,15 +210,7 @@ internal fun LyricsLanguageExplanation() {
                 animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
             ) + fadeOut(animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec()),
         ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            ) {
-                LyricsSupportingText(stringResource(R.string.settings_metadata_lyrics_language_single))
-                LyricsSupportingText(stringResource(R.string.settings_metadata_lyrics_language_selected))
-                LyricsSupportingText(stringResource(R.string.settings_metadata_lyrics_language_auto))
-                LyricsSupportingText(stringResource(R.string.settings_metadata_lyrics_language_original))
-            }
+            LyricsLanguageExplanationContent(Modifier.padding(top = 8.dp))
         }
     }
 }

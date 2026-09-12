@@ -3237,14 +3237,16 @@ private fun ParseOptionsCard(
 
                 if (mediaCapabilities.supportsPlaybackStream) {
                     OptionsSection(title = stringResource(R.string.parse_output_type)) {
-                        ConnectedOutputButtons(
-                            selected = state.outputType,
-                            audioVideoEnabled = streamControlsEnabled && allowAv,
-                            videoEnabled = streamControlsEnabled && isDash && hasVideo,
-                            audioEnabled = streamControlsEnabled && isDash && hasAudio,
-                            onOutputTypeChange = onOutputTypeChange,
-                        )
-                        ParseLyricsSummary(state, metadataSettings)
+                        Column {
+                            ConnectedOutputButtons(
+                                selected = state.outputType,
+                                audioVideoEnabled = streamControlsEnabled && allowAv,
+                                videoEnabled = streamControlsEnabled && isDash && hasVideo,
+                                audioEnabled = streamControlsEnabled && isDash && hasAudio,
+                                onOutputTypeChange = onOutputTypeChange,
+                            )
+                            ParseLyricsSummary(state, metadataSettings)
+                        }
                     }
 
                     OptionsSection(title = stringResource(R.string.parse_stream_format)) {

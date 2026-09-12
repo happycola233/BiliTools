@@ -235,6 +235,8 @@ internal enum class SubtitleSelectionPolicy {
     AllAvailable,
 }
 
+enum class SubtitleLoadStatus { Loading, Ready, Failed }
+
 sealed interface SubtitleLanguageSelection {
     data object All : SubtitleLanguageSelection
 
@@ -387,6 +389,7 @@ data class ParseUiState(
     val selectedAudioId: Int? = null,
     // 当前单选条目的语言选项；多选下载与复制始终逐条请求，不读取此缓存。
     val subtitleList: List<SubtitleInfo> = emptyList(),
+    val subtitleLoadStatus: SubtitleLoadStatus = SubtitleLoadStatus.Loading,
     val subtitleLanguageSelection: SubtitleLanguageSelection? = null,
     val subtitleEnabled: Boolean = false,
     val aiSummaryAvailable: Boolean = false,
@@ -2718,6 +2721,11 @@ class ParseViewModel(
         if (currentTargetKey != targetKey) return
 
         val requestGeneration = ++extrasRefreshGeneration
+        fun ParseUiState.isCurrentTarget(): Boolean =
+            requestGeneration == extrasRefreshGeneration &&
+                items.getOrNull(selectedItemIndex)?.extrasTargetKey() == targetKey
+
+        _state.update { it.copy(subtitleLoadStatus = SubtitleLoadStatus.Loading) }
         if (subtitleSelectionTargetKey != targetKey) {
             subtitleSelectionTargetKey = targetKey
             _state.update {
@@ -2740,10 +2748,24 @@ class ParseViewModel(
         val resolvedItem = opusDocument?.let { document -> item.withOpusDocument(document) } ?: item
         val aid = item.aid
         val cid = item.cid
-        val subtitles = if (capabilities.supportsSubtitleExport && aid != null && cid != null) {
-            runCatching { extrasRepository.getSubtitles(aid, cid) }.getOrDefault(emptyList())
+        val subtitleResult = if (capabilities.supportsSubtitleExport && aid != null && cid != null) {
+            runCatching { extrasRepository.getSubtitles(aid, cid) }.onFailure {
+                if (it is CancellationException) throw it
+            }
         } else {
-            emptyList()
+            Result.success(emptyList())
+        }
+        val subtitles = subtitleResult.getOrDefault(emptyList())
+        // 字幕查询完成就更新预览，不等待 AI 总结等无关的附加资源。
+        _state.update { current ->
+            if (!current.isCurrentTarget()) return@update current
+            current.copy(
+                subtitleList = subtitles,
+                subtitleLoadStatus = if (subtitleResult.isSuccess) SubtitleLoadStatus.Ready else SubtitleLoadStatus.Failed,
+                subtitleLanguageSelection = pickSubtitleLanguageSelection(subtitles, current.subtitleLanguageSelection),
+                subtitleEnabled = current.subtitleEnabled && capabilities.supportsSubtitleExport &&
+                    (current.isMultiSelect || subtitles.isNotEmpty()),
+            )
         }
         val aiAvailable = if (capabilities.supportsAiSummaryExport && aid != null && cid != null) {
             runCatching { extrasRepository.hasAiSummary(aid, cid) }.getOrDefault(false)
@@ -2763,17 +2785,8 @@ class ParseViewModel(
         val imageOptionIdSet = imageOptionIds.toSet()
         var applied = false
         _state.update { current ->
-            val activeTargetKey = current.items
-                .getOrNull(current.selectedItemIndex)
-                ?.extrasTargetKey()
-            if (requestGeneration != extrasRefreshGeneration || activeTargetKey != targetKey) {
-                return@update current
-            }
+            if (!current.isCurrentTarget()) return@update current
             applied = true
-            val selectedSubtitle = pickSubtitleLanguageSelection(
-                subtitles = subtitles,
-                currentSelection = current.subtitleLanguageSelection,
-            )
             val selectedImageIds =
                 current.selectedImageIds.filter { imageOptionIdSet.contains(it) }.toSet()
             val allowMissing = current.isMultiSelect
@@ -2791,11 +2804,6 @@ class ParseViewModel(
                     current.mediaInfo
                 },
                 selectedItemStat = opusDocument?.stat ?: current.selectedItemStat,
-                subtitleList = subtitles,
-                subtitleLanguageSelection = selectedSubtitle,
-                subtitleEnabled = current.subtitleEnabled &&
-                    capabilities.supportsSubtitleExport &&
-                    (allowMissing || subtitles.isNotEmpty()),
                 aiSummaryAvailable = aiAvailable,
                 aiSummaryEnabled = current.aiSummaryEnabled &&
                     capabilities.supportsAiSummaryExport &&
