@@ -1641,7 +1641,7 @@ private fun ExpandableDescription(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun MetadataDetailsBottomSheet(
+internal fun MetadataDetailsBottomSheet(
     metadata: ParseMetadataDisplay,
     onDismiss: () -> Unit,
     onOpenUpper: (Long) -> Unit,
@@ -1840,6 +1840,7 @@ private fun MetadataDetailsGroup(
                             actionLabel = stringResource(
                                 R.string.parse_metadata_copy_part_preview_url,
                             ),
+                            feedbackShape = RoundedCornerShape(10.dp),
                             onLongPress = { onCopyValue(previewUrl) },
                         ),
                 )
@@ -1862,6 +1863,7 @@ private fun MetadataDetailsGroup(
                         style = ParseTextStyles.body,
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.fillMaxWidth(),
+                        showPressFeedback = true,
                     )
                 }
             }
@@ -1900,6 +1902,7 @@ private fun MetadataKeyValueTable(
                         style = ParseTextStyles.body,
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.fillMaxWidth(),
+                        showPressFeedback = true,
                     )
                     row.note?.let { note ->
                         Text(
@@ -1980,6 +1983,7 @@ private fun MetadataContributorRow(
             },
             onLongClickLabel = stringResource(R.string.common_copy_upper_name),
             onLongClick = { onCopyUpperName(member.name) },
+            showPressFeedback = true,
         )
         member.role?.takeIf(String::isNotBlank)?.let { role ->
             ContributorRoleChip(role = role, onCopyValue = onCopyValue)
@@ -2005,6 +2009,7 @@ private fun ContributorRoleChip(
             .longPressAction(
                 interactionKey = role,
                 actionLabel = stringResource(R.string.parse_metadata_copy_value),
+                feedbackShape = RoundedCornerShape(percent = 50),
                 onLongPress = { onCopyValue(role) },
             )
             .padding(horizontal = 8.dp, vertical = 2.dp),
@@ -2021,6 +2026,7 @@ private fun LongPressCopyText(
     modifier: Modifier = Modifier,
     maxLines: Int = Int.MAX_VALUE,
     overflow: TextOverflow = TextOverflow.Clip,
+    showPressFeedback: Boolean = false,
 ) {
     Text(
         text = text,
@@ -2031,6 +2037,8 @@ private fun LongPressCopyText(
         modifier = modifier.longPressAction(
             interactionKey = text,
             actionLabel = copyActionLabel,
+            feedbackShape = if (showPressFeedback) MaterialTheme.shapes.medium else null,
+            feedbackOutset = 4.dp,
             onLongPress = { onCopy(text) },
         ),
     )

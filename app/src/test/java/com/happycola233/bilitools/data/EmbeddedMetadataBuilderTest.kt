@@ -31,6 +31,7 @@ class EmbeddedMetadataBuilderTest {
         assertNull(result.subtitleAid)
         assertNull(result.subtitleCid)
         assertEquals(13598L, result.musicSid)
+        assertEquals(60, result.durationSeconds)
     }
 
     @Test fun listContainersNeverSupplyAlbumArtistDescriptionCoverDateOrTrack() {

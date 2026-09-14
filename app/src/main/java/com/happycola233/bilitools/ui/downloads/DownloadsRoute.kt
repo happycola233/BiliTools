@@ -49,6 +49,7 @@ internal fun DownloadsRoute(
     viewModel: DownloadsViewModel,
     contentTopPadding: Dp,
     taskActionsOverlayState: DownloadsTaskActionsOverlayState,
+    onOpenParseUrl: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -59,12 +60,14 @@ internal fun DownloadsRoute(
     val routeState = rememberSaveable(saver = DownloadsRouteUiState.Saver) {
         DownloadsRouteUiState()
     }
+    var detailsGroupId by rememberSaveable { mutableStateOf<Long?>(null) }
 
     LaunchedEffect(viewModel) {
         viewModel.refreshOutputAvailability()
     }
     LaunchedEffect(groups) {
         routeState.pruneAgainst(groups)
+        if (groups.none { it.id == detailsGroupId }) detailsGroupId = null
         val currentTaskIds = groups
             .asSequence()
             .flatMap { it.tasks.asSequence() }
@@ -247,6 +250,8 @@ internal fun DownloadsRoute(
         },
         onGroupPause = { group -> viewModel.pauseGroup(group.id) },
         onGroupResume = { group -> viewModel.resumeGroup(group.id) },
+        onGroupReparse = { group -> group.sourceUrl()?.let(onOpenParseUrl) },
+        onGroupShowDetails = { group -> detailsGroupId = group.id },
         onGroupDelete = routeState::confirmGroupDelete,
         onTaskPauseResume = { item ->
             when (item.status) {
@@ -279,6 +284,9 @@ internal fun DownloadsRoute(
         onBarGlassReset = { resetLiquidBarGlass(settingsRepository) },
         modifier = modifier,
     )
+    groups.firstOrNull { it.id == detailsGroupId }?.let { group ->
+        DownloadsDetailsSheet(group = group, onDismiss = { detailsGroupId = null })
+    }
 }
 
 @Stable

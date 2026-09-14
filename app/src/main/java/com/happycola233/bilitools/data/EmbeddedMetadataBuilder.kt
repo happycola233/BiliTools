@@ -90,6 +90,7 @@ internal fun buildEmbeddedMetadata(
         subtitleAid = item.aid?.takeIf { it > 0 && (isVideo || isEpisode) },
         subtitleCid = item.cid?.takeIf { it > 0 && (isVideo || isEpisode) },
         preferredSubtitleLanguage = preferredSubtitleLanguage,
+        durationSeconds = item.duration.takeIf { it > 0 },
     )
 }
 

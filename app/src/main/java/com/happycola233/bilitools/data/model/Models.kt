@@ -184,6 +184,8 @@ data class DownloadItem(
     val mediaParams: DownloadMediaParams? = null,
     val embeddedMetadata: DownloadEmbeddedMetadata? = null,
     val metadataWarning: String? = null,
+    /** 保存后的实际字节数；合并、转码与元数据写入后可能不同于传输大小。 */
+    val outputBytes: Long? = null,
 )
 
 data class DownloadMediaParams(
@@ -211,6 +213,7 @@ data class DownloadEmbeddedMetadata(
     val subtitleAid: Long? = null,
     val subtitleCid: Long? = null,
     val preferredSubtitleLanguage: String? = null,
+    val durationSeconds: Int? = null,
 )
 
 data class DownloadGroup(
@@ -222,4 +225,6 @@ data class DownloadGroup(
     val createdAt: Long,
     val relativePath: String = "",
     val tasks: List<DownloadItem>,
+    /** 独立于下载类型保存来源，只有字幕或封面时也能查看详情和重新解析。 */
+    val sourceMetadata: DownloadEmbeddedMetadata? = null,
 )

@@ -1443,13 +1443,6 @@ class ParseViewModel(
                             batchOrdinal = batchOrdinal,
                         )
 
-                        val groupId = downloadRepository.createGroup(
-                            groupLabel.title,
-                            groupLabel.subtitle,
-                            item.displayContentId(),
-                            item.coverUrl,
-                            relativePath = requestedGroupRelativePath,
-                        )
                         val metadataItem = if (snapshot.outputType != null && settingsRepository.shouldAddMetadata()) {
                             try {
                                 mediaRepository.resolveItemForMetadata(item, metadataDetailsCache)
@@ -1466,6 +1459,14 @@ class ParseViewModel(
                             info = info,
                             item = metadataItem,
                             preferredSubtitleLanguage = snapshot.preferredLyricsSubtitleLanguage,
+                        )
+                        val groupId = downloadRepository.createGroup(
+                            groupLabel.title,
+                            groupLabel.subtitle,
+                            item.displayContentId(),
+                            item.coverUrl,
+                            relativePath = requestedGroupRelativePath,
+                            sourceMetadata = embeddedMetadata,
                         )
 
                         val outputType = snapshot.outputType

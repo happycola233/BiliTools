@@ -224,14 +224,20 @@ class DownloadRepository(
                 }
 
                 val missing = !accessible
-                val shouldUpdate = item.outputMissing != missing || item.localUri != resolvedUri
+                val outputBytes = if (accessible && resolvedUri != null) {
+                    readOutputSize(Uri.parse(resolvedUri)) ?: item.outputBytes
+                } else {
+                    item.outputBytes
+                }
+                val shouldUpdate = item.outputMissing != missing || item.localUri != resolvedUri ||
+                    item.outputBytes != outputBytes
                 if (shouldUpdate) {
                     changedCount++
                     Log.i(
                         TAG,
                         "[output-check] item output state changed, taskId=${item.id}, file=${item.fileName}, oldMissing=${item.outputMissing}, newMissing=$missing, oldUri=${item.localUri}, newUri=$resolvedUri",
                     )
-                    updateTask(item.copy(localUri = resolvedUri, outputMissing = missing))
+                    updateTask(item.copy(localUri = resolvedUri, outputMissing = missing, outputBytes = outputBytes))
                 }
             }
             Log.d(
@@ -247,6 +253,7 @@ class DownloadRepository(
         bvid: String? = null,
         coverUrl: String? = null,
         relativePath: String? = null,
+        sourceMetadata: DownloadEmbeddedMetadata? = null,
     ): Long {
         val id = groupIds.incrementAndGet()
         val resolvedRelativePath = relativePath?.takeIf { it.isNotBlank() }?.let(
@@ -267,6 +274,7 @@ class DownloadRepository(
                 coverUrl,
                 System.currentTimeMillis(),
                 resolvedRelativePath,
+                sourceMetadata,
             )
             groupTaskIds[id] = mutableListOf()
         }
@@ -1519,6 +1527,7 @@ class DownloadRepository(
                     progress = 100,
                     downloadedBytes = state.downloadedBytes,
                     totalBytes = state.totalBytes,
+                    outputBytes = readOutputSize(Uri.parse(uri)),
                     speedBytesPerSec = 0,
                     etaSeconds = null,
                     localUri = uri,
@@ -2780,6 +2789,7 @@ class DownloadRepository(
         if (old.progressIndeterminate != new.progressIndeterminate) return true
         if (old.statusDetail != new.statusDetail) return true
         if (old.totalBytes != new.totalBytes && new.totalBytes > 0) return true
+        if (old.outputBytes != new.outputBytes) return true
         return false
     }
 
@@ -2805,6 +2815,7 @@ class DownloadRepository(
                     createdAt = info.createdAt,
                     relativePath = info.relativePath,
                     tasks = taskList,
+                    sourceMetadata = info.sourceMetadata,
                 )
             }
         }.sortedByDescending { it.createdAt }
@@ -3030,6 +3041,7 @@ class DownloadRepository(
                 group.coverUrl,
                 group.createdAt,
                 relativePath,
+                group.sourceMetadata,
             )
             val ids = mutableListOf<Long>()
             for (task in group.tasks) {
@@ -3483,6 +3495,7 @@ class DownloadRepository(
                                 status = DownloadStatus.Success,
                                 progress = 100,
                                 localUri = uri,
+                                outputBytes = readOutputSize(Uri.parse(uri)),
                                 speedBytesPerSec = 0,
                                 etaSeconds = null,
                             ),
@@ -3908,16 +3921,16 @@ class DownloadRepository(
         return exists
     }
 
-    private fun isSavedOutputAccessible(uri: Uri, expectedSize: Long): Boolean {
-        val statSize = runCatching {
+    /** 优先读取成品文件本身，避免 MediaStore 的大小尚未刷新时显示为 0。 */
+    private fun readOutputSize(uri: Uri): Long? =
+        runCatching {
             resolver.openFileDescriptor(uri, "r")?.use { pfd ->
-                pfd.statSize
+                pfd.statSize.takeIf { it >= 0L }
             }
-        }.getOrNull()
-        val knownSize = when {
-            statSize != null && statSize >= 0L -> statSize
-            else -> queryUriSize(uri)
-        }
+        }.getOrNull() ?: queryUriSize(uri)
+
+    private fun isSavedOutputAccessible(uri: Uri, expectedSize: Long): Boolean {
+        val knownSize = readOutputSize(uri)
         if (knownSize != null && knownSize >= 0L) {
             val result = if (expectedSize > 0L) {
                 knownSize >= expectedSize
@@ -3926,7 +3939,7 @@ class DownloadRepository(
             }
             Log.d(
                 TAG,
-                "[media-check] size check, uri=$uri, statSize=$statSize, knownSize=$knownSize, expectedSize=$expectedSize, accessible=$result",
+                "[media-check] size check, uri=$uri, knownSize=$knownSize, expectedSize=$expectedSize, accessible=$result",
             )
             return result
         }
@@ -5000,6 +5013,7 @@ class DownloadRepository(
         val coverUrl: String?,
         val createdAt: Long,
         val relativePath: String,
+        val sourceMetadata: DownloadEmbeddedMetadata? = null,
     )
 
     private data class OutputTarget(

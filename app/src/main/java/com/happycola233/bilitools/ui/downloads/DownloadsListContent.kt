@@ -45,6 +45,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
@@ -107,8 +108,6 @@ import com.happycola233.bilitools.ui.haptics.HapticThresholdGate
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import com.happycola233.bilitools.ui.theme.AppAccents
 import com.happycola233.bilitools.ui.theme.AppSurfaces
-import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -248,6 +247,8 @@ internal fun DownloadsListContent(
     onGroupDelete: (DownloadGroup) -> Unit,
     onGroupPause: (DownloadGroup) -> Unit,
     onGroupResume: (DownloadGroup) -> Unit,
+    onGroupReparse: (DownloadGroup) -> Unit,
+    onGroupShowDetails: (DownloadGroup) -> Unit,
     onTaskPauseResume: (DownloadItem) -> Unit,
     onTaskRetry: (DownloadItem) -> Unit,
     onTaskDelete: (DownloadItem) -> Unit,
@@ -323,6 +324,8 @@ internal fun DownloadsListContent(
                             onDelete = { onGroupDelete(group) },
                             onPauseGroup = { onGroupPause(group) },
                             onResumeGroup = { onGroupResume(group) },
+                            onReparse = { onGroupReparse(group) },
+                            onShowDetails = { onGroupShowDetails(group) },
                             onTaskPauseResume = onTaskPauseResume,
                             onTaskRetry = onTaskRetry,
                             onTaskDelete = onTaskDelete,
@@ -349,6 +352,8 @@ internal fun DownloadsListContent(
                         onDelete = { onGroupDelete(group) },
                         onPauseGroup = { onGroupPause(group) },
                         onResumeGroup = { onGroupResume(group) },
+                        onReparse = { onGroupReparse(group) },
+                        onShowDetails = { onGroupShowDetails(group) },
                         onTaskPauseResume = onTaskPauseResume,
                         onTaskRetry = onTaskRetry,
                         onTaskDelete = onTaskDelete,
@@ -474,8 +479,9 @@ private fun DownloadsSectionHeader(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun DownloadsGroupCard(
+internal fun DownloadsGroupCard(
     group: DownloadGroup,
     selectionMode: Boolean,
     selected: Boolean,
@@ -488,6 +494,8 @@ private fun DownloadsGroupCard(
     onDelete: () -> Unit,
     onPauseGroup: () -> Unit,
     onResumeGroup: () -> Unit,
+    onReparse: () -> Unit,
+    onShowDetails: () -> Unit,
     onTaskPauseResume: (DownloadItem) -> Unit,
     onTaskRetry: (DownloadItem) -> Unit,
     onTaskDelete: (DownloadItem) -> Unit,
@@ -531,7 +539,7 @@ private fun DownloadsGroupCard(
         targetValue = if (selected) {
             MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f)
         } else {
-            MaterialTheme.colorScheme.outline
+            MaterialTheme.colorScheme.onSurfaceVariant
         },
         animationSpec = tween(durationMillis = 180),
         label = "downloadsGroupSupportingColor",
@@ -746,7 +754,7 @@ private fun DownloadsGroupCard(
         ) {
             Column {
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment = Alignment.Top,
                     modifier = Modifier.padding(
                         start = if (selectionMode) 12.dp else 16.dp,
                         end = if (selectionMode) 12.dp else 16.dp,
@@ -762,7 +770,7 @@ private fun DownloadsGroupCard(
                                 onToggleSelection()
                             },
                             colors = AppAccents.checkboxColors(),
-                            modifier = Modifier.padding(end = 6.dp),
+                            modifier = Modifier.padding(end = 6.dp).size(40.dp),
                         )
                     }
 
@@ -786,6 +794,7 @@ private fun DownloadsGroupCard(
                     Column(
                         modifier = Modifier
                             .weight(1f)
+                            .align(Alignment.CenterVertically)
                             .padding(
                                 start = if (selectionMode) 12.dp else 16.dp,
                                 end = if (selectionMode) 0.dp else 8.dp,
@@ -795,11 +804,7 @@ private fun DownloadsGroupCard(
                             text = group.title,
                             style = MaterialTheme.typography.titleMedium,
                             color = groupHeadlineColor,
-                            maxLines = when {
-                                expanded && !selectionMode -> Int.MAX_VALUE
-                                selectionMode || isCompletedGroup -> 2
-                                else -> 1
-                            },
+                            maxLines = if (expanded && !selectionMode) Int.MAX_VALUE else 2,
                             overflow = TextOverflow.Ellipsis,
                             textDecoration = if (allMissing) TextDecoration.LineThrough else TextDecoration.None,
                             modifier = Modifier
@@ -813,29 +818,13 @@ private fun DownloadsGroupCard(
                                 .alpha(if (allMissing) 0.6f else 1f),
                         )
 
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 4.dp),
-                        ) {
-                            group.bvid?.takeIf { it.isNotBlank() }?.let { bvid ->
-                                Text(
-                                    text = bvid,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = groupAccentColor,
-                                    maxLines = 1,
-                                    modifier = Modifier.padding(end = 12.dp),
-                                )
-                            }
-
-                            Text(
-                                text = buildCreatedAtText(context, group.createdAt),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = groupSupportingColor,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
+                        // 标题、时间和进度共用封面右侧这一列；时间允许换行，但不会流到封面下方。
+                        Text(
+                            text = formatDownloadCreatedAt(context, group.createdAt),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = groupSupportingColor,
+                            modifier = Modifier.padding(top = 6.dp),
+                        )
 
                         if (!isCompletedGroup || unavailableCount > 0) {
                             Row(
@@ -870,7 +859,10 @@ private fun DownloadsGroupCard(
                         }
                     }
 
-                    AnimatedVisibility(visible = !selectionMode) {
+                    AnimatedVisibility(
+                        visible = !selectionMode,
+                        modifier = Modifier.align(Alignment.CenterVertically),
+                    ) {
                         Icon(
                             painter = painterResource(R.drawable.ic_expand_more_24),
                             contentDescription = stringResource(R.string.downloads_group_toggle),
@@ -908,6 +900,12 @@ private fun DownloadsGroupCard(
                             ),
                     ) {
                         Column {
+                            DownloadsGroupActions(
+                                reparseEnabled = group.sourceUrl() != null,
+                                onReparse = onReparse,
+                                onShowDetails = onShowDetails,
+                                modifier = Modifier.padding(12.dp),
+                            )
                             if (showActionButton) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
@@ -934,6 +932,7 @@ private fun DownloadsGroupCard(
                                                 onResumeGroup()
                                             }
                                         },
+                                        shapes = ButtonDefaults.shapes(),
                                         modifier = Modifier.padding(start = 12.dp),
                                     ) {
                                         Icon(
@@ -1173,12 +1172,10 @@ private fun TaskOutcomeMessage(
     } else {
         resolveFailureReason(item.errorMessage)
     }
-    val params = buildMediaParams(context, item.mediaParams, item.fileName, item.taskType)
-    val paramsText = if (params.isNullOrBlank()) {
-        null
-    } else {
-        stringResource(R.string.download_task_params, params)
-    }
+    val paramsText = listOfNotNull(
+        buildDownloadSizeText(context, item)?.keepSizeUnitsTogether(),
+        buildTaskParamsText(context, item),
+    ).joinToString("\n").takeIf(String::isNotBlank)
     val message = buildAnnotatedString {
         pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
         append(label)
@@ -1232,7 +1229,7 @@ private fun TaskOutcomeMessage(
 }
 
 @Composable
-private fun resolveFailureReason(rawMessage: String?): String {
+internal fun resolveFailureReason(rawMessage: String?): String {
     val message = rawMessage?.trim()?.takeIf { it.isNotBlank() }
         ?: return stringResource(R.string.download_reason_unknown)
     return when (message) {
@@ -1344,7 +1341,7 @@ private fun buildSectionMetaTextLegacy(section: DownloadsSectionUi): String {
     }
     val parts = buildList {
         add(countText)
-        add("${formatBytes(section.speedBytesPerSec)}/s")
+        add("${formatDownloadBytes(section.speedBytesPerSec)}/s")
         section.etaSeconds?.let { add("剩余 ${formatEta(it)}") }
     }
     return parts.joinToString(" · ")
@@ -1358,20 +1355,12 @@ private fun buildSectionMetaLabelText(section: DownloadsSectionUi): String {
     }
     val speedText = stringResource(
         R.string.download_speed_format,
-        formatBytes(section.speedBytesPerSec),
+        formatDownloadBytes(section.speedBytesPerSec),
     )
     val etaText = section.etaSeconds?.let { seconds ->
         stringResource(R.string.download_eta_format, formatEta(seconds))
     }
     return listOfNotNull(countText, speedText, etaText).joinToString(" · ")
-}
-
-private fun buildCreatedAtText(context: Context, createdAt: Long): String {
-    if (createdAt <= 0L) {
-        return context.getString(R.string.download_time_unknown)
-    }
-    val formatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-    return "创建于：${formatter.format(Date(createdAt))}"
 }
 
 private fun buildGroupProgressSummaryText(
@@ -1428,14 +1417,14 @@ private fun buildGroupActionsSummaryText(
     val sizeSummary = if (totalBytes > 0L) {
         context.getString(
             R.string.download_size_progress,
-            formatBytes(downloadedBytes),
-            formatBytes(totalBytes),
+            formatDownloadBytes(downloadedBytes),
+            formatDownloadBytes(totalBytes),
         )
     } else {
         val fallbackDownloaded = group.tasks.sumOf { it.downloadedBytes.coerceAtLeast(0L) }
         context.getString(
             R.string.download_size_downloaded,
-            formatBytes(fallbackDownloaded),
+            formatDownloadBytes(fallbackDownloaded),
         )
     }
     val totalSpeedBytesPerSec = group.tasks.sumOf { item ->
@@ -1448,7 +1437,7 @@ private fun buildGroupActionsSummaryText(
             sizeSummary,
             context.getString(
                 R.string.download_speed_format,
-                formatBytes(totalSpeedBytesPerSec),
+                formatDownloadBytes(totalSpeedBytesPerSec),
             ),
         )
     } else {
@@ -1465,35 +1454,18 @@ private fun buildTaskDetailText(
     item: DownloadItem,
 ): String {
     val progress = DownloadProgressRules.normalizeTaskProgress(item.status, item.progress)
-    val downloaded = formatBytes(item.downloadedBytes)
-    val sizeText = if (item.totalBytes > 0L) {
-        context.getString(
-            R.string.download_size_progress,
-            downloaded,
-            formatBytes(item.totalBytes),
-        )
-    } else if (item.downloadedBytes > 0L) {
-        context.getString(R.string.download_size_downloaded, downloaded)
-    } else {
-        ""
-    }
     val baseText = when (item.status) {
         DownloadStatus.Running -> {
             val statusDetail = item.statusDetail?.takeIf { it.isNotBlank() }
             val speedText = if (item.speedBytesPerSec > 0L) {
-                context.getString(R.string.download_speed_format, formatBytes(item.speedBytesPerSec))
+                context.getString(R.string.download_speed_format, formatDownloadBytes(item.speedBytesPerSec))
             } else {
                 ""
             }
             when {
-                statusDetail != null && sizeText.isNotBlank() && speedText.isNotBlank() ->
-                    "$statusDetail - $sizeText - $speedText"
-                statusDetail != null && sizeText.isNotBlank() -> "$statusDetail - $sizeText"
                 statusDetail != null && speedText.isNotBlank() -> "$statusDetail - $speedText"
                 statusDetail != null -> statusDetail
-                sizeText.isNotBlank() && speedText.isNotBlank() -> "$sizeText - $speedText"
-                sizeText.isNotBlank() -> sizeText
-                speedText.isNotBlank() -> speedText
+                speedText.isNotBlank() -> "${context.getString(R.string.download_status_running, progress)} · $speedText"
                 else -> context.getString(R.string.download_status_running, progress)
             }
         }
@@ -1515,13 +1487,19 @@ private fun buildTaskDetailText(
 
         DownloadStatus.Cancelled -> context.getString(R.string.download_status_cancelled)
     }
-    val params = buildMediaParams(context, item.mediaParams, item.fileName, item.taskType)
-    return if (params.isNullOrBlank()) {
-        baseText
-    } else {
-        "$baseText\n${context.getString(R.string.download_task_params, params)}"
-    }
+    val statusAndSize = listOfNotNull(baseText, buildDownloadSizeText(context, item)?.keepSizeUnitsTogether()).joinToString(" · ")
+    return listOfNotNull(statusAndSize, buildTaskParamsText(context, item)).joinToString("\n")
 }
+
+private fun buildTaskParamsText(context: Context, item: DownloadItem): String? =
+    buildMediaParams(context, item.mediaParams, item.fileName, item.taskType)?.let {
+        context.getString(R.string.download_task_params, it)
+    }
+
+/** 字节单位与数值一起换行，避免窄屏只把 MB 挤到下一行。 */
+private fun String.keepSizeUnitsTogether(): String =
+    replace(" B", "\u00A0B").replace(" KB", "\u00A0KB").replace(" MB", "\u00A0MB")
+        .replace(" GB", "\u00A0GB").replace(" TB", "\u00A0TB")
 
 private fun buildTaskProgressText(
     context: Context,
@@ -1704,18 +1682,6 @@ private fun isManagedTask(item: DownloadItem): Boolean = isManagedTask(item.task
 
 private fun isManagedTask(taskType: DownloadTaskType): Boolean {
     return taskType.isManagedTransfer
-}
-
-private fun formatBytes(bytes: Long): String {
-    if (bytes <= 0L) return "0 B"
-    val units = arrayOf("B", "KB", "MB", "GB", "TB")
-    var value = bytes.toDouble()
-    var index = 0
-    while (value >= 1024 && index < units.lastIndex) {
-        value /= 1024
-        index++
-    }
-    return String.format(Locale.US, "%.1f %s", value, units[index])
 }
 
 private fun formatEta(totalSeconds: Long): String {

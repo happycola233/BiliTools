@@ -344,6 +344,16 @@
     <string name="download_delete_confirm_group">确定要删除该任务组吗？此操作将删除组内所有任务。</string>
     <string name="download_task_params">参数：%1$s</string>
     <string name="download_time_unknown">时间未知</string>
+    <string name="downloads_reparse">重新解析</string>
+    <string name="downloads_view_details">查看详细信息</string>
+    <string name="downloads_details_title">下载详情</string>
+    <string name="downloads_details_source">基本信息</string>
+    <string name="downloads_details_storage">文件与保存位置</string>
+    <string name="downloads_size_unknown">大小未知</string>
+    <string name="downloads_size_transferred">已下载 %1$s</string>
+    <string name="downloads_size_known">已知大小 %1$s</string>
+    <string name="downloads_no_saved_files">尚无已保存文件</string>
+    <string name="downloads_saved_count">已保存 %1$d / %2$d 项</string>
     <string name="download_action_open">打开方式</string>
     <string name="download_action_open_with">选择打开方式</string>
     <string name="download_action_share">分享</string>

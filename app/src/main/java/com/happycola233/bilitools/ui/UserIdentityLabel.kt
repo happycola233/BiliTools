@@ -32,12 +32,12 @@ internal fun UserIdentityLabel(
     onClick: (() -> Unit)? = null,
     onLongClickLabel: String? = null,
     onLongClick: (() -> Unit)? = null,
+    showPressFeedback: Boolean = false,
 ) {
     val haptics = rememberAppHaptics()
     val interactionSource = remember { MutableInteractionSource() }
     val interactionModifier = when {
-        onClick == null -> Modifier
-        onLongClick != null -> Modifier.combinedClickable(
+        onClick != null && onLongClick != null -> Modifier.combinedClickable(
             interactionSource = interactionSource,
             indication = null,
             onClick = {
@@ -51,7 +51,7 @@ internal fun UserIdentityLabel(
             },
             hapticFeedbackEnabled = false,
         )
-        else -> Modifier.clickable(
+        onClick != null -> Modifier.clickable(
             interactionSource = interactionSource,
             indication = null,
             onClick = {
@@ -59,11 +59,23 @@ internal fun UserIdentityLabel(
                 onClick()
             },
         )
+        onLongClick != null -> Modifier.longPressAction(
+            interactionKey = name,
+            actionLabel = onLongClickLabel,
+            feedbackShape = if (showPressFeedback) MaterialTheme.shapes.medium else null,
+            feedbackOutset = 4.dp,
+            onLongPress = onLongClick,
+        )
+        else -> Modifier
     }
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.then(interactionModifier),
+        modifier = if (showPressFeedback && onClick != null) {
+            modifier.pressFeedback(interactionSource, outset = 4.dp).then(interactionModifier)
+        } else {
+            modifier.then(interactionModifier)
+        },
     ) {
         AsyncImage(
             model = avatarUrl?.trim()?.takeIf { it.isNotBlank() } ?: R.drawable.default_avatar,

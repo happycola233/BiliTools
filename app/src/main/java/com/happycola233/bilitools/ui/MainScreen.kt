@@ -174,6 +174,7 @@ private fun MainContentLayer(
                     viewModel = downloadsViewModel,
                     contentTopPadding = MainTopBarExpandedHeight,
                     taskActionsOverlayState = taskActionsOverlayState,
+                    onOpenParseUrl = onOpenParseUrl,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
