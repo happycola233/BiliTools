@@ -1002,7 +1002,7 @@ class MediaRepository(
         val targetId = target ?: idNum.toLongOrNull()
             ?: throw BiliHttpException("No favorite id provided", -1)
         // 请求页容量；服务端按这个宽度切窗口，medias 实际条数可以更少
-        val pageSize = 36
+        val pageSize = FAVORITE_PAGE_SIZE
         val listAdapter = httpClient.adapter(FavoriteResourceResponse::class.java)
         val page = options.page.coerceAtLeast(1)
         val listBody = httpClient.get(
@@ -1023,7 +1023,7 @@ class MediaRepository(
         }
         val data = listResp.data
         val baseIndex = (page - 1) * pageSize
-        val list = data.medias.mapIndexed { index, item ->
+        val list = data.medias.orEmpty().mapIndexed { index, item ->
             val itemStat = item.cntInfo?.let { cnt ->
                 // 收藏夹列表项的 cnt_info 只有基础计数，完整视频统计需要再查视频详情。
                 MediaStat(
@@ -1085,6 +1085,7 @@ class MediaRepository(
             id = id,
             paged = true,
             totalPages = totalPagesFromItemCount(resolvedInfo.mediaCount, pageSize),
+            hasMore = data.hasMore,
             nfo = MediaNfo(
                 showTitle = resolvedInfo.title,
                 intro = resolvedInfo.intro,
@@ -1231,6 +1232,30 @@ class MediaRepository(
         )
     }
 
+    private suspend fun fetchUploadsDirectory(mid: String): List<UploadsMeta> {
+        val entries = mutableListOf<UploadsMeta>()
+        var page = 1
+        do {
+            val body = httpClient.get(
+                buildUrl(
+                    "https://api.bilibili.com/x/polymer/web-space/seasons_series_list",
+                    mapOf("mid" to mid, "page_num" to page.toString(), "page_size" to UPLOADS_DIRECTORY_PAGE_SIZE.toString()),
+                ),
+            )
+            val response = httpClient.adapter(UploadsDirectoryResponse::class.java).fromJson(body)
+                ?: throw BiliHttpException("Empty uploads directory", -1)
+            val data = response.data?.itemsLists
+            if (response.code != 0 || data == null) {
+                throw BiliHttpException(response.message ?: "Uploads directory error", response.code)
+            }
+            entries += data.seasonsList.orEmpty().mapNotNull { it.meta }
+            entries += data.seriesList.orEmpty().mapNotNull { it.meta }
+            val hasMore = page * UPLOADS_DIRECTORY_PAGE_SIZE < data.page.total
+            page += 1
+        } while (hasMore)
+        return entries
+    }
+
     private suspend fun fetchUserVideoInfo(
         id: String,
         options: MediaQueryOptions,
@@ -1242,95 +1267,30 @@ class MediaRepository(
         val target = options.target
 
         if (target != null) {
-            val params = mapOf(
-                "mid" to idNum,
-                "page_size" to "10",
-                "page_num" to options.page.toString(),
+            // 目录分页与选中合集的内容分页互不相关；先在完整目录里定位目标。
+            val directory = fetchUploadsDirectory(idNum)
+            val resolvedMeta = directory.firstOrNull { it.listId == target }
+                ?: throw BiliHttpException("No list found for target $target", -1)
+            val isSeason = resolvedMeta.seasonId != null
+            val sections = MediaSections(
+                target = target,
+                tabs = directory.filter { (it.seasonId != null) == isSeason }
+                    .map { MediaTab(it.listId, it.name) },
             )
-            val body = httpClient.get(
-                buildUrl(
-                    "https://api.bilibili.com/x/polymer/web-space/home/seasons_series",
-                    params,
-                ),
+            val page = options.page.coerceAtLeast(1)
+            val listPageSize = UPLOADS_LIST_PAGE_SIZE
+            val listBody = httpClient.get(
+                buildUploadsListUrl(idNum, target, isSeason, page),
             )
-            val adapter = httpClient.adapter(UploadsSeriesResponse::class.java)
-            val resp = adapter.fromJson(body) ?: throw BiliHttpException("Empty uploads response", -1)
-            val itemsLists = resp.data?.itemsLists
-            if (resp.code != 0 || itemsLists == null) {
-                throw BiliHttpException(resp.message ?: "Uploads error", resp.code)
+            val listResp = httpClient.adapter(UploadsArchivesResponse::class.java).fromJson(listBody)
+                ?: throw BiliHttpException("Empty uploads list", -1)
+            val data = listResp.data
+            if (listResp.code != 0 || data == null) {
+                throw BiliHttpException(listResp.message ?: "Uploads list error", listResp.code)
             }
-            val seasons = itemsLists.seasonsList.orEmpty()
-            val series = itemsLists.seriesList.orEmpty()
-            val matchedSeason = seasons.firstOrNull { it.meta?.seasonId == target }?.meta
-            val matchedSeries = series.firstOrNull { it.meta?.seriesId == target }?.meta
-            val useSeason = when {
-                matchedSeason != null -> true
-                matchedSeries != null -> false
-                seasons.isNotEmpty() && series.isEmpty() -> true
-                series.isNotEmpty() && seasons.isEmpty() -> false
-                else -> throw BiliHttpException("No list found for target $target", -1)
-            }
-
-            // 合集/系列列表请求固定 page_size=10，与上方 params 保持一致
-            val listPageSize = 10
-            val selection = if (useSeason) {
-                val resolvedTarget = matchedSeason?.seasonId ?: target
-                val listBody = httpClient.get(
-                    buildUrl(
-                        "https://api.bilibili.com/x/polymer/web-space/seasons_archives_list",
-                        params + mapOf("season_id" to resolvedTarget.toString()),
-                    ),
-                )
-                val listAdapter = httpClient.adapter(UploadsArchivesResponse::class.java)
-                val listResp = listAdapter.fromJson(listBody)
-                    ?: throw BiliHttpException("Empty uploads list", -1)
-                if (listResp.code != 0 || listResp.data == null) {
-                    throw BiliHttpException(listResp.message ?: "Uploads list error", listResp.code)
-                }
-                val resolvedMeta = seasons.firstOrNull { it.meta?.seasonId == resolvedTarget }?.meta
-                UploadsListSelection(
-                    archives = listResp.data.archives.orEmpty(),
-                    meta = resolvedMeta,
-                    sections = MediaSections(
-                        target = resolvedTarget,
-                        tabs = seasons.mapNotNull { item ->
-                            val metaItem = item.meta ?: return@mapNotNull null
-                            MediaTab(metaItem.seasonId, metaItem.name)
-                        },
-                    ),
-                    totalItems = listResp.data.page?.total,
-                )
-            } else {
-                val resolvedTarget = matchedSeries?.seriesId ?: target
-                val listBody = httpClient.get(
-                    buildUrl(
-                        "https://api.bilibili.com/x/series/archives",
-                        params + mapOf("series_id" to resolvedTarget.toString()),
-                    ),
-                )
-                val listAdapter = httpClient.adapter(UploadsArchivesResponse::class.java)
-                val listResp = listAdapter.fromJson(listBody)
-                    ?: throw BiliHttpException("Empty uploads list", -1)
-                if (listResp.code != 0 || listResp.data == null) {
-                    throw BiliHttpException(listResp.message ?: "Uploads list error", listResp.code)
-                }
-                val resolvedMeta = series.firstOrNull { it.meta?.seriesId == resolvedTarget }?.meta
-                UploadsListSelection(
-                    archives = listResp.data.archives.orEmpty(),
-                    meta = resolvedMeta,
-                    sections = MediaSections(
-                        target = resolvedTarget,
-                        tabs = series.mapNotNull { item ->
-                            val metaItem = item.meta ?: return@mapNotNull null
-                            MediaTab(metaItem.seriesId, metaItem.name)
-                        },
-                    ),
-                    totalItems = listResp.data.page?.total,
-                )
-            }
-
-            val (archives, meta, sections, listTotalItems) = selection
-            val resolvedMeta = meta ?: throw BiliHttpException("No meta found for uploads", -1)
+            val archives = data.archives.orEmpty()
+            val listTotalItems = data.page?.total
+            val createdAt = resolvedMeta.ptime ?: resolvedMeta.ctime
             val list = archives.mapIndexed { index, item ->
                 MediaItem(
                     title = item.title,
@@ -1343,7 +1303,7 @@ class MediaRepository(
                     pubTime = item.pubdate,
                     type = MediaType.Video,
                     isTarget = index == 0,
-                    index = index,
+                    index = (page - 1) * listPageSize + index,
                     workTitle = item.title,
                     sourceMid = upperMid,
                     metadata = MediaMetadata(
@@ -1368,14 +1328,14 @@ class MediaRepository(
                             MediaThumb("cover", normalizeCoverUrl(it))
                         },
                     ),
-                    premiered = resolvedMeta.ptime,
+                    premiered = createdAt,
                     upper = upper,
                 ),
                 sections = sections,
                 list = list,
                 metadata = MediaMetadata(
                     itemCount = (listTotalItems ?: archives.size).takeIf { it > 0 },
-                    createdAt = resolvedMeta.ptime.takeIf { it > 0L },
+                    createdAt = createdAt?.takeIf { it > 0L },
                 ),
             )
         }
@@ -2696,7 +2656,7 @@ private data class FavoriteResourceResponse(
 private data class FavoriteResourceData(
     @Json(name = "info") val info: FavoriteInfo,
     // 当前窗口内能展示的稿件；失效/无权限等仍占分页名额，所以条数可以小于请求的 ps
-    @Json(name = "medias") val medias: List<FavoriteMedia>,
+    @Json(name = "medias") val medias: List<FavoriteMedia>?,
     @Json(name = "has_more") val hasMore: Boolean? = null,
 )
 
@@ -2803,32 +2763,28 @@ private data class OpusListAuthor(
     @Json(name = "face") val face: String?,
 )
 
-private data class UploadsSeriesResponse(
+private data class UploadsDirectoryResponse(
     @Json(name = "code") val code: Int,
     @Json(name = "message") val message: String?,
-    @Json(name = "data") val data: UploadsSeriesData?,
+    @Json(name = "data") val data: UploadsDirectoryData?,
 )
 
-private data class UploadsSeriesData(
-    @Json(name = "items_lists") val itemsLists: UploadsSeriesItems?,
+private data class UploadsDirectoryData(
+    @Json(name = "items_lists") val itemsLists: UploadsDirectoryItems?,
 )
 
-private data class UploadsSeriesItems(
-    @Json(name = "seasons_list") val seasonsList: List<UploadsSeriesItem>?,
-    @Json(name = "series_list") val seriesList: List<UploadsSeriesItem>?,
+private data class UploadsDirectoryItems(
+    @Json(name = "page") val page: UploadsDirectoryPage,
+    @Json(name = "seasons_list") val seasonsList: List<UploadsDirectoryEntry>?,
+    @Json(name = "series_list") val seriesList: List<UploadsDirectoryEntry>?,
 )
 
-private data class UploadsSeriesItem(
-    @Json(name = "archives") val archives: List<UploadsArchive>?,
+private data class UploadsDirectoryPage(
+    @Json(name = "total") val total: Int,
+)
+
+private data class UploadsDirectoryEntry(
     @Json(name = "meta") val meta: UploadsMeta?,
-)
-
-// 合集/系列分支解析结果：条目列表、元数据、分节 tab 与列表内总条目数
-private data class UploadsListSelection(
-    val archives: List<UploadsArchive>,
-    val meta: UploadsMeta?,
-    val sections: MediaSections,
-    val totalItems: Int?,
 )
 
 private data class UploadsArchivesResponse(
@@ -2859,12 +2815,16 @@ private data class UploadsArchive(
 private data class UploadsMeta(
     @Json(name = "cover") val cover: String,
     @Json(name = "description") val description: String,
-    @Json(name = "mid") val mid: Long,
     @Json(name = "name") val name: String,
-    @Json(name = "ptime") val ptime: Long,
-    @Json(name = "season_id") val seasonId: Long,
-    @Json(name = "series_id") val seriesId: Long,
-)
+    // 新合集给 ptime，旧系列给 ctime；两类 ID 也互斥，不能要求同时出现。
+    @Json(name = "ptime") val ptime: Long? = null,
+    @Json(name = "ctime") val ctime: Long? = null,
+    @Json(name = "season_id") val seasonId: Long? = null,
+    @Json(name = "series_id") val seriesId: Long? = null,
+) {
+    val listId: Long get() = seasonId ?: seriesId
+        ?: throw BiliHttpException("Missing uploads list id", -1)
+}
 
 private data class UploadsSearchResponse(
     @Json(name = "code") val code: Int,

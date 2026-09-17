@@ -68,6 +68,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -185,15 +186,29 @@ private data class DisplayedUpperFollowerTarget(
     val followerCount: Long?,
 )
 
-private data class StreamRequestKey(
+internal data class StreamRequestKey(
     val mediaId: String,
     val mediaType: MediaType,
     val selectedSectionId: Long?,
-    val pageIndex: Int,
+    val listGeneration: Int,
     val collectionMode: Boolean,
     val selectedItemIndex: Int,
     val format: StreamFormat,
 )
+
+internal fun ParseUiState.streamRequestKeyOrNull(): StreamRequestKey? {
+    val info = mediaInfo ?: return null
+    if (selectedItemIndex !in items.indices) return null
+    return StreamRequestKey(
+        mediaId = info.id,
+        mediaType = info.type,
+        selectedSectionId = selectedSectionId,
+        listGeneration = pagination.generation,
+        collectionMode = collectionMode,
+        selectedItemIndex = selectedItemIndex,
+        format = availableStreamFormat,
+    )
+}
 
 private data class ExtrasTargetKey(
     val mediaType: MediaType,
@@ -317,6 +332,7 @@ data class ParseUiState(
     val sections: MediaSections? = null,
     val selectedSectionId: Long? = null,
     val pageIndex: Int = 1,
+    val pagination: ParsePagination = ParsePagination(),
     val collectionMode: Boolean = false,
     val selectedMediaType: MediaType? = null,
     val format: StreamFormat = StreamFormat.Dash,
@@ -472,6 +488,9 @@ class ParseViewModel(
     val events: Flow<ParseEvent> = eventChannel.receiveAsFlow()
     private val fullResolutionIds = listOf(127, 126, 125, 120, 116, 112, 80, 64, 32, 16, 6)
     private val fullAudioIds = AudioQualities.allIds
+    private var mediaLoadJob: Job? = null
+    private var appendPageJob: Job? = null
+    private var scrollRequestId = 0
     private val offsetMap = mutableMapOf<Int, String>()
     private val itemPresentationCache = mutableMapOf<String, MediaItem>()
     private val itemPresentationRequests = mutableMapOf<String, Long>()
@@ -592,8 +611,9 @@ class ParseViewModel(
             }
             return
         }
+        cancelListLoads()
         invalidateExtrasRefresh()
-        viewModelScope.launch {
+        mediaLoadJob = viewModelScope.launch {
             // 中止仍在进行的旧取流，但保留已完成/已失败标记。若本次解析失败，页面下方保留的
             // 旧结果便不会立刻触发重复取流并清掉刚产生的解析错误。
             invalidateActiveStreamLoad()
@@ -629,16 +649,9 @@ class ParseViewModel(
                     normalizeQualityModes(
                         applyDefaultDownloadQuality(
                             applyInitialDownloadOptions(
-                                it.resetSubtitleChoices().copy(
+                                it.resetSubtitleChoices().withNewList(info, 1, nextScrollRequest(1)).copy(
                                     loading = false,
-                                    mediaInfo = info,
-                                    items = info.list,
                                     streamFormatEvidence = emptyMap(),
-                                    selectedItemIndex = defaultIndex,
-                                    selectedItemIndices = if (info.list.isNotEmpty()) listOf(defaultIndex) else emptyList(),
-                                    sections = info.sections,
-                                    selectedSectionId = info.sections?.target,
-                                    pageIndex = 1,
                                     collectionMode = false,
                                     playUrlInfo = null,
                                     videoStreams = emptyList(),
@@ -651,8 +664,6 @@ class ParseViewModel(
                                     selectedAudioId = null,
                                     opusImagesAvailable = null,
                                     warning = null,
-                                    previewItemIndex = null,
-                                    selectedItemStat = info.list.getOrNull(defaultIndex)?.stat,
                                     streamLoading = defaultCapabilities?.supportsPlaybackStream == true,
                                     isLoggedIn = authRepository.isLoggedIn(),
                                 ),
@@ -664,14 +675,10 @@ class ParseViewModel(
                 info.list.getOrNull(defaultIndex)?.let { item ->
                     refreshExtras(info, item)
                 }
-                if (info.type == MediaType.UserOpus) {
-                    offsetMap[1] = ""
-                    val nextOffset = info.offset?.takeIf { info.hasMore != false }
-                    if (nextOffset != null) {
-                        offsetMap[2] = nextOffset
-                    }
-                }
+                rememberPageOffset(info, 1)
+                if (_state.value.items.isEmpty()) appendNextPage()
             }.onFailure { err ->
+                if (err is CancellationException) throw err
                 // 输入无法识别属于表单校验问题，就地提示比顶部横幅更贴近出错位置。
                 if (err is InvalidMediaInputException) {
                     _state.update {
@@ -690,6 +697,7 @@ class ParseViewModel(
     }
 
     fun clear() {
+        cancelListLoads()
         val selectedType = _state.value.selectedMediaType
         resetStreamLoadTracking()
         invalidateExtrasRefresh()
@@ -811,216 +819,177 @@ class ParseViewModel(
         }
     }
 
+    /** 按钮与页码输入只负责定位；相邻新页沿用追加请求，已加载的页不再请求上游。 */
     fun loadPage(page: Int) {
-        val info = _state.value.mediaInfo ?: return
-        if (!info.paged) return
-        val targetPage = page.coerceAtLeast(1)
-        val targetSection = _state.value.selectedSectionId
-        val collectionMode = _state.value.collectionMode
-        val offset = if (info.type == MediaType.UserOpus) {
-            offsetMap[targetPage] ?: run {
-                _state.update { it.copy(notice = strings.get(R.string.parse_notice_page_not_loaded)) }
-                return
-            }
+        val current = _state.value
+        val info = current.mediaInfo ?: return
+        if (!info.paged || current.loading || current.collectionModeLoading) return
+        val target = page.coerceIn(1, info.totalPages?.coerceAtLeast(1) ?: Int.MAX_VALUE)
+        if (current.pagination.pages.any { it.page == target }) {
+            requestPageScroll(target)
+        } else if (target == (current.pagination.lastLoadedPage ?: 0) + 1 && current.pagination.hasMore) {
+            requestPageScroll(target)
+            appendNextPage()
         } else {
-            null
-        }
-        viewModelScope.launch {
-            resetStreamLoadTracking()
-            _state.update {
-                it.copy(
-                    loading = true,
-                    streamLoading = false,
-                    collectionModeLoading = false,
-                    error = null,
-                    notice = null,
-                )
-            }
-            runCatching {
-                val updated = mediaRepository.getMediaInfo(
-                    info.id,
-                    info.type,
-                    com.happycola233.bilitools.data.model.MediaQueryOptions(
-                        page = targetPage,
-                        target = targetSection,
-                        collection = collectionMode,
-                        offset = offset,
-                    ),
-                )
-                if (updated.list.isEmpty() && targetPage > 1) {
-                    _state.update {
-                        it.copy(
-                            loading = false,
-                            notice = strings.get(R.string.parse_notice_no_more),
-                        )
-                    }
-                    return@launch
-                }
-                val defaultIndex =
-                    updated.list.indexOfFirst { it.isTarget }.takeIf { it >= 0 } ?: 0
-                _state.update {
-                    normalizeQualityModes(
-                        it.withoutLoadedStreams().copy(
-                            loading = false,
-                            mediaInfo = updated,
-                            items = updated.list,
-                            selectedItemIndex = defaultIndex,
-                            selectedItemIndices = if (updated.list.isNotEmpty()) listOf(defaultIndex) else emptyList(),
-                            sections = updated.sections,
-                            selectedSectionId = updated.sections?.target,
-                            pageIndex = targetPage,
-                            warning = null,
-                            previewItemIndex = null,
-                            selectedItemStat = updated.list.getOrNull(defaultIndex)?.stat,
-                            opusImagesAvailable = null,
-                            streamLoading = updated.list.isNotEmpty() && it.outputType != null,
-                        ),
-                    )
-                }
-                updated.list.getOrNull(defaultIndex)?.let { item ->
-                    refreshExtras(updated, item)
-                }
-                if (updated.type == MediaType.UserOpus) {
-                    if (targetPage == 1) {
-                        offsetMap[1] = ""
-                    }
-                    val nextOffset = updated.offset?.takeIf { updated.hasMore != false }
-                    if (nextOffset != null) {
-                        offsetMap[targetPage + 1] = nextOffset
-                    } else {
-                        offsetMap.remove(targetPage + 1)
-                    }
-                }
-            }.onFailure { err ->
-                setLoadingError(err)
-            }
+            reloadListPage(info, target, current.selectedSectionId, current.collectionMode)
         }
     }
 
     fun loadNextPage() {
-        loadPage(_state.value.pageIndex + 1)
+        if (_state.value.canGoToNextPage) loadPage(_state.value.pageIndex + 1)
     }
 
     fun loadPrevPage() {
-        loadPage(_state.value.pageIndex - 1)
+        if (_state.value.pageIndex > 1) loadPage(_state.value.pageIndex - 1)
+    }
+
+    fun onVisiblePageChange(page: Int) {
+        _state.update {
+            if (it.loading || it.collectionModeLoading || it.pagination.scrollRequest != null || it.pageIndex == page) it
+            else it.copy(pageIndex = page)
+        }
+    }
+
+    fun onPageScrollHandled(requestId: Int) {
+        _state.update {
+            if (it.pagination.scrollRequest?.id == requestId) it.copy(pagination = it.pagination.copy(scrollRequest = null))
+            else it
+        }
+    }
+
+    private fun nextScrollRequest(page: Int) = ParseScrollRequest(page, ++scrollRequestId)
+
+    private fun requestPageScroll(page: Int) {
+        val request = nextScrollRequest(page)
+        _state.update { it.copy(pageIndex = page, pagination = it.pagination.copy(scrollRequest = request)) }
+    }
+
+    fun appendNextPage() {
+        val current = _state.value
+        if (current.loading || current.collectionModeLoading || current.pagination.appending || !current.pagination.hasMore) return
+        _state.update { it.copy(pagination = it.pagination.copy(appending = true, appendError = null)) }
+        appendPageJob = viewModelScope.launch {
+            try {
+                do {
+                    val before = _state.value
+                    val info = before.mediaInfo!!
+                    val page = before.pagination.lastLoadedPage!! + 1
+                    val offset = pageOffset(info, page) ?: run {
+                        _state.update {
+                            it.copy(pagination = it.pagination.copy(
+                                appending = false,
+                                appendError = strings.get(R.string.parse_notice_page_not_loaded),
+                                scrollRequest = null,
+                            ))
+                        }
+                        return@launch
+                    }
+                    val result = mediaRepository.getMediaInfo(
+                        info.id, info.type,
+                        MediaQueryOptions(page = page, target = before.selectedSectionId, collection = before.collectionMode, offset = offset),
+                    )
+                    rememberPageOffset(result, page)
+                    _state.update { it.withAppendedPage(result, page) }
+                    val added = _state.value.items.size - before.items.size
+                    if (before.items.isEmpty() && added > 0) {
+                        _state.value.items.firstOrNull()?.let { refreshExtras(result, it) }
+                    }
+                    // 少返回与空页都不重新切分页码；没有新增内容时继续按服务端信息向后推进。
+                } while (added == 0 && _state.value.pagination.hasMore)
+                _state.update { it.copy(pagination = it.pagination.copy(appending = false)) }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Throwable) {
+                _state.update {
+                    it.copy(pagination = it.pagination.copy(appending = false, appendError = mapError(error), scrollRequest = null))
+                }
+            }
+        }
     }
 
     fun selectSection(sectionId: Long) {
-        val info = _state.value.mediaInfo ?: return
-        viewModelScope.launch {
-            resetStreamLoadTracking()
-            _state.update {
-                it.copy(
-                    loading = true,
-                    streamLoading = false,
-                    collectionModeLoading = false,
-                    error = null,
-                    notice = null,
-                )
-            }
-            runCatching {
+        val current = _state.value
+        val info = current.mediaInfo ?: return
+        if (current.loading || current.collectionModeLoading || current.selectedSectionId == sectionId) return
+        reloadListPage(info, 1, sectionId, current.collectionMode)
+    }
+
+    fun setCollectionMode(enabled: Boolean) {
+        val current = _state.value
+        val info = current.mediaInfo ?: return
+        if (current.loading || current.collectionModeLoading || current.collectionMode == enabled) return
+        reloadListPage(info, 1, current.selectedSectionId, enabled)
+    }
+
+    private fun reloadListPage(info: MediaInfo, page: Int, sectionId: Long?, collectionMode: Boolean) {
+        val offset = pageOffset(info, page) ?: return
+        val previousMode = _state.value.collectionMode
+        val changingMode = previousMode != collectionMode
+        cancelListLoads()
+        invalidateExtrasRefresh()
+        resetStreamLoadTracking()
+        _state.update {
+            it.copy(
+                loading = !changingMode,
+                collectionModeLoading = changingMode,
+                collectionMode = collectionMode,
+                streamLoading = false,
+                error = null,
+                notice = null,
+                pagination = it.pagination.copy(scrollRequest = null, appendError = null),
+            )
+        }
+        mediaLoadJob = viewModelScope.launch {
+            try {
                 val updated = mediaRepository.getMediaInfo(
-                    info.id,
-                    info.type,
-                    com.happycola233.bilitools.data.model.MediaQueryOptions(
-                        target = sectionId,
-                        collection = _state.value.collectionMode,
-                    ),
+                    info.id, info.type,
+                    MediaQueryOptions(page = page, target = sectionId, collection = collectionMode, offset = offset),
                 )
-                val defaultIndex =
-                    updated.list.indexOfFirst { it.isTarget }.takeIf { it >= 0 } ?: 0
+                rememberPageOffset(updated, page)
                 _state.update {
                     normalizeQualityModes(
-                        it.withoutLoadedStreams().copy(
+                        it.withoutLoadedStreams().withNewList(updated, page, nextScrollRequest(page)).copy(
                             loading = false,
-                            mediaInfo = updated,
-                            items = updated.list,
-                            selectedItemIndex = defaultIndex,
-                            selectedItemIndices = if (updated.list.isNotEmpty()) listOf(defaultIndex) else emptyList(),
-                            sections = updated.sections,
-                            selectedSectionId = updated.sections?.target,
-                            pageIndex = 1,
+                            collectionModeLoading = false,
                             warning = null,
-                            previewItemIndex = null,
-                            selectedItemStat = updated.list.getOrNull(defaultIndex)?.stat,
                             opusImagesAvailable = null,
                             streamLoading = updated.list.isNotEmpty() && it.outputType != null,
                         ),
                     )
                 }
-                updated.list.getOrNull(defaultIndex)?.let { item ->
-                    refreshExtras(updated, item)
-                }
-            }.onFailure { err ->
-                setLoadingError(err)
+                currentItem()?.let { refreshExtras(updated, it) }
+                if (_state.value.items.isEmpty()) appendNextPage()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Throwable) {
+                _state.update { it.copy(collectionMode = previousMode) }
+                setLoadingError(error)
             }
         }
     }
 
-    fun setCollectionMode(enabled: Boolean) {
-        val snapshot = _state.value
-        val info = snapshot.mediaInfo ?: return
-        if (snapshot.collectionMode == enabled || snapshot.collectionModeLoading) return
-        val previousMode = snapshot.collectionMode
-        val target = snapshot.selectedSectionId
-        viewModelScope.launch {
-            resetStreamLoadTracking()
+    /** 游标来源只能跳到已取得入口游标的页；其余来源不需要 offset。 */
+    private fun pageOffset(info: MediaInfo, page: Int): String? {
+        if (info.type != MediaType.UserOpus || page == 1) return ""
+        return offsetMap[page] ?: run {
             _state.update {
-                it.copy(
-                    collectionMode = enabled,
-                    collectionModeLoading = true,
-                    streamLoading = false,
-                    error = null,
-                    notice = null,
-                )
+                it.copy(notice = strings.get(R.string.parse_notice_page_not_loaded))
             }
-            runCatching {
-                val updated = mediaRepository.getMediaInfo(
-                    info.id,
-                    info.type,
-                    com.happycola233.bilitools.data.model.MediaQueryOptions(
-                        target = target,
-                        collection = enabled,
-                    ),
-                )
-                val defaultIndex =
-                    updated.list.indexOfFirst { it.isTarget }.takeIf { it >= 0 } ?: 0
-                _state.update {
-                    normalizeQualityModes(
-                        it.withoutLoadedStreams().copy(
-                            loading = false,
-                            mediaInfo = updated,
-                            items = updated.list,
-                            selectedItemIndex = defaultIndex,
-                            selectedItemIndices = if (updated.list.isNotEmpty()) listOf(defaultIndex) else emptyList(),
-                            sections = updated.sections,
-                            selectedSectionId = updated.sections?.target,
-                            collectionMode = enabled,
-                            collectionModeLoading = false,
-                            pageIndex = 1,
-                            warning = null,
-                            previewItemIndex = null,
-                            selectedItemStat = updated.list.getOrNull(defaultIndex)?.stat,
-                            opusImagesAvailable = null,
-                            streamLoading = updated.list.isNotEmpty() && it.outputType != null,
-                        ),
-                    )
-                }
-                updated.list.getOrNull(defaultIndex)?.let { item ->
-                    refreshExtras(updated, item)
-                }
-            }.onFailure { err ->
-                _state.update {
-                    it.copy(
-                        collectionMode = previousMode,
-                        collectionModeLoading = false,
-                        streamLoading = false,
-                        error = mapError(err),
-                        isLoggedIn = authRepository.isLoggedIn(),
-                    )
-                }
-            }
+            null
         }
+    }
+
+    private fun rememberPageOffset(info: MediaInfo, page: Int) {
+        if (info.type != MediaType.UserOpus) return
+        if (page == 1) offsetMap[1] = ""
+        val next = info.offset?.takeIf { info.hasMore == true }
+        if (next != null) offsetMap[page + 1] = next else offsetMap.remove(page + 1)
+    }
+
+    private fun cancelListLoads() {
+        mediaLoadJob?.cancel()
+        appendPageJob?.cancel()
+        _state.update { it.copy(pagination = it.pagination.copy(appending = false, appendError = null, scrollRequest = null)) }
     }
 
     fun setFormat(format: StreamFormat) {
@@ -1291,6 +1260,7 @@ class ParseViewModel(
             _state.update { it.copy(streamLoading = true, error = null, notice = null) }
             runCatching {
                 val resolvedItem = mediaRepository.resolveItemForPlay(item, item.type)
+                if (requestGeneration != streamLoadGeneration || requestKey != _state.value.streamRequestKeyOrNull()) return@launch
                 if (resolvedItem != item) {
                     _state.update { current ->
                         val updatedItems = current.items.toMutableList()
@@ -3188,20 +3158,6 @@ class ParseViewModel(
     private fun ParseUiState.autoStreamRequestKeyOrNull(): StreamRequestKey? {
         if (!canAutoLoadStream()) return null
         return streamRequestKeyOrNull()
-    }
-
-    private fun ParseUiState.streamRequestKeyOrNull(): StreamRequestKey? {
-        val info = mediaInfo ?: return null
-        if (selectedItemIndex !in items.indices) return null
-        return StreamRequestKey(
-            mediaId = info.id,
-            mediaType = info.type,
-            selectedSectionId = selectedSectionId,
-            pageIndex = pageIndex,
-            collectionMode = collectionMode,
-            selectedItemIndex = selectedItemIndex,
-            format = availableStreamFormat,
-        )
     }
 
     private fun resetStreamLoadTracking() {

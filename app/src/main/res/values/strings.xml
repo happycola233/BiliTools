@@ -107,6 +107,8 @@
     <string name="parse_page_nav_label">页码</string>
     <string name="parse_page_prev">上一页</string>
     <string name="parse_page_next">下一页</string>
+    <string name="parse_load_more_failed">加载失败，点击重试</string>
+    <string name="parse_list_empty">暂无可显示的内容</string>
     <string name="parse_page_status">第 %1$d 页</string>
     <string name="parse_page_status_with_pages">第 %1$d 页 · 共 %2$d 页</string>
     <string name="parse_section_label_favorite">选择收藏夹</string>

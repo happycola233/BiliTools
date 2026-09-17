@@ -5,6 +5,7 @@ import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import com.happycola233.bilitools.data.SettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.Call
 import okhttp3.FormBody
 import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
@@ -14,6 +15,7 @@ import okhttp3.Response
 class BiliHttpClient(
     private val cookieStore: CookieStore,
     private val settingsRepository: SettingsRepository,
+    callFactory: Call.Factory? = null,
 ) {
     private val moshi by lazy {
         Moshi.Builder()
@@ -22,7 +24,7 @@ class BiliHttpClient(
     }
 
     private val client by lazy {
-        OkHttpClient.Builder()
+        callFactory ?: OkHttpClient.Builder()
             .addInterceptor { chain ->
                 val cookie = cookieStore.cookieHeader()
                 val request = chain.request().newBuilder()

@@ -30,12 +30,6 @@ data class HistoryItem(
         get() = coverUrls.firstOrNull() ?: coverUrl
 }
 
-data class HistoryCursorInfo(
-    val tabs: List<HistoryTab>,
-    val defaultBusiness: String?,
-    val list: List<HistoryItem>,
-)
-
 data class HistorySearchParams(
     val page: Int = 1,
     val pageSize: Int = DEFAULT_HISTORY_PAGE_SIZE,

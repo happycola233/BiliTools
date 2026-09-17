@@ -6,7 +6,6 @@ import com.happycola233.bilitools.core.DanmakuElem
 import com.happycola233.bilitools.core.DanmakuParser
 import com.happycola233.bilitools.core.WbiSigner
 import com.happycola233.bilitools.data.model.DEFAULT_HISTORY_PAGE_SIZE
-import com.happycola233.bilitools.data.model.HistoryCursorInfo
 import com.happycola233.bilitools.data.model.HistoryItem
 import com.happycola233.bilitools.data.model.HistorySearchParams
 import com.happycola233.bilitools.data.model.HistorySearchResult
@@ -215,7 +214,7 @@ class ExtrasRepository(
         return httpClient.getBytes(normalizeUrl(url).toHttpUrl())
     }
 
-    suspend fun getHistoryCursor(): HistoryCursorInfo {
+    suspend fun getHistoryTabs(): List<HistoryTab> {
         val url = "https://api.bilibili.com/x/web-interface/history/cursor"
             .toHttpUrl()
             .newBuilder()
@@ -231,11 +230,7 @@ class ExtrasRepository(
             throw BiliHttpException(response.message ?: "History cursor failed", response.code)
         }
 
-        return HistoryCursorInfo(
-            tabs = data.tab.orEmpty().mapNotNull { it.toModel() },
-            defaultBusiness = data.cursor?.business?.trim().takeUnless { it.isNullOrBlank() },
-            list = data.list.orEmpty().mapNotNull { it.toModel() },
-        )
+        return data.tab.orEmpty().mapNotNull { it.toModel() }
     }
 
     suspend fun getHistorySearch(params: HistorySearchParams): HistorySearchResult {
@@ -517,13 +512,7 @@ private data class HistoryCursorResponse(
 )
 
 private data class HistoryCursorData(
-    @param:Json(name = "cursor") val cursor: HistoryCursorMeta?,
-    @param:Json(name = "list") val list: List<HistoryItemData>?,
     @param:Json(name = "tab") val tab: List<HistoryTabData>?,
-)
-
-private data class HistoryCursorMeta(
-    @param:Json(name = "business") val business: String?,
 )
 
 private data class HistorySearchResponse(

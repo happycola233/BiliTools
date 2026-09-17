@@ -54,8 +54,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListLayoutInfo
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberOverscrollEffect
@@ -106,6 +104,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -177,6 +176,8 @@ import com.happycola233.bilitools.data.model.SubtitleInfo
 import com.happycola233.bilitools.data.model.VideoCodec
 import com.happycola233.bilitools.data.model.capabilities
 import com.happycola233.bilitools.ui.FloatingControlsDefaults
+import com.happycola233.bilitools.ui.LazyListScrollbar
+import com.happycola233.bilitools.ui.PageScrollState
 import com.happycola233.bilitools.ui.TopErrorMessageHost
 import com.happycola233.bilitools.ui.UserIdentityLabel
 import com.happycola233.bilitools.ui.longPressAction
@@ -185,6 +186,7 @@ import com.happycola233.bilitools.ui.haptics.HapticTicker
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import com.happycola233.bilitools.ui.theme.AppAccents
 import com.happycola233.bilitools.ui.theme.AppSurfaces
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -210,14 +212,8 @@ private val pageNavigatorFieldHeight = 40.dp
 private val pageSelectionItemSpacing = 10.dp
 private val pageSelectionListMaxHeight = 286.dp
 private val pageSelectionScrollbarContentInset = 10.dp
-private val pageSelectionScrollbarTouchWidth = 18.dp
-private val pageSelectionScrollbarVerticalInset = 6.dp
-private val pageSelectionScrollbarTrackWidth = 2.dp
-private val pageSelectionScrollbarTrackWidthActive = 6.dp
-private val pageSelectionScrollbarThumbWidth = 4.dp
-private val pageSelectionScrollbarThumbWidthActive = 8.dp
-private val pageSelectionScrollbarMinThumbHeight = 48.dp
 private const val pageSelectionNaturalItemLimit = 4
+private const val PARSE_APPEND_PREFETCH_DISTANCE = 4
 private val copyDialogCornerRadius = 32.dp
 private val copyDialogHorizontalMargin = 28.dp
 private val copyDialogContentPadding = 24.dp
@@ -401,6 +397,9 @@ fun ParseScreenContent(
     onCopyCurrentAiSummary: (AiSummaryCopyEntry) -> Unit,
     onCopyAllAiSummaries: (List<AiSummaryCopyEntry>) -> Unit,
     onDismissError: () -> Unit,
+    onAppendPage: () -> Unit = {},
+    onVisiblePageChange: (Int) -> Unit = {},
+    onPageScrollHandled: (Int) -> Unit = {},
 ) {
     val info = state.mediaInfo
     val item = state.items.getOrNull(state.selectedItemIndex)
@@ -476,6 +475,9 @@ fun ParseScreenContent(
                                 onLoadPrevPage = onLoadPrevPage,
                                 onLoadNextPage = onLoadNextPage,
                                 onLoadPage = onLoadPage,
+                                onAppendPage = onAppendPage,
+                                onVisiblePageChange = onVisiblePageChange,
+                                onPageScrollHandled = onPageScrollHandled,
                                 onItemClick = onItemClick,
                                 onItemSelectionChange = onItemSelectionChange,
                             )
@@ -2295,7 +2297,7 @@ private fun SectionControls(
 }
 
 @Composable
-private fun PageSelectionSection(
+internal fun PageSelectionSection(
     state: ParseUiState,
     info: MediaInfo,
     selectedCount: Int,
@@ -2305,6 +2307,9 @@ private fun PageSelectionSection(
     onLoadPrevPage: () -> Unit,
     onLoadNextPage: () -> Unit,
     onLoadPage: (Int) -> Unit,
+    onAppendPage: () -> Unit,
+    onVisiblePageChange: (Int) -> Unit,
+    onPageScrollHandled: (Int) -> Unit,
     onItemClick: (Int) -> Unit,
     onItemSelectionChange: (Int, Boolean) -> Unit,
 ) {
@@ -2324,6 +2329,9 @@ private fun PageSelectionSection(
             onLoadPage = onLoadPage,
         )
         PageSelectionList(
+            onAppendPage = onAppendPage,
+            onVisiblePageChange = onVisiblePageChange,
+            onPageScrollHandled = onPageScrollHandled,
             state = state,
             info = info,
             onItemClick = onItemClick,
@@ -2336,6 +2344,9 @@ private fun PageSelectionSection(
 private fun PageSelectionList(
     state: ParseUiState,
     info: MediaInfo,
+    onAppendPage: () -> Unit,
+    onVisiblePageChange: (Int) -> Unit,
+    onPageScrollHandled: (Int) -> Unit,
     onItemClick: (Int) -> Unit,
     onItemSelectionChange: (Int, Boolean) -> Unit,
 ) {
@@ -2347,7 +2358,10 @@ private fun PageSelectionList(
             easing = FastOutSlowInEasing,
         ),
     )
-    if (state.items.size <= pageSelectionNaturalItemLimit) {
+    if (!info.paged && state.items.size <= pageSelectionNaturalItemLimit) {
+        LaunchedEffect(state.pagination.scrollRequest, interactionEnabled) {
+            if (interactionEnabled) state.pagination.scrollRequest?.let { onPageScrollHandled(it.id) }
+        }
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -2374,16 +2388,39 @@ private fun PageSelectionList(
     val boundaryConnection = rememberScrollBoundaryNestedScrollConnection(boundaryConsumption)
     val overscrollEffect = rememberBoundaryAwareOverscrollEffect(boundaryConsumption)
 
-    // 只在列表成员被整页替换时回顶。点击预览会补拉单条详情并改写 items，
-    // 若以 items 本身为 key，滚动会被误重置到第一条。
-    LaunchedEffect(
-        info.id,
-        info.type,
-        state.pageIndex,
-        state.selectedSectionId,
-        state.collectionMode,
-    ) {
-        listState.scrollToItem(0)
+    val pagination = state.pagination
+    val pageScroll = remember(pagination.generation, pagination.lastLoadedPage) { PageScrollState() }
+    val bottomPadding = with(LocalDensity.current) { pageScroll.bottomPaddingPx.toDp() }
+    LaunchedEffect(pagination.scrollRequest, pagination.pages, interactionEnabled, pagination.appending, pagination.appendError) {
+        val request = pagination.scrollRequest ?: return@LaunchedEffect
+        if (!interactionEnabled) return@LaunchedEffect
+        val index = pagination.firstIndexAtOrAfter(request.page)
+        if (index != null) {
+            pageScroll.scrollToPage(listState, index)
+        } else if (pagination.hasMore && pagination.appendError == null) {
+            onAppendPage()
+            return@LaunchedEffect
+        } else if (state.items.isNotEmpty()) {
+            val lastPage = pagination.pageAt(state.items.lastIndex)!!
+            pageScroll.scrollToPage(listState, pagination.firstIndexAtOrAfter(lastPage)!!)
+        }
+        onPageScrollHandled(request.id)
+    }
+
+    LaunchedEffect(listState, pagination.pages, pagination.scrollRequest) {
+        if (!info.paged) return@LaunchedEffect
+        snapshotFlow { listState.firstVisibleItemIndex }.collect { index ->
+            pagination.pageAt(index)?.let(onVisiblePageChange)
+        }
+    }
+
+    val autoAppendEnabled = info.paged && pagination.hasMore && !pagination.appending &&
+        pagination.appendError == null && !state.loading && !state.collectionModeLoading && pagination.scrollRequest == null
+    LaunchedEffect(listState, pagination.lastLoadedPage, autoAppendEnabled) {
+        if (!autoAppendEnabled) return@LaunchedEffect
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }
+            .filter { index -> state.items.isEmpty() || index >= state.items.size - PARSE_APPEND_PREFETCH_DISTANCE }
+            .collect { onAppendPage() }
     }
 
     Box(
@@ -2399,11 +2436,12 @@ private fun PageSelectionList(
                 .nestedScroll(boundaryConnection),
             state = listState,
             overscrollEffect = overscrollEffect,
+            contentPadding = PaddingValues(bottom = bottomPadding),
             verticalArrangement = Arrangement.spacedBy(pageSelectionItemSpacing),
         ) {
             itemsIndexed(
                 items = state.items,
-                key = { index, mediaItem -> pageSelectionItemKey(index, mediaItem) },
+                key = { index, mediaItem -> pagination.keyAt(index) ?: pageSelectionItemKey(index, mediaItem) },
             ) { index, mediaItem ->
                 PageSelectionRow(
                     state = state,
@@ -2415,8 +2453,18 @@ private fun PageSelectionList(
                     onItemSelectionChange = onItemSelectionChange,
                 )
             }
+            if (info.paged) {
+                item(key = "parse_page_footer") {
+                    ParsePageFooter(
+                        pagination = pagination,
+                        isEmpty = state.items.isEmpty(),
+                        loading = state.loading,
+                        onRetry = onAppendPage,
+                    )
+                }
+            }
         }
-        PageSelectionScrollbar(
+        LazyListScrollbar(
             listState = listState,
             modifier = Modifier.align(Alignment.CenterEnd),
         )
@@ -2425,236 +2473,25 @@ private fun PageSelectionList(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun PageSelectionScrollbar(
-    listState: LazyListState,
-    modifier: Modifier = Modifier,
+private fun ParsePageFooter(
+    pagination: ParsePagination,
+    isEmpty: Boolean,
+    loading: Boolean,
+    onRetry: () -> Unit,
 ) {
-    val density = LocalDensity.current
-    val hapticFeedback = rememberAppHaptics()
-    val dragTicker = remember { HapticTicker() }
-    val coroutineScope = rememberCoroutineScope()
-    val minThumbHeightPx = with(density) { pageSelectionScrollbarMinThumbHeight.toPx() }
-    var trackHeightPx by remember { mutableStateOf(0) }
-    var dragActive by remember { mutableStateOf(false) }
-    val metrics = calculatePageSelectionScrollbarMetrics(
-        layoutInfo = listState.layoutInfo,
-        trackHeightPx = trackHeightPx,
-        minThumbHeightPx = minThumbHeightPx,
-    )
-
-    val trackWidth by animateDpAsState(
-        targetValue = if (dragActive) {
-            pageSelectionScrollbarTrackWidthActive
-        } else {
-            pageSelectionScrollbarTrackWidth
-        },
-        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
-    )
-    val thumbWidth by animateDpAsState(
-        targetValue = if (dragActive) {
-            pageSelectionScrollbarThumbWidthActive
-        } else {
-            pageSelectionScrollbarThumbWidth
-        },
-        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
-    )
-    val thumbTopTarget = with(density) { metrics.thumbOffsetPx.toDp() }
-    val thumbTopAnimated by animateDpAsState(
-        targetValue = thumbTopTarget,
-        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
-    )
-    val thumbTop = if (dragActive) thumbTopTarget else thumbTopAnimated
-    val thumbHeight = with(density) { metrics.thumbHeightPx.toDp() }
-    val trackColor by animateColorAsState(
-        targetValue = if (dragActive) {
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
-        } else {
-            MaterialTheme.colorScheme.primary.copy(alpha = 0f)
-        },
-        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
-    )
-    val thumbColor by animateColorAsState(
-        targetValue = if (dragActive) {
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.84f)
-        } else {
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.42f)
-        },
-        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
-    )
-    val thumbScaleX by animateFloatAsState(
-        targetValue = if (dragActive) 1f else 0.82f,
-        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
-    )
-    val thumbScaleY by animateFloatAsState(
-        targetValue = if (dragActive) 1f else 0.96f,
-        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
-    )
-
-    Box(
-        modifier = modifier
-            .fillMaxHeight()
-            .width(pageSelectionScrollbarTouchWidth)
-            .pointerInput(listState, trackHeightPx, minThumbHeightPx) {
-                detectDragGesturesAfterLongPress(
-                    onDragStart = {
-                        val currentMetrics = calculatePageSelectionScrollbarMetrics(
-                            layoutInfo = listState.layoutInfo,
-                            trackHeightPx = trackHeightPx,
-                            minThumbHeightPx = minThumbHeightPx,
-                        )
-                        if (currentMetrics.scrollable) {
-                            dragActive = true
-                            hapticFeedback.longPress()
-                        }
-                    },
-                    onDragEnd = {
-                        dragActive = false
-                        dragTicker.reset()
-                    },
-                    onDragCancel = {
-                        dragActive = false
-                        dragTicker.reset()
-                    },
-                    onDrag = { change, dragAmount ->
-                        val currentMetrics = calculatePageSelectionScrollbarMetrics(
-                            layoutInfo = listState.layoutInfo,
-                            trackHeightPx = trackHeightPx,
-                            minThumbHeightPx = minThumbHeightPx,
-                        )
-                        if (currentMetrics.scrollable && currentMetrics.maxThumbOffsetPx > 0f) {
-                            change.consume()
-                            val scrollDelta = dragAmount.y *
-                                (currentMetrics.maxScrollPx / currentMetrics.maxThumbOffsetPx)
-                            coroutineScope.launch {
-                                listState.scrollBy(scrollDelta)
-                            }
-                            // 滚动是在协程里异步执行的，这里读到的是上一帧的位置，
-                            // 作为「跨过一个条目」的节拍已经足够精确。
-                            dragTicker.onStep(listState.firstVisibleItemIndex) {
-                                hapticFeedback.tick()
-                            }
-                        }
-                    },
-                )
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxHeight()
-                .padding(vertical = pageSelectionScrollbarVerticalInset)
-                .onSizeChanged { size -> trackHeightPx = size.height },
-            contentAlignment = Alignment.Center,
-        ) {
-            if (metrics.scrollable || dragActive) {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .width(trackWidth),
-                    shape = RoundedCornerShape(percent = 50),
-                    color = trackColor,
-                ) {}
-                Surface(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .offset(y = thumbTop)
-                        .width(thumbWidth)
-                        .height(thumbHeight)
-                        .graphicsLayer {
-                            scaleX = thumbScaleX
-                            scaleY = thumbScaleY
-                        },
-                    shape = RoundedCornerShape(percent = 50),
-                    color = thumbColor,
-                ) {}
+    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
+        when {
+            pagination.appendError != null -> TextButton(onClick = onRetry) {
+                Text(stringResource(R.string.parse_load_more_failed), color = MaterialTheme.colorScheme.error)
             }
+            pagination.appending || loading -> LoadingIndicator(modifier = Modifier.size(32.dp))
+            !pagination.hasMore -> Text(
+                text = stringResource(if (isEmpty) R.string.parse_list_empty else R.string.parse_notice_no_more),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
-}
-
-private data class PageSelectionScrollbarMetrics(
-    val scrollable: Boolean,
-    val thumbHeightPx: Float,
-    val thumbOffsetPx: Float,
-    val maxThumbOffsetPx: Float,
-    val maxScrollPx: Float,
-) {
-    companion object
-}
-
-private fun calculatePageSelectionScrollbarMetrics(
-    layoutInfo: LazyListLayoutInfo,
-    trackHeightPx: Int,
-    minThumbHeightPx: Float,
-): PageSelectionScrollbarMetrics {
-    val visibleItems = layoutInfo.visibleItemsInfo
-    val viewportHeightPx = (layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset)
-        .coerceAtLeast(0)
-
-    if (trackHeightPx <= 0 || viewportHeightPx <= 0 || visibleItems.isEmpty()) {
-        return PageSelectionScrollbarMetrics.empty()
-    }
-
-    val totalItems = layoutInfo.totalItemsCount
-    val averageItemSizePx = visibleItems.sumOf { it.size }.toFloat() / visibleItems.size
-    val averageItemStepPx = estimatePageSelectionAverageItemStep(visibleItems)
-        ?: averageItemSizePx
-    val averageSpacingPx = (averageItemStepPx - averageItemSizePx).coerceAtLeast(0f)
-    val contentHeightPx = averageItemSizePx * totalItems +
-        averageSpacingPx * (totalItems - 1).coerceAtLeast(0)
-    val maxScrollPx = (contentHeightPx - viewportHeightPx).coerceAtLeast(0f)
-
-    if (totalItems <= 0 || maxScrollPx <= 0f) {
-        return PageSelectionScrollbarMetrics.empty(trackHeightPx.toFloat())
-    }
-
-    val firstVisibleItem = visibleItems.first()
-    val scrolledWithinFirstItem = (layoutInfo.viewportStartOffset - firstVisibleItem.offset)
-        .coerceAtLeast(0)
-    val scrollOffsetPx = firstVisibleItem.index * averageItemStepPx + scrolledWithinFirstItem
-    val scrollFraction = (scrollOffsetPx / maxScrollPx).coerceIn(0f, 1f)
-    val thumbHeightPx = ((viewportHeightPx / contentHeightPx) * trackHeightPx)
-        .coerceIn(minThumbHeightPx.coerceAtMost(trackHeightPx.toFloat()), trackHeightPx.toFloat())
-    val maxThumbOffsetPx = (trackHeightPx - thumbHeightPx).coerceAtLeast(0f)
-
-    return PageSelectionScrollbarMetrics(
-        scrollable = maxThumbOffsetPx > 0f,
-        thumbHeightPx = thumbHeightPx,
-        thumbOffsetPx = scrollFraction * maxThumbOffsetPx,
-        maxThumbOffsetPx = maxThumbOffsetPx,
-        maxScrollPx = maxScrollPx,
-    )
-}
-
-private fun estimatePageSelectionAverageItemStep(
-    visibleItems: List<androidx.compose.foundation.lazy.LazyListItemInfo>,
-): Float? {
-    if (visibleItems.size < 2) {
-        return null
-    }
-
-    val steps = visibleItems.zipWithNext().mapNotNull { (current, next) ->
-        val indexDelta = next.index - current.index
-        if (indexDelta > 0) {
-            (next.offset - current.offset).toFloat() / indexDelta
-        } else {
-            null
-        }
-    }
-
-    return steps.takeIf { it.isNotEmpty() }?.average()?.toFloat()
-}
-
-private fun PageSelectionScrollbarMetrics.Companion.empty(
-    trackHeightPx: Float = 0f,
-): PageSelectionScrollbarMetrics {
-    return PageSelectionScrollbarMetrics(
-        scrollable = false,
-        thumbHeightPx = trackHeightPx,
-        thumbOffsetPx = 0f,
-        maxThumbOffsetPx = 0f,
-        maxScrollPx = 0f,
-    )
 }
 
 @Composable
@@ -2857,7 +2694,7 @@ private fun PageSelectionHeader(
             PageNavigator(
                 pageIndex = state.pageIndex,
                 totalPages = info.totalPages,
-                hasMore = info.hasMore,
+                hasMore = state.canGoToNextPage,
                 loading = !controlsEnabled,
                 onLoadPrevPage = onLoadPrevPage,
                 onLoadNextPage = onLoadNextPage,

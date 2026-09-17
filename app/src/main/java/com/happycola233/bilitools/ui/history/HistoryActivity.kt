@@ -51,6 +51,7 @@ class HistoryActivity : AppCompatActivity() {
                 onGoToPrevPage = viewModel::goToPrevPage,
                 onGoToNextPage = viewModel::goToNextPage,
                 onVisiblePageChange = viewModel::onVisiblePageChange,
+                onScrollHandled = viewModel::onScrollHandled,
                 onLoadNextPage = viewModel::loadNextPage,
                 onLoadPrevPage = viewModel::loadPrevPage,
                 onApplyFilter = viewModel::applyFilter,

@@ -83,6 +83,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.graphics.SolidColor
@@ -103,6 +104,8 @@ import com.happycola233.bilitools.data.AppSettings
 import com.happycola233.bilitools.data.model.HistoryItem
 import com.happycola233.bilitools.data.model.HistoryTab
 import com.happycola233.bilitools.ui.AppDatePickerDialog
+import com.happycola233.bilitools.ui.LazyListScrollbar
+import com.happycola233.bilitools.ui.PageScrollState
 import com.happycola233.bilitools.ui.UserIdentityLabel
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import com.happycola233.bilitools.ui.longPressAction
@@ -135,6 +138,7 @@ fun BiliToolsHistoryContent(
     onGoToPrevPage: () -> Unit,
     onGoToNextPage: () -> Unit,
     onVisiblePageChange: (Int) -> Unit,
+    onScrollHandled: (Int) -> Unit,
     onLoadNextPage: () -> Unit,
     onLoadPrevPage: () -> Unit,
     onApplyFilter: (HistoryFilter) -> Unit,
@@ -334,6 +338,7 @@ fun BiliToolsHistoryContent(
                     state = state,
                     innerPadding = innerPadding,
                     onVisiblePageChange = onVisiblePageChange,
+                    onScrollHandled = onScrollHandled,
                     onLoadNextPage = onLoadNextPage,
                     onLoadPrevPage = onLoadPrevPage,
                     onDownload = onDownload,
@@ -467,10 +472,11 @@ private data class HistoryListEntry(
 private const val HISTORY_APPEND_PREFETCH_DISTANCE = 4
 
 @Composable
-private fun HistoryBody(
+internal fun HistoryBody(
     state: HistoryUiState,
     innerPadding: PaddingValues,
     onVisiblePageChange: (Int) -> Unit,
+    onScrollHandled: (Int) -> Unit,
     onLoadNextPage: () -> Unit,
     onLoadPrevPage: () -> Unit,
     onDownload: (HistoryItem) -> Unit,
@@ -479,34 +485,40 @@ private fun HistoryBody(
     onCopyAuthorName: (String) -> Unit,
 ) {
     val listState = rememberLazyListState()
+    val pageScroll = remember(state.loading, state.firstLoadedPage, state.lastLoadedPage) { PageScrollState() }
+    val bottomPadding = with(LocalDensity.current) { pageScroll.bottomPaddingPx.toDp() }
     val entries = remember(state.pages) {
         state.pages.flatMap { loaded -> loaded.items.map { HistoryListEntry(loaded.page, it) } }
     }
 
-    // 跳页：把目标页第一条滚到列表顶部；记录已处理的请求，避免重建界面时覆盖恢复的滚动位置
-    var handledScrollRequestId by rememberSaveable { mutableStateOf(0) }
-    LaunchedEffect(state.scrollRequest) {
+    // 用真实页面的第一条定位；空页可继续向后寻找，不能按“页码 × 容量”计算下标。
+    LaunchedEffect(state.scrollRequest, state.pages, state.loading, state.appending, state.appendFailed) {
         val request = state.scrollRequest ?: return@LaunchedEffect
-        if (request.id <= handledScrollRequestId) return@LaunchedEffect
-        val index = entries.indexOfFirst { it.page == request.page }
+        if (state.loading) return@LaunchedEffect
+        val index = entries.indexOfFirst { it.page >= request.page }
         if (index >= 0) {
-            handledScrollRequestId = request.id
-            listState.scrollToItem(index)
+            pageScroll.scrollToPage(listState, index)
+        } else if (state.canLoadNextPage && !state.appendFailed) {
+            onLoadNextPage()
+            return@LaunchedEffect
+        } else if (entries.isNotEmpty()) {
+            pageScroll.scrollToPage(listState, entries.indexOfFirst { it.page == entries.last().page })
         }
+        onScrollHandled(request.id)
     }
 
     // 顶部可见项所属页 → 页码显示随滚动变化
-    LaunchedEffect(listState, entries) {
+    LaunchedEffect(listState, entries, state.scrollRequest) {
         snapshotFlow { listState.firstVisibleItemIndex }
             .collect { index -> entries.getOrNull(index)?.page?.let(onVisiblePageChange) }
     }
 
     // 接近底部时自动追加下一页；追加失败后停止自动触发，等待用户点击页脚重试
-    val autoAppendEnabled = state.canLoadNextPage && !state.appendFailed && !state.loading && entries.isNotEmpty()
-    LaunchedEffect(listState, entries.size, autoAppendEnabled) {
+    val autoAppendEnabled = state.canLoadNextPage && !state.appendFailed && !state.loading && !state.appending && state.scrollRequest == null
+    LaunchedEffect(listState, state.lastLoadedPage, autoAppendEnabled) {
         if (!autoAppendEnabled) return@LaunchedEffect
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }
-            .filter { lastVisibleIndex -> lastVisibleIndex >= entries.size - HISTORY_APPEND_PREFETCH_DISTANCE }
+            .filter { lastVisibleIndex -> entries.isEmpty() || lastVisibleIndex >= entries.size - HISTORY_APPEND_PREFETCH_DISTANCE }
             .collect { onLoadNextPage() }
     }
 
@@ -528,7 +540,7 @@ private fun HistoryBody(
     }
 
     when {
-        state.loading && entries.isEmpty() -> {
+        (state.loading || state.appending) && entries.isEmpty() -> {
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -537,6 +549,20 @@ private fun HistoryBody(
             ) {
                 HistoryExpressiveLoadingIndicator(
                     modifier = Modifier.size(56.dp),
+                )
+            }
+        }
+
+        entries.isEmpty() && state.appendFailed -> {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.fillMaxSize().padding(innerPadding),
+            ) {
+                HistoryListFooter(
+                    canLoadNextPage = state.canLoadNextPage,
+                    appendFailed = true,
+                    appending = false,
+                    onRetry = onLoadNextPage,
                 )
             }
         }
@@ -561,8 +587,8 @@ private fun HistoryBody(
                     contentPadding = PaddingValues(
                         start = 16.dp,
                         top = innerPadding.calculateTopPadding() + 10.dp,
-                        end = 16.dp,
-                        bottom = innerPadding.calculateBottomPadding() + 32.dp,
+                        end = 24.dp,
+                        bottom = innerPadding.calculateBottomPadding() + 32.dp + bottomPadding,
                     ),
                     modifier = Modifier
                         .fillMaxSize()
@@ -601,10 +627,22 @@ private fun HistoryBody(
                         HistoryListFooter(
                             canLoadNextPage = state.canLoadNextPage,
                             appendFailed = state.appendFailed,
+                            appending = state.appending,
                             onRetry = onLoadNextPage,
                         )
                     }
                 }
+
+                LazyListScrollbar(
+                    listState = listState,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(
+                            top = innerPadding.calculateTopPadding() + 10.dp,
+                            bottom = innerPadding.calculateBottomPadding() + 10.dp,
+                            end = 2.dp,
+                        ),
+                )
 
                 AnimatedVisibility(
                     visible = state.prepending,
@@ -623,6 +661,7 @@ private fun HistoryBody(
 private fun HistoryListFooter(
     canLoadNextPage: Boolean,
     appendFailed: Boolean,
+    appending: Boolean,
     onRetry: () -> Unit,
 ) {
     Box(
@@ -638,11 +677,11 @@ private fun HistoryListFooter(
                 }
             }
 
-            canLoadNextPage -> {
+            appending -> {
                 HistoryExpressiveLoadingIndicator(modifier = Modifier.size(32.dp))
             }
 
-            else -> {
+            !canLoadNextPage -> {
                 Text(
                     text = stringResource(R.string.history_no_more),
                     style = MaterialTheme.typography.labelMedium,
