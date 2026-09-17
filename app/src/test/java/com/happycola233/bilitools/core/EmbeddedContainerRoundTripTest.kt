@@ -129,7 +129,7 @@ class EmbeddedContainerRoundTripTest {
         val ffprobe = File(tools, "ffprobe.exe").absolutePath
         val directory = File("../.tmp/metadata/container-tests/$extension").apply { mkdirs() }
         val input = File(directory, "input.${if (extension == "m4s") "mp4" else extension}")
-        val output = File(directory, "output.$extension")
+        val output = File(directory, "output.${if (extension == "m4s") "mp4" else extension}")
         val cover = File(directory, "cover.jpg")
         javaClass.getResourceAsStream("/metadata/cover.jpg")!!.use { source ->
             cover.outputStream().use { source.copyTo(it) }

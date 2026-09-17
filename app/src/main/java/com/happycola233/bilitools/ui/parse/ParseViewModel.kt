@@ -1,4 +1,4 @@
-﻿package com.happycola233.bilitools.ui.parse
+package com.happycola233.bilitools.ui.parse
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -30,18 +30,15 @@ import com.happycola233.bilitools.data.OpusException
 import com.happycola233.bilitools.data.OpusFailure
 import com.happycola233.bilitools.data.OpusRepository
 import com.happycola233.bilitools.data.RememberedDownloadPreferences
+import com.happycola233.bilitools.data.RememberedDownloadQuality
 import com.happycola233.bilitools.data.SettingsRepository
 import com.happycola233.bilitools.data.TopLevelFolderMode
 import com.happycola233.bilitools.data.model.AudioStream
-import com.happycola233.bilitools.data.model.DownloadEmbedding
 import com.happycola233.bilitools.data.model.DownloadMediaParams
 import com.happycola233.bilitools.data.buildEmbeddedMetadata
 import com.happycola233.bilitools.data.model.DownloadExtraTaskOperation
 import com.happycola233.bilitools.data.model.DownloadExtraTaskSpec
 import com.happycola233.bilitools.data.model.DownloadTaskType
-import com.happycola233.bilitools.data.model.LyricsEmbedding
-import com.happycola233.bilitools.data.model.SubtitleTrackEmbedding
-import com.happycola233.bilitools.data.selectLyricsSubtitle
 import com.happycola233.bilitools.data.model.MediaCapabilities
 import com.happycola233.bilitools.data.model.MediaInfo
 import com.happycola233.bilitools.data.model.MediaItem
@@ -236,65 +233,7 @@ enum class QualityMode {
     Fixed,
 }
 
-internal enum class SubtitleSelectionPolicy {
-    SelectedLanguage,
-    AllAvailable,
-}
-
 enum class SubtitleLoadStatus { Loading, Ready, Failed }
-
-sealed interface SubtitleLanguageSelection {
-    data object All : SubtitleLanguageSelection
-
-    data class Language(val lan: String) : SubtitleLanguageSelection
-}
-
-internal fun subtitleSelectionPolicy(
-    selectedItemCount: Int,
-    languageSelection: SubtitleLanguageSelection?,
-): SubtitleSelectionPolicy {
-    return if (
-        selectedItemCount > 1 ||
-        languageSelection !is SubtitleLanguageSelection.Language
-    ) {
-        SubtitleSelectionPolicy.AllAvailable
-    } else {
-        SubtitleSelectionPolicy.SelectedLanguage
-    }
-}
-
-internal fun selectSubtitles(
-    subtitles: List<SubtitleInfo>,
-    languageSelection: SubtitleLanguageSelection?,
-    policy: SubtitleSelectionPolicy,
-): List<SubtitleInfo> {
-    return when (policy) {
-        SubtitleSelectionPolicy.AllAvailable -> subtitles
-        SubtitleSelectionPolicy.SelectedLanguage -> when (languageSelection) {
-            SubtitleLanguageSelection.All -> subtitles
-            is SubtitleLanguageSelection.Language -> subtitles
-                .firstOrNull { it.lan == languageSelection.lan }
-                ?.let(::listOf)
-                .orEmpty()
-            null -> emptyList()
-        }
-    }
-}
-
-internal fun pickSubtitleLanguageSelection(
-    subtitles: List<SubtitleInfo>,
-    currentSelection: SubtitleLanguageSelection?,
-): SubtitleLanguageSelection? {
-    if (subtitles.isEmpty()) return null
-    if (subtitles.size == 1) return SubtitleLanguageSelection.Language(subtitles.first().lan)
-    return when (currentSelection) {
-        SubtitleLanguageSelection.All -> SubtitleLanguageSelection.All
-        is SubtitleLanguageSelection.Language -> currentSelection
-            .takeIf { selected -> subtitles.any { it.lan == selected.lan } }
-            ?: SubtitleLanguageSelection.All
-        null -> SubtitleLanguageSelection.All
-    }
-}
 
 data class SubtitleCopyEntry(
     val title: String,
@@ -381,6 +320,7 @@ data class ParseUiState(
     val collectionMode: Boolean = false,
     val selectedMediaType: MediaType? = null,
     val format: StreamFormat = StreamFormat.Dash,
+    val streamFormatEvidence: Map<String, StreamFormatEvidence> = emptyMap(),
     val outputType: OutputType? = OutputType.AudioVideo,
     val playUrlInfo: PlayUrlInfo? = null,
     val videoStreams: List<VideoStream> = emptyList(),
@@ -393,20 +333,24 @@ data class ParseUiState(
     val selectedResolutionId: Int? = null,
     val selectedCodec: VideoCodec? = null,
     val selectedAudioId: Int? = null,
-    // 当前单选条目的语言选项；多选下载与复制始终逐条请求，不读取此缓存。
+    // 所选下载单元的语言并集及可用数量；下载时仍逐条重新查询最新目录。
     val subtitleList: List<SubtitleInfo> = emptyList(),
     val subtitleLoadStatus: SubtitleLoadStatus = SubtitleLoadStatus.Loading,
-    val subtitleLanguageSelection: SubtitleLanguageSelection? = null,
+    val subtitleLanguageSelection: SubtitleLanguageSelection = SubtitleLanguageSelection.All,
+    val subtitleAvailableCounts: Map<String, Int> = emptyMap(),
+    val subtitleTargetCount: Int = 0,
+    val subtitleCompletedCount: Int = 0,
+    val subtitleFailedCount: Int = 0,
+    val subtitleKnownLanguages: List<SubtitleInfo> = emptyList(),
+    val subtitleRefreshRevision: Int = 0,
     val subtitleEnabled: Boolean = false,
     // 写进媒体文件内部的软字幕轨 / 歌词字段；与上面的「字幕」文件导出相互独立。
     val embedSubtitlesEnabled: Boolean = false,
-    /** 单选时要嵌入的字幕语言（lan）；多选下载不看此集合，每个条目嵌入自己的全部可用字幕。 */
-    val embedSubtitleLanguages: Set<String> = emptySet(),
+    /** 单条和批量共用语言选择；指定语言在当前条目缺失时保留选择并反馈。 */
+    val embedSubtitleSelection: SubtitleLanguageSelection = SubtitleLanguageSelection.All,
     val embedLyricsEnabled: Boolean = false,
-    /** 单选视频转音频时作为歌词的字幕语言；多选时留空，由每个条目自动选择。 */
+    /** 单条和批量均只写入这一种歌词语言，不在下载时换成其他语言。 */
     val embedLyricsLanguage: String? = null,
-    /** 多选没有语言列表可挑时，是否连 AI 生成的字幕一起嵌入。 */
-    val embedIncludeGeneratedSubtitles: Boolean = true,
     val aiSummaryAvailable: Boolean = false,
     val aiSummaryEnabled: Boolean = false,
     val nfoCollectionEnabled: Boolean = false,
@@ -452,56 +396,6 @@ internal val ParseUiState.embedSubtitlesApplicable: Boolean
 internal val ParseUiState.embedLyricsApplicable: Boolean
     get() = outputType == OutputType.AudioOnly
 
-/**
- * 把解析页的内嵌选择换成下载任务里的请求。批量下载的语言控件不可见，不能沿用之前单选时的隐藏值，
- * 因此多选时不指定语言：视频嵌入各自的全部可用字幕，音频各自自动挑一种。
- *
- * @param videoContainerSupportsSubtitles 最终视频容器能否承载字幕轨（FLV 不能，除非转成 MP4）。
- * @param audioContainerSupportsLyrics 最终音频文件能否写入歌词（杜比 EAC3 不能，除非转成 MP3）。
- */
-internal fun ParseUiState.downloadEmbedding(
-    videoContainerSupportsSubtitles: Boolean,
-    audioContainerSupportsLyrics: Boolean,
-): DownloadEmbedding? {
-    val subtitles = if (embedSubtitlesEnabled && embedSubtitlesApplicable && videoContainerSupportsSubtitles) {
-        SubtitleTrackEmbedding(
-            languages = if (isMultiSelect) emptyList() else embedSubtitleLanguages.toList(),
-            includeGenerated = embedIncludeGeneratedSubtitles,
-        )
-    } else {
-        null
-    }
-    val lyrics = if (embedLyricsEnabled && embedLyricsApplicable && audioContainerSupportsLyrics) {
-        LyricsEmbedding(
-            language = embedLyricsLanguage.takeUnless { isMultiSelect },
-            includeGenerated = embedIncludeGeneratedSubtitles,
-        )
-    } else {
-        null
-    }
-    if (subtitles == null && lyrics == null) return null
-    return DownloadEmbedding(subtitles = subtitles, lyrics = lyrics)
-}
-
-/** 字幕列表更新后保留仍然可用的勾选；一个都不剩时回到「全部可用字幕」。 */
-internal fun pickEmbedSubtitleLanguages(
-    subtitles: List<SubtitleInfo>,
-    current: Set<String>,
-): Set<String> {
-    val available = subtitles.mapTo(linkedSetOf()) { it.lan }
-    val kept = current.filterTo(linkedSetOf()) { it in available }
-    return if (kept.isEmpty()) available else kept
-}
-
-/** 歌词只能选一种语言：沿用仍然可用的选择，否则按人工优先、简体、繁体、其他的顺序自动定一个。 */
-internal fun pickEmbedLyricsLanguage(
-    subtitles: List<SubtitleInfo>,
-    current: String?,
-): String? {
-    if (current != null && subtitles.any { it.lan == current }) return current
-    return selectLyricsSubtitle(subtitles, LyricsEmbedding())?.lan
-}
-
 internal fun ParseUiState.canAutoLoadStream(): Boolean {
     return !loading &&
         !collectionModeLoading &&
@@ -511,6 +405,16 @@ internal fun ParseUiState.canAutoLoadStream(): Boolean {
         selectedItemIndices.isNotEmpty() &&
         items.getOrNull(selectedItemIndex)?.type?.capabilities?.supportsPlaybackStream == true
 }
+
+/** 切页、分区或合集只清已加载的流；新资源返回后再按可用能力调整用户的质量选择。 */
+internal fun ParseUiState.withoutLoadedStreams(): ParseUiState = copy(
+    playUrlInfo = null,
+    videoStreams = emptyList(),
+    audioStreams = emptyList(),
+    resolutions = emptyList(),
+    codecs = emptyList(),
+    audioBitrates = emptyList(),
+)
 
 /**
  * 只保留当前媒体类型能够处理的附加选项。资源是否真实存在仍由详情探测决定；这里负责阻止
@@ -577,10 +481,41 @@ class ParseViewModel(
     private var loadingStreamKey: StreamRequestKey? = null
     private var failedStreamKey: StreamRequestKey? = null
     private var extrasRefreshGeneration = 0L
-    private var subtitleSelectionTargetKey: ExtrasTargetKey? = null
+    private val subtitleCatalogLoader = SubtitleCatalogLoader(
+        resolve = { item -> mediaRepository.resolveItemForPlay(item, item.type) },
+        expand = { item -> mediaRepository.getVideoPages(item) },
+        fetch = { target -> extrasRepository.getSubtitles(target.aid, target.cid) },
+    )
 
     init {
         refreshLoginState()
+        viewModelScope.launch {
+            var catalogLoginState = _state.value.isLoggedIn
+            _state.map { current ->
+                current.isLoggedIn to Triple(
+                    current.loading || current.collectionModeLoading,
+                    current.subtitleCatalogTargets(),
+                    current.subtitleRefreshRevision,
+                )
+            }.distinctUntilChanged().collectLatest { (loggedIn, request) ->
+                if (catalogLoginState != loggedIn) {
+                    // 未登录时接口可能返回成功的空目录，登录后必须重新查询。
+                    subtitleCatalogLoader.clear()
+                    _state.update { it.copy(streamFormatEvidence = emptyMap()) }
+                    catalogLoginState = loggedIn
+                }
+                val (loading, targets, revision) = request
+                if (loading) return@collectLatest
+                subtitleCatalogLoader.load(targets) { catalog ->
+                    _state.update { current ->
+                        if (!current.loading && !current.collectionModeLoading &&
+                            current.isLoggedIn == loggedIn && current.subtitleRefreshRevision == revision &&
+                            current.subtitleCatalogTargets() == targets
+                        ) current.withSubtitleCatalog(catalog) else current
+                    }
+                }
+            }
+        }
         viewModelScope.launch {
             _state
                 .map { state ->
@@ -694,10 +629,11 @@ class ParseViewModel(
                     normalizeQualityModes(
                         applyDefaultDownloadQuality(
                             applyInitialDownloadOptions(
-                                it.copy(
+                                it.resetSubtitleChoices().copy(
                                     loading = false,
                                     mediaInfo = info,
                                     items = info.list,
+                                    streamFormatEvidence = emptyMap(),
                                     selectedItemIndex = defaultIndex,
                                     selectedItemIndices = if (info.list.isNotEmpty()) listOf(defaultIndex) else emptyList(),
                                     sections = info.sections,
@@ -924,7 +860,7 @@ class ParseViewModel(
                     updated.list.indexOfFirst { it.isTarget }.takeIf { it >= 0 } ?: 0
                 _state.update {
                     normalizeQualityModes(
-                        it.copy(
+                        it.withoutLoadedStreams().copy(
                             loading = false,
                             mediaInfo = updated,
                             items = updated.list,
@@ -933,15 +869,6 @@ class ParseViewModel(
                             sections = updated.sections,
                             selectedSectionId = updated.sections?.target,
                             pageIndex = targetPage,
-                            playUrlInfo = null,
-                            videoStreams = emptyList(),
-                            audioStreams = emptyList(),
-                            resolutions = emptyList(),
-                            codecs = emptyList(),
-                            audioBitrates = emptyList(),
-                            selectedResolutionId = null,
-                            selectedCodec = null,
-                            selectedAudioId = null,
                             warning = null,
                             previewItemIndex = null,
                             selectedItemStat = updated.list.getOrNull(defaultIndex)?.stat,
@@ -1004,7 +931,7 @@ class ParseViewModel(
                     updated.list.indexOfFirst { it.isTarget }.takeIf { it >= 0 } ?: 0
                 _state.update {
                     normalizeQualityModes(
-                        it.copy(
+                        it.withoutLoadedStreams().copy(
                             loading = false,
                             mediaInfo = updated,
                             items = updated.list,
@@ -1013,15 +940,6 @@ class ParseViewModel(
                             sections = updated.sections,
                             selectedSectionId = updated.sections?.target,
                             pageIndex = 1,
-                            playUrlInfo = null,
-                            videoStreams = emptyList(),
-                            audioStreams = emptyList(),
-                            resolutions = emptyList(),
-                            codecs = emptyList(),
-                            audioBitrates = emptyList(),
-                            selectedResolutionId = null,
-                            selectedCodec = null,
-                            selectedAudioId = null,
                             warning = null,
                             previewItemIndex = null,
                             selectedItemStat = updated.list.getOrNull(defaultIndex)?.stat,
@@ -1069,7 +987,7 @@ class ParseViewModel(
                     updated.list.indexOfFirst { it.isTarget }.takeIf { it >= 0 } ?: 0
                 _state.update {
                     normalizeQualityModes(
-                        it.copy(
+                        it.withoutLoadedStreams().copy(
                             loading = false,
                             mediaInfo = updated,
                             items = updated.list,
@@ -1080,15 +998,6 @@ class ParseViewModel(
                             collectionMode = enabled,
                             collectionModeLoading = false,
                             pageIndex = 1,
-                            playUrlInfo = null,
-                            videoStreams = emptyList(),
-                            audioStreams = emptyList(),
-                            resolutions = emptyList(),
-                            codecs = emptyList(),
-                            audioBitrates = emptyList(),
-                            selectedResolutionId = null,
-                            selectedCodec = null,
-                            selectedAudioId = null,
                             warning = null,
                             previewItemIndex = null,
                             selectedItemStat = updated.list.getOrNull(defaultIndex)?.stat,
@@ -1115,6 +1024,7 @@ class ParseViewModel(
     }
 
     fun setFormat(format: StreamFormat) {
+        if (format in _state.value.unavailableStreamFormats) return
         _state.update {
             val nextOutput = if (format == StreamFormat.Dash) {
                 it.outputType
@@ -1150,7 +1060,9 @@ class ParseViewModel(
                 selectedCodec = pickCodec(current.selectedCodec, nextCodecs),
             )
         }
-        rememberVideoQualityPreference()
+        rememberVideoQualityPreference {
+            copy(resolutionMode = DownloadQualityMode.Fixed, fixedResolutionId = id)
+        }
     }
 
     fun setResolutionMode(mode: QualityMode) {
@@ -1171,12 +1083,18 @@ class ParseViewModel(
                 selectedCodec = pickCodec(current.selectedCodec, nextCodecs),
             )
         }
-        rememberVideoQualityPreference()
+        rememberVideoQualityPreference {
+            copy(
+                resolutionMode = mode.toDownloadQualityMode(),
+                fixedResolutionId = _state.value.selectedResolutionId.takeIf { mode == QualityMode.Fixed }
+                    ?: fixedResolutionId,
+            )
+        }
     }
 
     fun setCodec(codec: VideoCodec) {
         _state.update { it.copy(selectedCodec = codec) }
-        rememberVideoQualityPreference()
+        rememberVideoQualityPreference { copy(codec = codec.toDefaultDownloadVideoCodec()) }
     }
 
     fun setAudioBitrate(id: Int) {
@@ -1186,7 +1104,9 @@ class ParseViewModel(
                 selectedAudioId = id,
             )
         }
-        rememberAudioQualityPreference()
+        rememberAudioQualityPreference {
+            copy(audioBitrateMode = DownloadQualityMode.Fixed, fixedAudioBitrateId = id)
+        }
     }
 
     fun setAudioBitrateMode(mode: QualityMode) {
@@ -1200,7 +1120,13 @@ class ParseViewModel(
                 selectedAudioId = nextAudioId,
             )
         }
-        rememberAudioQualityPreference()
+        rememberAudioQualityPreference {
+            copy(
+                audioBitrateMode = mode.toDownloadQualityMode(),
+                fixedAudioBitrateId = _state.value.selectedAudioId.takeIf { mode == QualityMode.Fixed }
+                    ?: fixedAudioBitrateId,
+            )
+        }
     }
 
     fun setSubtitleEnabled(enabled: Boolean) {
@@ -1227,18 +1153,13 @@ class ParseViewModel(
         rememberDownloadPreference(DownloadPreferenceGroup.Embedding) { copy(embedSubtitles = it.embedSubtitlesEnabled) }
     }
 
-    /** 字幕轨可以多选；至少保留一种语言，取消最后一种时改为关闭内嵌。 */
-    fun setEmbedSubtitleLanguageSelected(lan: String, selected: Boolean) {
-        _state.update { current ->
-            val updated = current.embedSubtitleLanguages.toMutableSet()
-            if (selected) updated.add(lan) else updated.remove(lan)
-            if (updated.isEmpty()) {
-                current.copy(embedSubtitlesEnabled = false)
-            } else {
-                current.copy(embedSubtitleLanguages = updated)
-            }
-        }
-        rememberDownloadPreference(DownloadPreferenceGroup.Embedding) { copy(embedSubtitles = it.embedSubtitlesEnabled) }
+    /** 空选保留内嵌开关，由界面提示补选语言；不把空选解释成全部字幕。 */
+    fun setEmbedSubtitleSelection(selection: SubtitleLanguageSelection) {
+        _state.update { it.copy(embedSubtitleSelection = selection) }
+    }
+
+    fun retrySubtitleDiscovery() {
+        _state.update { it.copy(subtitleRefreshRevision = it.subtitleRefreshRevision + 1) }
     }
 
     fun setEmbedLyricsEnabled(enabled: Boolean) {
@@ -1252,13 +1173,6 @@ class ParseViewModel(
 
     fun setEmbedLyricsLanguage(lan: String) {
         _state.update { it.copy(embedLyricsLanguage = lan) }
-    }
-
-    fun setEmbedIncludeGeneratedSubtitles(include: Boolean) {
-        _state.update { it.copy(embedIncludeGeneratedSubtitles = include) }
-        rememberDownloadPreference(DownloadPreferenceGroup.Embedding) {
-            copy(embedIncludeGeneratedSubtitles = it.embedIncludeGeneratedSubtitles)
-        }
     }
 
     fun setAiSummaryEnabled(enabled: Boolean) {
@@ -1325,10 +1239,8 @@ class ParseViewModel(
     }
 
     fun setImageSelection(id: String, selected: Boolean) {
+        if (selected && !_state.value.selectedMediaSupports { it.supportsAuxiliaryImageExport }) return
         _state.update { current ->
-            if (selected && !current.selectedMediaSupports { it.supportsAuxiliaryImageExport }) {
-                return@update current
-            }
             val updated = current.selectedImageIds.toMutableSet()
             if (selected) {
                 updated.add(id)
@@ -1337,7 +1249,9 @@ class ParseViewModel(
             }
             current.copy(selectedImageIds = updated)
         }
-        rememberDownloadPreference(DownloadPreferenceGroup.Images) { copy(imageIds = it.selectedImageIds) }
+        rememberDownloadPreference(DownloadPreferenceGroup.Images) {
+            copy(imageIds = if (selected) imageIds + id else imageIds - id)
+        }
     }
 
     fun setOpusContentEnabled(enabled: Boolean) {
@@ -1369,7 +1283,7 @@ class ParseViewModel(
         if (loadingStreamKey == requestKey) return
         loadingStreamKey = requestKey
         failedStreamKey = null
-        val requestedFormat = _state.value.format
+        val requestedFormat = requestKey.format
         val requestGeneration = ++streamLoadGeneration
         val itemIndex = _state.value.selectedItemIndex
         val info = _state.value.mediaInfo
@@ -1433,10 +1347,15 @@ class ParseViewModel(
                     if (requestGeneration != streamLoadGeneration || loadingStreamKey != requestKey) {
                         return@update current
                     }
-                    loadedStreamKey = requestKey
+                    loadedStreamKey = requestKey.copy(format = playUrlInfo.format)
                     loadingStreamKey = null
+                    val formatKey = resolvedItem.streamFormatKey()
+                    val evidence = current.streamFormatEvidence[formatKey] ?: StreamFormatEvidence()
                     current.copy(
                         streamLoading = false,
+                        format = playUrlInfo.format,
+                        streamFormatEvidence = current.streamFormatEvidence +
+                            (formatKey to evidence.withResponse(requestedFormat, playUrlInfo.format)),
                         playUrlInfo = playUrlInfo,
                         videoStreams = playUrlInfo.video,
                         audioStreams = playUrlInfo.audio,
@@ -1447,7 +1366,7 @@ class ParseViewModel(
                         selectedResolutionId = selectedResolutionId,
                         selectedCodec = selectedCodec,
                         selectedAudioId = selectedAudioId,
-                        warning = streamWarningFor(requestedFormat, playUrlInfo.format),
+                        warning = streamWarningFor(playUrlInfo.format),
                     )
                 }
             }.onFailure { err ->
@@ -1479,6 +1398,14 @@ class ParseViewModel(
             _state.update { it.copy(error = strings.get(R.string.parse_error_no_download_content)) }
             return
         }
+        if (state.hasIncompleteSubtitleSelection) {
+            _state.update { it.copy(error = strings.get(R.string.parse_subtitle_selection_required)) }
+            return
+        }
+        if (state.outputType != null && !state.hasCommonStreamFormat) {
+            _state.update { it.copy(error = strings.get(R.string.parse_formats_no_common)) }
+            return
+        }
         if (state.danmakuHistoryEnabled) {
             val historyInputError = when {
                 !isValidDate(state.danmakuDate) -> strings.get(R.string.parse_error_invalid_date)
@@ -1508,10 +1435,6 @@ class ParseViewModel(
                 withContext(Dispatchers.IO) {
                     downloadRepository.ensureLoaded()
                     val targets = buildDownloadTargets(snapshot, info, selectedIndices)
-                    val selectionPolicy = subtitleSelectionPolicy(
-                        selectedItemCount = selectedIndices.size,
-                        languageSelection = snapshot.subtitleLanguageSelection,
-                    )
                     var queuedGroups = 0
                     var failedItems = 0
                     var firstFailure: Throwable? = null
@@ -1653,13 +1576,7 @@ class ParseViewModel(
                                     OutputType.AudioVideo,
                                     -> selectedVideo?.codec ?: snapshot.selectedCodec
                                 }
-                                // FLV 没有字幕轨、杜比 EAC3 没有歌词字段；转换成 MP4 / MP3 后才能承载。
-                                val embedding = snapshot.downloadEmbedding(
-                                    videoContainerSupportsSubtitles = conversionSettings.convertVideoToMp4 ||
-                                        selectedVideo?.format != StreamFormat.Flv,
-                                    audioContainerSupportsLyrics = conversionSettings.convertAudioToMp3 ||
-                                        selectedAudio?.id != AudioQualities.DOLBY_ATMOS,
-                                )
+                                val embedding = snapshot.downloadEmbedding()
                                 when (outputType) {
                                     OutputType.AudioOnly -> {
                                         val mediaParams = buildMediaParams(null, null, selectedAudio)
@@ -1693,6 +1610,7 @@ class ParseViewModel(
                                     }
                                     OutputType.VideoOnly -> {
                                         val mediaParams = buildMediaParams(selectedVideo, outputVideoCodec, null)
+                                        val videoExtension = extensionForVideoStream(selectedVideo!!)
                                         val videoNamingContext = buildNamingContext(
                                             info = info,
                                             item = item,
@@ -1701,13 +1619,13 @@ class ParseViewModel(
                                             taskType = DownloadTaskType.Video,
                                             taskLabel = downloadTitle,
                                             mediaParams = mediaParams,
-                                            formatLabel = mapStreamFormatLabel(selectedVideo!!.format),
+                                            formatLabel = mapOutputExtensionLabel(videoExtension),
                                         )
                                         val videoName = resolveTemplateFileName(
                                             item = item,
                                             namingSession = namingSession,
                                             context = videoNamingContext,
-                                            extension = extensionForVideoStream(selectedVideo),
+                                            extension = videoExtension,
                                         )
                                         downloadRepository.enqueue(
                                             groupId,
@@ -1810,7 +1728,6 @@ class ParseViewModel(
                             namingSession = namingSession,
                             batchOrdinal = batchOrdinal,
                             groupId = groupId,
-                            subtitleSelectionPolicy = selectionPolicy,
                         )
                         queuedGroups += 1
                     }
@@ -1994,7 +1911,6 @@ class ParseViewModel(
         namingSession: NamingSession,
         batchOrdinal: Int,
         groupId: Long,
-        subtitleSelectionPolicy: SubtitleSelectionPolicy,
     ) {
         val capabilities = item.type.capabilities
 
@@ -2023,14 +1939,7 @@ class ParseViewModel(
                     item = item,
                     namingSession = namingSession,
                     context = subtitleContext,
-                    extension = if (subtitleSelectionPolicy == SubtitleSelectionPolicy.SelectedLanguage) {
-                        (snapshot.subtitleLanguageSelection as? SubtitleLanguageSelection.Language)
-                            ?.lan
-                            ?.let { "$it.srt" }
-                            ?: "srt"
-                    } else {
-                        "srt"
-                    },
+                    extension = "srt",
                 )
                 val subtitleBaseFileName = resolveTemplateBaseName(
                     item = item,
@@ -2047,10 +1956,7 @@ class ParseViewModel(
                         unavailableMessage = strings.get(R.string.parse_error_no_subtitle),
                         aid = aid,
                         cid = cid,
-                        downloadAllSubtitles =
-                            subtitleSelectionPolicy == SubtitleSelectionPolicy.AllAvailable,
-                        selectedSubtitleLanguage =
-                            (snapshot.subtitleLanguageSelection as? SubtitleLanguageSelection.Language)?.lan,
+                        subtitleSelection = snapshot.subtitleLanguageSelection.toRequest(),
                         subtitleBaseFileName = subtitleBaseFileName,
                         subtitleTaskTitle = subtitleTitle,
                         cleanFileNameSeparators = namingSession.settings.cleanSeparators,
@@ -2316,6 +2222,10 @@ class ParseViewModel(
         val snapshot = _state.value
         val info = snapshot.mediaInfo ?: return
         if (snapshot.subtitleCopying || snapshot.aiSummaryCopying) return
+        if (snapshot.subtitleLanguageSelection.isEmpty) {
+            _state.update { it.copy(error = strings.get(R.string.parse_subtitle_selection_required)) }
+            return
+        }
         val requestedIndices = snapshot.selectedItemIndices.filter { it in snapshot.items.indices }
         if (requestedIndices.isEmpty()) {
             _state.update { it.copy(error = strings.get(R.string.parse_error_no_selection)) }
@@ -2336,36 +2246,22 @@ class ParseViewModel(
                     notice = null,
                 )
             }
-            val entries = runCatching {
+            val entries = try {
                 withContext(Dispatchers.IO) {
                     buildSubtitleCopyEntries(snapshot, info, selectedIndices)
                 }
-            }.getOrElse { err ->
-                val message = mapError(err)
-                _state.update {
-                    it.copy(
-                        subtitleCopying = false,
-                        error = message,
-                    )
-                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                _state.update { it.copy(error = mapError(error)) }
                 return@launch
+            } finally {
+                _state.update { it.copy(subtitleCopying = false) }
             }
-            val availableCount = entries.count { !it.content.isNullOrBlank() }
-            if (availableCount <= 0) {
-                val message = strings.get(R.string.parse_error_no_subtitle)
-                _state.update {
-                    it.copy(
-                        subtitleCopying = false,
-                        error = message,
-                    )
-                }
-                return@launch
-            }
-            _state.update { it.copy(subtitleCopying = false) }
             if (entries.size <= 1) {
                 val entry = entries.firstOrNull()
                 if (entry?.content.isNullOrBlank()) {
-                    val message = strings.get(R.string.parse_error_no_subtitle)
+                    val message = entry?.error ?: strings.get(R.string.parse_error_no_subtitle)
                     _state.update {
                         it.copy(
                             error = message,
@@ -2458,57 +2354,26 @@ class ParseViewModel(
         selectedIndices: List<Int>,
     ): List<SubtitleCopyEntry> {
         val targets = buildDownloadTargets(snapshot, info, selectedIndices)
-        val selectionPolicy = subtitleSelectionPolicy(
-            selectedItemCount = selectedIndices.size,
-            languageSelection = snapshot.subtitleLanguageSelection,
-        )
         return targets.flatMap { rawItem ->
-            val item = runCatching { mediaRepository.resolveItemForPlay(rawItem, rawItem.type) }
-                .getOrDefault(rawItem)
-            val groupLabel = resolveGroupLabel(info = info, item = item)
-            val aid = item.aid
-            val cid = item.cid
-            val subtitles = if (aid != null && cid != null) {
-                runCatching { extrasRepository.getSubtitles(aid, cid) }.getOrDefault(emptyList())
-            } else {
-                emptyList()
-            }
-            val selectedSubtitles = selectSubtitles(
-                subtitles = subtitles,
-                languageSelection = snapshot.subtitleLanguageSelection,
-                policy = selectionPolicy,
-            )
-            val title = buildSubtitleEntryTitle(groupLabel.title, groupLabel.subtitle)
-            if (selectedSubtitles.isEmpty()) {
-                listOf(
-                    SubtitleCopyEntry(
-                        title = title,
-                        subtitleName = null,
-                        content = null,
-                        error = strings.get(R.string.parse_error_no_subtitle),
-                    ),
-                )
-            } else {
-                selectedSubtitles.map { subtitle ->
-                    val content = runCatching {
-                        decodeSubtitleContent(extrasRepository.getSubtitleSrt(subtitle))
-                    }.getOrNull()
-                    if (content.isNullOrBlank()) {
-                        SubtitleCopyEntry(
-                            title = title,
-                            subtitleName = subtitle.name,
-                            content = null,
-                            error = strings.get(R.string.parse_error_no_subtitle),
-                        )
+            val groupLabel = resolveGroupLabel(info = info, item = rawItem)
+            loadSubtitleCopyEntries(
+                title = buildSubtitleEntryTitle(groupLabel.title, groupLabel.subtitle),
+                selection = snapshot.subtitleLanguageSelection,
+                knownSubtitles = snapshot.subtitleKnownLanguages,
+                loadSubtitles = {
+                    val item = mediaRepository.resolveItemForPlay(rawItem, rawItem.type)
+                    val aid = item.aid
+                    val cid = item.cid
+                    if (aid != null && cid != null) {
+                        extrasRepository.getSubtitles(aid, cid)
                     } else {
-                        SubtitleCopyEntry(
-                            title = title,
-                            subtitleName = subtitle.name,
-                            content = content,
-                        )
+                        emptyList()
                     }
-                }
-            }
+                },
+                loadContent = { subtitle -> decodeSubtitleContent(extrasRepository.getSubtitleSrt(subtitle)) },
+                unavailableMessage = strings.get(R.string.parse_error_no_subtitle),
+                errorMessage = ::mapError,
+            )
         }
     }
 
@@ -2563,7 +2428,10 @@ class ParseViewModel(
         // 合集模式下每一集都是独立稿件，要各自展开分 P 才能拿到真正的下载单元。
         return selectedItems.flatMap { episode ->
             runCatching { mediaRepository.getVideoPages(episode) }
-                .getOrDefault(listOf(episode))
+                .getOrElse { error ->
+                    if (error is CancellationException) throw error
+                    listOf(episode)
+                }
                 .map { page -> page.copy(title = page.title.ifBlank { episode.title }) }
         }
     }
@@ -2753,8 +2621,7 @@ class ParseViewModel(
 
     private fun extensionForVideoStream(stream: VideoStream): String {
         return when (stream.format) {
-            StreamFormat.Dash -> "m4s"
-            StreamFormat.Mp4 -> "mp4"
+            StreamFormat.Dash, StreamFormat.Mp4 -> "mp4"
             StreamFormat.Flv -> "flv"
         }
     }
@@ -2810,16 +2677,8 @@ class ParseViewModel(
         }
     }
 
-    private fun streamWarningFor(
-        requestedFormat: StreamFormat,
-        actualFormat: StreamFormat,
-    ): String? {
+    private fun streamWarningFor(actualFormat: StreamFormat): String? {
         return when {
-            requestedFormat != actualFormat -> strings.get(
-                R.string.parse_warning_stream_format_fallback,
-                mapStreamFormatLabel(requestedFormat),
-                mapStreamFormatLabel(actualFormat),
-            )
             actualFormat == StreamFormat.Dash -> strings.get(R.string.parse_warning_dash)
             else -> null
         }
@@ -2862,18 +2721,6 @@ class ParseViewModel(
             requestGeneration == extrasRefreshGeneration &&
                 items.getOrNull(selectedItemIndex)?.extrasTargetKey() == targetKey
 
-        _state.update { it.copy(subtitleLoadStatus = SubtitleLoadStatus.Loading) }
-        if (subtitleSelectionTargetKey != targetKey) {
-            subtitleSelectionTargetKey = targetKey
-            _state.update {
-                it.copy(
-                    subtitleList = emptyList(),
-                    subtitleLanguageSelection = null,
-                    embedSubtitleLanguages = emptySet(),
-                    embedLyricsLanguage = null,
-                )
-            }
-        }
         val capabilities = item.type.capabilities
         val isOpus = capabilities.supportsOpusExport
         val opusDocument = if (isOpus) {
@@ -2887,32 +2734,6 @@ class ParseViewModel(
         val resolvedItem = opusDocument?.let { document -> item.withOpusDocument(document) } ?: item
         val aid = item.aid
         val cid = item.cid
-        val subtitleResult = if (capabilities.supportsSubtitleExport && aid != null && cid != null) {
-            runCatching { extrasRepository.getSubtitles(aid, cid) }.onFailure {
-                if (it is CancellationException) throw it
-            }
-        } else {
-            Result.success(emptyList())
-        }
-        val subtitles = subtitleResult.getOrDefault(emptyList())
-        // 字幕查询完成就更新预览，不等待 AI 总结等无关的附加资源。
-        _state.update { current ->
-            if (!current.isCurrentTarget()) return@update current
-            // 单选时字幕列表就是可挑选的语言；当前条目没有字幕，依赖字幕的选项与「字幕」导出一样自动收起，
-            // 避免下载后再提示「没有可用字幕」。批量下载逐条处理，不受当前条目限制。
-            val hasSubtitles = current.isMultiSelect || subtitles.isNotEmpty()
-            val lyricsFromSubtitles = capabilities.supportsSubtitleExport
-            current.copy(
-                subtitleList = subtitles,
-                subtitleLoadStatus = if (subtitleResult.isSuccess) SubtitleLoadStatus.Ready else SubtitleLoadStatus.Failed,
-                subtitleLanguageSelection = pickSubtitleLanguageSelection(subtitles, current.subtitleLanguageSelection),
-                subtitleEnabled = current.subtitleEnabled && capabilities.supportsSubtitleExport && hasSubtitles,
-                embedSubtitleLanguages = pickEmbedSubtitleLanguages(subtitles, current.embedSubtitleLanguages),
-                embedLyricsLanguage = pickEmbedLyricsLanguage(subtitles, current.embedLyricsLanguage),
-                embedSubtitlesEnabled = current.embedSubtitlesEnabled && capabilities.supportsSubtitleExport && hasSubtitles,
-                embedLyricsEnabled = current.embedLyricsEnabled && (!lyricsFromSubtitles || hasSubtitles),
-            )
-        }
         val aiAvailable = if (capabilities.supportsAiSummaryExport && aid != null && cid != null) {
             runCatching { extrasRepository.hasAiSummary(aid, cid) }.getOrDefault(false)
         } else {
@@ -2979,7 +2800,9 @@ class ParseViewModel(
 
     private fun invalidateExtrasRefresh() {
         extrasRefreshGeneration += 1
-        subtitleSelectionTargetKey = null
+        subtitleCatalogLoader.clear()
+        // 解析失败仍会保留旧结果，语言选择只在新结果成功替换旧结果时重置。
+        _state.update { it.copy(subtitleRefreshRevision = it.subtitleRefreshRevision + 1) }
     }
 
     private fun refreshItemPresentation(
@@ -3223,7 +3046,7 @@ class ParseViewModel(
 
     /**
      * 每次解析都从这里出发：被记住的分组沿用上次的选择，其余分组回到默认值。
-     * 画质与音质走 [applyDefaultDownloadQuality]，解析页的更改已直接写回默认下载质量。
+     * 画质与音质由 [applyDefaultDownloadQuality] 合并独立的记忆与默认设置。
      */
     private fun applyInitialDownloadOptions(state: ParseUiState, type: MediaType?): ParseUiState {
         val memory = settingsRepository.currentDownloadPreferenceMemory()
@@ -3233,7 +3056,9 @@ class ParseViewModel(
         fun <T> pick(group: DownloadPreferenceGroup, rememberedValue: T, defaultValue: T): T =
             if (memory.remembers(group)) rememberedValue else defaultValue
 
-        val format = pick(DownloadPreferenceGroup.StreamFormat, remembered.streamFormat, StreamFormat.Dash)
+        val format = state.copy(
+            format = pick(DownloadPreferenceGroup.StreamFormat, remembered.streamFormat, StreamFormat.Dash),
+        ).availableStreamFormat
         val outputType = pick(
             DownloadPreferenceGroup.OutputType,
             remembered.outputType.takeIf { capabilities?.supportsPlaybackStream == true },
@@ -3245,17 +3070,14 @@ class ParseViewModel(
             outputType = outputType,
             embedSubtitlesEnabled = pick(DownloadPreferenceGroup.Embedding, remembered.embedSubtitles, false),
             embedLyricsEnabled = pick(DownloadPreferenceGroup.Embedding, remembered.embedLyrics, false),
-            embedIncludeGeneratedSubtitles = pick(
-                DownloadPreferenceGroup.Embedding,
-                remembered.embedIncludeGeneratedSubtitles,
-                true,
-            ),
             subtitleEnabled = pick(DownloadPreferenceGroup.MiscExports, remembered.subtitleExport, false),
             aiSummaryEnabled = pick(DownloadPreferenceGroup.MiscExports, remembered.aiSummaryExport, false),
             nfoCollectionEnabled = pick(DownloadPreferenceGroup.Nfo, remembered.nfoCollection, false),
             nfoSingleEnabled = pick(DownloadPreferenceGroup.Nfo, remembered.nfoSingle, false),
             danmakuLiveEnabled = pick(DownloadPreferenceGroup.Danmaku, remembered.danmakuLive, false),
             danmakuHistoryEnabled = pick(DownloadPreferenceGroup.Danmaku, remembered.danmakuHistory, false),
+            danmakuDate = defaultDate(),
+            danmakuHour = "",
             selectedImageIds = pick(DownloadPreferenceGroup.Images, remembered.imageIds, emptySet()),
             opusContentEnabled = supportsOpus &&
                 pick(DownloadPreferenceGroup.Opus, remembered.opusContent, defaults.opusContentEnabled),
@@ -3275,37 +3097,19 @@ class ParseViewModel(
         if (updated != current) settingsRepository.rememberDownloadPreferences(updated)
     }
 
-    private fun rememberVideoQualityPreference() {
-        if (!settingsRepository.currentDownloadPreferenceMemory().remembers(DownloadPreferenceGroup.VideoQuality)) return
-        val state = _state.value
-        val current = settingsRepository.currentDefaultDownloadQuality()
-        settingsRepository.setDefaultDownloadQuality(
-            current.copy(
-                resolutionMode = state.resolutionMode.toDownloadQualityMode(),
-                fixedResolutionId = state.selectedResolutionId
-                    ?.takeIf { state.resolutionMode == QualityMode.Fixed }
-                    ?: current.fixedResolutionId,
-                codec = state.selectedCodec?.toDefaultDownloadVideoCodec() ?: current.codec,
-            ),
-        )
+    private fun rememberVideoQualityPreference(patch: RememberedDownloadQuality.() -> RememberedDownloadQuality) {
+        rememberDownloadPreference(DownloadPreferenceGroup.VideoQuality) { copy(quality = quality.patch()) }
     }
 
-    private fun rememberAudioQualityPreference() {
-        if (!settingsRepository.currentDownloadPreferenceMemory().remembers(DownloadPreferenceGroup.AudioQuality)) return
-        val state = _state.value
-        val current = settingsRepository.currentDefaultDownloadQuality()
-        settingsRepository.setDefaultDownloadQuality(
-            current.copy(
-                audioBitrateMode = state.audioBitrateMode.toDownloadQualityMode(),
-                fixedAudioBitrateId = state.selectedAudioId
-                    ?.takeIf { state.audioBitrateMode == QualityMode.Fixed }
-                    ?: current.fixedAudioBitrateId,
-            ),
-        )
+    private fun rememberAudioQualityPreference(patch: RememberedDownloadQuality.() -> RememberedDownloadQuality) {
+        rememberDownloadPreference(DownloadPreferenceGroup.AudioQuality) { copy(quality = quality.patch()) }
     }
 
     private fun applyDefaultDownloadQuality(state: ParseUiState): ParseUiState {
-        val quality = settingsRepository.currentDefaultDownloadQuality()
+        val quality = settingsRepository.rememberedDownloadPreferences().quality.resolve(
+            defaults = settingsRepository.currentDefaultDownloadQuality(),
+            memory = settingsRepository.currentDownloadPreferenceMemory(),
+        )
         return state.copy(
             resolutionMode = quality.resolutionMode.toQualityMode(),
             selectedResolutionId = quality.fixedResolutionId.takeIf {
@@ -3365,13 +3169,14 @@ class ParseViewModel(
         )
         val nextAudioId = pickAudioId(state.selectedAudioId, nextAudioOptions, nextAudioMode)
         return state.copy(
+            format = state.availableStreamFormat,
             resolutionMode = nextResolutionMode,
             audioBitrateMode = nextAudioMode,
             resolutions = nextResolutions,
             codecs = nextCodecs,
             audioBitrates = nextAudioOptions,
             selectedResolutionId = nextResolutionId,
-            selectedCodec = pickCodec(state.selectedCodec, nextCodecs),
+            selectedCodec = if (nextCodecs.isEmpty()) state.selectedCodec else pickCodec(state.selectedCodec, nextCodecs),
             selectedAudioId = nextAudioId,
         )
     }
@@ -3395,7 +3200,7 @@ class ParseViewModel(
             pageIndex = pageIndex,
             collectionMode = collectionMode,
             selectedItemIndex = selectedItemIndex,
-            format = format,
+            format = availableStreamFormat,
         )
     }
 
@@ -3711,11 +3516,7 @@ class ParseViewModel(
         stream: VideoStream,
         codec: VideoCodec?,
     ): String {
-        val ext = when (stream.format) {
-            StreamFormat.Dash -> "m4s"
-            StreamFormat.Mp4 -> "mp4"
-            StreamFormat.Flv -> "flv"
-        }
+        val ext = extensionForVideoStream(stream)
         val resolution = mapResolutionLabel(stream)
         val codecLabel = codec?.let { codecLabel(it) }
         val suffix = listOfNotNull(resolution, codecLabel).joinToString("-")

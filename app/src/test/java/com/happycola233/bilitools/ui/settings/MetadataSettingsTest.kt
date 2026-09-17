@@ -115,8 +115,6 @@ class MetadataSettingsTest {
         compose.runOnIdle { assertFalse(settings.metadata.embedCover) }
         switchFor("将合集作为专辑").performClick().assertIsOff()
         compose.runOnIdle { assertFalse(settings.metadata.useCollectionAsAlbum) }
-        // 字幕与歌词已经不在这里配置，页面只告知去处。
-        compose.onNodeWithText("字幕轨与歌词不属于元数据", substring = true).performScrollTo().assertExists()
         compose.runOnIdle { settings = settings.copy(addMetadata = false) }
         compose.onNodeWithText("元数据已关闭，可在“下载”设置中开启。").assertExists()
         switchFor("嵌入封面").assertIsNotEnabled()
@@ -161,7 +159,7 @@ class MetadataSettingsTest {
             }
         }
         open("默认下载质量", SettingsDestination.DefaultDownloadQuality)
-        open("记住下载偏好", SettingsDestination.DownloadPreferenceMemory)
+        open("记忆下载偏好", SettingsDestination.DownloadPreferenceMemory)
         open("元数据选项", SettingsDestination.Metadata)
         // 入口行直接说明当前保留了哪些选项。
         compose.onNodeWithText("保留 6 类选项", substring = true).assertExists()
@@ -177,7 +175,7 @@ class MetadataSettingsTest {
             }
         }
         val list = compose.onNode(hasScrollToIndexAction())
-        switchFor("记住下载偏好").assertIsOn()
+        switchFor("记忆下载偏好").assertIsOn()
         switchFor("输出类型").assertIsEnabled().assertIsOff()
         list.performScrollToNode(hasText("内嵌字幕与歌词"))
         switchFor("内嵌字幕与歌词").assertIsOn()
@@ -191,8 +189,8 @@ class MetadataSettingsTest {
         compose.runOnIdle { assertFalse(DownloadPreferenceGroup.Opus in settings.groups) }
 
         // 总开关关闭：分组全部变灰但保留原值，并说明整页不再生效。
-        list.performScrollToNode(hasText("记住下载偏好"))
-        switchFor("记住下载偏好").performClick().assertIsOff()
+        list.performScrollToNode(hasText("记忆下载偏好"))
+        switchFor("记忆下载偏好").performClick().assertIsOff()
         compose.runOnIdle {
             assertFalse(settings.enabled)
             assertTrue(DownloadPreferenceGroup.OutputType in settings.groups)

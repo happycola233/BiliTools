@@ -55,10 +55,10 @@ object AudioQualities {
 
     fun audioFileExtension(id: Int): String {
         return when (id) {
-            DOLBY_ATMOS -> "eac3"
             HI_RES_LOSSLESS,
             LOSSLESS_FLAC,
             -> "flac"
+            // 杜比音轨也是 MP4 中的 E-AC-3，保留封装即可保留 Atmos，并可写入歌词。
             else -> "m4a"
         }
     }

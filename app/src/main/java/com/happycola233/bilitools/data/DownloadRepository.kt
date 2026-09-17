@@ -37,7 +37,6 @@ import com.happycola233.bilitools.data.model.MediaInfo
 import com.happycola233.bilitools.data.model.MediaItem
 import com.happycola233.bilitools.data.model.MediaType
 import com.happycola233.bilitools.data.model.StreamFormat
-import com.happycola233.bilitools.data.model.SubtitleInfo
 import com.happycola233.bilitools.data.model.VideoCodec
 import com.happycola233.bilitools.data.model.VideoStream
 import com.happycola233.bilitools.download.DownloadForegroundService
@@ -313,7 +312,7 @@ class DownloadRepository(
         embedding: DownloadEmbedding? = null,
     ): DownloadItem {
         val id = downloadIds.incrementAndGet()
-        val conversionTarget = resolveMediaConversionTarget(type)
+        val conversionTarget = resolveMediaConversionTarget(type, fileName, embedding)
         val outputFileName = MediaConversionPolicy.outputFileName(fileName, conversionTarget)
         val item = buildItem(
             id,
@@ -349,7 +348,7 @@ class DownloadRepository(
         embeddedMetadata: DownloadEmbeddedMetadata? = null,
         embedding: DownloadEmbedding? = null,
     ): DownloadItem {
-        val conversionTarget = resolveMediaConversionTarget(DownloadTaskType.AudioVideo)
+        val conversionTarget = resolveMediaConversionTarget(DownloadTaskType.AudioVideo, outputFileName, embedding)
         val resolvedOutputFileName = MediaConversionPolicy.outputFileName(
             outputFileName,
             conversionTarget,
@@ -807,9 +806,6 @@ class DownloadRepository(
             DownloadExtraTaskOperation.SubtitleDiscovery ->
                 executeSubtitleDiscovery(id, spec)
 
-            DownloadExtraTaskOperation.Subtitle ->
-                extrasRepository.getSubtitleSrt(requireNotNull(spec.subtitle))
-
             DownloadExtraTaskOperation.AiSummary -> extrasRepository.getAiSummaryMarkdown(
                 title = requireNotNull(spec.summaryTitle),
                 bvid = requireNotNull(spec.bvid),
@@ -917,7 +913,7 @@ class DownloadRepository(
         )
     }
 
-    private suspend fun executeSubtitleDiscovery(
+    internal suspend fun executeSubtitleDiscovery(
         id: Long,
         spec: DownloadExtraTaskSpec,
     ): ByteArray? {
@@ -925,40 +921,45 @@ class DownloadRepository(
             aid = requireNotNull(spec.aid),
             cid = requireNotNull(spec.cid),
         )
-        val selected = if (spec.downloadAllSubtitles) {
-            subtitles
-        } else {
-            subtitles.firstOrNull { subtitle ->
-                subtitle.lan == spec.selectedSubtitleLanguage
-            }?.let(::listOf).orEmpty()
-        }
-        val first = selected.firstOrNull() ?: return null
+        val plan = planSubtitleDiscovery(subtitles, spec)
+        val first = plan.firstOrNull() ?: return null
         val baseFileName = requireNotNull(spec.subtitleBaseFileName)
         val taskTitle = requireNotNull(spec.subtitleTaskTitle)
         val firstFileName = NamingRenderer.appendExtension(
             baseName = baseFileName,
-            extension = "${first.lan}.srt",
+            extension = "${first.subtitle.lan}.srt",
             cleanSeparators = spec.cleanFileNameSeparators,
         )
-        if (!updateExtraTaskMetadata(id, "$taskTitle - ${first.name}", firstFileName)) {
+        if (!updateExtraTaskMetadata(id, "$taskTitle - ${first.subtitle.displayName}", firstFileName)) {
             throw CancellationException("Subtitle task is no longer active")
         }
-        selected.drop(1).forEach { subtitle ->
-            enqueueSubtitleTaskIfAbsent(
-                parentTaskId = id,
-                subtitle = subtitle,
-                parentSpec = spec,
-            )
+        plan.drop(1).forEach { task ->
+            if (!enqueueSubtitleTaskIfAbsent(id, task)) {
+                throw CancellationException("Subtitle task is no longer active")
+            }
         }
-        return extrasRepository.getSubtitleSrt(first)
+        // 所有子任务登记后，父任务也固定为首个语言。重试只刷新该语言的 URL，
+        // 防止列表顺序变化或首语言消失时重复下载其他子任务的字幕。
+        val active = synchronized(lock) {
+            val current = tasks[id]
+            if (current?.status == DownloadStatus.Pending || current?.status == DownloadStatus.Running) {
+                extraTaskSpecs[id] = first.retrySpec
+                true
+            } else false
+        }
+        if (!active) throw CancellationException("Subtitle task is no longer active")
+        schedulePersist()
+        if (!first.available) return null
+        return extrasRepository.getSubtitleSrt(first.subtitle).takeIf { it.isNotEmpty() }
     }
 
     private fun enqueueSubtitleTaskIfAbsent(
         parentTaskId: Long,
-        subtitle: SubtitleInfo,
-        parentSpec: DownloadExtraTaskSpec,
-    ) {
-        val parent = tasks[parentTaskId] ?: return
+        plannedTask: SubtitleDiscoveryTask,
+    ): Boolean {
+        val parent = tasks[parentTaskId] ?: return false
+        val subtitle = plannedTask.subtitle
+        val parentSpec = plannedTask.retrySpec
         val baseFileName = requireNotNull(parentSpec.subtitleBaseFileName)
         val taskTitle = requireNotNull(parentSpec.subtitleTaskTitle)
         val fileName = NamingRenderer.appendExtension(
@@ -976,22 +977,21 @@ class DownloadRepository(
                         extraTaskSpecs[taskId]?.subtitleTaskKey() == candidateKey)
             }
         }
-        if (duplicateExists) return
+        if (duplicateExists) return true
 
         val task = addExtraTaskIfParentActive(
             parentTaskId = parentTaskId,
             groupId = parent.groupId,
             type = DownloadTaskType.Subtitle,
-            taskTitle = "$taskTitle - ${subtitle.name}",
+            taskTitle = "$taskTitle - ${subtitle.displayName}",
             fileName = fileName,
-            status = DownloadStatus.Pending,
-        ) ?: return
-        extraTaskSpecs[task.id] = parentSpec.copy(
-            operation = DownloadExtraTaskOperation.Subtitle,
-            subtitle = subtitle,
-        )
+            status = if (plannedTask.available) DownloadStatus.Pending else DownloadStatus.Unavailable,
+            statusDetail = parentSpec.unavailableMessage.takeUnless { plannedTask.available },
+        ) ?: return false
+        extraTaskSpecs[task.id] = plannedTask.retrySpec
         schedulePersist()
-        requestExtraTaskStart(task.id)
+        if (plannedTask.available) requestExtraTaskStart(task.id)
+        return true
     }
 
     private fun extraTaskErrorMessage(taskTitle: String, err: Throwable?): String {
@@ -1480,7 +1480,7 @@ class DownloadRepository(
         currentCoroutineContext().ensureActive()
         val finalizedSource = prepareFinalTempFile(state.id, state.fileName, state.tempFile)
         val processedTemp = try {
-            convertDownloadedMediaIfNeeded(
+            prepareDownloadedMedia(
                 item = startItem,
                 inputFile = finalizedSource,
                 conversionTarget = state.conversionTarget,
@@ -1501,28 +1501,17 @@ class DownloadRepository(
             TAG,
             "[save-chain] start save managed download, taskId=$id, groupId=${startItem.groupId}, file=${startItem.fileName}, temp=${processedTemp.absolutePath}, tempExists=${processedTemp.exists()}, tempSize=${processedTemp.length()}, relativePath=$relativePath",
         )
-        var uri = saveToDownloads(processedTemp, startItem.fileName, relativePath)
-        if (uri == null) {
-            Log.w(
-                TAG,
-                "[save-chain] saveToDownloads returned null, fallback search in-group first, taskId=$id, file=${startItem.fileName}, groupId=${startItem.groupId}",
-            )
-            uri = findAccessibleDownload(startItem.fileName, startItem.groupId)
-                ?: findAccessibleDownloadAnywhere(startItem.fileName)
-        }
+        // 新下载只能认可本次保存的 URI；同名旧文件可能没有本次选择的字幕或歌词。
+        val uri = saveToDownloads(processedTemp, startItem.fileName, relativePath)
         Log.d(
             TAG,
-            "[save-chain] save+fallback resolved, taskId=$id, file=${startItem.fileName}, resolvedUri=$uri",
+            "[save-chain] save resolved, taskId=$id, file=${startItem.fileName}, resolvedUri=$uri",
         )
         if (uri != null && processedTemp != finalizedSource) {
             runCatching { finalizedSource.delete() }
-        } else if (uri == null && processedTemp != finalizedSource) {
-            runCatching { processedTemp.delete() }
         }
         if (uri != null && finalizedSource != state.tempFile) {
             runCatching { state.tempFile.delete() }
-        } else if (uri == null && finalizedSource != state.tempFile) {
-            runCatching { finalizedSource.delete() }
         }
         val current = tasks[id] ?: return
         if (uri != null) {
@@ -1561,17 +1550,20 @@ class DownloadRepository(
             schedulePersist()
             Log.e(
                 TAG,
-                "[save-chain] managed download failed to resolve output uri after save and fallback, taskId=$id, file=${startItem.fileName}, groupId=${startItem.groupId}",
+                "[save-chain] managed download failed to save output, taskId=$id, file=${startItem.fileName}, groupId=${startItem.groupId}",
             )
         }
     }
 
-    private suspend fun convertDownloadedMediaIfNeeded(
+    private suspend fun prepareDownloadedMedia(
         item: DownloadItem,
         inputFile: File,
         conversionTarget: MediaConversionTarget?,
     ): File {
-        if (conversionTarget == null) return inputFile
+        // 文件封装属于下载的基本步骤，不依赖元数据或歌词开关。
+        if (conversionTarget == null && item.taskType != DownloadTaskType.Audio && item.taskType != DownloadTaskType.Video) {
+            return inputFile
+        }
 
         val outputFile = processingTempFileFor(item.id, item.fileName)
         runCatching { outputFile.delete() }
@@ -1580,6 +1572,7 @@ class DownloadRepository(
                 context.getString(R.string.download_detail_converting_audio)
             MediaConversionTarget.MP4 ->
                 context.getString(R.string.download_detail_converting_video)
+            null -> context.getString(R.string.download_detail_preparing_media)
         }
         tasks[item.id]?.let { current ->
             updateTask(
@@ -1599,6 +1592,11 @@ class DownloadRepository(
                     MediaProcessingEngine.convertAudioToMp3(inputFile, outputFile)
                 MediaConversionTarget.MP4 ->
                     MediaProcessingEngine.convertVideoToMp4(inputFile, outputFile)
+                null -> if (item.taskType == DownloadTaskType.Audio) {
+                    MediaProcessingEngine.remuxAudio(inputFile, outputFile)
+                } else {
+                    MediaProcessingEngine.convertVideoToMp4(inputFile, outputFile)
+                }
             }
         } catch (err: CancellationException) {
             runCatching { outputFile.delete() }
@@ -1610,6 +1608,7 @@ class DownloadRepository(
                     context.getString(R.string.download_failure_convert_audio)
                 MediaConversionTarget.MP4 ->
                     context.getString(R.string.download_failure_convert_video)
+                null -> context.getString(R.string.download_failure_prepare_media)
             }
             throw IllegalStateException(message, err)
         }
@@ -1978,12 +1977,11 @@ class DownloadRepository(
     }
 
     private fun inferRetryStreamFormat(item: DownloadItem): StreamFormat {
-        if (item.taskType == DownloadTaskType.Audio) {
+        if (item.taskType == DownloadTaskType.Audio || item.taskType == DownloadTaskType.Video) {
             return StreamFormat.Dash
         }
         val sourceFileName = downloadStates[item.id]?.fileName ?: item.fileName
         return when (sourceFileName.substringAfterLast('.', "").lowercase(Locale.US)) {
-            "m4s" -> StreamFormat.Dash
             "flv" -> StreamFormat.Flv
             else -> StreamFormat.Mp4
         }
@@ -3431,12 +3429,18 @@ class DownloadRepository(
         return item.taskType.isManagedTransfer
     }
 
-    private fun resolveMediaConversionTarget(taskType: DownloadTaskType): MediaConversionTarget? {
+    private fun resolveMediaConversionTarget(
+        taskType: DownloadTaskType,
+        fileName: String,
+        embedding: DownloadEmbedding?,
+    ): MediaConversionTarget? {
         val settings = settingsRepository.currentSettings()
         return MediaConversionPolicy.targetFor(
             taskType = taskType,
             convertAudioToMp3 = settings.convertAudioToMp3,
             convertVideoToMp4 = settings.convertVideoToMp4,
+            sourceExtension = fileName.substringAfterLast('.', ""),
+            embedSubtitles = embedding?.subtitles != null,
         )
     }
 
@@ -3642,7 +3646,6 @@ class DownloadRepository(
                     videoFile = videoFile,
                     audioFile = audioFile,
                     outputFile = outputTemp,
-                    transcodeAudioToAac = task.conversionTarget == MediaConversionTarget.MP4,
                 )
             } catch (err: CancellationException) {
                 throw err
@@ -3674,26 +3677,11 @@ class DownloadRepository(
         }
 
         currentCoroutineContext().ensureActive()
-        var uri = saveToDownloads(outputTemp, task.outputName, relativePath)
-        if (uri == null && groupId != null) {
-            Log.w(
-                TAG,
-                "[merge-chain] saveToDownloads returned null, fallback in group, taskId=${task.id}, output=${task.outputName}, groupId=$groupId",
-            )
-            uri = findAccessibleDownload(task.outputName, groupId)
-        }
+        val uri = saveToDownloads(outputTemp, task.outputName, relativePath)
         if (uri == null) {
-            Log.w(
-                TAG,
-                "[merge-chain] in-group fallback miss, fallback anywhere, taskId=${task.id}, output=${task.outputName}",
-            )
-            uri = findAccessibleDownloadAnywhere(task.outputName)
-        }
-        if (uri == null) {
-            runCatching { outputTemp.delete() }
             Log.e(
                 TAG,
-                "[merge-chain] merge output unresolved after save+fallback, taskId=${task.id}, output=${task.outputName}",
+                "[merge-chain] merge output could not be saved, taskId=${task.id}, output=${task.outputName}",
             )
         } else {
             runCatching { videoFile.delete() }
@@ -3768,6 +3756,13 @@ class DownloadRepository(
                 EmbeddedContentIssue.WriteFailed -> R.string.download_embed_write_failed
                 EmbeddedContentIssue.UnsupportedFormat -> R.string.download_embed_unsupported
             })
+        }.toMutableList().apply {
+            if (result.incompleteSubtitleTitles.isNotEmpty()) {
+                add(context.getString(
+                    R.string.download_embed_missing_languages,
+                    result.incompleteSubtitleTitles.distinct().joinToString("、"),
+                ))
+            }
         }.joinToString("；").takeIf(String::isNotBlank)
         updateTaskIf(item.id, { it.status == DownloadStatus.Running || it.status == DownloadStatus.Merging }) {
             it.copy(
@@ -3778,7 +3773,7 @@ class DownloadRepository(
         }
     }
 
-    private suspend fun saveToDownloads(
+    internal suspend fun saveToDownloads(
         tempFile: File,
         fileName: String,
         relativePath: String,
@@ -3790,18 +3785,6 @@ class DownloadRepository(
             TAG,
             "[save-output] start, file=$fileName, relativePath=$relativePath, temp=${tempFile.absolutePath}, tempExists=${tempFile.exists()}, expectedSize=$expectedSize",
         )
-        val preDeleteCount = deleteConflictingDownloadsForTarget(
-            fileName = fileName,
-            relativePath = normalizedRelativePath,
-            excludeUri = null,
-            overwriteExisting = overwriteExisting,
-        )
-        if (preDeleteCount > 0) {
-            Log.w(
-                TAG,
-                "[save-output] removed conflicting rows before insert, file=$fileName, relativePath=$normalizedRelativePath, deletedCount=$preDeleteCount",
-            )
-        }
         val output = createOutputFile(fileName, guessMimeType(fileName), relativePath) ?: run {
             Log.e(
                 TAG,
@@ -3815,7 +3798,7 @@ class DownloadRepository(
             TAG,
             "[save-output] output target prepared, uri=$uri, file=$fileName",
         )
-        return try {
+        var savedUri = try {
             output.pfd.use { pfd ->
                 FileInputStream(tempFile).use { input ->
                     FileOutputStream(pfd.fileDescriptor).use { outputStream ->
@@ -3835,8 +3818,8 @@ class DownloadRepository(
                 )
             }
             val finalizeErr = runCatching { finalizeOutputFile(uri) }.exceptionOrNull()
-            val resolvedUri = if (finalizeErr == null) {
-                uri.toString()
+            if (finalizeErr == null) {
+                resolveInsertedOutputUri(uri, expectedSize)
             } else {
                 Log.w(
                     TAG,
@@ -3846,33 +3829,9 @@ class DownloadRepository(
                 recoverAfterFinalizeFailure(
                     insertedUri = uri,
                     fileName = fileName,
-                    relativePath = normalizedRelativePath,
                     expectedSize = expectedSize,
                     finalizeErr = finalizeErr,
-                    overwriteExisting = overwriteExisting,
                 )
-            }
-            runCatching { tempFile.delete() }
-            if (resolvedUri != null) {
-                if (resolvedUri != uri.toString()) {
-                    runCatching { resolver.delete(uri, null, null) }
-                    Log.w(
-                        TAG,
-                        "[save-output] cleaned up inserted unstable uri after recovery, insertedUri=$uri, resolvedUri=$resolvedUri, file=$fileName",
-                    )
-                }
-                Log.i(
-                    TAG,
-                    "[save-output] success, insertedUri=$uri, resolvedUri=$resolvedUri, file=$fileName, relativePath=$relativePath",
-                )
-                resolvedUri
-            } else {
-                Log.e(
-                    TAG,
-                    "[save-output] failed to resolve stable uri after copy, file=$fileName, insertedUri=$uri, relativePath=$relativePath",
-                )
-                runCatching { resolver.delete(uri, null, null) }
-                null
             }
         } catch (err: CancellationException) {
             Log.i(
@@ -3887,68 +3846,26 @@ class DownloadRepository(
                 "[save-output] exception during save, file=$fileName, uri=$uri, copied=$copied, expectedSize=$expectedSize, error=${err.message}",
                 err,
             )
-            val recoveredUri = resolveStableOutputUri(
-                insertedUri = uri,
-                fileName = fileName,
-                relativePath = normalizedRelativePath,
-                expectedSize = expectedSize,
-            )
-            if (recoveredUri != null) {
-                if (recoveredUri != uri.toString()) {
-                    runCatching { resolver.delete(uri, null, null) }
-                    Log.w(
-                        TAG,
-                        "[save-output] cleaned up inserted unstable uri after exception recovery, insertedUri=$uri, recoveredUri=$recoveredUri, file=$fileName",
-                    )
-                }
-                Log.w(
-                    TAG,
-                    "[save-output] recovered stable uri after exception, file=$fileName, insertedUri=$uri, recoveredUri=$recoveredUri",
-                    err,
-                )
-                runCatching { tempFile.delete() }
-                recoveredUri
-            } else {
-                Log.w(
-                    TAG,
-                    "Save failed and output not persisted, cleanup uri=$uri, file=$fileName, expectedSize=$expectedSize",
-                    err,
-                )
-                runCatching { resolver.delete(uri, null, null) }
-                Log.e(
-                    TAG,
-                    "[save-output] cleanup finished and return null, file=$fileName, uri=$uri",
-                )
-                null
+            if (copied) resolveInsertedOutputUri(uri, expectedSize) else null
+        }
+        if (savedUri != null && overwriteExisting) {
+            // 新文件已完整写入并可见后才替换旧件，写入失败时两份原始数据都还在。
+            deleteConflictingDownloadsForTarget(fileName, normalizedRelativePath, uri.toString())
+            // MediaStore 可能为重名自动加序号；覆盖成功后恢复用户要求的文件名。
+            runCatching { finalizeOutputFile(uri, finalDisplayName = fileName) }.onFailure { error ->
+                Log.w(TAG, "Saved output could not be renamed to $fileName, uri=$uri", error)
             }
+            savedUri = resolveInsertedOutputUri(uri, expectedSize)
         }
-    }
-
-    private fun existsInMediaStore(uri: Uri): Boolean {
-        val result = runCatching {
-            resolver.query(
-                uri,
-                arrayOf(MediaStore.Downloads._ID),
-                null,
-                null,
-                null,
-            )?.use { cursor ->
-                cursor.moveToFirst()
-            } ?: false
+        if (savedUri != null) {
+            runCatching { tempFile.delete() }
+            Log.i(TAG, "[save-output] success, uri=$savedUri, file=$fileName, relativePath=$relativePath")
+        } else {
+            // 恢复只检查本次新建的 URI，绝不把可读的同名旧件当作这次下载的成果。
+            runCatching { resolver.delete(uri, null, null) }
+            Log.e(TAG, "[save-output] failed, preserved temp=${tempFile.absolutePath}, uri=$uri")
         }
-        result.exceptionOrNull()?.let { err ->
-            Log.w(
-                TAG,
-                "[media-check] query failed for uri=$uri",
-                err,
-            )
-        }
-        val exists = result.getOrDefault(false)
-        Log.d(
-            TAG,
-            "[media-check] existsInMediaStore uri=$uri -> $exists",
-        )
-        return exists
+        return savedUri
     }
 
     /** 优先读取成品文件本身，避免 MediaStore 的大小尚未刷新时显示为 0。 */
@@ -3958,55 +3875,6 @@ class DownloadRepository(
                 pfd.statSize.takeIf { it >= 0L }
             }
         }.getOrNull() ?: queryUriSize(uri)
-
-    private fun isSavedOutputAccessible(uri: Uri, expectedSize: Long): Boolean {
-        val knownSize = readOutputSize(uri)
-        if (knownSize != null && knownSize >= 0L) {
-            val result = if (expectedSize > 0L) {
-                knownSize >= expectedSize
-            } else {
-                knownSize > 0L || expectedSize == 0L
-            }
-            Log.d(
-                TAG,
-                "[media-check] size check, uri=$uri, knownSize=$knownSize, expectedSize=$expectedSize, accessible=$result",
-            )
-            return result
-        }
-        val streamResult = runCatching {
-            resolver.openInputStream(uri)?.use { input ->
-                if (expectedSize > 0L) {
-                    var remaining = expectedSize
-                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                    while (remaining > 0) {
-                        val read = input.read(
-                            buffer,
-                            0,
-                            minOf(buffer.size.toLong(), remaining).toInt(),
-                        )
-                        if (read <= 0) return@use false
-                        remaining -= read
-                    }
-                    true
-                } else {
-                    input.read() >= 0
-                }
-            } ?: false
-        }
-        streamResult.exceptionOrNull()?.let { err ->
-            Log.w(
-                TAG,
-                "[media-check] stream check failed, uri=$uri, expectedSize=$expectedSize",
-                err,
-            )
-        }
-        val accessible = streamResult.getOrDefault(false)
-        Log.d(
-            TAG,
-            "[media-check] stream check, uri=$uri, expectedSize=$expectedSize, accessible=$accessible",
-        )
-        return accessible
-    }
 
     private fun queryUriSize(uri: Uri): Long? {
         val result = runCatching {
@@ -4062,8 +3930,7 @@ class DownloadRepository(
     private fun deleteConflictingDownloadsForTarget(
         fileName: String,
         relativePath: String,
-        excludeUri: String?,
-        overwriteExisting: Boolean,
+        excludeUri: String,
     ): Int {
         if (fileName.isBlank()) return 0
         val normalizedTargetPath = normalizeRelativePath(relativePath)
@@ -4093,23 +3960,16 @@ class DownloadRepository(
                 if (!isSameRelativePath(path, normalizedTargetPath)) continue
                 val id = cursor.getLong(idIndex)
                 val uri = Uri.withAppendedPath(collection, id.toString()).toString()
-                if (excludeUri != null && uri == excludeUri) continue
+                if (uri == excludeUri) continue
                 val pending = if (pendingIndex >= 0) cursor.getInt(pendingIndex) else -1
-                val accessible = isLocalUriAccessible(uri, "deleteConflictingDownloadsForTarget")
-                val shouldDelete = overwriteExisting || pending == 1 || !accessible
-                if (!shouldDelete) {
-                    Log.d(
-                        TAG,
-                        "[save-output] keep existing healthy row, file=$fileName, uri=$uri, path=$path, pending=$pending",
-                    )
-                    continue
-                }
+                // 其他仍在写入的任务不是已完成的同名旧件，不能在这里删掉。
+                if (pending == 1) continue
                 val rows = runCatching {
                     resolver.delete(Uri.parse(uri), null, null)
                 }.onFailure { err ->
                     Log.w(
                         TAG,
-                        "[save-output] failed to delete conflicting row, file=$fileName, uri=$uri, path=$path, pending=$pending, accessible=$accessible",
+                        "[save-output] failed to delete conflicting row, file=$fileName, uri=$uri, path=$path, pending=$pending",
                         err,
                     )
                 }.getOrDefault(0)
@@ -4117,7 +3977,7 @@ class DownloadRepository(
                     deletedCount += rows
                     Log.w(
                         TAG,
-                        "[save-output] deleted conflicting row, file=$fileName, uri=$uri, path=$path, pending=$pending, accessible=$accessible, rows=$rows",
+                        "[save-output] deleted conflicting row, file=$fileName, uri=$uri, path=$path, pending=$pending, rows=$rows",
                     )
                 }
             }
@@ -4304,45 +4164,30 @@ class DownloadRepository(
         return null
     }
 
-    private fun resolveStableOutputUri(
+    private fun resolveInsertedOutputUri(
         insertedUri: Uri,
-        fileName: String,
-        relativePath: String,
         expectedSize: Long,
     ): String? {
         val insertedUriString = insertedUri.toString()
         val pending = queryIsPending(insertedUri)
-        val insertedAccessible = isSavedOutputAccessible(insertedUri, expectedSize)
-        if (pending != 1 && insertedAccessible) {
+        // 保存成功必须确认本次输出确实可读；媒体库记录的 SIZE 不能代替文件描述符。
+        val insertedAccessible = runCatching {
+            resolver.openFileDescriptor(insertedUri, "r")?.use { descriptor ->
+                descriptor.statSize >= expectedSize && FileInputStream(descriptor.fileDescriptor).use { input ->
+                    expectedSize == 0L || input.read() >= 0
+                }
+            } ?: false
+        }.getOrDefault(false)
+        if (pending == 0 && insertedAccessible) {
             Log.d(
                 TAG,
-                "[save-output] inserted uri is stable, uri=$insertedUri, file=$fileName, pending=$pending",
+                "[save-output] inserted uri is stable, uri=$insertedUri, pending=$pending",
             )
             return insertedUriString
         }
-        val pathUri = findAccessibleDownloadInRelativePath(
-            fileName = fileName,
-            relativePath = relativePath,
-            excludeUri = insertedUriString,
-        )
-        if (pathUri != null) return pathUri
-        val filesPathUri = findAccessibleFileInFilesCollection(
-            fileName = fileName,
-            relativePath = relativePath,
-            excludeUri = insertedUriString,
-        )
-        if (filesPathUri != null) return filesPathUri
-        val anywhereUri = findAccessibleDownloadAnywhere(fileName)
-        if (anywhereUri != null && anywhereUri != insertedUriString) return anywhereUri
-        val filesAnywhereUri = findAccessibleFileInFilesCollection(
-            fileName = fileName,
-            relativePath = null,
-            excludeUri = insertedUriString,
-        )
-        if (filesAnywhereUri != null) return filesAnywhereUri
         Log.w(
             TAG,
-            "[save-output] unable to resolve stable uri, insertedUri=$insertedUri, file=$fileName, pending=$pending, insertedAccessible=$insertedAccessible",
+            "[save-output] inserted uri is not ready, uri=$insertedUri, pending=$pending, accessible=$insertedAccessible",
         )
         return null
     }
@@ -4350,36 +4195,21 @@ class DownloadRepository(
     private fun recoverAfterFinalizeFailure(
         insertedUri: Uri,
         fileName: String,
-        relativePath: String,
         expectedSize: Long,
         finalizeErr: Throwable,
-        overwriteExisting: Boolean,
     ): String? {
-        val insertedUriString = insertedUri.toString()
         Log.w(
             TAG,
-            "[save-output] recover after finalize failure start, insertedUri=$insertedUri, file=$fileName, relativePath=$relativePath, error=${finalizeErr.message}",
+            "[save-output] recover after finalize failure start, insertedUri=$insertedUri, file=$fileName, error=${finalizeErr.message}",
             finalizeErr,
         )
-        val deletedConflict = deleteConflictingDownloadsForTarget(
-            fileName = fileName,
-            relativePath = relativePath,
-            excludeUri = insertedUriString,
-            overwriteExisting = overwriteExisting,
-        )
-        if (deletedConflict > 0) {
-            Log.w(
-                TAG,
-                "[save-output] deleted conflicts before retry finalize, insertedUri=$insertedUri, file=$fileName, deletedCount=$deletedConflict",
-            )
-        }
         val retryErr = runCatching { finalizeOutputFile(insertedUri) }.exceptionOrNull()
         if (retryErr == null) {
             Log.i(
                 TAG,
                 "[save-output] retry finalize succeeded, insertedUri=$insertedUri, file=$fileName",
             )
-            return insertedUriString
+            return resolveInsertedOutputUri(insertedUri, expectedSize)
         }
         Log.w(
             TAG,
@@ -4390,19 +4220,12 @@ class DownloadRepository(
             val renamed = tryFinalizeWithAlternativeNames(
                 insertedUri = insertedUri,
                 originalFileName = fileName,
-                relativePath = relativePath,
-                expectedSize = expectedSize,
             )
             if (renamed != null) {
-                return renamed
+                return resolveInsertedOutputUri(insertedUri, expectedSize)
             }
         }
-        return resolveStableOutputUri(
-            insertedUri = insertedUri,
-            fileName = fileName,
-            relativePath = relativePath,
-            expectedSize = expectedSize,
-        )
+        return resolveInsertedOutputUri(insertedUri, expectedSize)
     }
 
     private fun isLikelyDataPathUniqueConstraint(err: Throwable): Boolean {
@@ -4427,8 +4250,6 @@ class DownloadRepository(
     private fun tryFinalizeWithAlternativeNames(
         insertedUri: Uri,
         originalFileName: String,
-        relativePath: String,
-        expectedSize: Long,
     ): String? {
         for (index in 1..20) {
             val candidate = buildAlternativeFileName(originalFileName, index)
@@ -4456,16 +4277,7 @@ class DownloadRepository(
 
     private fun guessMimeType(fileName: String): String {
         val ext = fileName.substringAfterLast('.', "").lowercase(Locale.US)
-        return when (ext) {
-            "mp4" -> "video/mp4"
-            "mkv" -> "video/x-matroska"
-            "m4s" -> "video/mp4"
-            "m4a" -> "audio/mp4"
-            "flv" -> "video/x-flv"
-            "flac" -> "audio/flac"
-            "mp3" -> "audio/mpeg"
-            "eac3" -> "audio/eac3"
-            "aac" -> "audio/aac"
+        return MediaConversionPolicy.mediaMimeType(ext) ?: when (ext) {
             "jpg", "jpeg" -> "image/jpeg"
             "png" -> "image/png"
             "gif" -> "image/gif"
@@ -4749,7 +4561,12 @@ class DownloadRepository(
             )
             return null
         }
-        val pfd = resolver.openFileDescriptor(uri, "w")
+        val pfd = try {
+            resolver.openFileDescriptor(uri, "w")
+        } catch (error: Exception) {
+            runCatching { resolver.delete(uri, null, null) }
+            throw error
+        }
         if (pfd == null) {
             runCatching { resolver.delete(uri, null, null) }
             Log.e(
@@ -4773,6 +4590,7 @@ class DownloadRepository(
             }
         }
         val updatedRows = resolver.update(uri, update, null, null)
+        check(updatedRows > 0) { "保存的文件已不可用" }
         Log.d(
             TAG,
             "[output-create] finalize pending->0, uri=$uri, displayName=$finalDisplayName, updatedRows=$updatedRows",

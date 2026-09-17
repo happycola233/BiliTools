@@ -1,6 +1,7 @@
 package com.happycola233.bilitools.core
 
 import com.arthenica.ffmpegkit.FFmpegKit
+import com.arthenica.ffmpegkit.FFprobeKit
 import com.arthenica.ffmpegkit.ReturnCode
 import java.io.File
 import kotlin.coroutines.resume
@@ -16,7 +17,7 @@ internal data class EmbeddedSubtitleTrack(
 )
 
 object MediaProcessingEngine {
-    /** 能承载软字幕轨的输出容器；FLV 没有字幕轨，MP3 / FLAC 是纯音频。 */
+    /** 支持通用播放器切换、关闭多语言软字幕的输出容器。 */
     internal fun supportsSubtitleTracks(outputFormat: String): Boolean =
         outputFormat == "mp4" || outputFormat == "matroska"
 
@@ -59,7 +60,7 @@ object MediaProcessingEngine {
         subtitles.indices.forEach { index -> addAll(listOf("-map", "${firstSubtitleInput + index}:0")) }
         addAll(listOf("-c", "copy", "-map_metadata", "0", "-map_chapters", "0"))
         if (subtitles.isNotEmpty()) {
-            // MP4 只认 tx3g（mov_text）；Matroska 直接存放 SubRip 文本。
+            // MP4 选用播放器广泛支持的 tx3g（mov_text）；Matroska 直接存放 SubRip 文本。
             if (outputFormat == "mp4") addAll(listOf("-c:s", "mov_text"))
             subtitles.forEachIndexed { index, track ->
                 val language = if (outputFormat == "mp4") {
@@ -99,6 +100,7 @@ object MediaProcessingEngine {
             buildMetadataArguments(inputFile, outputFile, outputFormat, values, cover, subtitles),
             "Metadata writing",
         )
+        if (outputFormat == "mp4") Mp4DolbyConfiguration.preserve(inputFile, outputFile)
     }
 
     internal fun buildMergeArguments(
@@ -165,41 +167,41 @@ object MediaProcessingEngine {
     internal fun buildMp4ConversionArguments(
         inputFile: File,
         outputFile: File,
-    ): List<String> = listOf(
-        "-hide_banner",
-        "-nostats",
-        "-loglevel",
-        "warning",
-        "-y",
-        "-i",
-        inputFile.absolutePath,
-        "-map",
-        "0:v:0",
-        "-map",
-        "0:a:0?",
-        "-c:v",
-        "copy",
-        "-c:a",
-        "aac",
-        "-b:a",
-        "192k",
-        "-strict",
-        "unofficial",
-        "-movflags",
-        "+faststart",
-        "-map_metadata",
-        "0",
-        "-map_chapters",
-        "0",
-        outputFile.absolutePath,
-    )
+        transcodeAudioToAac: Boolean = false,
+    ): List<String> = buildList {
+        addAll(listOf("-hide_banner", "-nostats", "-loglevel", "warning", "-y", "-i", inputFile.absolutePath))
+        addAll(listOf("-map", "0:v:0", "-map", "0:a:0?", "-c:v", "copy"))
+        addAll(if (transcodeAudioToAac) listOf("-c:a", "aac", "-b:a", "192k") else listOf("-c:a", "copy"))
+        addAll(listOf("-strict", "unofficial", "-movflags", "+faststart", "-map_metadata", "0", "-map_chapters", "0"))
+        add(outputFile.absolutePath)
+    }
+
+    /**
+     * 统一整理下载音轨，与是否写入标签无关。DASH 的 FLAC 需解封装；AAC / E-AC-3
+     * 则输出常规音频 MP4。显式使用 MP4 muxer，避免 .m4a 默认的 iPod muxer 拒绝 E-AC-3。
+     */
+    internal fun buildAudioRemuxArguments(inputFile: File, outputFile: File): List<String> = buildList {
+        addAll(listOf("-hide_banner", "-nostats", "-loglevel", "warning", "-y", "-i", inputFile.absolutePath))
+        addAll(listOf("-map", "0:a:0", "-c:a", "copy", "-map_metadata", "0"))
+        if (outputFile.extension.equals("flac", ignoreCase = true)) {
+            addAll(listOf("-f", "flac"))
+        } else {
+            addAll(listOf("-strict", "unofficial", "-movflags", "+faststart", "-f", "mp4"))
+        }
+        add(outputFile.absolutePath)
+    }
+
+    /** 常见 MP4 音轨直接复制；FLAC 等保持「转 MP4」原有的 AAC 兼容输出。null 表示没有音轨。 */
+    internal fun needsAacForMp4(audioCodec: String?): Boolean =
+        audioCodec != null && audioCodec !in setOf("aac", "ac3", "eac3", "mp3", "alac")
 
     suspend fun merge(
         videoFile: File,
         audioFile: File,
         outputFile: File,
-        transcodeAudioToAac: Boolean = false,
     ) {
+        val transcodeAudioToAac = outputFile.extension.equals("mp4", ignoreCase = true) &&
+            needsAacForMp4(firstAudioCodec(audioFile))
         execute(
             arguments = buildMergeArguments(
                 videoFile = videoFile,
@@ -209,6 +211,9 @@ object MediaProcessingEngine {
             ),
             operationName = "Media merge",
         )
+        if (outputFile.extension.equals("mp4", ignoreCase = true) && !transcodeAudioToAac) {
+            Mp4DolbyConfiguration.preserve(audioFile, outputFile)
+        }
     }
 
     suspend fun convertAudioToMp3(inputFile: File, outputFile: File) {
@@ -220,9 +225,36 @@ object MediaProcessingEngine {
 
     suspend fun convertVideoToMp4(inputFile: File, outputFile: File) {
         execute(
-            arguments = buildMp4ConversionArguments(inputFile, outputFile),
+            arguments = buildMp4ConversionArguments(
+                inputFile, outputFile, transcodeAudioToAac = needsAacForMp4(firstAudioCodec(inputFile)),
+            ),
             operationName = "Video conversion",
         )
+        Mp4DolbyConfiguration.preserve(inputFile, outputFile)
+    }
+
+    suspend fun remuxAudio(inputFile: File, outputFile: File) {
+        execute(buildAudioRemuxArguments(inputFile, outputFile), "Audio preparation")
+        if (!outputFile.extension.equals("flac", ignoreCase = true)) {
+            Mp4DolbyConfiguration.preserve(inputFile, outputFile)
+        }
+    }
+
+    /** 输入来自下载服务器，实际编码在这里探测，不能由文件后缀或音质名称猜测。 */
+    private suspend fun firstAudioCodec(inputFile: File): String? = suspendCancellableCoroutine { continuation ->
+        val session = FFprobeKit.getMediaInformationAsync(inputFile.absolutePath) { completed ->
+            if (!continuation.isActive) return@getMediaInformationAsync
+            when {
+                ReturnCode.isCancel(completed.returnCode) ->
+                    continuation.cancel(CancellationException("Media inspection cancelled"))
+                !ReturnCode.isSuccess(completed.returnCode) || completed.mediaInformation == null ->
+                    continuation.resumeWithException(IllegalStateException("Media inspection failed"))
+                else -> continuation.resume(
+                    completed.mediaInformation.streams.firstOrNull { it.type == "audio" }?.codec,
+                )
+            }
+        }
+        continuation.invokeOnCancellation { FFmpegKit.cancel(session.sessionId) }
     }
 
     private suspend fun execute(arguments: List<String>, operationName: String) {

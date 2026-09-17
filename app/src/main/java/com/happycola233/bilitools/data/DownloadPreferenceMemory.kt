@@ -45,15 +45,14 @@ data class DownloadPreferenceMemorySettings(
 }
 
 /**
- * 解析页上次使用的下载选项。画质与音质直接写回「默认下载质量」，不在这里重复保存；
- * 字幕语言随条目变化，也不保留。
+ * 解析页上次使用的下载选项。字幕语言随条目变化，不跨次保留。
  */
 data class RememberedDownloadPreferences(
     val outputType: OutputType? = OutputType.AudioVideo,
     val streamFormat: StreamFormat = StreamFormat.Dash,
+    val quality: RememberedDownloadQuality = RememberedDownloadQuality(),
     val embedSubtitles: Boolean = false,
     val embedLyrics: Boolean = false,
-    val embedIncludeGeneratedSubtitles: Boolean = true,
     val subtitleExport: Boolean = false,
     val aiSummaryExport: Boolean = false,
     val nfoCollection: Boolean = false,
@@ -64,3 +63,30 @@ data class RememberedDownloadPreferences(
     val opusContent: Boolean = true,
     val opusImages: Boolean = true,
 )
+
+/**
+ * 只保存用户明确改过的质量字段。未改过的字段沿用默认设置，资源暂不支持某画质或编码时
+ * 产生的界面降级不会污染偏好，也不会改写用户在设置页指定的默认质量。
+ */
+data class RememberedDownloadQuality(
+    val resolutionMode: DownloadQualityMode? = null,
+    val fixedResolutionId: Int? = null,
+    val codec: DefaultDownloadVideoCodec? = null,
+    val audioBitrateMode: DownloadQualityMode? = null,
+    val fixedAudioBitrateId: Int? = null,
+) {
+    fun resolve(
+        defaults: DefaultDownloadQualitySettings,
+        memory: DownloadPreferenceMemorySettings,
+    ): DefaultDownloadQualitySettings {
+        val rememberVideo = memory.remembers(DownloadPreferenceGroup.VideoQuality)
+        val rememberAudio = memory.remembers(DownloadPreferenceGroup.AudioQuality)
+        return defaults.copy(
+            resolutionMode = resolutionMode.takeIf { rememberVideo } ?: defaults.resolutionMode,
+            fixedResolutionId = fixedResolutionId.takeIf { rememberVideo } ?: defaults.fixedResolutionId,
+            codec = codec.takeIf { rememberVideo } ?: defaults.codec,
+            audioBitrateMode = audioBitrateMode.takeIf { rememberAudio } ?: defaults.audioBitrateMode,
+            fixedAudioBitrateId = fixedAudioBitrateId.takeIf { rememberAudio } ?: defaults.fixedAudioBitrateId,
+        )
+    }
+}

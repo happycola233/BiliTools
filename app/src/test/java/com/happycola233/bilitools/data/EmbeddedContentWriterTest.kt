@@ -16,6 +16,7 @@ import kotlinx.coroutines.runBlocking
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
+import okhttp3.Request
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.jaudiotagger.audio.AudioFileIO
@@ -27,6 +28,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import org.robolectric.util.ReflectionHelpers
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -141,6 +143,72 @@ class EmbeddedContentWriterTest {
         }
     }
 
+    @Test fun selectedLanguagesRemovedBeforeDownloadAreReportedEvenWhenAnotherTrackSucceeds() = runBlocking {
+        val issues = mutableSetOf<EmbeddedContentIssue>()
+        val incomplete = mutableListOf<String>()
+        val temporaryFiles = mutableListOf<File>()
+        try {
+            val tracks = subtitleWriter().resolveSubtitleTracks(
+                metadata.copy(subtitleAid = 1, subtitleCid = 2),
+                SubtitleTrackEmbedding(listOf("zh-Hans", "ai-zh")), directory, issues, incomplete,
+                onTemporaryFile = { temporaryFiles += it },
+            )
+            assertEquals(setOf(EmbeddedContentIssue.SubtitlesPartiallyFailed), issues)
+            assertEquals(listOf("中文 · AI 字幕"), incomplete)
+            assertEquals(listOf("中文（简体）"), tracks.map { it.title })
+            assertEquals(tracks.map { it.file }, temporaryFiles)
+            assertTrue(temporaryFiles.single().readText().contains("字幕示例"))
+        } finally {
+            temporaryFiles.forEach { it.delete() }
+        }
+    }
+
+    @Test fun allSubtitleTracksIncludeAiWithAnExplicitSourceLabel() = runBlocking {
+        val issues = mutableSetOf<EmbeddedContentIssue>()
+        val incomplete = mutableListOf<String>()
+        val temporaryFiles = mutableListOf<File>()
+        try {
+            val tracks = subtitleWriter().resolveSubtitleTracks(
+                metadata.copy(subtitleAid = 1, subtitleCid = 2),
+                SubtitleTrackEmbedding(),
+                directory, issues, incomplete, onTemporaryFile = { temporaryFiles += it },
+            )
+            assertEquals(listOf("中文（简体）", "英语 · AI 字幕"), tracks.map { it.title })
+            assertTrue(issues.isEmpty())
+            assertTrue(incomplete.isEmpty())
+        } finally {
+            temporaryFiles.forEach { it.delete() }
+        }
+    }
+
+    @Test fun cancellingSecondSubtitleDownloadCleansFirstTrackAndPreservesOriginalVideo() = withAudio { file ->
+        val original = file.readBytes()
+        val existingFiles = directory.list()!!.toSet()
+        val embedding = DownloadEmbedding(subtitles = SubtitleTrackEmbedding(listOf("zh-Hans", "ai-en")))
+        val video = item(file, embedding).copy(
+            taskType = DownloadTaskType.Video, fileName = "video.mp4",
+            embeddedMetadata = metadata.copy(lyricUrl = null, subtitleAid = 1, subtitleCid = 2),
+        )
+        try {
+            subtitleWriter { request ->
+                if (request.url.encodedPath == "/ai-en.json") throw CancellationException("Paused during second subtitle")
+            }.write(file, video, null, DownloadMetadataSettings())
+            fail("Cancellation was swallowed")
+        } catch (_: CancellationException) {
+            assertArrayEquals(original, file.readBytes())
+            assertEquals(existingFiles, directory.list()!!.toSet())
+        }
+    }
+
+    @Test fun missingLyricsSelectionNeverChoosesAnotherSubtitle() = withAudio { file ->
+        val sources = metadata.copy(lyricUrl = null, subtitleAid = 1, subtitleCid = 2)
+        val result = writer().write(
+            file, item(file, lyricsEmbedding).copy(embeddedMetadata = sources), null, DownloadMetadataSettings(),
+        )
+        assertEquals(setOf(EmbeddedContentIssue.LyricsUnavailable), result.issues)
+        assertEquals(0, requests)
+    }
+
     @Test fun failedTagWritePreservesSourceBytesAndCleansTemporaryFiles() = withAudio { file ->
         val incomplete = byteArrayOf(1, 2, 3, 4)
         file.writeBytes(incomplete)
@@ -187,6 +255,30 @@ class EmbeddedContentWriterTest {
         val context = RuntimeEnvironment.getApplication()
         val bili = BiliHttpClient(CookieStore(context), SettingsRepository(context))
         return EmbeddedContentWriter(client, ExtrasRepository(bili, WbiSigner(bili)))
+    }
+
+    private fun subtitleWriter(onRequest: (Request) -> Unit = {}): EmbeddedContentWriter {
+        val client = OkHttpClient.Builder().addInterceptor { chain ->
+            val request = chain.request()
+            onRequest(request)
+            val content = if (request.url.encodedPath == "/x/player/wbi/v2") {
+                """{"code":0,"data":{"subtitle":{"subtitles":[
+                    {"lan":"zh-Hans","lan_doc":"中文（简体）","subtitle_url":"https://example.com/zh.json"},
+                    {"lan":"ai-en","lan_doc":"英语（自动生成）","subtitle_url":"https://example.com/ai-en.json","ai_type":1}
+                ]}}}"""
+            } else {
+                """{"body":[{"from":0,"to":1,"content":"字幕示例"}]}"""
+            }
+            Response.Builder().request(request).protocol(Protocol.HTTP_1_1).code(200).message("Fixture")
+                .body(content.toResponseBody("application/json; charset=utf-8".toMediaType())).build()
+        }.build()
+        val context = RuntimeEnvironment.getApplication()
+        val bili = BiliHttpClient(CookieStore(context), SettingsRepository(context))
+        ReflectionHelpers.setField(bili, "client\$delegate", lazyOf(client))
+        val signer = WbiSigner(bili)
+        ReflectionHelpers.setField(signer, "cachedMixinKey", "fixture")
+        ReflectionHelpers.setField(signer, "lastUpdateMs", System.currentTimeMillis())
+        return EmbeddedContentWriter(client, ExtrasRepository(bili, signer))
     }
 
     private fun item(file: File, embedding: DownloadEmbedding?) = DownloadItem(

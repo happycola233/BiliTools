@@ -1,7 +1,10 @@
 package com.happycola233.bilitools.data.model
 
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class DownloadExtraTaskSpecTest {
@@ -17,8 +20,7 @@ class DownloadExtraTaskSpecTest {
             url = "https://example.com/subtitle.json?auth_key=new",
         )
         val persistedTaskSpec = discoverySpec.copy(
-            operation = DownloadExtraTaskOperation.Subtitle,
-            subtitle = oldSubtitle,
+            subtitleSelection = SubtitleTrackEmbedding(listOf(oldSubtitle.lan)),
         )
 
         assertEquals(
@@ -41,6 +43,43 @@ class DownloadExtraTaskSpecTest {
             source.subtitleTaskKeyFor(chinese),
             source.subtitleTaskKeyFor(english),
         )
+    }
+
+    @Test
+    fun `single-language rediscovery has the same stable key as its requested source`() {
+        val source = subtitleDiscoverySpec(aid = 100L, cid = 200L)
+        val language = SubtitleInfo("ai-en", "英语", "https://example.com/en?auth_key=new", isAi = true)
+        val retry = source.copy(subtitleSelection = SubtitleTrackEmbedding(listOf(language.lan)))
+
+        assertEquals(source.subtitleTaskKeyFor(language), retry.subtitleTaskKey())
+        assertNotEquals(
+            retry.subtitleTaskKey(),
+            source.subtitleTaskKeyFor(language.copy(lan = "en")),
+        )
+    }
+
+    @Test
+    fun `aggregate discovery does not masquerade as a single-language task`() {
+        val source = subtitleDiscoverySpec(aid = 100L, cid = 200L)
+        assertNull(source.subtitleTaskKey())
+        assertNull(source.copy(subtitleSelection = SubtitleTrackEmbedding(listOf("zh-Hans", "ai-en"))).subtitleTaskKey())
+        assertNull(source.copy(operation = DownloadExtraTaskOperation.StaticText).subtitleTaskKey())
+    }
+
+    @Test
+    fun `persisted subtitle requests preserve both specific sources and all-language selection`() {
+        val adapter = Moshi.Builder().add(KotlinJsonAdapterFactory()).build().adapter(DownloadExtraTaskSpec::class.java)
+        val source = subtitleDiscoverySpec(aid = 100L, cid = 200L).copy(
+            subtitleBaseFileName = "视频标题",
+            subtitleTaskTitle = "字幕",
+            mimeType = "application/x-subrip",
+        )
+        listOf(
+            source.copy(subtitleSelection = SubtitleTrackEmbedding(listOf("zh-Hans", "ai-en"))),
+            source.copy(subtitleSelection = SubtitleTrackEmbedding()),
+        ).forEach { spec ->
+            assertEquals(spec, adapter.fromJson(adapter.toJson(spec)))
+        }
     }
 
     private fun subtitleDiscoverySpec(aid: Long, cid: Long) = DownloadExtraTaskSpec(

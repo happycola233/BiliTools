@@ -1,6 +1,7 @@
 package com.happycola233.bilitools.data
 
 import com.happycola233.bilitools.data.model.DownloadTaskType
+import com.happycola233.bilitools.core.AudioQualities
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -49,5 +50,35 @@ class MediaConversionPolicyTest {
             "sample.mp4",
             MediaConversionPolicy.outputFileName("sample.mkv", MediaConversionTarget.MP4),
         )
+    }
+
+    @Test
+    fun subtitlesOnlyChangeFlvOutputToMp4WithoutChangingGlobalPreference() {
+        fun target(extension: String, embedding: Boolean) = MediaConversionPolicy.targetFor(
+            DownloadTaskType.AudioVideo,
+            convertAudioToMp3 = false,
+            convertVideoToMp4 = false,
+            sourceExtension = extension,
+            embedSubtitles = embedding,
+        )
+        assertEquals(MediaConversionTarget.MP4, target("flv", true))
+        assertNull(target("flv", false))
+        assertNull(target("mp4", true))
+        assertNull(target("mkv", true))
+    }
+
+    @Test
+    fun audioExtensionMatchesTheOutputContainerAndMediaStoreMimeType() {
+        val dolbyExtension = AudioQualities.audioFileExtension(AudioQualities.DOLBY_ATMOS)
+        assertEquals("m4a", dolbyExtension)
+        assertEquals("audio/mp4", MediaConversionPolicy.mediaMimeType(dolbyExtension))
+        listOf(AudioQualities.HI_RES_LOSSLESS, AudioQualities.LOSSLESS_FLAC).forEach { quality ->
+            val extension = AudioQualities.audioFileExtension(quality)
+            assertEquals("flac", extension)
+            assertEquals("audio/flac", MediaConversionPolicy.mediaMimeType(extension))
+        }
+        assertEquals("audio/mpeg", MediaConversionPolicy.mediaMimeType(MediaConversionTarget.MP3.outputExtension))
+        assertEquals("video/mp4", MediaConversionPolicy.mediaMimeType(MediaConversionTarget.MP4.outputExtension))
+        assertNull(MediaConversionPolicy.mediaMimeType("m4s"))
     }
 }

@@ -276,9 +276,20 @@ class SettingsRepository(context: Context) {
         streamFormat = prefs.getString(KEY_REMEMBERED_STREAM_FORMAT, null)
             ?.let { name -> StreamFormat.entries.firstOrNull { it.name == name } }
             ?: StreamFormat.Dash,
+        quality = RememberedDownloadQuality(
+            resolutionMode = prefs.getString(KEY_REMEMBERED_RESOLUTION_MODE, null)
+                ?.let(DownloadQualityMode::fromValue),
+            fixedResolutionId = prefs.getInt(KEY_REMEMBERED_RESOLUTION_ID, 0)
+                .takeIf { prefs.contains(KEY_REMEMBERED_RESOLUTION_ID) },
+            codec = prefs.getString(KEY_REMEMBERED_VIDEO_CODEC, null)
+                ?.let(DefaultDownloadVideoCodec::fromValue),
+            audioBitrateMode = prefs.getString(KEY_REMEMBERED_AUDIO_MODE, null)
+                ?.let(DownloadQualityMode::fromValue),
+            fixedAudioBitrateId = prefs.getInt(KEY_REMEMBERED_AUDIO_ID, 0)
+                .takeIf { prefs.contains(KEY_REMEMBERED_AUDIO_ID) },
+        ),
         embedSubtitles = prefs.getBoolean(KEY_REMEMBERED_EMBED_SUBTITLES, false),
         embedLyrics = prefs.getBoolean(KEY_REMEMBERED_EMBED_LYRICS, false),
-        embedIncludeGeneratedSubtitles = prefs.getBoolean(KEY_REMEMBERED_EMBED_INCLUDE_GENERATED, true),
         subtitleExport = prefs.getBoolean(KEY_REMEMBERED_SUBTITLE_EXPORT, false),
         aiSummaryExport = prefs.getBoolean(KEY_REMEMBERED_AI_SUMMARY_EXPORT, false),
         nfoCollection = prefs.getBoolean(KEY_REMEMBERED_NFO_COLLECTION, false),
@@ -295,9 +306,17 @@ class SettingsRepository(context: Context) {
         prefs.edit()
             .putString(KEY_REMEMBERED_OUTPUT_TYPE, preferences.outputType?.name ?: REMEMBERED_NONE)
             .putString(KEY_REMEMBERED_STREAM_FORMAT, preferences.streamFormat.name)
+            .putString(KEY_REMEMBERED_RESOLUTION_MODE, preferences.quality.resolutionMode?.value)
+            .putString(KEY_REMEMBERED_VIDEO_CODEC, preferences.quality.codec?.value)
+            .putString(KEY_REMEMBERED_AUDIO_MODE, preferences.quality.audioBitrateMode?.value)
+            .apply {
+                preferences.quality.fixedResolutionId?.let { putInt(KEY_REMEMBERED_RESOLUTION_ID, it) }
+                    ?: remove(KEY_REMEMBERED_RESOLUTION_ID)
+                preferences.quality.fixedAudioBitrateId?.let { putInt(KEY_REMEMBERED_AUDIO_ID, it) }
+                    ?: remove(KEY_REMEMBERED_AUDIO_ID)
+            }
             .putBoolean(KEY_REMEMBERED_EMBED_SUBTITLES, preferences.embedSubtitles)
             .putBoolean(KEY_REMEMBERED_EMBED_LYRICS, preferences.embedLyrics)
-            .putBoolean(KEY_REMEMBERED_EMBED_INCLUDE_GENERATED, preferences.embedIncludeGeneratedSubtitles)
             .putBoolean(KEY_REMEMBERED_SUBTITLE_EXPORT, preferences.subtitleExport)
             .putBoolean(KEY_REMEMBERED_AI_SUMMARY_EXPORT, preferences.aiSummaryExport)
             .putBoolean(KEY_REMEMBERED_NFO_COLLECTION, preferences.nfoCollection)
@@ -973,10 +992,6 @@ class SettingsRepository(context: Context) {
             // v3.0 首次启动时统一开启一次；迁移完成后不再覆盖用户的手动选择。
             editor.putBoolean(KEY_DARK_MODE_PURE_BLACK, true)
         }
-        if (migrationVersion < MIGRATION_VERSION_EMBEDDING_ON_PARSE_PAGE) {
-            // 歌词嵌入改为在解析页逐次选择，元数据设置里的歌词开关与字幕来源策略不再有对应项。
-            LEGACY_METADATA_LYRICS_KEYS.forEach(editor::remove)
-        }
         editor
             .putInt(KEY_SETTINGS_MIGRATION_VERSION, CURRENT_SETTINGS_MIGRATION_VERSION)
             .apply()
@@ -1055,14 +1070,17 @@ class SettingsRepository(context: Context) {
         private const val KEY_METADATA_COVER = "metadata_cover"
         private const val KEY_METADATA_UPLOADER_ARTIST = "metadata_uploader_artist"
         private const val KEY_METADATA_COLLECTION_ALBUM = "metadata_collection_album"
-        private val LEGACY_METADATA_LYRICS_KEYS = listOf("metadata_lyrics", "metadata_subtitle_lyrics")
         private const val KEY_DOWNLOAD_PREFERENCE_MEMORY_ENABLED = "download_preference_memory_enabled"
         private const val KEY_DOWNLOAD_PREFERENCE_MEMORY_GROUPS = "download_preference_memory_groups"
         private const val KEY_REMEMBERED_OUTPUT_TYPE = "remembered_output_type"
         private const val KEY_REMEMBERED_STREAM_FORMAT = "remembered_stream_format"
+        private const val KEY_REMEMBERED_RESOLUTION_MODE = "remembered_resolution_mode"
+        private const val KEY_REMEMBERED_RESOLUTION_ID = "remembered_resolution_id"
+        private const val KEY_REMEMBERED_VIDEO_CODEC = "remembered_video_codec"
+        private const val KEY_REMEMBERED_AUDIO_MODE = "remembered_audio_mode"
+        private const val KEY_REMEMBERED_AUDIO_ID = "remembered_audio_id"
         private const val KEY_REMEMBERED_EMBED_SUBTITLES = "remembered_embed_subtitles"
         private const val KEY_REMEMBERED_EMBED_LYRICS = "remembered_embed_lyrics"
-        private const val KEY_REMEMBERED_EMBED_INCLUDE_GENERATED = "remembered_embed_include_generated"
         private const val KEY_REMEMBERED_SUBTITLE_EXPORT = "remembered_subtitle_export"
         private const val KEY_REMEMBERED_AI_SUMMARY_EXPORT = "remembered_ai_summary_export"
         private const val KEY_REMEMBERED_NFO_COLLECTION = "remembered_nfo_collection"
@@ -1084,9 +1102,8 @@ class SettingsRepository(context: Context) {
         private const val KEY_SETTINGS_MIGRATION_VERSION = "settings_migration_version"
         // 设置迁移序号独立于应用版本；迁移 1 首次随 v3.0 发布。
         private const val MIGRATION_VERSION_V3_0_ENABLE_PURE_BLACK = 1
-        private const val MIGRATION_VERSION_EMBEDDING_ON_PARSE_PAGE = 2
         private const val CURRENT_SETTINGS_MIGRATION_VERSION =
-            MIGRATION_VERSION_EMBEDDING_ON_PARSE_PAGE
+            MIGRATION_VERSION_V3_0_ENABLE_PURE_BLACK
         private const val KEY_LAUNCH_SPLASH_ANIMATION_ENABLED = "launch_splash_animation_enabled"
         private const val KEY_LIQUID_BOTTOM_TABS_ENABLED = "liquid_bottom_tabs_enabled"
         private const val KEY_LIQUID_GLASS_PANELS_ENABLED = "liquid_glass_panels_enabled"

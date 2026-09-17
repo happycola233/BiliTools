@@ -1544,7 +1544,6 @@ private fun buildMediaParams(
     val baseName = when {
         fileName.endsWith(".mp4", ignoreCase = true) -> fileName.dropLast(4)
         fileName.endsWith(".flv", ignoreCase = true) -> fileName.dropLast(4)
-        fileName.endsWith(".m4s", ignoreCase = true) -> fileName.dropLast(4)
         fileName.endsWith(".m4a", ignoreCase = true) -> fileName.dropLast(4)
         else -> fileName
     }

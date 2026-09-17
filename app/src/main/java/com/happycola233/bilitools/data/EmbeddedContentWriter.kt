@@ -44,6 +44,8 @@ internal data class EmbeddedContentResult(
     val subtitleTitles: List<String> = emptyList(),
     /** 成功写入的歌词来源说明。 */
     val lyricsSource: String? = null,
+    /** 用户选择后被移除或未能获取的字幕，用于说明具体的未完成项。 */
+    val incompleteSubtitleTitles: List<String> = emptyList(),
 )
 
 /**
@@ -69,7 +71,7 @@ internal class EmbeddedContentWriter(
         val sources = item.embeddedMetadata
         val extension = item.fileName.substringAfterLast('.', "").lowercase(Locale.ROOT)
         val format = when (extension) {
-            "mp4", "m4a", "m4s" -> "mp4"
+            "mp4", "m4a" -> "mp4"
             "mkv" -> "matroska"
             "flv", "flac", "mp3" -> extension
             else -> return EmbeddedContentResult(issues = setOf(EmbeddedContentIssue.UnsupportedFormat))
@@ -87,6 +89,7 @@ internal class EmbeddedContentWriter(
 
         var cover: EmbeddedCover? = null
         val subtitleFiles = mutableListOf<File>()
+        val incompleteSubtitleTitles = mutableListOf<String>()
         var output: File? = null
         try {
             if (metadata != null && settings.embedCover && format != "flv" && metadata.coverUrl != null) {
@@ -116,32 +119,25 @@ internal class EmbeddedContentWriter(
                     issues += EmbeddedContentIssue.SubtitlesUnsupportedContainer
                     emptyList()
                 }
-                else -> resolveSubtitleTracks(sources, subtitleRequest, file.parentFile!!, issues)
-                    .also { tracks -> subtitleFiles += tracks.map(EmbeddedSubtitleTrack::file) }
+                else -> resolveSubtitleTracks(
+                    sources, subtitleRequest, file.parentFile!!, issues, incompleteSubtitleTitles,
+                    onTemporaryFile = { subtitleFiles += it },
+                )
             }
 
             val values = metadata?.tagValues(settings, lyrics, lyricsSource.takeIf { lyrics != null })
                 ?: buildMap { lyrics?.let { put("lyrics", it) } }
             if (values.isEmpty() && cover == null && subtitleTracks.isEmpty()) {
-                return EmbeddedContentResult(issues = issues)
+                return EmbeddedContentResult(issues = issues, incompleteSubtitleTitles = incompleteSubtitleTitles)
             }
             currentCoroutineContext().ensureActive()
             val written = optional(EmbeddedContentIssue.WriteFailed) {
                 val target = File.createTempFile("metadata-", ".$extension", file.parentFile)
                 output = target
                 when (format) {
-                    "mp3" -> {
+                    "mp3", "flac" -> {
+                        // 下载后处理已确保容器正确；标签选项不能决定是否需要解封装。
                         file.copyTo(target, overwrite = true)
-                        EmbeddedAudioTagWriter.write(target, values, cover)
-                    }
-                    "flac" -> {
-                        // DASH 的 FLAC 可能仍装在 MP4 中；扩展名不能作为容器的判断依据。
-                        val nativeFlac = file.inputStream().use { input ->
-                            val signature = ByteArray(4)
-                            input.read(signature) == 4 && signature.contentEquals("fLaC".toByteArray())
-                        }
-                        if (nativeFlac) file.copyTo(target, overwrite = true)
-                        else MediaProcessingEngine.writeMetadata(file, target, "flac", emptyMap())
                         EmbeddedAudioTagWriter.write(target, values, cover)
                     }
                     else -> MediaProcessingEngine.writeMetadata(file, target, format, values, cover, subtitleTracks)
@@ -154,6 +150,7 @@ internal class EmbeddedContentWriter(
                 issues = issues,
                 subtitleTitles = if (written) subtitleTracks.map(EmbeddedSubtitleTrack::title) else emptyList(),
                 lyricsSource = lyricsSource.takeIf { written && lyrics != null },
+                incompleteSubtitleTitles = incompleteSubtitleTitles,
             )
         } finally {
             output?.delete()
@@ -176,31 +173,41 @@ internal class EmbeddedContentWriter(
             onSource("音频原始歌词")
             return extrasRepository.getMusicLyrics(sources.musicSid)
         }
+        if (request.language == null) return null
         val aid = sources.subtitleAid ?: return null
         val cid = sources.subtitleCid ?: return null
         val subtitle = selectLyricsSubtitle(extrasRepository.getSubtitles(aid, cid), request) ?: return null
-        onSource("${subtitle.name}（${if (subtitle.isGenerated) "AI 字幕转写" else "字幕转写"}）")
+        onSource("${subtitle.displayName}（字幕转写）")
         return extrasRepository.getSubtitleLyrics(subtitle)
     }
 
     /** 每条字幕单独获取：个别语言失败只影响那一条轨道，其余照常嵌入。 */
-    private suspend fun resolveSubtitleTracks(
+    internal suspend fun resolveSubtitleTracks(
         sources: DownloadEmbeddedMetadata?,
         request: SubtitleTrackEmbedding,
         directory: File,
         issues: MutableSet<EmbeddedContentIssue>,
+        incompleteSubtitleTitles: MutableList<String>,
+        onTemporaryFile: (File) -> Unit,
     ): List<EmbeddedSubtitleTrack> {
         val aid = sources?.subtitleAid
         val cid = sources?.subtitleCid
-        val selected = try {
+        val available = try {
             if (aid == null || cid == null) emptyList()
-            else selectEmbeddedSubtitleTracks(extrasRepository.getSubtitles(aid, cid), request)
+            else extrasRepository.getSubtitles(aid, cid)
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
             AppLog.w(TAG, "subtitle list unavailable for aid=$aid cid=$cid", error)
             issues += EmbeddedContentIssue.SubtitlesFailed
             return emptyList()
+        }
+        val selected = selectEmbeddedSubtitleTracks(available, request)
+        val missingLanguages = request.languages.distinct().filter { language ->
+            selected.none { it.lan == language }
+        }
+        incompleteSubtitleTitles += missingLanguages.map { language ->
+            available.firstOrNull { it.lan == language }?.displayName ?: subtitleLanguageDisplayName(language)
         }
         if (selected.isEmpty()) {
             issues += EmbeddedContentIssue.SubtitlesUnavailable
@@ -214,22 +221,26 @@ internal class EmbeddedContentWriter(
                 // 没有任何字幕行的空文件会让整次改写失败，按不可用处理。
                 if (srt.isEmpty()) {
                     failed += 1
+                    incompleteSubtitleTitles += subtitle.displayName
                     null
                 } else {
                     val trackFile = File.createTempFile("subtitle-", ".srt", directory)
+                    // 注册必须早于写文件和下一次挂起，否则中途取消会留下已下载的字幕。
+                    onTemporaryFile(trackFile)
                     trackFile.writeBytes(srt)
-                    EmbeddedSubtitleTrack(file = trackFile, languageTag = subtitle.lan, title = subtitle.name)
+                    EmbeddedSubtitleTrack(file = trackFile, languageTag = subtitle.lan, title = subtitle.displayName)
                 }
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
                 AppLog.w(TAG, "subtitle ${subtitle.lan} unavailable", error)
                 failed += 1
+                incompleteSubtitleTitles += subtitle.displayName
                 null
             }
         }
         when {
-            failed == 0 -> Unit
+            failed == 0 && missingLanguages.isEmpty() -> Unit
             tracks.isEmpty() -> issues += EmbeddedContentIssue.SubtitlesFailed
             else -> issues += EmbeddedContentIssue.SubtitlesPartiallyFailed
         }

@@ -15,9 +15,7 @@ data class DownloadExtraTaskSpec(
     val hour: Int? = null,
     val convertDanmakuToAss: Boolean = false,
     val summaryTitle: String? = null,
-    val subtitle: SubtitleInfo? = null,
-    val downloadAllSubtitles: Boolean = false,
-    val selectedSubtitleLanguage: String? = null,
+    val subtitleSelection: SubtitleTrackEmbedding = SubtitleTrackEmbedding(),
     val subtitleBaseFileName: String? = null,
     val subtitleTaskTitle: String? = null,
     val cleanFileNameSeparators: Boolean = true,
@@ -27,7 +25,6 @@ enum class DownloadExtraTaskOperation {
     StaticText,
     FetchBytes,
     SubtitleDiscovery,
-    Subtitle,
     AiSummary,
     DanmakuLive,
     DanmakuHistory,
@@ -41,10 +38,10 @@ internal data class SubtitleTaskKey(
 )
 
 internal fun DownloadExtraTaskSpec.subtitleTaskKey(): SubtitleTaskKey? {
-    if (operation != DownloadExtraTaskOperation.Subtitle) return null
     val sourceAid = aid ?: return null
     val sourceCid = cid ?: return null
-    val languageCode = subtitle?.lan ?: return null
+    if (operation != DownloadExtraTaskOperation.SubtitleDiscovery) return null
+    val languageCode = subtitleSelection.languages.singleOrNull() ?: return null
     return SubtitleTaskKey(sourceAid, sourceCid, languageCode)
 }
 

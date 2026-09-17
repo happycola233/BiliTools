@@ -8,45 +8,29 @@ import kotlin.math.roundToLong
 
 internal data class LyricsSubtitleLine(val from: Double, val to: Double, val content: String)
 
-/** 指定了语言就只取这些语言（保持 B 站列表顺序）；未指定表示全部可用字幕，批量下载可排除 AI 字幕。 */
+/** 指定了语言就只取这些语言（保持 B 站列表顺序）；空集合是用户选择「全部字幕」的快捷方式。 */
 internal fun selectEmbeddedSubtitleTracks(
     subtitles: List<SubtitleInfo>,
     request: SubtitleTrackEmbedding,
 ): List<SubtitleInfo> {
-    val available = subtitles.filter { it.url.isNotBlank() }
-    return if (request.languages.isNotEmpty()) {
-        available.filter { it.lan in request.languages }
-    } else {
-        available.filter { request.includeGenerated || !it.isGenerated }
+    return subtitles.filter {
+        it.url.isNotBlank() &&
+            (request.languages.isEmpty() || it.lan in request.languages)
     }
 }
 
 /**
- * 单个歌词字段只放一种语言。显式语言不匹配时留空，不悄悄换成另一种语言；
- * 自动选择时人工字幕优先，再按简体、繁体、其他语言排序。
+ * 单个歌词字段只放用户选择的一种语言。不匹配或尚未选择时留空，不能替用户选择其他来源。
  */
 internal fun selectLyricsSubtitle(
     subtitles: List<SubtitleInfo>,
     request: LyricsEmbedding,
 ): SubtitleInfo? {
-    val available = subtitles.filter { it.url.isNotBlank() }
-    request.language?.let { language -> return available.firstOrNull { it.lan == language } }
-    return available
-        .filter { request.includeGenerated || !it.isGenerated }
-        .minWithOrNull(
-            compareBy<SubtitleInfo> { it.isGenerated }
-                .thenBy {
-                    when (it.lan.removePrefix("ai-").lowercase(Locale.ROOT)) {
-                        "zh", "zh-cn", "zh-hans" -> 0
-                        "zh-tw", "zh-hant", "zh-hk" -> 1
-                        else -> 2
-                    }
-                },
-        )
+    val language = request.language ?: return null
+    return subtitles.firstOrNull {
+        it.url.isNotBlank() && it.lan == language
+    }
 }
-
-internal val SubtitleInfo.isGenerated: Boolean
-    get() = isAi || lan.startsWith("ai-", ignoreCase = true)
 
 /** 字幕是时间轴转写，不是音乐作品的填词；保留换行和停顿，不拼接不同语言。 */
 internal fun subtitlesToLrc(lines: List<LyricsSubtitleLine>): String? {

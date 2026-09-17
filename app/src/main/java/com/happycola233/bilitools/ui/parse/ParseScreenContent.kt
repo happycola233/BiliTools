@@ -86,13 +86,18 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberBottomSheetState
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -372,11 +377,11 @@ fun ParseScreenContent(
     onAudioBitrateChange: (Int) -> Unit,
     onSubtitleEnabledChange: (Boolean) -> Unit,
     onSubtitleLanguageChange: (SubtitleLanguageSelection) -> Unit,
+    onRetrySubtitles: () -> Unit = {},
     onEmbedSubtitlesEnabledChange: (Boolean) -> Unit,
-    onEmbedSubtitleLanguageChange: (String, Boolean) -> Unit,
+    onEmbedSubtitleSelectionChange: (SubtitleLanguageSelection) -> Unit,
     onEmbedLyricsEnabledChange: (Boolean) -> Unit,
     onEmbedLyricsLanguageChange: (String) -> Unit,
-    onEmbedIncludeGeneratedChange: (Boolean) -> Unit,
     onCopySubtitles: () -> Unit,
     onAiSummaryEnabledChange: (Boolean) -> Unit,
     onCopyAiSummaries: () -> Unit,
@@ -414,7 +419,8 @@ fun ParseScreenContent(
         !state.downloadStarting &&
         hasSelection &&
         hasSupportedDownloadContent &&
-        streamReady
+        streamReady && !state.hasIncompleteSubtitleSelection &&
+        (state.outputType == null || state.hasCommonStreamFormat)
     val quickActionVisible = info != null && hasSelection
     // 页面全出血绘制，内容从主界面底栏后方滚过，滚动与悬浮控件需预留底栏净空；外部下载入口无底栏
     val mainBarBottomInset = if (externalMode) 0.dp else mainBottomBarBottomInset()
@@ -505,11 +511,11 @@ fun ParseScreenContent(
                             onAudioBitrateChange = onAudioBitrateChange,
                             onSubtitleEnabledChange = onSubtitleEnabledChange,
                             onSubtitleLanguageChange = onSubtitleLanguageChange,
+                            onRetrySubtitles = onRetrySubtitles,
                             onEmbedSubtitlesEnabledChange = onEmbedSubtitlesEnabledChange,
-                            onEmbedSubtitleLanguageChange = onEmbedSubtitleLanguageChange,
+                            onEmbedSubtitleSelectionChange = onEmbedSubtitleSelectionChange,
                             onEmbedLyricsEnabledChange = onEmbedLyricsEnabledChange,
                             onEmbedLyricsLanguageChange = onEmbedLyricsLanguageChange,
-                            onEmbedIncludeGeneratedChange = onEmbedIncludeGeneratedChange,
                             onCopySubtitles = onCopySubtitles,
                             onAiSummaryEnabledChange = onAiSummaryEnabledChange,
                             onCopyAiSummaries = onCopyAiSummaries,
@@ -3136,11 +3142,11 @@ private fun ParseOptionsCard(
     onAudioBitrateChange: (Int) -> Unit,
     onSubtitleEnabledChange: (Boolean) -> Unit,
     onSubtitleLanguageChange: (SubtitleLanguageSelection) -> Unit,
+    onRetrySubtitles: () -> Unit = {},
     onEmbedSubtitlesEnabledChange: (Boolean) -> Unit,
-    onEmbedSubtitleLanguageChange: (String, Boolean) -> Unit,
+    onEmbedSubtitleSelectionChange: (SubtitleLanguageSelection) -> Unit,
     onEmbedLyricsEnabledChange: (Boolean) -> Unit,
     onEmbedLyricsLanguageChange: (String) -> Unit,
-    onEmbedIncludeGeneratedChange: (Boolean) -> Unit,
     onCopySubtitles: () -> Unit,
     onAiSummaryEnabledChange: (Boolean) -> Unit,
     onCopyAiSummaries: () -> Unit,
@@ -3184,31 +3190,6 @@ private fun ParseOptionsCard(
         ((selectedItem?.aid != null && selectedItem.cid != null) || allowMissingExtras)
     val danmakuHistoryEnabled = mediaCapabilities.supportsDanmakuExport &&
         (selectedItem?.cid != null || allowMissingExtras)
-    val allSubtitleLanguagesLabel = stringResource(R.string.parse_subtitle_language_all)
-    val subtitleLanguageOptions: List<DropdownOption<SubtitleLanguageSelection>> = buildList {
-        if (state.subtitleList.size > 1) {
-            add(DropdownOption(allSubtitleLanguagesLabel, SubtitleLanguageSelection.All))
-        }
-        state.subtitleList.forEach { subtitle ->
-            add(
-                DropdownOption(
-                    subtitle.name,
-                    SubtitleLanguageSelection.Language(subtitle.lan),
-                ),
-            )
-        }
-    }
-    val subtitleLanguageValue = when (val selection = state.subtitleLanguageSelection) {
-        SubtitleLanguageSelection.All -> allSubtitleLanguagesLabel
-        is SubtitleLanguageSelection.Language -> state.subtitleList
-            .firstOrNull { it.lan == selection.lan }
-            ?.name
-            .orEmpty()
-        null -> ""
-    }
-    val subtitleLanguageEnabled = state.subtitleEnabled &&
-        controlsEnabled &&
-        state.subtitleList.isNotEmpty()
     val sizeSpec = tween<IntSize>(
         durationMillis = parseContentAnimationDurationMillis,
         easing = FastOutSlowInEasing,
@@ -3309,8 +3290,10 @@ private fun ParseOptionsCard(
                                     OptionsSection(title = stringResource(R.string.parse_stream_format)) {
                                         StreamFormatHint()
                                         ConnectedFormatButtons(
-                                            selected = animatedState.format,
+                                            selected = animatedState.availableStreamFormat,
                                             enabled = animatedControlsEnabled,
+                                            unavailableFormats = animatedState.unavailableStreamFormats,
+                                            isMultiSelect = animatedState.isMultiSelect,
                                             onFormatChange = onFormatChange,
                                         )
                                         AnimatedOptionsVisibility(visible = !animatedState.warning.isNullOrBlank()) {
@@ -3339,10 +3322,10 @@ private fun ParseOptionsCard(
                                         conversionSettings = conversionSettings,
                                         enabled = controlsEnabled && animatedState.outputType == state.outputType,
                                         onEmbedSubtitlesEnabledChange = onEmbedSubtitlesEnabledChange,
-                                        onEmbedSubtitleLanguageChange = onEmbedSubtitleLanguageChange,
+                                        onEmbedSubtitleSelectionChange = onEmbedSubtitleSelectionChange,
                                         onEmbedLyricsEnabledChange = onEmbedLyricsEnabledChange,
                                         onEmbedLyricsLanguageChange = onEmbedLyricsLanguageChange,
-                                        onEmbedIncludeGeneratedChange = onEmbedIncludeGeneratedChange,
+                                        onRetrySubtitles = onRetrySubtitles,
                                     )
                                 }
                             }
@@ -3364,25 +3347,14 @@ private fun ParseOptionsCard(
                         ) {
                             if (mediaCapabilities.supportsSubtitleExport) {
                                 CheckOption(
-                                    text = stringResource(R.string.parse_subtitle_label),
+                                    text = stringResource(R.string.parse_subtitle_file_option),
                                     checked = state.subtitleEnabled,
-                                    enabled = controlsEnabled &&
-                                        (state.subtitleList.isNotEmpty() || allowMissingExtras),
+                                    enabled = controlsEnabled,
                                     onCheckedChange = onSubtitleEnabledChange,
                                     minHeight = compactSelectionHeight,
                                     textStartPadding = 0.dp,
                                     modifier = Modifier.weight(if (isMultiSelect) 1f else 0.9f),
                                 )
-                                if (!isMultiSelect) {
-                                    CompactSelectionField(
-                                        label = stringResource(R.string.parse_subtitle_language),
-                                        value = subtitleLanguageValue,
-                                        enabled = subtitleLanguageEnabled,
-                                        options = subtitleLanguageOptions,
-                                        onOptionSelected = { onSubtitleLanguageChange(it.value) },
-                                        modifier = Modifier.weight(1.1f),
-                                    )
-                                }
                             }
                             if (mediaCapabilities.supportsAiSummaryExport) {
                                 CheckOption(
@@ -3397,12 +3369,17 @@ private fun ParseOptionsCard(
                                 )
                             }
                         }
-                        if (
-                            mediaCapabilities.supportsSubtitleExport &&
-                            isMultiSelect &&
-                            state.subtitleEnabled
+                        AnimatedOptionsVisibility(
+                            visible = mediaCapabilities.supportsSubtitleExport && state.subtitleEnabled,
                         ) {
-                            HelperText(text = stringResource(R.string.parse_subtitle_multi_hint))
+                            SubtitleSourcePicker(
+                                state = state,
+                                selection = state.subtitleLanguageSelection,
+                                sheetTitle = stringResource(R.string.subtitle_source_file_title),
+                                enabled = controlsEnabled,
+                                onSelectionChange = onSubtitleLanguageChange,
+                                onRetry = onRetrySubtitles,
+                            )
                         }
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -3413,8 +3390,7 @@ private fun ParseOptionsCard(
                                     text = stringResource(R.string.parse_copy_subtitle_now),
                                     iconRes = R.drawable.ic_content_copy_24,
                                     loading = state.subtitleCopying,
-                                    enabled = copyEnabledBase &&
-                                        (state.subtitleList.isNotEmpty() || allowMissingExtras),
+                                    enabled = copyEnabledBase && !state.subtitleLanguageSelection.isEmpty,
                                     tonal = true,
                                     onClick = onCopySubtitles,
                                     modifier = Modifier.weight(1f),
@@ -3651,11 +3627,7 @@ private fun QualityControls(
     }
 }
 
-/**
- * 写进媒体文件内部的软字幕轨（视频输出）或歌词（音频输出）。
- * 语言列表只属于单个条目，批量下载时改为按条目自动处理，只保留是否包含 AI 字幕的选择。
- */
-@OptIn(ExperimentalLayoutApi::class)
+/** 内嵌用途独立，语言和来源与字幕文件共用选择器，批量时保留相同选择。 */
 @Composable
 private fun EmbeddingControls(
     state: ParseUiState,
@@ -3664,143 +3636,62 @@ private fun EmbeddingControls(
     conversionSettings: ParseConversionSettings,
     enabled: Boolean,
     onEmbedSubtitlesEnabledChange: (Boolean) -> Unit,
-    onEmbedSubtitleLanguageChange: (String, Boolean) -> Unit,
+    onEmbedSubtitleSelectionChange: (SubtitleLanguageSelection) -> Unit,
     onEmbedLyricsEnabledChange: (Boolean) -> Unit,
     onEmbedLyricsLanguageChange: (String) -> Unit,
-    onEmbedIncludeGeneratedChange: (Boolean) -> Unit,
+    onRetrySubtitles: () -> Unit,
 ) {
     val outputType = state.outputType ?: return
-    val isMultiSelect = state.isMultiSelect
-    val subtitleStatusHint: String? = when {
-        isMultiSelect -> null
-        state.subtitleLoadStatus == SubtitleLoadStatus.Loading -> stringResource(R.string.parse_embed_loading)
-        state.subtitleLoadStatus == SubtitleLoadStatus.Failed -> stringResource(R.string.parse_embed_load_failed)
-        else -> null
-    }
-    val hasSubtitles = isMultiSelect || state.subtitleList.isNotEmpty()
-
     if (outputType == OutputType.AudioOnly) {
-        // 歌曲带自己的歌词；视频只能把字幕转成歌词。
         val fromSubtitles = capabilities.supportsSubtitleExport
-        // 单选时最高 / 最低档已经解析成具体码率；批量时只有指定固定码率才能预先判断。
-        val dolbySelected = state.selectedAudioId == AudioQualities.DOLBY_ATMOS &&
-            (!isMultiSelect || state.audioBitrateMode == QualityMode.Fixed)
-        val containerSupported = !dolbySelected || conversionSettings.convertAudioToMp3
-        val sourceAvailable = !fromSubtitles || hasSubtitles
-        val hint = when {
-            !containerSupported -> stringResource(R.string.parse_embed_lyrics_dolby)
-            !fromSubtitles -> stringResource(R.string.parse_embed_lyrics_original_hint)
-            isMultiSelect -> stringResource(R.string.parse_embed_lyrics_multi_hint)
-            subtitleStatusHint != null -> subtitleStatusHint
-            !hasSubtitles -> stringResource(R.string.parse_embed_lyrics_unavailable)
-            else -> stringResource(R.string.parse_embed_lyrics_hint)
-        }
         OptionsSection(title = stringResource(R.string.parse_embed_lyrics_label)) {
-            TwoColumnChecks {
-                CheckOption(
-                    text = stringResource(R.string.parse_embed_lyrics_option),
-                    checked = state.embedLyricsEnabled,
-                    enabled = enabled && containerSupported && sourceAvailable,
-                    onCheckedChange = onEmbedLyricsEnabledChange,
-                    modifier = Modifier.weight(1f),
+            CheckOption(
+                text = stringResource(R.string.parse_embed_lyrics_option),
+                checked = state.embedLyricsEnabled,
+                enabled = enabled,
+                onCheckedChange = onEmbedLyricsEnabledChange,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            if (state.selectedAudioId == AudioQualities.DOLBY_ATMOS && conversionSettings.convertAudioToMp3) {
+                HelperText(text = stringResource(R.string.parse_dolby_mp3_notice))
+            }
+            AnimatedOptionsVisibility(visible = fromSubtitles && state.embedLyricsEnabled) {
+                SubtitleSourcePicker(
+                    state = state,
+                    selection = SubtitleLanguageSelection.Languages(setOfNotNull(state.embedLyricsLanguage)),
+                    enabled = enabled,
+                    onSelectionChange = {},
+                    onRetry = onRetrySubtitles,
+                    singleSelection = true,
+                    selectedLanguage = state.embedLyricsLanguage,
+                    onLanguageSelected = onEmbedLyricsLanguageChange,
                 )
-                if (fromSubtitles && isMultiSelect) {
-                    CheckOption(
-                        text = stringResource(R.string.parse_embed_include_generated),
-                        checked = state.embedIncludeGeneratedSubtitles,
-                        enabled = enabled && containerSupported && state.embedLyricsEnabled,
-                        onCheckedChange = onEmbedIncludeGeneratedChange,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
             }
-            if (fromSubtitles && !isMultiSelect) {
-                AnimatedOptionsVisibility(
-                    visible = state.embedLyricsEnabled && containerSupported && state.subtitleList.isNotEmpty(),
-                ) {
-                    EmbedLanguageChips(
-                        subtitles = state.subtitleList,
-                        enabled = enabled,
-                        isSelected = { it == state.embedLyricsLanguage },
-                        role = Role.RadioButton,
-                        onClick = { lan -> onEmbedLyricsLanguageChange(lan) },
-                    )
-                }
-            }
-            HelperText(text = hint, icon = painterResource(R.drawable.ic_info_24))
         }
         return
     }
-
     if (!capabilities.supportsSubtitleExport) return
-    // 仅视频走 DASH（MP4 容器）；音视频选了 FLV 又不转 MP4 时没有地方放字幕轨。
-    val containerSupported = outputType == OutputType.VideoOnly ||
-        activeFormat != StreamFormat.Flv ||
-        conversionSettings.convertVideoToMp4
-    val hint = when {
-        !containerSupported -> stringResource(R.string.parse_embed_subtitles_flv)
-        isMultiSelect -> stringResource(R.string.parse_embed_subtitles_multi_hint)
-        subtitleStatusHint != null -> subtitleStatusHint
-        !hasSubtitles -> stringResource(R.string.parse_embed_subtitles_unavailable)
-        else -> stringResource(R.string.parse_embed_subtitles_hint)
-    }
+    val remuxFlv = outputType == OutputType.AudioVideo && activeFormat == StreamFormat.Flv &&
+        !conversionSettings.convertVideoToMp4
     OptionsSection(title = stringResource(R.string.parse_embed_subtitles_label)) {
-        TwoColumnChecks {
-            CheckOption(
-                text = stringResource(R.string.parse_embed_subtitles_option),
-                checked = state.embedSubtitlesEnabled,
-                enabled = enabled && containerSupported && hasSubtitles,
-                onCheckedChange = onEmbedSubtitlesEnabledChange,
-                modifier = Modifier.weight(1f),
-            )
-            if (isMultiSelect) {
-                CheckOption(
-                    text = stringResource(R.string.parse_embed_include_generated),
-                    checked = state.embedIncludeGeneratedSubtitles,
-                    enabled = enabled && containerSupported && state.embedSubtitlesEnabled,
-                    onCheckedChange = onEmbedIncludeGeneratedChange,
-                    modifier = Modifier.weight(1f),
-                )
-            }
+        CheckOption(
+            text = stringResource(R.string.parse_embed_subtitles_option),
+            checked = state.embedSubtitlesEnabled,
+            enabled = enabled,
+            onCheckedChange = onEmbedSubtitlesEnabledChange,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (remuxFlv && state.embedSubtitlesEnabled) {
+            HelperText(text = stringResource(R.string.parse_embed_subtitles_flv))
         }
-        if (!isMultiSelect) {
-            AnimatedOptionsVisibility(
-                visible = state.embedSubtitlesEnabled && containerSupported && state.subtitleList.isNotEmpty(),
-            ) {
-                EmbedLanguageChips(
-                    subtitles = state.subtitleList,
-                    enabled = enabled,
-                    isSelected = { it in state.embedSubtitleLanguages },
-                    role = Role.Checkbox,
-                    onClick = { lan -> onEmbedSubtitleLanguageChange(lan, lan !in state.embedSubtitleLanguages) },
-                )
-            }
-        }
-        HelperText(text = hint, icon = painterResource(R.drawable.ic_info_24))
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun EmbedLanguageChips(
-    subtitles: List<SubtitleInfo>,
-    enabled: Boolean,
-    isSelected: (String) -> Boolean,
-    role: Role,
-    onClick: (String) -> Unit,
-) {
-    FlowRow(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        subtitles.forEach { subtitle ->
-            ExpressiveFilterChip(
-                text = subtitle.name,
-                selected = isSelected(subtitle.lan),
+        AnimatedOptionsVisibility(visible = state.embedSubtitlesEnabled) {
+            SubtitleSourcePicker(
+                state = state,
+                selection = state.embedSubtitleSelection,
+                sheetTitle = stringResource(R.string.subtitle_source_embed_title),
                 enabled = enabled,
-                role = role,
-                onClick = { onClick(subtitle.lan) },
+                onSelectionChange = onEmbedSubtitleSelectionChange,
+                onRetry = onRetrySubtitles,
             )
         }
     }
@@ -3876,40 +3767,45 @@ private fun ConnectedOutputButtons(
 }
 
 @Composable
-private fun ConnectedFormatButtons(
+internal fun ConnectedFormatButtons(
     selected: StreamFormat,
     enabled: Boolean,
+    unavailableFormats: Set<StreamFormat> = emptySet(),
+    isMultiSelect: Boolean = false,
     onFormatChange: (StreamFormat) -> Unit,
 ) {
     val options = listOf(
+        StreamFormat.Dash to stringResource(R.string.format_dash),
+        StreamFormat.Mp4 to stringResource(R.string.format_mp4),
+        StreamFormat.Flv to stringResource(R.string.format_flv),
+    ).map { (format, label) ->
         SegmentedOption(
-            stringResource(R.string.format_dash),
-            null,
-            StreamFormat.Dash,
-            enabled,
-        ),
-        SegmentedOption(
-            stringResource(R.string.format_mp4),
-            null,
-            StreamFormat.Mp4,
-            enabled,
-        ),
-        SegmentedOption(
-            stringResource(R.string.format_flv),
-            null,
-            StreamFormat.Flv,
-            enabled,
-        ),
-    )
-    ConnectedToggleRow(
-        options = options,
-        selected = selected,
-        selectionRequired = true,
-        onSelected = { next -> if (next != null) onFormatChange(next) },
-    )
+            label = label,
+            iconRes = null,
+            value = format,
+            enabled = enabled && format !in unavailableFormats,
+            disabledReason = if (enabled && format in unavailableFormats) {
+                stringResource(
+                    if (isMultiSelect) R.string.parse_formats_unavailable_batch else R.string.parse_formats_unavailable,
+                    label,
+                )
+            } else null,
+        )
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        ConnectedToggleRow(
+            options = options,
+            selected = selected,
+            selectionRequired = true,
+            onSelected = { next -> if (next != null) onFormatChange(next) },
+        )
+        if (unavailableFormats.containsAll(StreamFormat.entries)) {
+            HelperText(stringResource(R.string.parse_formats_no_common))
+        }
+    }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun <T> ConnectedToggleRow(
     options: List<SegmentedOption<T>>,
@@ -3930,50 +3826,68 @@ private fun <T> ConnectedToggleRow(
             customItem(
                 buttonGroupContent = {
                     val interactionSource = remember { MutableInteractionSource() }
-                    ToggleButton(
-                        checked = selected == option.value,
-                        onCheckedChange = { checked ->
-                            when {
-                                checked -> {
-                                    haptics.select()
-                                    onSelected(option.value)
-                                }
+                    val button: @Composable (Modifier) -> Unit = { modifier ->
+                        ToggleButton(
+                            checked = selected == option.value,
+                            onCheckedChange = { checked ->
+                                when {
+                                    checked -> {
+                                        haptics.select()
+                                        onSelected(option.value)
+                                    }
 
-                                !selectionRequired && selected == option.value -> {
-                                    haptics.select()
-                                    onSelected(null)
+                                    !selectionRequired && selected == option.value -> {
+                                        haptics.select()
+                                        onSelected(null)
+                                    }
                                 }
+                            },
+                            enabled = option.enabled,
+                            modifier = modifier
+                                .heightIn(min = 44.dp)
+                                .semanticsRoleRadio(),
+                            interactionSource = interactionSource,
+                            shapes = when (index) {
+                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                            },
+                            colors = AppAccents.toggleButtonColors(),
+                            contentPadding = PaddingValues(horizontal = 10.dp),
+                        ) {
+                            option.iconRes?.let { iconRes ->
+                                Icon(
+                                    painter = painterResource(iconRes),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Spacer(Modifier.width(6.dp))
                             }
-                        },
-                        enabled = option.enabled,
-                        modifier = Modifier
-                            .weight(1f)
-                            .heightIn(min = 44.dp)
-                            .animateWidth(interactionSource)
-                            .semanticsRoleRadio(),
-                        interactionSource = interactionSource,
-                        shapes = when (index) {
-                            0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                            options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                            else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                        },
-                        colors = AppAccents.toggleButtonColors(),
-                        contentPadding = PaddingValues(horizontal = 10.dp),
-                    ) {
-                        option.iconRes?.let { iconRes ->
-                            Icon(
-                                painter = painterResource(iconRes),
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
+                            Text(
+                                text = option.label,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                style = ParseTextStyles.buttonLabel,
                             )
-                            Spacer(Modifier.width(6.dp))
                         }
-                        Text(
-                            text = option.label,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            style = ParseTextStyles.buttonLabel,
-                        )
+                    }
+                    val groupModifier = Modifier.weight(1f).animateWidth(interactionSource)
+                    if (option.disabledReason != null) {
+                        // TooltipBox 的 modifier 不在根布局；父级权重与按压动画需留在外层。
+                        Box(groupModifier) {
+                            TooltipBox(
+                                positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                                    TooltipAnchorPosition.Above,
+                                ),
+                                tooltip = { PlainTooltip { Text(option.disabledReason) } },
+                                state = rememberTooltipState(),
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                button(Modifier.fillMaxWidth())
+                            }
+                        }
+                    } else {
+                        button(groupModifier)
                     }
                 },
                 menuContent = { menuState ->
@@ -4513,7 +4427,6 @@ private fun StreamFormatHint() {
     val linkColor = MaterialTheme.colorScheme.primary
     val hintPrefix = stringResource(R.string.parse_stream_format_hint_prefix)
     val guideTitle = stringResource(R.string.stream_format_guide_title)
-    val hintSuffix = stringResource(R.string.parse_stream_format_hint_suffix)
     val hintText = buildAnnotatedString {
         append(hintPrefix)
         withLink(
@@ -4534,7 +4447,6 @@ private fun StreamFormatHint() {
         ) {
             append(guideTitle)
         }
-        append(hintSuffix)
     }
 
     Text(
@@ -4546,7 +4458,7 @@ private fun StreamFormatHint() {
 }
 
 @Composable
-private fun HelperText(
+internal fun HelperText(
     text: String,
     icon: Painter? = null,
 ) {
@@ -4669,6 +4581,7 @@ private data class SegmentedOption<T>(
     val iconRes: Int?,
     val value: T,
     val enabled: Boolean,
+    val disabledReason: String? = null,
 )
 
 internal fun resolveParseResultCardDisplay(

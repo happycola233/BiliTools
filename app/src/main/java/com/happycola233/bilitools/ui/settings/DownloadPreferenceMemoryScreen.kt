@@ -79,7 +79,7 @@ private val preferenceGroupPresentations = listOf(
     ),
     PreferenceGroupPresentation(
         DownloadPreferenceGroup.Danmaku,
-        R.drawable.ic_forum_24,
+        R.drawable.ic_danmaku_24,
         R.string.settings_download_preference_group_danmaku,
         R.string.settings_download_preference_group_danmaku_desc,
     ),

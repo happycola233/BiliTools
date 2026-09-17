@@ -12,35 +12,45 @@ class EmbeddedLyricsTest {
     private val manualChinese = SubtitleInfo("zh-CN", "中文", "https://example.com/zh")
     private val traditionalChinese = SubtitleInfo("zh-Hant", "中文（繁体）", "https://example.com/hant")
 
-    @Test fun automaticLyricsPreferManualThenSimplifiedThenTraditional() {
+    @Test fun lyricsRequireAnExplicitSubtitleSource() {
         val list = listOf(aiChinese, manualEnglish, traditionalChinese, manualChinese)
-        assertEquals(manualChinese, selectLyricsSubtitle(list, LyricsEmbedding()))
-        assertEquals(traditionalChinese, selectLyricsSubtitle(listOf(aiChinese, manualEnglish, traditionalChinese), LyricsEmbedding()))
-        assertEquals(manualEnglish, selectLyricsSubtitle(listOf(aiChinese, manualEnglish), LyricsEmbedding()))
-        assertEquals(aiChinese, selectLyricsSubtitle(listOf(aiChinese), LyricsEmbedding()))
-        assertNull(selectLyricsSubtitle(listOf(aiChinese), LyricsEmbedding(includeGenerated = false)))
+        assertNull(selectLyricsSubtitle(list, LyricsEmbedding()))
+        assertNull(selectLyricsSubtitle(listOf(aiChinese), LyricsEmbedding()))
     }
 
     @Test fun explicitLyricsLanguageNeverFallsBackToADifferentLanguage() {
         val list = listOf(aiChinese, manualEnglish, manualChinese)
         assertEquals(manualEnglish, selectLyricsSubtitle(list, LyricsEmbedding(language = "en")))
-        // 用户点名了 AI 字幕就用 AI 字幕，includeGenerated 只约束自动选择。
-        assertEquals(aiChinese, selectLyricsSubtitle(list, LyricsEmbedding(language = "ai-zh", includeGenerated = false)))
+        assertEquals(aiChinese, selectLyricsSubtitle(list, LyricsEmbedding(language = "ai-zh")))
         assertNull(selectLyricsSubtitle(list, LyricsEmbedding(language = "ja")))
     }
 
-    @Test fun legacyAiLanguageStillCountsAsGenerated() {
-        assertNull(selectLyricsSubtitle(listOf(aiChinese.copy(isAi = false)), LyricsEmbedding(includeGenerated = false)))
+    @Test fun aiLanguageCodeCountsAsGeneratedEvenWithoutTheApiFlag() {
+        assertTrue(aiChinese.copy(isAi = false).isGenerated)
+        assertEquals("中文 · AI 字幕", aiChinese.copy(isAi = false).displayName)
     }
 
     @Test fun subtitleTracksKeepBilibiliOrderAndIgnoreMissingUrls() {
         val list = listOf(aiChinese, manualEnglish.copy(url = ""), manualChinese, traditionalChinese)
         assertEquals(listOf(aiChinese, manualChinese, traditionalChinese), selectEmbeddedSubtitleTracks(list, SubtitleTrackEmbedding()))
-        assertEquals(listOf(manualChinese, traditionalChinese), selectEmbeddedSubtitleTracks(list, SubtitleTrackEmbedding(includeGenerated = false)))
         assertEquals(
             listOf(aiChinese, traditionalChinese),
-            selectEmbeddedSubtitleTracks(list, SubtitleTrackEmbedding(languages = listOf("zh-Hant", "ai-zh", "en"), includeGenerated = false)),
+            selectEmbeddedSubtitleTracks(list, SubtitleTrackEmbedding(languages = listOf("zh-Hant", "ai-zh", "en"))),
         )
+    }
+
+    @Test fun generatedLabelsAreConsistentWithoutDuplicatingUpstreamNames() {
+        assertEquals("中文", aiChinese.languageName)
+        assertEquals("英语", manualEnglish.copy(name = "英语 · AI 字幕", isAi = true).languageName)
+        assertEquals("中文（简体）", aiChinese.copy(name = "中文（简体）（自动生成）").languageName)
+        assertEquals("中文（繁体）", traditionalChinese.languageName)
+        assertEquals("中文 · AI 字幕", aiChinese.displayName)
+        assertEquals("中文 · AI 字幕", aiChinese.copy(name = "中文", isAi = false).displayName)
+        assertEquals("英语 · AI 字幕", manualEnglish.copy(isAi = true).displayName)
+        assertEquals("英语 · AI 字幕", manualEnglish.copy(name = "英语 · AI 字幕", isAi = true).displayName)
+        assertEquals("中文（简体） · AI 字幕", aiChinese.copy(name = "中文（简体）（自动生成）").displayName)
+        assertEquals("中文（繁体）", traditionalChinese.displayName)
+        assertEquals("中文（简体） · AI 字幕", subtitleLanguageDisplayName("ai-zh-Hans"))
     }
 
     @Test fun convertsTimesWithCarryAndPreservesSilenceWithoutClearingOverlappingCues() {

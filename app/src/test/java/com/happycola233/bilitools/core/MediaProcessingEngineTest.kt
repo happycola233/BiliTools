@@ -158,15 +158,48 @@ class MediaProcessingEngineTest {
     }
 
     @Test
-    fun buildMp4ConversionArguments_copiesVideoAndTranscodesAudio() {
+    fun buildMp4ConversionArguments_copiesCompatibleAudioWithoutBitrateChange() {
         val args = MediaProcessingEngine.buildMp4ConversionArguments(
             inputFile = File("video.mkv"),
             outputFile = File("video.mp4"),
         )
 
         assertTrue(args.containsAll(listOf("-c:v", "copy")))
-        assertTrue(args.containsAll(listOf("-c:a", "aac")))
-        assertTrue(args.containsAll(listOf("-b:a", "192k")))
+        assertTrue(args.containsAll(listOf("-c:a", "copy")))
+        assertFalse(args.contains("-b:a"))
         assertTrue(args.containsAll(listOf("-movflags", "+faststart")))
+    }
+
+    @Test
+    fun buildMp4ConversionArguments_transcodesFlacForPlayerCompatibility() {
+        val args = MediaProcessingEngine.buildMp4ConversionArguments(
+            File("video.mkv"), File("video.mp4"), transcodeAudioToAac = true,
+        )
+        assertTrue(args.containsAll(listOf("-c:v", "copy")))
+        assertTrue(args.containsAll(listOf("-c:a", "aac", "-b:a", "192k")))
+    }
+
+    @Test
+    fun needsAacForMp4_preservesDolbyAndOtherCompatibleAudio() {
+        listOf(null, "aac", "ac3", "eac3", "mp3", "alac").forEach { codec ->
+            assertFalse("$codec should not be transcoded", MediaProcessingEngine.needsAacForMp4(codec))
+        }
+        assertTrue(MediaProcessingEngine.needsAacForMp4("flac"))
+        assertTrue(MediaProcessingEngine.needsAacForMp4("pcm_s16le"))
+    }
+
+    @Test
+    fun buildAudioRemuxArguments_usesMp4MuxerForDolbyM4aAndCopiesPackets() {
+        val args = MediaProcessingEngine.buildAudioRemuxArguments(File("dash.m4s"), File("audio.m4a"))
+        assertTrue(args.containsAll(listOf("-f", "mp4", "-c:a", "copy")))
+        assertFalse(args.contains("-b:a"))
+    }
+
+    @Test
+    fun buildAudioRemuxArguments_extractsNativeFlacWithoutMetadataOptions() {
+        val args = MediaProcessingEngine.buildAudioRemuxArguments(File("dash.m4s"), File("audio.flac"))
+        assertTrue(args.containsAll(listOf("-f", "flac", "-c:a", "copy")))
+        assertFalse(args.contains("-metadata"))
+        assertFalse(args.contains("-movflags"))
     }
 }

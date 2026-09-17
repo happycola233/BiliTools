@@ -18,6 +18,7 @@ import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.util.Locale
 
 class ExtrasRepository(
     private val httpClient: BiliHttpClient,
@@ -296,7 +297,7 @@ class ExtrasRepository(
         val minutes = (duration.toMinutes() % 60)
         val secs = (duration.seconds % 60)
         val millis = (duration.toMillis() % 1000)
-        return String.format("%02d:%02d:%02d,%03d", hours, minutes, secs, millis)
+        return String.format(Locale.ROOT, "%02d:%02d:%02d,%03d", hours, minutes, secs, millis)
     }
 
     private fun formatDuration(seconds: Int): String {

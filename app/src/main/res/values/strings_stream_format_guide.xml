@@ -19,5 +19,5 @@
     <string name="stream_format_guide_flv_notice">早年采用的 FLV 分段格式，现已基本完全退役。</string>
     <string name="stream_format_guide_flv_body">保留该选项仅用于兼容与存档，部分旧资源可能仍可下载，不建议作为日常选择。</string>
 
-    <string name="stream_format_guide_footer">拿不准就保持默认的 DASH 格式。</string>
+    <string name="stream_format_guide_footer">如无特殊需求，建议保持默认的 DASH 格式。</string>
 </resources>

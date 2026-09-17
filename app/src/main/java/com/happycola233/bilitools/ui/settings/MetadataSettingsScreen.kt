@@ -81,15 +81,6 @@ internal fun MetadataSettingsScreen(
                 )
             }
             item { Spacer(Modifier.height(12.dp)) }
-            item {
-                Text(
-                    stringResource(R.string.settings_metadata_embedding_note),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                )
-            }
-            item { Spacer(Modifier.height(12.dp)) }
         }
     }
 }
