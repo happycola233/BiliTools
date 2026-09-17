@@ -1,6 +1,8 @@
 package com.happycola233.bilitools.data
 
+import com.happycola233.bilitools.data.model.LyricsEmbedding
 import com.happycola233.bilitools.data.model.SubtitleInfo
+import com.happycola233.bilitools.data.model.SubtitleTrackEmbedding
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -8,25 +10,37 @@ class EmbeddedLyricsTest {
     private val manualEnglish = SubtitleInfo("en", "英语", "https://example.com/en")
     private val aiChinese = SubtitleInfo("ai-zh", "中文（自动生成）", "https://example.com/ai", isAi = true)
     private val manualChinese = SubtitleInfo("zh-CN", "中文", "https://example.com/zh")
+    private val traditionalChinese = SubtitleInfo("zh-Hant", "中文（繁体）", "https://example.com/hant")
 
-    @Test fun subtitlesRequireOptInAndManualBeatsAi() {
-        val list = listOf(aiChinese, manualEnglish, manualChinese)
-        assertNull(selectLyricsSubtitle(list, SubtitleLyricsMode.Off, null))
-        assertEquals(manualChinese, selectLyricsSubtitle(list, SubtitleLyricsMode.ManualOnly, null))
-        assertEquals(manualEnglish, selectLyricsSubtitle(listOf(aiChinese, manualEnglish), SubtitleLyricsMode.PreferManual, null))
-        assertNull(selectLyricsSubtitle(listOf(aiChinese), SubtitleLyricsMode.ManualOnly, null))
-        assertEquals(aiChinese, selectLyricsSubtitle(listOf(aiChinese), SubtitleLyricsMode.PreferManual, null))
+    @Test fun automaticLyricsPreferManualThenSimplifiedThenTraditional() {
+        val list = listOf(aiChinese, manualEnglish, traditionalChinese, manualChinese)
+        assertEquals(manualChinese, selectLyricsSubtitle(list, LyricsEmbedding()))
+        assertEquals(traditionalChinese, selectLyricsSubtitle(listOf(aiChinese, manualEnglish, traditionalChinese), LyricsEmbedding()))
+        assertEquals(manualEnglish, selectLyricsSubtitle(listOf(aiChinese, manualEnglish), LyricsEmbedding()))
+        assertEquals(aiChinese, selectLyricsSubtitle(listOf(aiChinese), LyricsEmbedding()))
+        assertNull(selectLyricsSubtitle(listOf(aiChinese), LyricsEmbedding(includeGenerated = false)))
     }
 
-    @Test fun explicitLanguageNeverFallsBackToADifferentLanguageOrForbiddenAi() {
+    @Test fun explicitLyricsLanguageNeverFallsBackToADifferentLanguage() {
         val list = listOf(aiChinese, manualEnglish, manualChinese)
-        assertEquals(manualEnglish, selectLyricsSubtitle(list, SubtitleLyricsMode.PreferManual, "en"))
-        assertNull(selectLyricsSubtitle(list, SubtitleLyricsMode.ManualOnly, "ai-zh"))
-        assertNull(selectLyricsSubtitle(list, SubtitleLyricsMode.PreferManual, "ja"))
+        assertEquals(manualEnglish, selectLyricsSubtitle(list, LyricsEmbedding(language = "en")))
+        // 用户点名了 AI 字幕就用 AI 字幕，includeGenerated 只约束自动选择。
+        assertEquals(aiChinese, selectLyricsSubtitle(list, LyricsEmbedding(language = "ai-zh", includeGenerated = false)))
+        assertNull(selectLyricsSubtitle(list, LyricsEmbedding(language = "ja")))
     }
 
     @Test fun legacyAiLanguageStillCountsAsGenerated() {
-        assertNull(selectLyricsSubtitle(listOf(aiChinese.copy(isAi = false)), SubtitleLyricsMode.ManualOnly, null))
+        assertNull(selectLyricsSubtitle(listOf(aiChinese.copy(isAi = false)), LyricsEmbedding(includeGenerated = false)))
+    }
+
+    @Test fun subtitleTracksKeepBilibiliOrderAndIgnoreMissingUrls() {
+        val list = listOf(aiChinese, manualEnglish.copy(url = ""), manualChinese, traditionalChinese)
+        assertEquals(listOf(aiChinese, manualChinese, traditionalChinese), selectEmbeddedSubtitleTracks(list, SubtitleTrackEmbedding()))
+        assertEquals(listOf(manualChinese, traditionalChinese), selectEmbeddedSubtitleTracks(list, SubtitleTrackEmbedding(includeGenerated = false)))
+        assertEquals(
+            listOf(aiChinese, traditionalChinese),
+            selectEmbeddedSubtitleTracks(list, SubtitleTrackEmbedding(languages = listOf("zh-Hant", "ai-zh", "en"), includeGenerated = false)),
+        )
     }
 
     @Test fun convertsTimesWithCarryAndPreservesSilenceWithoutClearingOverlappingCues() {

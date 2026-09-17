@@ -9,6 +9,7 @@ import com.happycola233.bilitools.core.naming.NamingTemplateScope
 import com.happycola233.bilitools.data.AppThemeColor
 import com.happycola233.bilitools.data.AppThemeMode
 import com.happycola233.bilitools.data.DownloadMetadataSettings
+import com.happycola233.bilitools.data.DownloadPreferenceMemorySettings
 import com.happycola233.bilitools.data.DefaultDownloadQualitySettings
 import com.happycola233.bilitools.data.HapticFeedbackLevel
 import com.happycola233.bilitools.data.IssueReportRepository
@@ -19,6 +20,7 @@ sealed class SettingsDestination : NavKey {
     data object Main : SettingsDestination()
     data object General : SettingsDestination()
     data object DefaultDownloadQuality : SettingsDestination()
+    data object DownloadPreferenceMemory : SettingsDestination()
     data object Download : SettingsDestination()
     data object Metadata : SettingsDestination()
     data object Naming : SettingsDestination()
@@ -38,16 +40,15 @@ class SettingsViewModel(
     fun navigateTo(destination: SettingsDestination) {
         if (backStack.lastOrNull() == destination) return
         // 允许在二级页面之上继续下钻的三级页面
-        val isThirdLevel =
-            (destination == SettingsDestination.Metadata && backStack.lastOrNull() == SettingsDestination.Download) ||
-            (
-                destination == SettingsDestination.DefaultDownloadQuality &&
-                    backStack.lastOrNull() == SettingsDestination.Download
-                ) ||
-                (
-                    destination == SettingsDestination.OpenSourceLicenses &&
-                        backStack.lastOrNull() == SettingsDestination.About
-                    )
+        val parent = backStack.lastOrNull()
+        val isThirdLevel = when (destination) {
+            SettingsDestination.Metadata,
+            SettingsDestination.DefaultDownloadQuality,
+            SettingsDestination.DownloadPreferenceMemory,
+            -> parent == SettingsDestination.Download
+            SettingsDestination.OpenSourceLicenses -> parent == SettingsDestination.About
+            else -> false
+        }
         if (isThirdLevel) {
             backStack.add(destination)
             return
@@ -74,6 +75,10 @@ class SettingsViewModel(
 
     fun setAddMetadata(enabled: Boolean) {
         settingsRepository.setAddMetadata(enabled)
+    }
+
+    fun setDownloadPreferenceMemory(settings: DownloadPreferenceMemorySettings) {
+        settingsRepository.setDownloadPreferenceMemory(settings)
     }
 
     fun setConvertXmlDanmakuToAss(enabled: Boolean) {

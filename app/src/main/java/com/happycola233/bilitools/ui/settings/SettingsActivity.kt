@@ -170,6 +170,7 @@ class SettingsActivity : AppCompatActivity() {
                 },
                 onLiveActivityStyleNotificationChange = viewModel::setLiveActivityStyleNotificationEnabled,
                 onDefaultDownloadQualityChange = viewModel::setDefaultDownloadQuality,
+                onDownloadPreferenceMemoryChange = viewModel::setDownloadPreferenceMemory,
                 onAddMetadataChange = viewModel::setAddMetadata,
                 onDownloadMetadataChange = viewModel::setDownloadMetadata,
                 onConvertXmlDanmakuToAssChange = viewModel::setConvertXmlDanmakuToAss,

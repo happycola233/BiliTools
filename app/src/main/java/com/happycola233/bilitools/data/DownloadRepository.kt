@@ -20,6 +20,7 @@ import com.happycola233.bilitools.data.model.AudioStream
 import com.happycola233.bilitools.core.CookieStore
 import com.happycola233.bilitools.core.createHttpDiagnosticLoggingInterceptor
 import com.happycola233.bilitools.data.model.DownloadEmbeddedMetadata
+import com.happycola233.bilitools.data.model.DownloadEmbedding
 import com.happycola233.bilitools.data.model.DownloadExtraTaskOperation
 import com.happycola233.bilitools.data.model.DownloadExtraTaskSpec
 import com.happycola233.bilitools.data.model.DownloadGroup
@@ -309,6 +310,7 @@ class DownloadRepository(
         url: String,
         mediaParams: com.happycola233.bilitools.data.model.DownloadMediaParams? = null,
         embeddedMetadata: DownloadEmbeddedMetadata? = null,
+        embedding: DownloadEmbedding? = null,
     ): DownloadItem {
         val id = downloadIds.incrementAndGet()
         val conversionTarget = resolveMediaConversionTarget(type)
@@ -322,6 +324,7 @@ class DownloadRepository(
             url,
             mediaParams = mediaParams,
             embeddedMetadata = embeddedMetadata,
+            embedding = embedding,
         )
         val state = ResumableState(
             id = id,
@@ -344,6 +347,7 @@ class DownloadRepository(
         audioUrl: String,
         mediaParams: com.happycola233.bilitools.data.model.DownloadMediaParams? = null,
         embeddedMetadata: DownloadEmbeddedMetadata? = null,
+        embedding: DownloadEmbedding? = null,
     ): DownloadItem {
         val conversionTarget = resolveMediaConversionTarget(DownloadTaskType.AudioVideo)
         val resolvedOutputFileName = MediaConversionPolicy.outputFileName(
@@ -381,6 +385,7 @@ class DownloadRepository(
             videoUrl,
             mediaParams = mediaParams,
             embeddedMetadata = embeddedMetadata,
+            embedding = embedding,
         )
         addTask(item)
         requestManagedTaskStart(mergeId)
@@ -1488,7 +1493,7 @@ class DownloadRepository(
         }
         currentCoroutineContext().ensureActive()
         tasks[id]?.let { item ->
-            applyEmbeddedMetadataIfPossible(item, processedTemp)
+            applyEmbeddedContentIfPossible(item, processedTemp)
         }
         currentCoroutineContext().ensureActive()
         val relativePath = groupRelativePath(startItem.groupId)
@@ -3665,7 +3670,7 @@ class DownloadRepository(
 
         currentCoroutineContext().ensureActive()
         tasks[task.id]?.let { item ->
-            applyEmbeddedMetadataIfPossible(item, outputTemp)
+            applyEmbeddedContentIfPossible(item, outputTemp)
         }
 
         currentCoroutineContext().ensureActive()
@@ -3727,24 +3732,49 @@ class DownloadRepository(
         }
     }
 
-    private suspend fun applyEmbeddedMetadataIfPossible(item: DownloadItem, tempFile: File) {
+    /** 元数据受全局开关控制；内嵌字幕与歌词是这次下载单独选择的，开关关闭时照常写入。 */
+    private suspend fun applyEmbeddedContentIfPossible(item: DownloadItem, tempFile: File) {
         val settings = settingsRepository.currentSettings()
-        updateTaskIf(item.id, { it.metadataWarning != null }) { it.copy(metadataWarning = null) }
-        if (!settings.addMetadata || item.embeddedMetadata == null) return
-        updateTaskIf(item.id, { it.status == DownloadStatus.Running || it.status == DownloadStatus.Merging }) {
-            it.copy(statusDetail = context.getString(R.string.download_detail_metadata), metadataWarning = null)
+        updateTaskIf(
+            item.id,
+            { it.embedWarning != null || it.embeddedSubtitleTitles.isNotEmpty() || it.embeddedLyricsSource != null },
+        ) {
+            it.copy(embedWarning = null, embeddedSubtitleTitles = emptyList(), embeddedLyricsSource = null)
         }
-        val issues = DownloadMetadataWriter(httpClient, extrasRepository).write(tempFile, item, settings.metadata)
-        val warning = issues.map { issue ->
+        val metadata = item.embeddedMetadata?.takeIf { settings.addMetadata }
+        val embedding = item.embedding
+        if (metadata == null && embedding == null) return
+        val detail = when {
+            metadata != null && embedding?.subtitles != null -> R.string.download_detail_metadata_subtitles
+            metadata != null && embedding?.lyrics != null -> R.string.download_detail_metadata_lyrics
+            metadata != null -> R.string.download_detail_metadata
+            embedding?.subtitles != null -> R.string.download_detail_embed_subtitles
+            else -> R.string.download_detail_embed_lyrics
+        }
+        updateTaskIf(item.id, { it.status == DownloadStatus.Running || it.status == DownloadStatus.Merging }) {
+            it.copy(statusDetail = context.getString(detail), embedWarning = null)
+        }
+        val result = EmbeddedContentWriter(httpClient, extrasRepository)
+            .write(tempFile, item, metadata, settings.metadata)
+        val warning = result.issues.map { issue ->
             context.getString(when (issue) {
-                MetadataWriteIssue.Cover -> R.string.download_metadata_cover_failed
-                MetadataWriteIssue.Lyrics -> R.string.download_metadata_lyrics_failed
-                MetadataWriteIssue.Tags -> R.string.download_metadata_tags_failed
-                MetadataWriteIssue.UnsupportedFormat -> R.string.download_metadata_unsupported
+                EmbeddedContentIssue.Cover -> R.string.download_metadata_cover_failed
+                EmbeddedContentIssue.LyricsUnavailable -> R.string.download_embed_lyrics_unavailable
+                EmbeddedContentIssue.LyricsFailed -> R.string.download_embed_lyrics_failed
+                EmbeddedContentIssue.SubtitlesUnavailable -> R.string.download_embed_subtitles_unavailable
+                EmbeddedContentIssue.SubtitlesFailed -> R.string.download_embed_subtitles_failed
+                EmbeddedContentIssue.SubtitlesPartiallyFailed -> R.string.download_embed_subtitles_partial
+                EmbeddedContentIssue.SubtitlesUnsupportedContainer -> R.string.download_embed_subtitles_container
+                EmbeddedContentIssue.WriteFailed -> R.string.download_embed_write_failed
+                EmbeddedContentIssue.UnsupportedFormat -> R.string.download_embed_unsupported
             })
         }.joinToString("；").takeIf(String::isNotBlank)
         updateTaskIf(item.id, { it.status == DownloadStatus.Running || it.status == DownloadStatus.Merging }) {
-            it.copy(metadataWarning = warning)
+            it.copy(
+                embedWarning = warning,
+                embeddedSubtitleTitles = result.subtitleTitles,
+                embeddedLyricsSource = result.lyricsSource,
+            )
         }
     }
 
@@ -4929,6 +4959,7 @@ class DownloadRepository(
         statusDetail: String? = null,
         mediaParams: com.happycola233.bilitools.data.model.DownloadMediaParams? = null,
         embeddedMetadata: DownloadEmbeddedMetadata? = null,
+        embedding: DownloadEmbedding? = null,
     ): DownloadItem {
         return DownloadItem(
             id = id,
@@ -4952,6 +4983,7 @@ class DownloadRepository(
             statusDetail = statusDetail,
             mediaParams = mediaParams,
             embeddedMetadata = embeddedMetadata,
+            embedding = embedding,
         )
     }
 

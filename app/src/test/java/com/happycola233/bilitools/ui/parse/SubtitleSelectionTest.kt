@@ -1,6 +1,10 @@
 package com.happycola233.bilitools.ui.parse
 
+import com.happycola233.bilitools.data.model.DownloadEmbedding
+import com.happycola233.bilitools.data.model.LyricsEmbedding
+import com.happycola233.bilitools.data.model.OutputType
 import com.happycola233.bilitools.data.model.SubtitleInfo
+import com.happycola233.bilitools.data.model.SubtitleTrackEmbedding
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -13,18 +17,64 @@ class SubtitleSelectionTest {
     )
 
     @Test
-    fun lyricsFollowOnlyVisibleExplicitSubtitleLanguage() {
-        val single = ParseUiState(
+    fun embeddingFollowsOutputTypeAndContainerSupport() {
+        val video = ParseUiState(
             selectedItemIndices = listOf(0),
-            subtitleEnabled = true,
-            subtitleLanguageSelection = SubtitleLanguageSelection.Language("en-US"),
+            outputType = OutputType.AudioVideo,
+            embedSubtitlesEnabled = true,
+            embedSubtitleLanguages = setOf("zh-Hans"),
+            embedLyricsEnabled = true,
+            embedLyricsLanguage = "en-US",
+            embedIncludeGeneratedSubtitles = false,
         )
-        assertEquals("en-US", single.preferredLyricsSubtitleLanguage)
-        assertNull(single.copy(subtitleEnabled = false).preferredLyricsSubtitleLanguage)
-        assertNull(single.copy(subtitleLanguageSelection = SubtitleLanguageSelection.All).preferredLyricsSubtitleLanguage)
-        assertNull(single.copy(subtitleLanguageSelection = null).preferredLyricsSubtitleLanguage)
-        // 多选页面隐藏了语言控件，不允许此前的单选语言暗中控制每个文件的歌词。
-        assertNull(single.copy(selectedItemIndices = listOf(0, 1)).preferredLyricsSubtitleLanguage)
+        assertEquals(
+            DownloadEmbedding(subtitles = SubtitleTrackEmbedding(listOf("zh-Hans"), includeGenerated = false)),
+            video.downloadEmbedding(videoContainerSupportsSubtitles = true, audioContainerSupportsLyrics = true),
+        )
+        // FLV 等不能承载字幕轨的容器：没有可嵌入的内容就不生成请求。
+        assertNull(video.downloadEmbedding(videoContainerSupportsSubtitles = false, audioContainerSupportsLyrics = true))
+        assertNull(video.copy(embedSubtitlesEnabled = false).downloadEmbedding(true, true))
+
+        val audio = video.copy(outputType = OutputType.AudioOnly)
+        assertEquals(
+            DownloadEmbedding(lyrics = LyricsEmbedding(language = "en-US", includeGenerated = false)),
+            audio.downloadEmbedding(videoContainerSupportsSubtitles = true, audioContainerSupportsLyrics = true),
+        )
+        assertNull(audio.downloadEmbedding(videoContainerSupportsSubtitles = true, audioContainerSupportsLyrics = false))
+        assertNull(video.copy(outputType = null).downloadEmbedding(true, true))
+    }
+
+    @Test
+    fun batchDownloadsEmbedEveryLanguageInsteadOfHiddenSingleSelection() {
+        val batch = ParseUiState(
+            selectedItemIndices = listOf(0, 1),
+            outputType = OutputType.VideoOnly,
+            embedSubtitlesEnabled = true,
+            embedSubtitleLanguages = setOf("zh-Hans"),
+            embedLyricsEnabled = true,
+            embedLyricsLanguage = "en-US",
+        )
+        assertEquals(
+            SubtitleTrackEmbedding(languages = emptyList(), includeGenerated = true),
+            batch.downloadEmbedding(true, true)?.subtitles,
+        )
+        assertEquals(
+            LyricsEmbedding(language = null, includeGenerated = true),
+            batch.copy(outputType = OutputType.AudioOnly).downloadEmbedding(true, true)?.lyrics,
+        )
+    }
+
+    @Test
+    fun embedLanguagePicksKeepValidChoicesAndFallBackSensibly() {
+        assertEquals(setOf("en-US", "zh-Hans"), pickEmbedSubtitleLanguages(subtitles, emptySet()))
+        assertEquals(setOf("zh-Hans"), pickEmbedSubtitleLanguages(subtitles, setOf("zh-Hans", "ja")))
+        assertEquals(setOf("en-US", "zh-Hans"), pickEmbedSubtitleLanguages(subtitles, setOf("ja")))
+        assertTrue(pickEmbedSubtitleLanguages(emptyList(), setOf("ja")).isEmpty())
+
+        assertEquals("en-US", pickEmbedLyricsLanguage(subtitles, "en-US"))
+        assertEquals("zh-Hans", pickEmbedLyricsLanguage(subtitles, "ja"))
+        assertEquals("zh-Hans", pickEmbedLyricsLanguage(subtitles, null))
+        assertNull(pickEmbedLyricsLanguage(emptyList(), "en-US"))
     }
 
     @Test

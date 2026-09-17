@@ -1,21 +1,8 @@
 package com.happycola233.bilitools.data
 
+/** 「添加元数据」的细项。字幕与歌词不是元数据，改为在解析页逐次选择，见 [com.happycola233.bilitools.data.model.DownloadEmbedding]。 */
 data class DownloadMetadataSettings(
     val embedCover: Boolean = true,
-    val embedLyrics: Boolean = true,
-    val subtitleLyrics: SubtitleLyricsMode = SubtitleLyricsMode.Off,
     val useUploaderAsArtist: Boolean = true,
     val useCollectionAsAlbum: Boolean = true,
 )
-
-enum class SubtitleLyricsMode(val value: String) {
-    Off("off"),
-    ManualOnly("manual"),
-    PreferManual("prefer_manual"),
-    ;
-
-    companion object {
-        fun fromValue(value: String?): SubtitleLyricsMode =
-            entries.firstOrNull { it.value == value } ?: Off
-    }
-}

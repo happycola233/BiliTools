@@ -25,6 +25,7 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.scrollBy
@@ -155,7 +156,8 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.happycola233.bilitools.R
-import com.happycola233.bilitools.data.DownloadMetadataSettings
+import com.happycola233.bilitools.core.AudioQualities
+import com.happycola233.bilitools.data.model.MediaCapabilities
 import com.happycola233.bilitools.data.model.MediaInfo
 import com.happycola233.bilitools.data.model.MediaItem
 import com.happycola233.bilitools.data.model.MediaStat
@@ -166,6 +168,7 @@ import com.happycola233.bilitools.data.model.MediaType
 import com.happycola233.bilitools.data.model.MediaUpper
 import com.happycola233.bilitools.data.model.OutputType
 import com.happycola233.bilitools.data.model.StreamFormat
+import com.happycola233.bilitools.data.model.SubtitleInfo
 import com.happycola233.bilitools.data.model.VideoCodec
 import com.happycola233.bilitools.data.model.capabilities
 import com.happycola233.bilitools.ui.FloatingControlsDefaults
@@ -324,6 +327,12 @@ private object ParseTextStyles {
         )
 }
 
+/** 下载后的格式转换会改变最终容器，决定内嵌字幕轨 / 歌词对当前选择是否可用。 */
+data class ParseConversionSettings(
+    val convertVideoToMp4: Boolean = false,
+    val convertAudioToMp3: Boolean = false,
+)
+
 @OptIn(
     ExperimentalMaterial3Api::class,
     ExperimentalMaterial3ExpressiveApi::class,
@@ -332,7 +341,7 @@ private object ParseTextStyles {
 @Composable
 fun ParseScreenContent(
     state: ParseUiState,
-    metadataSettings: DownloadMetadataSettings?,
+    conversionSettings: ParseConversionSettings,
     inputText: String,
     contentTopPadding: Dp,
     externalMode: Boolean,
@@ -363,6 +372,11 @@ fun ParseScreenContent(
     onAudioBitrateChange: (Int) -> Unit,
     onSubtitleEnabledChange: (Boolean) -> Unit,
     onSubtitleLanguageChange: (SubtitleLanguageSelection) -> Unit,
+    onEmbedSubtitlesEnabledChange: (Boolean) -> Unit,
+    onEmbedSubtitleLanguageChange: (String, Boolean) -> Unit,
+    onEmbedLyricsEnabledChange: (Boolean) -> Unit,
+    onEmbedLyricsLanguageChange: (String) -> Unit,
+    onEmbedIncludeGeneratedChange: (Boolean) -> Unit,
     onCopySubtitles: () -> Unit,
     onAiSummaryEnabledChange: (Boolean) -> Unit,
     onCopyAiSummaries: () -> Unit,
@@ -479,7 +493,7 @@ fun ParseScreenContent(
                     AnimatedOptionsVisibility(visible = showOptions) {
                         ParseOptionsCard(
                             state = state,
-                            metadataSettings = metadataSettings,
+                            conversionSettings = conversionSettings,
                             info = info,
                             selectedItem = item,
                             onFormatChange = onFormatChange,
@@ -491,6 +505,11 @@ fun ParseScreenContent(
                             onAudioBitrateChange = onAudioBitrateChange,
                             onSubtitleEnabledChange = onSubtitleEnabledChange,
                             onSubtitleLanguageChange = onSubtitleLanguageChange,
+                            onEmbedSubtitlesEnabledChange = onEmbedSubtitlesEnabledChange,
+                            onEmbedSubtitleLanguageChange = onEmbedSubtitleLanguageChange,
+                            onEmbedLyricsEnabledChange = onEmbedLyricsEnabledChange,
+                            onEmbedLyricsLanguageChange = onEmbedLyricsLanguageChange,
+                            onEmbedIncludeGeneratedChange = onEmbedIncludeGeneratedChange,
                             onCopySubtitles = onCopySubtitles,
                             onAiSummaryEnabledChange = onAiSummaryEnabledChange,
                             onCopyAiSummaries = onCopyAiSummaries,
@@ -3105,7 +3124,7 @@ private fun PageItemRow(
 @Composable
 private fun ParseOptionsCard(
     state: ParseUiState,
-    metadataSettings: DownloadMetadataSettings?,
+    conversionSettings: ParseConversionSettings,
     info: MediaInfo,
     selectedItem: MediaItem?,
     onFormatChange: (StreamFormat) -> Unit,
@@ -3117,6 +3136,11 @@ private fun ParseOptionsCard(
     onAudioBitrateChange: (Int) -> Unit,
     onSubtitleEnabledChange: (Boolean) -> Unit,
     onSubtitleLanguageChange: (SubtitleLanguageSelection) -> Unit,
+    onEmbedSubtitlesEnabledChange: (Boolean) -> Unit,
+    onEmbedSubtitleLanguageChange: (String, Boolean) -> Unit,
+    onEmbedLyricsEnabledChange: (Boolean) -> Unit,
+    onEmbedLyricsLanguageChange: (String) -> Unit,
+    onEmbedIncludeGeneratedChange: (Boolean) -> Unit,
     onCopySubtitles: () -> Unit,
     onAiSummaryEnabledChange: (Boolean) -> Unit,
     onCopyAiSummaries: () -> Unit,
@@ -3243,16 +3267,13 @@ private fun ParseOptionsCard(
                 if (mediaCapabilities.supportsPlaybackStream) {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         OptionsSection(title = stringResource(R.string.parse_output_type)) {
-                            Column {
-                                ConnectedOutputButtons(
-                                    selected = state.outputType,
-                                    audioVideoEnabled = streamControlsEnabled && allowAv,
-                                    videoEnabled = streamControlsEnabled && isDash && hasVideo,
-                                    audioEnabled = streamControlsEnabled && isDash && hasAudio,
-                                    onOutputTypeChange = onOutputTypeChange,
-                                )
-                                ParseLyricsSummary(state, metadataSettings)
-                            }
+                            ConnectedOutputButtons(
+                                selected = state.outputType,
+                                audioVideoEnabled = streamControlsEnabled && allowAv,
+                                videoEnabled = streamControlsEnabled && isDash && hasVideo,
+                                audioEnabled = streamControlsEnabled && isDash && hasAudio,
+                                onOutputTypeChange = onOutputTypeChange,
+                            )
                         }
 
                         AnimatedContent(
@@ -3310,6 +3331,18 @@ private fun ParseOptionsCard(
                                         onResolutionChange = onResolutionChange,
                                         onCodecChange = onCodecChange,
                                         onAudioBitrateChange = onAudioBitrateChange,
+                                    )
+                                    EmbeddingControls(
+                                        state = animatedState,
+                                        capabilities = mediaCapabilities,
+                                        activeFormat = activeFormat,
+                                        conversionSettings = conversionSettings,
+                                        enabled = controlsEnabled && animatedState.outputType == state.outputType,
+                                        onEmbedSubtitlesEnabledChange = onEmbedSubtitlesEnabledChange,
+                                        onEmbedSubtitleLanguageChange = onEmbedSubtitleLanguageChange,
+                                        onEmbedLyricsEnabledChange = onEmbedLyricsEnabledChange,
+                                        onEmbedLyricsLanguageChange = onEmbedLyricsLanguageChange,
+                                        onEmbedIncludeGeneratedChange = onEmbedIncludeGeneratedChange,
                                     )
                                 }
                             }
@@ -3614,6 +3647,161 @@ private fun QualityControls(
                 Spacer(Modifier.height(8.dp))
                 HelperText(text = stringResource(R.string.parse_quality_multi_hint))
             }
+        }
+    }
+}
+
+/**
+ * 写进媒体文件内部的软字幕轨（视频输出）或歌词（音频输出）。
+ * 语言列表只属于单个条目，批量下载时改为按条目自动处理，只保留是否包含 AI 字幕的选择。
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun EmbeddingControls(
+    state: ParseUiState,
+    capabilities: MediaCapabilities,
+    activeFormat: StreamFormat,
+    conversionSettings: ParseConversionSettings,
+    enabled: Boolean,
+    onEmbedSubtitlesEnabledChange: (Boolean) -> Unit,
+    onEmbedSubtitleLanguageChange: (String, Boolean) -> Unit,
+    onEmbedLyricsEnabledChange: (Boolean) -> Unit,
+    onEmbedLyricsLanguageChange: (String) -> Unit,
+    onEmbedIncludeGeneratedChange: (Boolean) -> Unit,
+) {
+    val outputType = state.outputType ?: return
+    val isMultiSelect = state.isMultiSelect
+    val subtitleStatusHint: String? = when {
+        isMultiSelect -> null
+        state.subtitleLoadStatus == SubtitleLoadStatus.Loading -> stringResource(R.string.parse_embed_loading)
+        state.subtitleLoadStatus == SubtitleLoadStatus.Failed -> stringResource(R.string.parse_embed_load_failed)
+        else -> null
+    }
+    val hasSubtitles = isMultiSelect || state.subtitleList.isNotEmpty()
+
+    if (outputType == OutputType.AudioOnly) {
+        // 歌曲带自己的歌词；视频只能把字幕转成歌词。
+        val fromSubtitles = capabilities.supportsSubtitleExport
+        // 单选时最高 / 最低档已经解析成具体码率；批量时只有指定固定码率才能预先判断。
+        val dolbySelected = state.selectedAudioId == AudioQualities.DOLBY_ATMOS &&
+            (!isMultiSelect || state.audioBitrateMode == QualityMode.Fixed)
+        val containerSupported = !dolbySelected || conversionSettings.convertAudioToMp3
+        val sourceAvailable = !fromSubtitles || hasSubtitles
+        val hint = when {
+            !containerSupported -> stringResource(R.string.parse_embed_lyrics_dolby)
+            !fromSubtitles -> stringResource(R.string.parse_embed_lyrics_original_hint)
+            isMultiSelect -> stringResource(R.string.parse_embed_lyrics_multi_hint)
+            subtitleStatusHint != null -> subtitleStatusHint
+            !hasSubtitles -> stringResource(R.string.parse_embed_lyrics_unavailable)
+            else -> stringResource(R.string.parse_embed_lyrics_hint)
+        }
+        OptionsSection(title = stringResource(R.string.parse_embed_lyrics_label)) {
+            TwoColumnChecks {
+                CheckOption(
+                    text = stringResource(R.string.parse_embed_lyrics_option),
+                    checked = state.embedLyricsEnabled,
+                    enabled = enabled && containerSupported && sourceAvailable,
+                    onCheckedChange = onEmbedLyricsEnabledChange,
+                    modifier = Modifier.weight(1f),
+                )
+                if (fromSubtitles && isMultiSelect) {
+                    CheckOption(
+                        text = stringResource(R.string.parse_embed_include_generated),
+                        checked = state.embedIncludeGeneratedSubtitles,
+                        enabled = enabled && containerSupported && state.embedLyricsEnabled,
+                        onCheckedChange = onEmbedIncludeGeneratedChange,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+            if (fromSubtitles && !isMultiSelect) {
+                AnimatedOptionsVisibility(
+                    visible = state.embedLyricsEnabled && containerSupported && state.subtitleList.isNotEmpty(),
+                ) {
+                    EmbedLanguageChips(
+                        subtitles = state.subtitleList,
+                        enabled = enabled,
+                        isSelected = { it == state.embedLyricsLanguage },
+                        role = Role.RadioButton,
+                        onClick = { lan -> onEmbedLyricsLanguageChange(lan) },
+                    )
+                }
+            }
+            HelperText(text = hint, icon = painterResource(R.drawable.ic_info_24))
+        }
+        return
+    }
+
+    if (!capabilities.supportsSubtitleExport) return
+    // 仅视频走 DASH（MP4 容器）；音视频选了 FLV 又不转 MP4 时没有地方放字幕轨。
+    val containerSupported = outputType == OutputType.VideoOnly ||
+        activeFormat != StreamFormat.Flv ||
+        conversionSettings.convertVideoToMp4
+    val hint = when {
+        !containerSupported -> stringResource(R.string.parse_embed_subtitles_flv)
+        isMultiSelect -> stringResource(R.string.parse_embed_subtitles_multi_hint)
+        subtitleStatusHint != null -> subtitleStatusHint
+        !hasSubtitles -> stringResource(R.string.parse_embed_subtitles_unavailable)
+        else -> stringResource(R.string.parse_embed_subtitles_hint)
+    }
+    OptionsSection(title = stringResource(R.string.parse_embed_subtitles_label)) {
+        TwoColumnChecks {
+            CheckOption(
+                text = stringResource(R.string.parse_embed_subtitles_option),
+                checked = state.embedSubtitlesEnabled,
+                enabled = enabled && containerSupported && hasSubtitles,
+                onCheckedChange = onEmbedSubtitlesEnabledChange,
+                modifier = Modifier.weight(1f),
+            )
+            if (isMultiSelect) {
+                CheckOption(
+                    text = stringResource(R.string.parse_embed_include_generated),
+                    checked = state.embedIncludeGeneratedSubtitles,
+                    enabled = enabled && containerSupported && state.embedSubtitlesEnabled,
+                    onCheckedChange = onEmbedIncludeGeneratedChange,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+        if (!isMultiSelect) {
+            AnimatedOptionsVisibility(
+                visible = state.embedSubtitlesEnabled && containerSupported && state.subtitleList.isNotEmpty(),
+            ) {
+                EmbedLanguageChips(
+                    subtitles = state.subtitleList,
+                    enabled = enabled,
+                    isSelected = { it in state.embedSubtitleLanguages },
+                    role = Role.Checkbox,
+                    onClick = { lan -> onEmbedSubtitleLanguageChange(lan, lan !in state.embedSubtitleLanguages) },
+                )
+            }
+        }
+        HelperText(text = hint, icon = painterResource(R.drawable.ic_info_24))
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun EmbedLanguageChips(
+    subtitles: List<SubtitleInfo>,
+    enabled: Boolean,
+    isSelected: (String) -> Boolean,
+    role: Role,
+    onClick: (String) -> Unit,
+) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        subtitles.forEach { subtitle ->
+            ExpressiveFilterChip(
+                text = subtitle.name,
+                selected = isSelected(subtitle.lan),
+                enabled = enabled,
+                role = role,
+                onClick = { onClick(subtitle.lan) },
+            )
         }
     }
 }
@@ -4156,6 +4344,7 @@ private fun ExpressiveFilterChip(
     text: String,
     selected: Boolean,
     enabled: Boolean = true,
+    role: Role = Role.Checkbox,
     onClick: () -> Unit,
 ) {
     val haptics = rememberAppHaptics()
@@ -4196,11 +4385,13 @@ private fun ExpressiveFilterChip(
     Surface(
         modifier = Modifier
             .height(imageOptionChipHeight)
-            .clickable(
+            // 选中状态进入语义树，读屏才会按复选框 / 单选项播报「已选中」。
+            .selectable(
+                selected = selected,
                 enabled = enabled,
                 interactionSource = interactionSource,
                 indication = null,
-                role = Role.Checkbox,
+                role = role,
                 onClick = {
                     haptics.select()
                     onClick()

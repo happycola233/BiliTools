@@ -1481,7 +1481,7 @@ private fun buildTaskDetailText(
         } else {
             listOfNotNull(
                 context.getString(R.string.download_status_success),
-                item.metadataWarning,
+                item.embedWarning,
             ).joinToString(" · ")
         }
 

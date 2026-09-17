@@ -11,6 +11,8 @@ import com.happycola233.bilitools.core.naming.NamingTemplateScope
 import com.happycola233.bilitools.core.naming.NamingTemplateSet
 import com.happycola233.bilitools.core.naming.NamingTemplateSource
 import com.happycola233.bilitools.core.naming.NamingTemplates
+import com.happycola233.bilitools.data.model.OutputType
+import com.happycola233.bilitools.data.model.StreamFormat
 import com.happycola233.bilitools.notification.isLiveUpdateSupported
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -55,6 +57,7 @@ data class DefaultDownloadQualitySettings(
 data class AppSettings(
     val addMetadata: Boolean = true,
     val metadata: DownloadMetadataSettings = DownloadMetadataSettings(),
+    val downloadPreferenceMemory: DownloadPreferenceMemorySettings = DownloadPreferenceMemorySettings(),
     val convertXmlDanmakuToAss: Boolean = true,
     val convertAudioToMp3: Boolean = false,
     val convertVideoToMp4: Boolean = false,
@@ -246,12 +249,65 @@ class SettingsRepository(context: Context) {
     fun setDownloadMetadata(settings: DownloadMetadataSettings) {
         prefs.edit()
             .putBoolean(KEY_METADATA_COVER, settings.embedCover)
-            .putBoolean(KEY_METADATA_LYRICS, settings.embedLyrics)
-            .putString(KEY_METADATA_SUBTITLE_LYRICS, settings.subtitleLyrics.value)
             .putBoolean(KEY_METADATA_UPLOADER_ARTIST, settings.useUploaderAsArtist)
             .putBoolean(KEY_METADATA_COLLECTION_ALBUM, settings.useCollectionAsAlbum)
             .apply()
         _settings.value = _settings.value.copy(metadata = settings)
+    }
+
+    fun currentDownloadPreferenceMemory(): DownloadPreferenceMemorySettings =
+        _settings.value.downloadPreferenceMemory
+
+    fun setDownloadPreferenceMemory(settings: DownloadPreferenceMemorySettings) {
+        val current = _settings.value
+        if (current.downloadPreferenceMemory == settings) return
+        prefs.edit()
+            .putBoolean(KEY_DOWNLOAD_PREFERENCE_MEMORY_ENABLED, settings.enabled)
+            .putStringSet(KEY_DOWNLOAD_PREFERENCE_MEMORY_GROUPS, settings.groups.map { it.value }.toSet())
+            .apply()
+        _settings.value = current.copy(downloadPreferenceMemory = settings)
+    }
+
+    /** 上次在解析页使用的下载选项。是否采用由 [DownloadPreferenceMemorySettings] 决定，这里只负责存取。 */
+    fun rememberedDownloadPreferences(): RememberedDownloadPreferences = RememberedDownloadPreferences(
+        outputType = prefs.getString(KEY_REMEMBERED_OUTPUT_TYPE, OutputType.AudioVideo.name)
+            ?.takeIf { it != REMEMBERED_NONE }
+            ?.let { name -> OutputType.entries.firstOrNull { it.name == name } },
+        streamFormat = prefs.getString(KEY_REMEMBERED_STREAM_FORMAT, null)
+            ?.let { name -> StreamFormat.entries.firstOrNull { it.name == name } }
+            ?: StreamFormat.Dash,
+        embedSubtitles = prefs.getBoolean(KEY_REMEMBERED_EMBED_SUBTITLES, false),
+        embedLyrics = prefs.getBoolean(KEY_REMEMBERED_EMBED_LYRICS, false),
+        embedIncludeGeneratedSubtitles = prefs.getBoolean(KEY_REMEMBERED_EMBED_INCLUDE_GENERATED, true),
+        subtitleExport = prefs.getBoolean(KEY_REMEMBERED_SUBTITLE_EXPORT, false),
+        aiSummaryExport = prefs.getBoolean(KEY_REMEMBERED_AI_SUMMARY_EXPORT, false),
+        nfoCollection = prefs.getBoolean(KEY_REMEMBERED_NFO_COLLECTION, false),
+        nfoSingle = prefs.getBoolean(KEY_REMEMBERED_NFO_SINGLE, false),
+        danmakuLive = prefs.getBoolean(KEY_REMEMBERED_DANMAKU_LIVE, false),
+        danmakuHistory = prefs.getBoolean(KEY_REMEMBERED_DANMAKU_HISTORY, false),
+        // SharedPreferences 返回的集合不允许直接持有，复制一份。
+        imageIds = prefs.getStringSet(KEY_REMEMBERED_IMAGE_IDS, null)?.toSet().orEmpty(),
+        opusContent = prefs.getBoolean(KEY_REMEMBERED_OPUS_CONTENT, true),
+        opusImages = prefs.getBoolean(KEY_REMEMBERED_OPUS_IMAGES, true),
+    )
+
+    fun rememberDownloadPreferences(preferences: RememberedDownloadPreferences) {
+        prefs.edit()
+            .putString(KEY_REMEMBERED_OUTPUT_TYPE, preferences.outputType?.name ?: REMEMBERED_NONE)
+            .putString(KEY_REMEMBERED_STREAM_FORMAT, preferences.streamFormat.name)
+            .putBoolean(KEY_REMEMBERED_EMBED_SUBTITLES, preferences.embedSubtitles)
+            .putBoolean(KEY_REMEMBERED_EMBED_LYRICS, preferences.embedLyrics)
+            .putBoolean(KEY_REMEMBERED_EMBED_INCLUDE_GENERATED, preferences.embedIncludeGeneratedSubtitles)
+            .putBoolean(KEY_REMEMBERED_SUBTITLE_EXPORT, preferences.subtitleExport)
+            .putBoolean(KEY_REMEMBERED_AI_SUMMARY_EXPORT, preferences.aiSummaryExport)
+            .putBoolean(KEY_REMEMBERED_NFO_COLLECTION, preferences.nfoCollection)
+            .putBoolean(KEY_REMEMBERED_NFO_SINGLE, preferences.nfoSingle)
+            .putBoolean(KEY_REMEMBERED_DANMAKU_LIVE, preferences.danmakuLive)
+            .putBoolean(KEY_REMEMBERED_DANMAKU_HISTORY, preferences.danmakuHistory)
+            .putStringSet(KEY_REMEMBERED_IMAGE_IDS, preferences.imageIds)
+            .putBoolean(KEY_REMEMBERED_OPUS_CONTENT, preferences.opusContent)
+            .putBoolean(KEY_REMEMBERED_OPUS_IMAGES, preferences.opusImages)
+            .apply()
     }
 
     fun setConvertXmlDanmakuToAss(enabled: Boolean) {
@@ -639,10 +695,15 @@ class SettingsRepository(context: Context) {
             addMetadata = prefs.getBoolean(KEY_ADD_METADATA, true),
             metadata = DownloadMetadataSettings(
                 embedCover = prefs.getBoolean(KEY_METADATA_COVER, true),
-                embedLyrics = prefs.getBoolean(KEY_METADATA_LYRICS, true),
-                subtitleLyrics = SubtitleLyricsMode.fromValue(prefs.getString(KEY_METADATA_SUBTITLE_LYRICS, null)),
                 useUploaderAsArtist = prefs.getBoolean(KEY_METADATA_UPLOADER_ARTIST, true),
                 useCollectionAsAlbum = prefs.getBoolean(KEY_METADATA_COLLECTION_ALBUM, true),
+            ),
+            downloadPreferenceMemory = DownloadPreferenceMemorySettings(
+                enabled = prefs.getBoolean(KEY_DOWNLOAD_PREFERENCE_MEMORY_ENABLED, true),
+                groups = prefs.getStringSet(KEY_DOWNLOAD_PREFERENCE_MEMORY_GROUPS, null)
+                    ?.mapNotNull(DownloadPreferenceGroup::fromValue)
+                    ?.toSet()
+                    ?: DownloadPreferenceMemorySettings.DEFAULT_GROUPS,
             ),
             convertXmlDanmakuToAss = prefs.getBoolean(KEY_CONVERT_XML_DANMAKU_TO_ASS, true),
             convertAudioToMp3 = prefs.getBoolean(KEY_CONVERT_AUDIO_TO_MP3, false),
@@ -912,6 +973,10 @@ class SettingsRepository(context: Context) {
             // v3.0 首次启动时统一开启一次；迁移完成后不再覆盖用户的手动选择。
             editor.putBoolean(KEY_DARK_MODE_PURE_BLACK, true)
         }
+        if (migrationVersion < MIGRATION_VERSION_EMBEDDING_ON_PARSE_PAGE) {
+            // 歌词嵌入改为在解析页逐次选择，元数据设置里的歌词开关与字幕来源策略不再有对应项。
+            LEGACY_METADATA_LYRICS_KEYS.forEach(editor::remove)
+        }
         editor
             .putInt(KEY_SETTINGS_MIGRATION_VERSION, CURRENT_SETTINGS_MIGRATION_VERSION)
             .apply()
@@ -988,10 +1053,27 @@ class SettingsRepository(context: Context) {
         private const val PREFS_NAME = "app_settings"
         private const val KEY_ADD_METADATA = "add_metadata"
         private const val KEY_METADATA_COVER = "metadata_cover"
-        private const val KEY_METADATA_LYRICS = "metadata_lyrics"
-        private const val KEY_METADATA_SUBTITLE_LYRICS = "metadata_subtitle_lyrics"
         private const val KEY_METADATA_UPLOADER_ARTIST = "metadata_uploader_artist"
         private const val KEY_METADATA_COLLECTION_ALBUM = "metadata_collection_album"
+        private val LEGACY_METADATA_LYRICS_KEYS = listOf("metadata_lyrics", "metadata_subtitle_lyrics")
+        private const val KEY_DOWNLOAD_PREFERENCE_MEMORY_ENABLED = "download_preference_memory_enabled"
+        private const val KEY_DOWNLOAD_PREFERENCE_MEMORY_GROUPS = "download_preference_memory_groups"
+        private const val KEY_REMEMBERED_OUTPUT_TYPE = "remembered_output_type"
+        private const val KEY_REMEMBERED_STREAM_FORMAT = "remembered_stream_format"
+        private const val KEY_REMEMBERED_EMBED_SUBTITLES = "remembered_embed_subtitles"
+        private const val KEY_REMEMBERED_EMBED_LYRICS = "remembered_embed_lyrics"
+        private const val KEY_REMEMBERED_EMBED_INCLUDE_GENERATED = "remembered_embed_include_generated"
+        private const val KEY_REMEMBERED_SUBTITLE_EXPORT = "remembered_subtitle_export"
+        private const val KEY_REMEMBERED_AI_SUMMARY_EXPORT = "remembered_ai_summary_export"
+        private const val KEY_REMEMBERED_NFO_COLLECTION = "remembered_nfo_collection"
+        private const val KEY_REMEMBERED_NFO_SINGLE = "remembered_nfo_single"
+        private const val KEY_REMEMBERED_DANMAKU_LIVE = "remembered_danmaku_live"
+        private const val KEY_REMEMBERED_DANMAKU_HISTORY = "remembered_danmaku_history"
+        private const val KEY_REMEMBERED_IMAGE_IDS = "remembered_image_ids"
+        private const val KEY_REMEMBERED_OPUS_CONTENT = "remembered_opus_content"
+        private const val KEY_REMEMBERED_OPUS_IMAGES = "remembered_opus_images"
+        /** 输出类型允许「不下载媒体」；SharedPreferences 里用哨兵值区分于尚未记录。 */
+        private const val REMEMBERED_NONE = "none"
         private const val KEY_CONVERT_XML_DANMAKU_TO_ASS = "convert_xml_danmaku_to_ass"
         private const val KEY_CONVERT_AUDIO_TO_MP3 = "convert_audio_to_mp3"
         private const val KEY_CONVERT_VIDEO_TO_MP4 = "convert_video_to_mp4"
@@ -1002,8 +1084,9 @@ class SettingsRepository(context: Context) {
         private const val KEY_SETTINGS_MIGRATION_VERSION = "settings_migration_version"
         // 设置迁移序号独立于应用版本；迁移 1 首次随 v3.0 发布。
         private const val MIGRATION_VERSION_V3_0_ENABLE_PURE_BLACK = 1
+        private const val MIGRATION_VERSION_EMBEDDING_ON_PARSE_PAGE = 2
         private const val CURRENT_SETTINGS_MIGRATION_VERSION =
-            MIGRATION_VERSION_V3_0_ENABLE_PURE_BLACK
+            MIGRATION_VERSION_EMBEDDING_ON_PARSE_PAGE
         private const val KEY_LAUNCH_SPLASH_ANIMATION_ENABLED = "launch_splash_animation_enabled"
         private const val KEY_LIQUID_BOTTOM_TABS_ENABLED = "liquid_bottom_tabs_enabled"
         private const val KEY_LIQUID_GLASS_PANELS_ENABLED = "liquid_glass_panels_enabled"

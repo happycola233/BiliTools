@@ -160,6 +160,7 @@ import com.happycola233.bilitools.data.AppThemeMode
 import com.happycola233.bilitools.data.DefaultDownloadQualitySettings
 import com.happycola233.bilitools.data.DefaultDownloadVideoCodec
 import com.happycola233.bilitools.data.DownloadMetadataSettings
+import com.happycola233.bilitools.data.DownloadPreferenceMemorySettings
 import com.happycola233.bilitools.data.DownloadQualityMode
 import com.happycola233.bilitools.data.HapticFeedbackLevel
 import com.happycola233.bilitools.data.IssueReportLogState
@@ -210,6 +211,7 @@ fun BiliToolsSettingsContent(
     onThemeColorChange: (AppThemeColor) -> Unit,
     onLiveActivityStyleNotificationChange: (Boolean) -> Unit,
     onDefaultDownloadQualityChange: (DefaultDownloadQualitySettings) -> Unit,
+    onDownloadPreferenceMemoryChange: (DownloadPreferenceMemorySettings) -> Unit,
     onAddMetadataChange: (Boolean) -> Unit,
     onDownloadMetadataChange: (DownloadMetadataSettings) -> Unit,
     onConvertXmlDanmakuToAssChange: (Boolean) -> Unit,
@@ -286,11 +288,21 @@ fun BiliToolsSettingsContent(
                     )
                 }
 
+                entry<SettingsDestination.DownloadPreferenceMemory> {
+                    DownloadPreferenceMemoryScreen(
+                        settings = settings.downloadPreferenceMemory,
+                        onSettingsChange = onDownloadPreferenceMemoryChange,
+                        onBack = onNavigateBack,
+                        modifier = modifier,
+                    )
+                }
+
                 entry<SettingsDestination.Download> {
                     DownloadSettingsScreen(
                         settings = settings,
                         onOpenDownloadLocationPicker = onOpenDownloadLocationPicker,
                         onOpenDefaultDownloadQuality = { onNavigate(SettingsDestination.DefaultDownloadQuality) },
+                        onOpenDownloadPreferenceMemory = { onNavigate(SettingsDestination.DownloadPreferenceMemory) },
                         onAddMetadataChange = onAddMetadataChange,
                         onOpenMetadataOptions = { onNavigate(SettingsDestination.Metadata) },
                         onConvertXmlDanmakuToAssChange = onConvertXmlDanmakuToAssChange,
@@ -599,6 +611,7 @@ internal fun DownloadSettingsScreen(
     settings: AppSettings,
     onOpenDownloadLocationPicker: (String) -> Unit,
     onOpenDefaultDownloadQuality: () -> Unit,
+    onOpenDownloadPreferenceMemory: () -> Unit,
     onAddMetadataChange: (Boolean) -> Unit,
     onOpenMetadataOptions: () -> Unit,
     onConvertXmlDanmakuToAssChange: (Boolean) -> Unit,
@@ -627,7 +640,7 @@ internal fun DownloadSettingsScreen(
 
             item {
                 ClickableListItem(
-                    items = 3,
+                    items = 4,
                     index = 0,
                     leadingContent = { SettingsItemIcon(R.drawable.ic_folder_24) },
                     content = {
@@ -654,14 +667,14 @@ internal fun DownloadSettingsScreen(
                 MaxConcurrentDownloadsListItem(
                     value = settings.maxConcurrentDownloads,
                     onValueChange = onMaxConcurrentDownloadsChange,
-                    items = 3,
+                    items = 4,
                     index = 1,
                 )
             }
 
             item {
                 ClickableListItem(
-                    items = 3,
+                    items = 4,
                     index = 2,
                     leadingContent = { SettingsItemIcon(R.drawable.ic_high_quality_24) },
                     content = {
@@ -676,6 +689,26 @@ internal fun DownloadSettingsScreen(
                     },
                     trailingContent = { SettingsItemIcon(R.drawable.ic_chevron_right_24) },
                     onClick = onOpenDefaultDownloadQuality,
+                )
+            }
+
+            item {
+                ClickableListItem(
+                    items = 4,
+                    index = 3,
+                    leadingContent = { SettingsItemIcon(R.drawable.ic_manage_history_24) },
+                    content = {
+                        SettingsItemTitle(stringResource(R.string.settings_download_preference_memory))
+                    },
+                    supportingContent = {
+                        Text(
+                            text = downloadPreferenceMemorySummary(settings.downloadPreferenceMemory),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
+                    trailingContent = { SettingsItemIcon(R.drawable.ic_chevron_right_24) },
+                    onClick = onOpenDownloadPreferenceMemory,
                 )
             }
 

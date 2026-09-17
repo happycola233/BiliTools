@@ -1,33 +1,48 @@
 package com.happycola233.bilitools.data
 
+import com.happycola233.bilitools.data.model.LyricsEmbedding
 import com.happycola233.bilitools.data.model.SubtitleInfo
+import com.happycola233.bilitools.data.model.SubtitleTrackEmbedding
 import java.util.Locale
 import kotlin.math.roundToLong
 
 internal data class LyricsSubtitleLine(val from: Double, val to: Double, val content: String)
 
+/** 指定了语言就只取这些语言（保持 B 站列表顺序）；未指定表示全部可用字幕，批量下载可排除 AI 字幕。 */
+internal fun selectEmbeddedSubtitleTracks(
+    subtitles: List<SubtitleInfo>,
+    request: SubtitleTrackEmbedding,
+): List<SubtitleInfo> {
+    val available = subtitles.filter { it.url.isNotBlank() }
+    return if (request.languages.isNotEmpty()) {
+        available.filter { it.lan in request.languages }
+    } else {
+        available.filter { request.includeGenerated || !it.isGenerated }
+    }
+}
+
+/**
+ * 单个歌词字段只放一种语言。显式语言不匹配时留空，不悄悄换成另一种语言；
+ * 自动选择时人工字幕优先，再按简体、繁体、其他语言排序。
+ */
 internal fun selectLyricsSubtitle(
     subtitles: List<SubtitleInfo>,
-    mode: SubtitleLyricsMode,
-    preferredLanguage: String?,
+    request: LyricsEmbedding,
 ): SubtitleInfo? {
-    if (mode == SubtitleLyricsMode.Off) return null
-    val eligible = subtitles.filter { subtitle ->
-        subtitle.url.isNotBlank() &&
-            (mode == SubtitleLyricsMode.PreferManual || !subtitle.isGenerated) &&
-            (preferredLanguage == null || subtitle.lan == preferredLanguage)
-    }
-    // 单个歌词字段只放一种语言。显式语言不匹配时留空，不悄悄换成另一种语言。
-    return eligible.minWithOrNull(
-        compareBy<SubtitleInfo> { it.isGenerated }
-            .thenBy {
-                when (it.lan.removePrefix("ai-").lowercase(Locale.ROOT)) {
-                    "zh", "zh-cn", "zh-hans" -> 0
-                    "zh-tw", "zh-hant", "zh-hk" -> 1
-                    else -> 2
-                }
-            },
-    )
+    val available = subtitles.filter { it.url.isNotBlank() }
+    request.language?.let { language -> return available.firstOrNull { it.lan == language } }
+    return available
+        .filter { request.includeGenerated || !it.isGenerated }
+        .minWithOrNull(
+            compareBy<SubtitleInfo> { it.isGenerated }
+                .thenBy {
+                    when (it.lan.removePrefix("ai-").lowercase(Locale.ROOT)) {
+                        "zh", "zh-cn", "zh-hans" -> 0
+                        "zh-tw", "zh-hant", "zh-hk" -> 1
+                        else -> 2
+                    }
+                },
+        )
 }
 
 internal val SubtitleInfo.isGenerated: Boolean

@@ -1,5 +1,7 @@
 package com.happycola233.bilitools.data.model
 
+import com.squareup.moshi.Json
+
 data class VideoId(
     val bvid: String? = null,
     val aid: String? = null,
@@ -183,7 +185,14 @@ data class DownloadItem(
     val statusDetail: String? = null,
     val mediaParams: DownloadMediaParams? = null,
     val embeddedMetadata: DownloadEmbeddedMetadata? = null,
-    val metadataWarning: String? = null,
+    /** 解析页为这次下载单独选择的内嵌字幕 / 歌词；与元数据开关无关。 */
+    val embedding: DownloadEmbedding? = null,
+    /** 元数据、封面、字幕或歌词未能全部写入时的提示；沿用旧字段名以读取已保存的下载记录。 */
+    @Json(name = "metadataWarning")
+    val embedWarning: String? = null,
+    /** 实际写入文件的软字幕轨名称与歌词来源，供详情页展示。 */
+    val embeddedSubtitleTitles: List<String> = emptyList(),
+    val embeddedLyricsSource: String? = null,
     /** 保存后的实际字节数；合并、转码与元数据写入后可能不同于传输大小。 */
     val outputBytes: Long? = null,
 )
@@ -192,6 +201,29 @@ data class DownloadMediaParams(
     val resolution: String? = null,
     val codec: String? = null,
     val audioBitrate: String? = null,
+)
+
+/**
+ * 下载完成后写进媒体文件内部的字幕轨与歌词。字幕以软字幕轨挂在视频容器里，播放器可切换或关闭；
+ * 歌词写入音频文件的歌词字段。两者都不是描述作品的元数据，因此独立于「添加元数据」设置。
+ */
+data class DownloadEmbedding(
+    val subtitles: SubtitleTrackEmbedding? = null,
+    val lyrics: LyricsEmbedding? = null,
+)
+
+data class SubtitleTrackEmbedding(
+    /** 要嵌入的字幕语言代码（B 站 lan 值）；为空表示嵌入该条目的全部可用字幕。 */
+    val languages: List<String> = emptyList(),
+    /** 未指定语言（批量下载）时，是否把 AI 生成的字幕也作为轨道嵌入。 */
+    val includeGenerated: Boolean = true,
+)
+
+data class LyricsEmbedding(
+    /** 视频转音频时作为歌词的字幕语言代码；null 表示自动选择一种。音乐条目始终使用原始歌词。 */
+    val language: String? = null,
+    /** 自动选择时是否允许使用 AI 生成的字幕。 */
+    val includeGenerated: Boolean = true,
 )
 
 data class DownloadEmbeddedMetadata(
@@ -212,7 +244,6 @@ data class DownloadEmbeddedMetadata(
     val musicSid: Long? = null,
     val subtitleAid: Long? = null,
     val subtitleCid: Long? = null,
-    val preferredSubtitleLanguage: String? = null,
     val durationSeconds: Int? = null,
 )
 

@@ -217,7 +217,11 @@ private fun DownloadFileDetails(item: DownloadItem, directory: String, output: D
         path?.let { DetailValue(if (output?.path != null) "保存位置" else "目标位置", it, fullWidthValue = true) }
         if (item.status == DownloadStatus.Failed) DetailValue("失败原因", resolveFailureReason(item.errorMessage), fullWidthValue = true)
         item.statusDetail?.takeIf { item.status == DownloadStatus.Unavailable }?.let { DetailValue("说明", it, fullWidthValue = true) }
-        item.metadataWarning?.let { DetailValue("元数据", it, fullWidthValue = true) }
+        item.embeddedSubtitleTitles.takeIf { it.isNotEmpty() }?.let {
+            DetailValue("内嵌字幕", it.joinToString("、"), fullWidthValue = true)
+        }
+        item.embeddedLyricsSource?.let { DetailValue("内嵌歌词", it, fullWidthValue = true) }
+        item.embedWarning?.let { DetailValue("未完成项", it, fullWidthValue = true) }
     }
 }
 

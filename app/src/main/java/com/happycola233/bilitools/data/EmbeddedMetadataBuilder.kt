@@ -12,7 +12,6 @@ import java.time.ZoneOffset
 internal fun buildEmbeddedMetadata(
     info: MediaInfo,
     item: MediaItem,
-    preferredSubtitleLanguage: String? = null,
 ): DownloadEmbeddedMetadata {
     val isVideo = item.type == MediaType.Video
     val isMusic = item.type == MediaType.Music
@@ -89,7 +88,6 @@ internal fun buildEmbeddedMetadata(
         // au 关联视频可能使用不同剪辑，绝不能用它的字幕充当该歌曲的歌词。
         subtitleAid = item.aid?.takeIf { it > 0 && (isVideo || isEpisode) },
         subtitleCid = item.cid?.takeIf { it > 0 && (isVideo || isEpisode) },
-        preferredSubtitleLanguage = preferredSubtitleLanguage,
         durationSeconds = item.duration.takeIf { it > 0 },
     )
 }

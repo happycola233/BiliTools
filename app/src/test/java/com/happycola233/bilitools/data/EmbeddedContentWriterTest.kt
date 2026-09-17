@@ -4,9 +4,12 @@ import com.happycola233.bilitools.core.BiliHttpClient
 import com.happycola233.bilitools.core.CookieStore
 import com.happycola233.bilitools.core.WbiSigner
 import com.happycola233.bilitools.data.model.DownloadEmbeddedMetadata
+import com.happycola233.bilitools.data.model.DownloadEmbedding
 import com.happycola233.bilitools.data.model.DownloadItem
 import com.happycola233.bilitools.data.model.DownloadStatus
 import com.happycola233.bilitools.data.model.DownloadTaskType
+import com.happycola233.bilitools.data.model.LyricsEmbedding
+import com.happycola233.bilitools.data.model.SubtitleTrackEmbedding
 import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
@@ -28,13 +31,19 @@ import org.robolectric.annotation.GraphicsMode
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-class DownloadMetadataWriterTest {
+class EmbeddedContentWriterTest {
     private var requests = 0
     private val directory = File("../.tmp/metadata/writer-tests").apply { mkdirs() }
+    private val metadata = DownloadEmbeddedMetadata(
+        title = "当前歌曲", artist = "作者", coverUrl = "https://example.com/cover.jpg",
+        lyricUrl = "https://example.com/lyrics.lrc",
+    )
+    private val lyricsEmbedding = DownloadEmbedding(lyrics = LyricsEmbedding())
 
     @Test fun writesCoverAndOriginalLyricsOnAndroid() = withAudio { file ->
-        val issues = writer().write(file, item(file), DownloadMetadataSettings())
-        assertTrue(issues.toString(), issues.isEmpty())
+        val result = writer().write(file, item(file, lyricsEmbedding), metadata, DownloadMetadataSettings())
+        assertTrue(result.toString(), result.issues.isEmpty())
+        assertEquals("音频原始歌词", result.lyricsSource)
         val tag = AudioFileIO.read(file).tag
         assertEquals("当前歌曲", tag.getFirst(FieldKey.TITLE))
         assertEquals("[00:00.00]原始歌词", tag.getFirst(FieldKey.LYRICS))
@@ -42,9 +51,20 @@ class DownloadMetadataWriterTest {
         assertEquals(2, requests)
     }
 
-    @Test fun disabledAssetsDoNotIssueNetworkRequests() = withAudio { file ->
-        val issues = writer().write(file, item(file), DownloadMetadataSettings(embedCover = false, embedLyrics = false))
-        assertTrue(issues.isEmpty())
+    @Test fun lyricsAreEmbeddedEvenWhenMetadataIsDisabled() = withAudio { file ->
+        val result = writer().write(file, item(file, lyricsEmbedding), null, DownloadMetadataSettings())
+        assertTrue(result.issues.isEmpty())
+        assertEquals(1, requests)
+        val tag = AudioFileIO.read(file).tag
+        assertEquals("[00:00.00]原始歌词", tag.getFirst(FieldKey.LYRICS))
+        assertTrue(tag.getFirst(FieldKey.TITLE).isBlank())
+        assertTrue(tag.artworkList.isEmpty())
+    }
+
+    @Test fun unrequestedAssetsDoNotIssueNetworkRequests() = withAudio { file ->
+        val result = writer().write(file, item(file, embedding = null), metadata, DownloadMetadataSettings(embedCover = false))
+        assertTrue(result.issues.isEmpty())
+        assertNull(result.lyricsSource)
         assertEquals(0, requests)
         val tag = AudioFileIO.read(file).tag
         assertEquals("当前歌曲", tag.getFirst(FieldKey.TITLE))
@@ -52,9 +72,16 @@ class DownloadMetadataWriterTest {
         assertTrue(tag.artworkList.isEmpty())
     }
 
+    @Test fun nothingToWriteLeavesTheFileAlone() = withAudio { file ->
+        val before = file.readBytes()
+        val result = writer().write(file, item(file, embedding = null), null, DownloadMetadataSettings())
+        assertEquals(EmbeddedContentResult(), result)
+        assertArrayEquals(before, file.readBytes())
+    }
+
     @Test fun coverFailureDoesNotBlockLyricsOrTextMetadata() = withAudio { file ->
-        val issues = writer(coverStatus = 404).write(file, item(file), DownloadMetadataSettings())
-        assertEquals(setOf(MetadataWriteIssue.Cover), issues)
+        val result = writer(coverStatus = 404).write(file, item(file, lyricsEmbedding), metadata, DownloadMetadataSettings())
+        assertEquals(setOf(EmbeddedContentIssue.Cover), result.issues)
         val tag = AudioFileIO.read(file).tag
         assertEquals("当前歌曲", tag.getFirst(FieldKey.TITLE))
         assertEquals("[00:00.00]原始歌词", tag.getFirst(FieldKey.LYRICS))
@@ -62,8 +89,9 @@ class DownloadMetadataWriterTest {
     }
 
     @Test fun htmlLyricsAreOmittedAndReportedWithoutLosingCover() = withAudio { file ->
-        val issues = writer(lyrics = "<html>Error</html>").write(file, item(file), DownloadMetadataSettings())
-        assertEquals(setOf(MetadataWriteIssue.Lyrics), issues)
+        val result = writer(lyrics = "<html>Error</html>").write(file, item(file, lyricsEmbedding), metadata, DownloadMetadataSettings())
+        assertEquals(setOf(EmbeddedContentIssue.LyricsFailed), result.issues)
+        assertNull(result.lyricsSource)
         val tag = AudioFileIO.read(file).tag
         assertEquals("当前歌曲", tag.getFirst(FieldKey.TITLE))
         assertTrue(tag.getFirst(FieldKey.LYRICS).isBlank())
@@ -71,16 +99,42 @@ class DownloadMetadataWriterTest {
     }
 
     @Test fun malformedTextEncodingIsReportedInsteadOfEmbeddingReplacementCharacters() = withAudio { file ->
-        val issues = writer(lyricsBytes = byteArrayOf(0xc3.toByte(), 0x28)).write(file, item(file), DownloadMetadataSettings())
-        assertEquals(setOf(MetadataWriteIssue.Lyrics), issues)
+        val result = writer(lyricsBytes = byteArrayOf(0xc3.toByte(), 0x28))
+            .write(file, item(file, lyricsEmbedding), metadata, DownloadMetadataSettings())
+        assertEquals(setOf(EmbeddedContentIssue.LyricsFailed), result.issues)
         assertTrue(AudioFileIO.read(file).tag.getFirst(FieldKey.LYRICS).isBlank())
+    }
+
+    @Test fun lyricsWithoutAnySourceAreReportedAsUnavailable() = withAudio { file ->
+        val sourceless = metadata.copy(lyricUrl = null, musicSid = null, subtitleAid = null, subtitleCid = null)
+        val result = writer().write(
+            file, item(file, lyricsEmbedding).copy(embeddedMetadata = sourceless), sourceless, DownloadMetadataSettings(embedCover = false),
+        )
+        assertEquals(setOf(EmbeddedContentIssue.LyricsUnavailable), result.issues)
+        assertEquals(0, requests)
+        assertEquals("当前歌曲", AudioFileIO.read(file).tag.getFirst(FieldKey.TITLE))
+    }
+
+    @Test fun subtitleTracksAreNeverForcedIntoAudioFiles() = withAudio { file ->
+        val embedding = DownloadEmbedding(subtitles = SubtitleTrackEmbedding(listOf("zh-Hans")))
+        val result = writer().write(file, item(file, embedding), null, DownloadMetadataSettings())
+        assertEquals(EmbeddedContentResult(), result)
+        assertEquals(0, requests)
+    }
+
+    @Test fun subtitleTracksAreRejectedForFlvContainers() = withAudio { file ->
+        val embedding = DownloadEmbedding(subtitles = SubtitleTrackEmbedding(listOf("zh-Hans")))
+        val video = item(file, embedding).copy(taskType = DownloadTaskType.Video, fileName = "video.flv")
+        val result = writer().write(file, video, null, DownloadMetadataSettings())
+        assertEquals(setOf(EmbeddedContentIssue.SubtitlesUnsupportedContainer), result.issues)
+        assertEquals(0, requests)
     }
 
     @Test fun cancellationPropagatesAndLeavesSourceUntouched() = withAudio { file ->
         val before = file.readBytes()
         try {
             writer(onRequest = { throw CancellationException("Test cancellation") })
-                .write(file, item(file), DownloadMetadataSettings())
+                .write(file, item(file, lyricsEmbedding), metadata, DownloadMetadataSettings())
             fail("Cancellation was swallowed")
         } catch (_: CancellationException) {
             assertArrayEquals(before, file.readBytes())
@@ -91,16 +145,16 @@ class DownloadMetadataWriterTest {
         val incomplete = byteArrayOf(1, 2, 3, 4)
         file.writeBytes(incomplete)
         val before = directory.list()!!.toSet()
-        val issues = writer().write(file, item(file), DownloadMetadataSettings())
-        assertEquals(setOf(MetadataWriteIssue.Tags), issues)
+        val result = writer().write(file, item(file, lyricsEmbedding), metadata, DownloadMetadataSettings())
+        assertEquals(setOf(EmbeddedContentIssue.WriteFailed), result.issues)
         assertArrayEquals(incomplete, file.readBytes())
         assertEquals(before, directory.list()!!.toSet())
     }
 
     @Test fun rawAudioDoesNotReceiveForeignContainerTags() = withAudio { file ->
         val before = file.readBytes()
-        val issues = writer().write(file, item(file).copy(fileName = "audio.eac3"), DownloadMetadataSettings())
-        assertEquals(setOf(MetadataWriteIssue.UnsupportedFormat), issues)
+        val result = writer().write(file, item(file, lyricsEmbedding).copy(fileName = "audio.eac3"), metadata, DownloadMetadataSettings())
+        assertEquals(setOf(EmbeddedContentIssue.UnsupportedFormat), result.issues)
         assertEquals(0, requests)
         assertArrayEquals(before, file.readBytes())
     }
@@ -108,7 +162,7 @@ class DownloadMetadataWriterTest {
     @Test fun metadataOptionsSurviveRepositoryReload() {
         val context = RuntimeEnvironment.getApplication()
         val settings = SettingsRepository(context)
-        val options = DownloadMetadataSettings(false, false, SubtitleLyricsMode.PreferManual, false, false)
+        val options = DownloadMetadataSettings(embedCover = false, useUploaderAsArtist = false, useCollectionAsAlbum = false)
         settings.setDownloadMetadata(options)
         assertEquals(options, SettingsRepository(context).currentSettings().metadata)
     }
@@ -118,7 +172,7 @@ class DownloadMetadataWriterTest {
         lyrics: String = "[00:00.00]原始歌词",
         lyricsBytes: ByteArray? = null,
         onRequest: () -> Unit = {},
-    ): DownloadMetadataWriter {
+    ): EmbeddedContentWriter {
         val client = OkHttpClient.Builder().addInterceptor { chain ->
             requests++
             onRequest()
@@ -132,16 +186,14 @@ class DownloadMetadataWriterTest {
         }.build()
         val context = RuntimeEnvironment.getApplication()
         val bili = BiliHttpClient(CookieStore(context), SettingsRepository(context))
-        return DownloadMetadataWriter(client, ExtrasRepository(bili, WbiSigner(bili)))
+        return EmbeddedContentWriter(client, ExtrasRepository(bili, WbiSigner(bili)))
     }
 
-    private fun item(file: File) = DownloadItem(
+    private fun item(file: File, embedding: DownloadEmbedding?) = DownloadItem(
         id = 1, groupId = 1, taskType = DownloadTaskType.Audio, title = "音频", fileName = file.name,
         url = "https://example.com/audio", status = DownloadStatus.Running, progress = 100,
-        embeddedMetadata = DownloadEmbeddedMetadata(
-            title = "当前歌曲", artist = "作者", coverUrl = "https://example.com/cover.jpg",
-            lyricUrl = "https://example.com/lyrics.lrc",
-        ),
+        embeddedMetadata = metadata,
+        embedding = embedding,
     )
 
     private fun withAudio(block: suspend (File) -> Unit) = runBlocking {

@@ -8,27 +8,72 @@ import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
 
+/** 要挂进视频容器的一条软字幕轨：SRT 文件、B 站语言代码与展示给播放器的轨道名称。 */
+internal data class EmbeddedSubtitleTrack(
+    val file: File,
+    val languageTag: String,
+    val title: String,
+)
+
 object MediaProcessingEngine {
+    /** 能承载软字幕轨的输出容器；FLV 没有字幕轨，MP3 / FLAC 是纯音频。 */
+    internal fun supportsSubtitleTracks(outputFormat: String): Boolean =
+        outputFormat == "mp4" || outputFormat == "matroska"
+
     internal fun buildMetadataArguments(
         inputFile: File,
         outputFile: File,
         outputFormat: String,
         values: Map<String, String>,
         cover: EmbeddedCover? = null,
+        subtitles: List<EmbeddedSubtitleTrack> = emptyList(),
     ): List<String> = buildList {
+        require(subtitles.isEmpty() || supportsSubtitleTracks(outputFormat)) {
+            "$outputFormat cannot carry subtitle tracks"
+        }
         addAll(listOf("-hide_banner", "-nostats", "-loglevel", "warning", "-y", "-i", inputFile.absolutePath))
-        if (cover != null && outputFormat == "mp4") {
+        // MP4 的封面是一条 attached_pic 视频轨，需要作为第二个输入；Matroska 的封面走 -attach。
+        val coverAsVideoInput = cover != null && outputFormat == "mp4"
+        if (coverAsVideoInput) {
             addAll(listOf("-i", cover.file.absolutePath))
+        }
+        // 字幕文件以独立输入接入；扩展名不可靠，显式指定 SRT 解复用器。
+        val firstSubtitleInput = if (coverAsVideoInput) 2 else 1
+        subtitles.forEach { track -> addAll(listOf("-f", "srt", "-i", track.file.absolutePath)) }
+        // 嵌入字幕时输出里的字幕轨只来自本次选择，原有字幕轨不再映射，轨道序号才与下方的语言标注对应。
+        val inputSubtitleMaps = if (subtitles.isEmpty()) listOf("-map", "0:s?") else emptyList()
+        if (coverAsVideoInput) {
             // 封面是 attached_pic，不是普通视频轨；大写 V 只保留原始的动态视频。
-            addAll(listOf("-map", "1:v:0", "-map", "0:V?", "-map", "0:a?", "-map", "0:s?"))
+            addAll(listOf("-map", "1:v:0", "-map", "0:V?", "-map", "0:a?"))
+            addAll(inputSubtitleMaps)
             addAll(listOf("-disposition:v:0", "attached_pic"))
         } else if (cover != null && outputFormat == "matroska") {
             // 下载产物的旧封面不再映射，避免保存重试时不断追加相同附件。
-            addAll(listOf("-map", "0:V?", "-map", "0:a?", "-map", "0:s?"))
+            addAll(listOf("-map", "0:V?", "-map", "0:a?"))
+            addAll(inputSubtitleMaps)
+        } else if (subtitles.isNotEmpty()) {
+            addAll(listOf("-map", "0:v?", "-map", "0:a?"))
         } else {
             addAll(listOf("-map", "0"))
         }
+        subtitles.indices.forEach { index -> addAll(listOf("-map", "${firstSubtitleInput + index}:0")) }
         addAll(listOf("-c", "copy", "-map_metadata", "0", "-map_chapters", "0"))
+        if (subtitles.isNotEmpty()) {
+            // MP4 只认 tx3g（mov_text）；Matroska 直接存放 SubRip 文本。
+            if (outputFormat == "mp4") addAll(listOf("-c:s", "mov_text"))
+            subtitles.forEachIndexed { index, track ->
+                val language = if (outputFormat == "mp4") {
+                    SubtitleLanguageCodes.iso639Terminology(track.languageTag)
+                } else {
+                    SubtitleLanguageCodes.iso639Bibliographic(track.languageTag)
+                }
+                addAll(listOf("-metadata:s:s:$index", "language=$language"))
+                addAll(listOf("-metadata:s:s:$index", "title=${track.title}"))
+                if (outputFormat == "mp4") addAll(listOf("-metadata:s:s:$index", "handler_name=${track.title}"))
+                // 只把第一条标成默认轨，其余显式清零，不同播放器的初始字幕才一致。
+                addAll(listOf("-disposition:s:$index", if (index == 0) "default" else "0"))
+            }
+        }
         values.forEach { (key, value) -> addAll(listOf("-metadata", "$key=$value")) }
         when (outputFormat) {
             "mp4" -> addAll(listOf("-strict", "unofficial", "-movflags", "+faststart"))
@@ -48,8 +93,12 @@ object MediaProcessingEngine {
         outputFormat: String,
         values: Map<String, String>,
         cover: EmbeddedCover? = null,
+        subtitles: List<EmbeddedSubtitleTrack> = emptyList(),
     ) {
-        execute(buildMetadataArguments(inputFile, outputFile, outputFormat, values, cover), "Metadata writing")
+        execute(
+            buildMetadataArguments(inputFile, outputFile, outputFormat, values, cover, subtitles),
+            "Metadata writing",
+        )
     }
 
     internal fun buildMergeArguments(

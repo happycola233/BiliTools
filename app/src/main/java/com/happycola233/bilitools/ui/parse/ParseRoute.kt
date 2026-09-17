@@ -98,7 +98,10 @@ fun ParseRoute(
     val copyDialog = state.copyDialog
     ParseScreenContent(
         state = state,
-        metadataSettings = settings.metadata.takeIf { settings.addMetadata },
+        conversionSettings = ParseConversionSettings(
+            convertVideoToMp4 = settings.convertVideoToMp4,
+            convertAudioToMp3 = settings.convertAudioToMp3,
+        ),
         inputText = state.inputText,
         contentTopPadding = contentTopPadding,
         externalMode = externalMode,
@@ -152,6 +155,11 @@ fun ParseRoute(
         onAudioBitrateChange = viewModel::setAudioBitrate,
         onSubtitleEnabledChange = viewModel::setSubtitleEnabled,
         onSubtitleLanguageChange = viewModel::setSubtitleLanguageSelection,
+        onEmbedSubtitlesEnabledChange = viewModel::setEmbedSubtitlesEnabled,
+        onEmbedSubtitleLanguageChange = viewModel::setEmbedSubtitleLanguageSelected,
+        onEmbedLyricsEnabledChange = viewModel::setEmbedLyricsEnabled,
+        onEmbedLyricsLanguageChange = viewModel::setEmbedLyricsLanguage,
+        onEmbedIncludeGeneratedChange = viewModel::setEmbedIncludeGeneratedSubtitles,
         onCopySubtitles = viewModel::copySubtitlesNow,
         onAiSummaryEnabledChange = viewModel::setAiSummaryEnabled,
         onCopyAiSummaries = viewModel::copyAiSummariesNow,
