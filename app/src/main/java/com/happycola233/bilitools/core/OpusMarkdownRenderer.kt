@@ -1,5 +1,6 @@
 package com.happycola233.bilitools.core
 
+import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.naming.NamingRenderer
 import com.happycola233.bilitools.data.model.OpusAssetPlan
 import com.happycola233.bilitools.data.model.OpusBlock
@@ -27,7 +28,7 @@ object OpusAssetPlanner {
         val total = document.images.size
         val digits = max(2, total.toString().length)
         val baseNames = document.images.indices.map { index ->
-            NamingRenderer.sanitizeComponent(baseNameFor(index, total)).ifBlank { "图文图片" }
+            NamingRenderer.sanitizeComponent(baseNameFor(index, total)).ifBlank { "image" }
         }
         val needsOrdinal = baseNames.distinct().size < baseNames.size
         return document.images.mapIndexed { index, image ->
@@ -108,6 +109,7 @@ object OpusMarkdownRenderer {
     fun render(
         document: OpusDocument,
         localAssets: List<OpusAssetPlan> = emptyList(),
+        strings: StringProvider,
     ): String {
         val localTargets = localAssets.associate { it.image.url to encodeRelativePath(it.fileName) }
         val imageOrder = document.images.mapIndexed { index, image -> image.url to index + 1 }.toMap()
@@ -116,13 +118,13 @@ object OpusMarkdownRenderer {
 
         output.append("# ").append(escapeMarkdown(document.title)).append("\n\n")
         document.author?.name?.takeIf(String::isNotBlank)?.let { author ->
-            output.append("- 作者：").append(escapeMarkdown(author)).append('\n')
+            output.append("- ").append(strings.get(R.string.export_author, escapeMarkdown(author))).append('\n')
         }
         document.publishedAt?.takeIf { it > 0L }?.let { publishedAt ->
-            output.append("- 发布时间：").append(dateFormatter.format(Instant.ofEpochSecond(publishedAt))).append('\n')
+            output.append("- ").append(strings.get(R.string.export_published_at, dateFormatter.format(Instant.ofEpochSecond(publishedAt)))).append('\n')
         }
-        buildStatText(document)?.let { output.append("- 数据：").append(it).append('\n') }
-        output.append("- 原文：[")
+        buildStatText(document, strings)?.let { output.append("- ").append(strings.get(R.string.export_statistics, it)).append('\n') }
+        output.append("- ").append(strings.get(R.string.export_original)).append(": [")
             .append(escapeMarkdown(document.sourceUrl))
             .append("](")
             .append(escapeLinkDestination(document.sourceUrl))
@@ -131,7 +133,7 @@ object OpusMarkdownRenderer {
         fun appendImage(image: OpusImage) {
             if (!renderedImages.add(image.url)) return
             val order = imageOrder[image.url] ?: renderedImages.size
-            val alt = image.alt.ifBlank { "图片 $order" }
+            val alt = image.alt.ifBlank { strings.get(R.string.export_image, order) }
             val target = escapeLinkDestination(localTargets[image.url] ?: image.url)
             output.append("![")
                 .append(escapeAltText(alt))
@@ -230,14 +232,14 @@ object OpusMarkdownRenderer {
         }
     }
 
-    private fun buildStatText(document: OpusDocument): String? {
+    private fun buildStatText(document: OpusDocument, strings: StringProvider): String? {
         val values = buildList {
-            document.stat.play?.let { add("阅读 $it") }
-            document.stat.like?.let { add("点赞 $it") }
-            document.stat.coin?.let { add("投币 $it") }
-            document.stat.favorite?.let { add("收藏 $it") }
-            document.stat.reply?.let { add("评论 $it") }
-            document.stat.share?.let { add("转发 $it") }
+            document.stat.play?.let { add(strings.get(R.string.export_views, it)) }
+            document.stat.like?.let { add(strings.get(R.string.export_likes, it)) }
+            document.stat.coin?.let { add(strings.get(R.string.export_coins, it)) }
+            document.stat.favorite?.let { add(strings.get(R.string.export_favorites, it)) }
+            document.stat.reply?.let { add(strings.get(R.string.export_replies, it)) }
+            document.stat.share?.let { add(strings.get(R.string.export_shares, it)) }
         }
         return values.takeIf(List<String>::isNotEmpty)?.joinToString(" · ")
     }

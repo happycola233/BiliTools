@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="parse_formats_unavailable">%1$s tidak tersedia untuk konten ini.</string>
+    <string name="parse_formats_unavailable_batch">%1$s tidak tersedia untuk beberapa item yang dipilih.</string>
+    <string name="parse_formats_no_common">Item yang dipilih tidak memiliki format streaming yang sama. Unduh secara terpisah.</string>
+</resources>

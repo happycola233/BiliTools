@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="me_section_content">เนื้อหาของฉัน</string>
+    <string name="me_section_manage">การจัดการ</string>
+    <string name="me_login_entry_title">เข้าสู่ระบบเพื่อดูคุณสมบัติเพิ่มเติม</string>
+    <string name="me_login_entry_summary">เข้าถึงตัวเลือกการดาวน์โหลดเพิ่มเติมและเนื้อหา Bilibili ของคุณ</string>
+    <string name="me_history_entry_disabled_desc">เข้าสู่ระบบเพื่อดูประวัติของคุณ</string>
+    <string name="me_favorite_entry_disabled_desc">เข้าสู่ระบบเพื่อดูรายการโปรดของคุณ</string>
+    <string name="me_watch_later_entry_disabled_desc">เข้าสู่ระบบเพื่อดูดูภายหลัง</string>
+    <string name="me_logout_summary">ลบการเข้าสู่ระบบของคุณออกจากอุปกรณ์นี้</string>
+    <string name="me_login_screen_subtitle">เลือกวิธีการเข้าสู่ระบบและยืนยันบัญชีของคุณ</string>
+</resources>

@@ -11,6 +11,8 @@ import com.happycola233.bilitools.data.model.MediaCopyrightType
 import com.happycola233.bilitools.data.model.MediaHonor
 import com.happycola233.bilitools.data.model.MediaInfo
 import com.happycola233.bilitools.data.model.MediaItem
+import com.happycola233.bilitools.data.model.MediaAccess
+import com.happycola233.bilitools.data.model.MediaContentKind
 import com.happycola233.bilitools.data.model.MediaMetadata
 import com.happycola233.bilitools.data.model.MediaNfo
 import com.happycola233.bilitools.data.model.MediaPaymentInfo
@@ -488,22 +490,18 @@ class MediaRepository(
             itemCount = data.episodes.size.takeIf { it > 0 },
             mediaId = data.mediaId,
             contentKind = when (data.type) {
-                1 -> "番剧"
-                2 -> "电影"
-                3 -> "纪录片"
-                4 -> "国创"
-                5 -> "电视剧"
-                7 -> "综艺"
+                1 -> MediaContentKind.Anime
+                2 -> MediaContentKind.Movie
+                3 -> MediaContentKind.Documentary
+                4 -> MediaContentKind.ChineseAnimation
+                5 -> MediaContentKind.Series
+                7 -> MediaContentKind.Variety
                 else -> null
             },
             area = data.areas.map { it.name.trim() }.filter(String::isNotBlank)
                 .joinToString("、").takeIf(String::isNotBlank),
             rating = data.rating?.score,
-            copyrightLabel = when (data.rights?.copyright?.lowercase()) {
-                "bilibili" -> "授权"
-                "dujia" -> "独家"
-                else -> data.rights?.copyright?.trim()?.takeIf(String::isNotBlank)
-            },
+            copyrightCode = data.rights?.copyright?.trim()?.takeIf(String::isNotBlank),
             isCompleted = data.publish?.isFinished?.let { it == 1 },
             updateText = data.newEpisode?.description?.trim()?.takeIf(String::isNotBlank),
             actors = data.actors?.trim()?.takeIf(String::isNotBlank),
@@ -645,7 +643,7 @@ class MediaRepository(
                 MediaPaymentInfo(
                     description = payment.discountDescription?.trim()?.takeIf(String::isNotBlank)
                         ?: payment.description?.trim()?.takeIf(String::isNotBlank),
-                    price = payment.priceFormat?.trim()?.takeIf(String::isNotBlank)?.let { "$it B币" },
+                    priceBCoins = payment.priceFormat?.trim()?.takeIf(String::isNotBlank),
                 )
             },
         )
@@ -670,9 +668,9 @@ class MediaRepository(
                 metadata = lessonMetadata.copy(
                     totalDuration = ep.duration.takeIf { it > 0 },
                     publishedAt = ep.releaseDate.takeIf { it > 0L },
-                    accessLabel = when (ep.status) {
-                        1 -> "可观看"
-                        2 -> if (requiresPurchase) "需购买" else "暂不可观看"
+                    access = when (ep.status) {
+                        1 -> MediaAccess.Available
+                        2 -> if (requiresPurchase) MediaAccess.PurchaseRequired else MediaAccess.Unavailable
                         else -> null
                     },
                     rareAttributes = if (requiresPurchase) {
@@ -1440,7 +1438,7 @@ class MediaRepository(
                 ?: "https://www.bilibili.com/opus/${item.opusId}"
             MediaItem(
                 title = item.content.trim().takeIf { it.isNotBlank() }
-                    ?: "图文_${item.opusId}",
+                        ?: "opus_${item.opusId}",
                 coverUrl = normalizeCoverUrl(item.cover?.url.orEmpty()),
                 description = item.content,
                 stat = MediaStat(
@@ -2078,8 +2076,8 @@ class MediaRepository(
             presentationDetailsComplete = true,
             totalDuration = duration.takeIf { it > 0 },
             partCount = (videos ?: pages?.size)?.takeIf { it > 0 },
-            legacyCategory = VideoCategoryCatalog.legacyLabel(tid, tname),
-            modernCategory = VideoCategoryCatalog.modernLabel(tidV2, tnameV2),
+            legacyCategory = VideoCategoryCatalog.legacyCategory(tid, tname),
+            modernCategory = VideoCategoryCatalog.modernCategory(tidV2, tnameV2),
             copyrightType = when (copyright) {
                 1 -> MediaCopyrightType.Original
                 2 -> MediaCopyrightType.Repost

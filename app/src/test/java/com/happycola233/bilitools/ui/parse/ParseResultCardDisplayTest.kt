@@ -1,5 +1,6 @@
 package com.happycola233.bilitools.ui.parse
 
+import com.happycola233.bilitools.data.model.MediaCategory
 import com.happycola233.bilitools.data.model.MediaInfo
 import com.happycola233.bilitools.data.model.MediaItem
 import com.happycola233.bilitools.data.model.MediaMetadata
@@ -9,8 +10,17 @@ import com.happycola233.bilitools.data.model.MediaUpper
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
+import org.robolectric.annotation.Config
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35], qualifiers = "zh-rCN", application = android.app.Application::class)
 class ParseResultCardDisplayTest {
+    private fun resolveParseResultCardDisplay(state: ParseUiState, info: MediaInfo, selectedItem: MediaItem?) =
+        resolveParseResultCardDisplay(RuntimeEnvironment.getApplication(), state, info, selectedItem)
+
     @Test
     fun everyParseType_canDisplayNfoUpper() {
         MediaType.entries.forEach { type ->
@@ -68,7 +78,7 @@ class ParseResultCardDisplayTest {
         val previewUpper = MediaUpper("预览选集 UP", 200L, "https://example.com/item.jpg")
         val item = mediaItem(type = MediaType.Video, upper = previewUpper).copy(
             bvid = "BV1PreviewedItem",
-            metadata = MediaMetadata(modernCategory = "动画 > 短片"),
+            metadata = MediaMetadata(modernCategory = MediaCategory("动画 > 短片")),
         )
         val info = mediaInfo(
             type = MediaType.Video,

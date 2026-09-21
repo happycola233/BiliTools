@@ -1,0 +1,36 @@
+<resources>
+    <string name="media_kind_anime">番剧</string>
+    <string name="media_kind_movie">电影</string>
+    <string name="media_kind_documentary">纪录片</string>
+    <string name="media_kind_chinese_animation">国创</string>
+    <string name="media_kind_series">电视剧</string>
+    <string name="media_kind_variety">综艺</string>
+    <string name="media_copyright_licensed">授权</string>
+    <string name="media_copyright_exclusive">独家</string>
+    <string name="media_price_bcoin">%1$s B币</string>
+    <string name="media_access_available">可观看</string>
+    <string name="media_access_purchase">需购买</string>
+    <string name="media_access_unavailable">暂不可观看</string>
+    <string name="download_saved_file_unavailable">保存的文件已不可用</string>
+    <string name="export_author">作者：%1$s</string>
+    <string name="export_published_at">发布时间：%1$s</string>
+    <string name="export_statistics">数据：%1$s</string>
+    <string name="export_source">来源：%1$s</string>
+    <string name="export_original">原文</string>
+    <string name="export_image">图片 %1$d</string>
+    <string name="export_views">阅读 %1$d</string>
+    <string name="export_likes">点赞 %1$d</string>
+    <string name="export_coins">投币 %1$d</string>
+    <string name="export_favorites">收藏 %1$d</string>
+    <string name="export_replies">评论 %1$d</string>
+    <string name="export_shares">转发 %1$d</string>
+    <string name="metadata_uploader">UP 主：%1$s</string>
+    <string name="metadata_published_at">B站发布时间：%1$s</string>
+    <string name="metadata_tags">标签：%1$s</string>
+    <string name="metadata_lyrics_source">歌词来源：%1$s</string>
+    <string name="lyrics_source_original">音频原始歌词</string>
+    <string name="lyrics_source_subtitles">%1$s（字幕转写）</string>
+    <string name="update_error_empty_response">更新服务器返回了空内容</string>
+    <string name="update_error_invalid_response">无法读取更新信息</string>
+    <string name="update_error_no_route">暂时无法连接更新服务器，请稍后重试</string>
+</resources>

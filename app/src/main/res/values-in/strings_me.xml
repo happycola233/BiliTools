@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="me_section_content">Konten saya</string>
+    <string name="me_section_manage">Manajemen</string>
+    <string name="me_login_entry_title">Masuk untuk fitur lainnya</string>
+    <string name="me_login_entry_summary">Akses lebih banyak opsi unduhan dan konten Bilibili Anda.</string>
+    <string name="me_history_entry_disabled_desc">Masuk untuk melihat riwayat Anda</string>
+    <string name="me_favorite_entry_disabled_desc">Masuk untuk melihat favorit Anda</string>
+    <string name="me_watch_later_entry_disabled_desc">Masuk untuk melihat Tonton nanti</string>
+    <string name="me_logout_summary">Hapus login Anda dari perangkat ini</string>
+    <string name="me_login_screen_subtitle">Pilih metode login dan verifikasi akun Anda</string>
+</resources>

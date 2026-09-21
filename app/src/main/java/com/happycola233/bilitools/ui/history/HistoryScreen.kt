@@ -82,6 +82,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -118,7 +119,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
-import java.util.Locale
+import java.time.format.FormatStyle
 import kotlinx.coroutines.flow.filter
 
 private data class HistoryToggleOption<T>(
@@ -1391,44 +1392,51 @@ private fun formatHistoryRange(
     }
 }
 
+@Composable
 private fun formatHistoryTimestamp(epochSeconds: Long): String {
+    val locale = LocalConfiguration.current.locales[0]
     if (epochSeconds <= 0L) return "--"
     return runCatching {
         Instant.ofEpochSecond(epochSeconds)
             .atZone(ZoneId.systemDefault())
-            .format(HISTORY_TIME_FORMATTER)
+            .format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT).withLocale(locale))
     }.getOrDefault("--")
 }
 
+@Composable
 private fun formatHistoryUtcDate(epochMillis: Long): String {
+    val locale = LocalConfiguration.current.locales[0]
     return runCatching {
         Instant.ofEpochMilli(epochMillis)
             .atZone(ZoneOffset.UTC)
             .toLocalDate()
-            .format(HISTORY_DATE_FORMATTER)
+            .format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale))
     }.getOrDefault("--")
 }
 
+@Composable
 private fun formatHistoryDuration(seconds: Int): String {
+    val locale = LocalConfiguration.current.locales[0]
     val safe = seconds.coerceAtLeast(0)
     val hours = safe / 3600
     val minutes = (safe % 3600) / 60
     val secs = safe % 60
     return if (hours > 0) {
-        String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, secs)
+        String.format(locale, "%d:%02d:%02d", hours, minutes, secs)
     } else {
-        String.format(Locale.getDefault(), "%02d:%02d", minutes, secs)
+        String.format(locale, "%02d:%02d", minutes, secs)
     }
 }
 
 @Composable
 private fun formatHistorySectionTitle(epochSeconds: Long): String {
+    val locale = LocalConfiguration.current.locales[0]
     val sectionDate = historySectionDate(epochSeconds) ?: return "--"
     val today = LocalDate.now(ZoneId.systemDefault())
     return when (sectionDate) {
         today -> stringResource(R.string.history_filter_time_today)
         today.minusDays(1) -> stringResource(R.string.history_filter_time_yesterday)
-        else -> sectionDate.format(HISTORY_SECTION_FORMATTER)
+        else -> sectionDate.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale))
     }
 }
 
@@ -1534,10 +1542,3 @@ private object HistoryExpressiveDefaults {
             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f),
         )
 }
-
-private val HISTORY_TIME_FORMATTER =
-    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm", Locale.getDefault())
-private val HISTORY_DATE_FORMATTER =
-    DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.getDefault())
-private val HISTORY_SECTION_FORMATTER =
-    DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.getDefault())

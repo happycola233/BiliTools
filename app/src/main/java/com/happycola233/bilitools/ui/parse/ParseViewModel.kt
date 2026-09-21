@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.AppLog
+import com.happycola233.bilitools.core.resolutionLabelRes
 import com.happycola233.bilitools.core.AudioQualities
 import com.happycola233.bilitools.core.BiliHttpException
 import com.happycola233.bilitools.core.NfoGenerator
@@ -583,6 +584,38 @@ class ParseViewModel(
 
     fun setMediaType(type: MediaType?) {
         _state.update { it.copy(selectedMediaType = type) }
+    }
+
+    private var presentationLanguageTag = java.util.Locale.getDefault().toLanguageTag()
+
+    /** Activity 重建保留 ViewModel；从原始状态重建选项文案，不重新请求视频或流地址。 */
+    fun refreshPresentationLanguage(languageTag: String) {
+        if (presentationLanguageTag == languageTag) return
+        presentationLanguageTag = languageTag
+        _state.update { current ->
+            current.copy(
+                resolutions = resolveResolutionOptions(
+                    current.videoStreams,
+                    current.resolutionMode,
+                    current.selectedItemIndices.size,
+                ),
+                audioBitrates = resolveAudioOptions(
+                    current.audioStreams,
+                    current.audioBitrateMode,
+                    current.selectedItemIndices.size,
+                ),
+                codecs = buildCodecOptionsForSelection(
+                    current.videoStreams,
+                    current.selectedResolutionId,
+                    current.resolutionMode,
+                ),
+                imageOptions = current.imageOptions.map { it.copy(label = mapImageLabel(it.id)) },
+                warning = current.warning?.let { streamWarningFor(current.playUrlInfo?.format ?: current.format) },
+                error = null,
+                inputError = null,
+                notice = null,
+            )
+        }
     }
 
     fun setInputText(input: String) {
@@ -1844,7 +1877,7 @@ class ParseViewModel(
                     operation = DownloadExtraTaskOperation.StaticText,
                     mimeType = "text/markdown",
                     unavailableMessage = strings.get(R.string.parse_error_opus_invalid_response),
-                    textContent = OpusMarkdownRenderer.render(document, localAssets),
+                    textContent = OpusMarkdownRenderer.render(document, localAssets, strings),
                 ),
             )
         }
@@ -2666,7 +2699,7 @@ class ParseViewModel(
     }
 
     private fun mapOutputExtensionLabel(extension: String): String {
-        return extension.trim().uppercase()
+        return extension.trim().uppercase(java.util.Locale.ROOT)
     }
 
     private fun buildSubtitleEntryTitle(title: String, subtitle: String?): String {
@@ -2862,7 +2895,7 @@ class ParseViewModel(
             ?: detailedInfo.nfo.intro?.trim()?.takeIf { it.isNotBlank() && !detailedInfo.collection }
             ?: original.description
         val useDetailedOpusTitle = containerType == MediaType.UserOpus &&
-            (original.title.isBlank() || original.title.startsWith("图文_"))
+            (original.title.isBlank() || original.title.startsWith("图文_") || original.title.startsWith("opus_"))
         val title = if (useDetailedOpusTitle) {
             detailedItem?.title?.trim()?.takeIf(String::isNotBlank) ?: original.title
         } else {
@@ -3369,33 +3402,8 @@ class ParseViewModel(
         return mapResolutionLabel(stream.id, stream.height)
     }
 
-    private fun mapResolutionLabel(id: Int, height: Int?): String {
-        return when (id) {
-            127 -> strings.get(R.string.parse_resolution_8k)
-            126 -> strings.get(R.string.parse_resolution_dolby)
-            125 -> strings.get(R.string.parse_resolution_hdr)
-            120 -> strings.get(R.string.parse_resolution_4k)
-            116 -> strings.get(R.string.parse_resolution_1080_60)
-            112 -> strings.get(R.string.parse_resolution_1080_high)
-            80 -> strings.get(R.string.parse_resolution_1080)
-            64 -> strings.get(R.string.parse_resolution_720)
-            32 -> strings.get(R.string.parse_resolution_480)
-            16 -> strings.get(R.string.parse_resolution_360)
-            6 -> strings.get(R.string.parse_resolution_240)
-            else -> {
-                val resolvedHeight = height ?: 0
-                when {
-                    resolvedHeight >= 4320 -> strings.get(R.string.parse_resolution_8k)
-                    resolvedHeight >= 2160 -> strings.get(R.string.parse_resolution_4k)
-                    resolvedHeight >= 1080 -> strings.get(R.string.parse_resolution_1080)
-                    resolvedHeight >= 720 -> strings.get(R.string.parse_resolution_720)
-                    resolvedHeight >= 480 -> strings.get(R.string.parse_resolution_480)
-                    resolvedHeight >= 360 -> strings.get(R.string.parse_resolution_360)
-                    else -> strings.get(R.string.parse_resolution_other)
-                }
-            }
-        }
-    }
+    private fun mapResolutionLabel(id: Int, height: Int?): String =
+        strings.get(resolutionLabelRes(id, height))
 
     private fun codecLabel(codec: VideoCodec): String {
         return when (codec) {
@@ -3456,6 +3464,10 @@ class ParseViewModel(
             resolution = resolution,
             codec = codecLabel,
             audioBitrate = audioLabel,
+            resolutionId = video?.id,
+            resolutionHeight = video?.height,
+            codecType = codec,
+            audioQualityId = audio?.id,
         )
     }
 

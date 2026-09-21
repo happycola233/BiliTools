@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="me_section_content">المحتوى الخاص بي</string>
+    <string name="me_section_manage">الإدارة</string>
+    <string name="me_login_entry_title">قم بتسجيل الدخول لمزيد من الميزات</string>
+    <string name="me_login_entry_summary">الوصول إلى المزيد من خيارات التنزيل ومحتوى Bilibili الخاص بك.</string>
+    <string name="me_history_entry_disabled_desc">قم بتسجيل الدخول لعرض السجل الخاص بك</string>
+    <string name="me_favorite_entry_disabled_desc">قم بالدخول لمشاهدة مفضلتك</string>
+    <string name="me_watch_later_entry_disabled_desc">قم بتسجيل الدخول للمشاهدة لاحقا</string>
+    <string name="me_logout_summary">قم بإزالة معلومات تسجيل الدخول الخاصة بك من هذا الجهاز</string>
+    <string name="me_login_screen_subtitle">اختر طريقة تسجيل الدخول وتحقق من حسابك</string>
+</resources>

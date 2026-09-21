@@ -1,5 +1,8 @@
 package com.happycola233.bilitools.ui.parse
 
+import com.happycola233.bilitools.data.model.MediaAccess
+import com.happycola233.bilitools.data.model.MediaContentKind
+import com.happycola233.bilitools.data.model.MediaCategory
 import com.happycola233.bilitools.data.model.MediaInfo
 import com.happycola233.bilitools.data.model.MediaCopyrightType
 import com.happycola233.bilitools.data.model.MediaHonor
@@ -15,8 +18,47 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
+import org.robolectric.annotation.Config
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35], qualifiers = "zh-rCN", application = android.app.Application::class)
 class ParseMetadataDisplayTest {
+    @Test
+    fun sameMetadataUsesTheNewContextLanguageWithoutRefetching() {
+        val base = RuntimeEnvironment.getApplication()
+        fun context(tag: String): android.content.Context = base.createConfigurationContext(
+            android.content.res.Configuration(base.resources.configuration).apply {
+                setLocale(java.util.Locale.forLanguageTag(tag))
+            },
+        )
+        val item = item(
+            type = MediaType.Bangumi,
+            metadata = MediaMetadata(
+                contentKind = MediaContentKind.Documentary,
+                copyrightCode = "dujia",
+            ),
+        )
+        val info = info(MediaType.Bangumi, item)
+        val chinese = buildParseMetadataDisplay(context("zh-Hans"), info, item, false)
+        val english = buildParseMetadataDisplay(context("en"), info, item, false)
+        assertTrue(chinese.summarySlots.contains("纪录片"))
+        assertTrue(english.summarySlots.contains("Documentary"))
+        assertFalse(english.allRows().any { it.name == "版权" || it.value == "独家" })
+        assertEquals(chinese.publicIdCopyValue, english.publicIdCopyValue)
+    }
+
+    private fun localizedTime(epochSeconds: Long): String = java.time.format.DateTimeFormatter
+        .ofLocalizedDateTime(java.time.format.FormatStyle.MEDIUM)
+        .withLocale(java.util.Locale.SIMPLIFIED_CHINESE)
+        .withZone(java.time.ZoneId.systemDefault())
+        .format(java.time.Instant.ofEpochSecond(epochSeconds))
+
+    private fun buildParseMetadataDisplay(info: MediaInfo, subjectItem: MediaItem?, collectionOverview: Boolean) =
+        buildParseMetadataDisplay(RuntimeEnvironment.getApplication(), info, subjectItem, collectionOverview)
+
     @Test
     fun video_usesBvMultiPartDurationAndRareAttribute() {
         val item = item(
@@ -30,8 +72,8 @@ class ParseMetadataDisplayTest {
             metadata = MediaMetadata(
                 totalDuration = 3_723,
                 partCount = 3,
-                legacyCategory = "音乐 > 原创音乐",
-                modernCategory = "鬼畜 > 人力VOCALOID",
+                legacyCategory = MediaCategory("音乐 > 原创音乐"),
+                modernCategory = MediaCategory("鬼畜 > 人力VOCALOID"),
                 rareAttributes = setOf(MediaRareAttribute.Interactive),
                 warning = "内容可能引发不适",
                 collisionBvid = "BV1L9Uoa9EUx",
@@ -94,10 +136,10 @@ class ParseMetadataDisplayTest {
         assertTrue(display.allRows().any { it.name == "分区（旧）" && "原创音乐" in it.value })
         assertTrue(display.allRows().any { it.name == "分区（新）" && "人力VOCALOID" in it.value })
         assertTrue(display.allRows().any { it.name == "视频状态" && it.value == "定时发布" })
-        assertTrue(display.allRows().any { it.name == "播放" && it.value == "1234567" })
-        assertTrue(display.allRows().any { it.name == "发布时间" && it.value == "2023-11-15 06:13:20" })
+        assertTrue(display.allRows().any { it.name == "播放" && it.value == "1,234,567" })
+        assertTrue(display.allRows().any { it.name == "发布时间" && it.value == localizedTime(1_700_000_000L) })
         assertTrue(display.allRows().any {
-            it.name == "投稿/过审时间" && it.value == "2023-11-15 07:13:20" && it.note == "可能不准确"
+            it.name == "投稿/过审时间" && it.value == localizedTime(1_700_003_600L) && it.note == "可能不准确"
         })
         assertTrue(display.allRows().any { it.name == "分辨率" && it.value == "1920×1080" })
         val partSection = display.sections.filterIsInstance<ParseMetadataSection.Groups>().single()
@@ -128,7 +170,7 @@ class ParseMetadataDisplayTest {
             mdid = 7001,
             metadata = MediaMetadata(
                 totalDuration = 1_420,
-                contentKind = "纪录片",
+                contentKind = MediaContentKind.Documentary,
                 area = "中国大陆",
                 badges = listOf("限免"),
                 rareAttributes = setOf(MediaRareAttribute.LimitedFree),
@@ -178,7 +220,7 @@ class ParseMetadataDisplayTest {
             ssid = 321,
             metadata = MediaMetadata(
                 totalDuration = 600,
-                accessLabel = "需购买",
+                access = MediaAccess.PurchaseRequired,
                 rareAttributes = setOf(MediaRareAttribute.PurchaseRequired),
             ),
         )
@@ -199,7 +241,7 @@ class ParseMetadataDisplayTest {
             epid = 789,
             metadata = MediaMetadata(
                 totalDuration = 600,
-                accessLabel = "可观看",
+                access = MediaAccess.Available,
             ),
         )
 
@@ -265,7 +307,7 @@ class ParseMetadataDisplayTest {
         val video = item(
             type = MediaType.Video,
             bvid = "BV1LegacyOnly",
-            metadata = MediaMetadata(legacyCategory = "知识 > 演讲·公开课（已下线）"),
+            metadata = MediaMetadata(legacyCategory = MediaCategory("知识 > 演讲·公开课", offline = true)),
         )
 
         val display = buildParseMetadataDisplay(info(MediaType.Video, video), video, false)
@@ -285,7 +327,7 @@ class ParseMetadataDisplayTest {
             metadata = MediaMetadata(
                 copyrightType = MediaCopyrightType.Original,
                 noReprint = true,
-                modernCategory = "影视 > AI影视",
+                modernCategory = MediaCategory("影视 > AI影视"),
             ),
         )
 

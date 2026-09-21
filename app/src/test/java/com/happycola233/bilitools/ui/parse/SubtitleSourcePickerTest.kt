@@ -75,7 +75,7 @@ class SubtitleSourcePickerTest {
         compose.onNodeWithText("全部字幕 · 2 种").assertIsDisplayed()
         // 全选按各条目自身可用字幕处理，目录不同不应显示缺失警告。
         compose.onNodeWithText("部分条目没有所选字幕。").assertDoesNotExist()
-        compose.onNodeWithText("英语（美国） · AI 字幕").assertDoesNotExist()
+        compose.onNodeWithText("英语（美国） · AI").assertDoesNotExist()
         capture("summary-${theme.name.lowercase()}-$fontScale", false)
         open()
         val aiRow = dialogText("英语（美国）").assertIsOn()

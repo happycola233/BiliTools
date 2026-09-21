@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_dialog_download">Muat turun kemas kini</string>
+    <string name="update_dialog_ignore_once">Abaikan kemas kini ini</string>
+    <string name="update_dialog_download_started">Kemas kini sedang dimuat turun di latar belakang</string>
+    <string name="update_dialog_download_running">Kemas kini sedang dimuat turun di latar belakang</string>
+    <string name="update_dialog_download_failed">Gagal memulakan muat turun kemas kini: %1$s</string>
+    <string name="update_dialog_apk_missing">Tiada pakej kemas kini tersedia untuk peranti ini.</string>
+    <string name="update_dialog_ignore_saved">Kemas kini peringatan untuk %1$s kini disembunyikan</string>
+    <string name="update_install_file_missing">Pakej kemas kini tiada atau telah dipadamkan</string>
+    <string name="update_install_launch_failed">Tidak dapat membuka pemasang</string>
+    <string name="update_notification_channel_progress_name">Muat turun kemas kini apl</string>
+    <string name="update_notification_channel_progress_desc">Kemajuan muat turun kemas kini apl</string>
+    <string name="update_notification_channel_result_name">Pemasangan kemas kini apl</string>
+    <string name="update_notification_channel_result_desc">Hasil muat turun kemas kini apl</string>
+    <string name="update_notification_progress_title">Memuat turun kemas kini %1$s</string>
+    <string name="update_notification_progress_content_known">%1$d%% %2$s / %3$s</string>
+    <string name="update_notification_progress_content_unknown">Dimuat turun %1$s</string>
+    <string name="update_notification_ready_title">Kemas kini sedia untuk dipasang</string>
+    <string name="update_notification_ready_content">Ketik untuk memasang %1$s</string>
+    <string name="update_notification_action_install">Pasang</string>
+    <string name="update_notification_failed_title">Muat turun kemas kini gagal: %1$s</string>
+    <string name="update_notification_failed_content">%1$s</string>
+    <string name="update_notification_action_open_release">Buka halaman keluaran</string>
+</resources>

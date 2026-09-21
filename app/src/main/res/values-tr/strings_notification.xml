@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_channel_download_progress_desc">İndirme ilerlemesi ve kontrolleri</string>
+    <string name="notification_channel_download_result_name">İndirme sonuçları</string>
+    <string name="notification_channel_download_result_desc">İndirme görevinin tamamlanma durumunu görüntüle</string>
+    <string name="notification_title_downloading_default">İndiriliyor</string>
+    <string name="notification_title_downloading_multiple">İndiriliyor: %1$d</string>
+    <string name="notification_title_paused_multiple">Duraklatılan görevler: %1$d</string>
+    <string name="notification_status_downloading">İndiriliyor</string>
+    <string name="notification_status_preparing">İndirmeye hazırlanılıyor</string>
+    <string name="notification_status_merging">İşleme</string>
+    <string name="notification_status_paused">Duraklatıldı</string>
+    <string name="notification_content_progress_percent">%1$d%%</string>
+    <string name="notification_content_progress_bytes">%1$d%% %2$s / %3$s</string>
+    <string name="notification_content_paused_count">Duraklatıldı: %1$d</string>
+    <string name="notification_short_downloading">İndiriliyor</string>
+    <string name="notification_short_preparing">Hazırlanıyor</string>
+    <string name="notification_short_merging">İşleme</string>
+    <string name="notification_short_paused">Duraklatıldı</string>
+    <string name="notification_short_progress">%1$d%%</string>
+    <string name="notification_summary_all_completed">İndirme tamamlandı</string>
+    <string name="notification_summary_finished">İndirmeler tamamlandı</string>
+    <string name="notification_summary_content">Tamamlandı: %1$d · Başarısız: %2$d · İptal Edildi: %3$d</string>
+    <string name="notification_permission_denied_tip">Bildirim izni reddedildi. İndirmeler devam edecek ancak ilerleme durumu bildirimlerde görünmeyecek.</string>
+</resources>

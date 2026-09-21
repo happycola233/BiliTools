@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="me_section_content">Meu conteúdo</string>
+    <string name="me_section_manage">Gestão</string>
+    <string name="me_login_entry_title">Faça login para obter mais recursos</string>
+    <string name="me_login_entry_summary">Acesse mais opções de download e seu conteúdo Bilibili.</string>
+    <string name="me_history_entry_disabled_desc">Faça login para ver seu histórico</string>
+    <string name="me_favorite_entry_disabled_desc">Faça login para ver seus favoritos</string>
+    <string name="me_watch_later_entry_disabled_desc">Faça login para ver Assistir mais tarde</string>
+    <string name="me_logout_summary">Remova seu login deste dispositivo</string>
+    <string name="me_login_screen_subtitle">Escolha um método de login e verifique sua conta</string>
+</resources>

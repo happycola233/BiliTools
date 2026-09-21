@@ -53,6 +53,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
@@ -119,7 +120,9 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -138,6 +141,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEachIndexed
@@ -145,6 +149,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.AudioQualities
+import com.happycola233.bilitools.core.AppLanguage
 import com.happycola233.bilitools.core.naming.NamingContext
 import com.happycola233.bilitools.core.naming.NamingPreviewSegment
 import com.happycola233.bilitools.core.naming.NamingRenderer
@@ -182,7 +187,7 @@ import com.mikepenz.aboutlibraries.entity.Library
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.Locale
+import java.time.format.FormatStyle
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
@@ -237,25 +242,28 @@ fun BiliToolsSettingsContent(
     onIssueReportLoggingChange: (Boolean) -> Unit,
     onExportIssueReport: () -> Unit,
     onClearIssueReport: () -> Unit,
+    selectedLanguage: AppLanguage,
+    onLanguageChange: (AppLanguage) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BiliToolsTheme(settings = settings) {
+        val navigationDirection = if (LocalLayoutDirection.current == LayoutDirection.Rtl) -1 else 1
         NavDisplay(
             backStack = backStack,
             onBack = onNavigateBack,
             transitionSpec = {
-                slideInHorizontally(initialOffsetX = { it }).togetherWith(
-                    slideOutHorizontally(targetOffsetX = { -it / 4 }) + fadeOut(),
+                slideInHorizontally(initialOffsetX = { it * navigationDirection }).togetherWith(
+                    slideOutHorizontally(targetOffsetX = { -it * navigationDirection / 4 }) + fadeOut(),
                 )
             },
             popTransitionSpec = {
-                (slideInHorizontally(initialOffsetX = { -it / 4 }) + fadeIn()).togetherWith(
-                    slideOutHorizontally(targetOffsetX = { it }),
+                (slideInHorizontally(initialOffsetX = { -it * navigationDirection / 4 }) + fadeIn()).togetherWith(
+                    slideOutHorizontally(targetOffsetX = { it * navigationDirection }),
                 )
             },
             predictivePopTransitionSpec = {
-                (slideInHorizontally(initialOffsetX = { -it / 4 }) + fadeIn()).togetherWith(
-                    slideOutHorizontally(targetOffsetX = { it }),
+                (slideInHorizontally(initialOffsetX = { -it * navigationDirection / 4 }) + fadeIn()).togetherWith(
+                    slideOutHorizontally(targetOffsetX = { it * navigationDirection }),
                 )
             },
             entryProvider = entryProvider {
@@ -274,6 +282,17 @@ fun BiliToolsSettingsContent(
                         onLiveActivityStyleNotificationChange = onLiveActivityStyleNotificationChange,
                         onHapticFeedbackLevelChange = onHapticFeedbackLevelChange,
                         onLaunchSplashAnimationChange = onLaunchSplashAnimationChange,
+                        selectedLanguage = selectedLanguage,
+                        onOpenLanguage = { onNavigate(SettingsDestination.Language) },
+                        onBack = onNavigateBack,
+                        modifier = modifier,
+                    )
+                }
+
+                entry<SettingsDestination.Language> {
+                    LanguageSettingsScreen(
+                        selectedLanguage = selectedLanguage,
+                        onLanguageChange = onLanguageChange,
                         onBack = onNavigateBack,
                         modifier = modifier,
                     )
@@ -540,12 +559,14 @@ private fun MainSettingsScreen(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun GeneralSettingsScreen(
+internal fun GeneralSettingsScreen(
     settings: AppSettings,
     liveUpdateSupported: Boolean,
     onLiveActivityStyleNotificationChange: (Boolean) -> Unit,
     onHapticFeedbackLevelChange: (HapticFeedbackLevel) -> Unit,
     onLaunchSplashAnimationChange: (Boolean) -> Unit,
+    selectedLanguage: AppLanguage,
+    onOpenLanguage: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -553,7 +574,7 @@ private fun GeneralSettingsScreen(
     val liveUpdateDescription = if (liveUpdateSupported) {
         stringResource(R.string.settings_live_activity_style_notification_desc)
     } else {
-        "当前系统不支持 Live Update 能力。"
+        stringResource(R.string.settings_live_activity_unavailable)
     }
     SettingsScaffold(
         title = stringResource(R.string.settings_general_title),
@@ -570,10 +591,21 @@ private fun GeneralSettingsScreen(
         ) {
             item { Spacer(Modifier.height(14.dp)) }
             item {
+                ClickableListItem(
+                    items = 4,
+                    index = 0,
+                    leadingContent = { SettingsItemIcon(R.drawable.ic_language_rounded_24) },
+                    content = { SettingsItemTitle(stringResource(R.string.settings_language_title)) },
+                    supportingContent = { Text(selectedLanguage.settingsDisplayName()) },
+                    trailingContent = { SettingsItemIcon(R.drawable.ic_chevron_right_24) },
+                    onClick = onOpenLanguage,
+                )
+            }
+            item {
                 HapticFeedbackPickerListItem(
                     level = settings.hapticFeedbackLevel,
-                    items = 3,
-                    index = 0,
+                    items = 4,
+                    index = 1,
                     onLevelChange = onHapticFeedbackLevelChange,
                 )
             }
@@ -583,8 +615,8 @@ private fun GeneralSettingsScreen(
                     iconRes = R.drawable.ic_animation_24,
                     title = stringResource(R.string.settings_launch_splash_animation),
                     description = stringResource(R.string.settings_launch_splash_animation_desc),
-                    items = 3,
-                    index = 1,
+                    items = 4,
+                    index = 2,
                     onCheckedChange = onLaunchSplashAnimationChange,
                 )
             }
@@ -595,8 +627,8 @@ private fun GeneralSettingsScreen(
                     title = stringResource(R.string.settings_live_activity_style_notification),
                     description = liveUpdateDescription,
                     enabled = liveUpdateSupported,
-                    items = 3,
-                    index = 2,
+                    items = 4,
+                    index = 3,
                     onCheckedChange = onLiveActivityStyleNotificationChange,
                 )
             }
@@ -604,6 +636,62 @@ private fun GeneralSettingsScreen(
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+internal fun LanguageSettingsScreen(
+    selectedLanguage: AppLanguage,
+    onLanguageChange: (AppLanguage) -> Unit,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    SettingsScaffold(
+        title = stringResource(R.string.settings_language_title),
+        subtitle = stringResource(R.string.settings_general_title),
+        onBack = onBack,
+        modifier = modifier,
+    ) { innerPadding ->
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+            contentPadding = innerPadding,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp)
+                .selectableGroup(),
+        ) {
+            item { Spacer(Modifier.height(14.dp)) }
+            items(AppLanguage.entries.size, key = { AppLanguage.entries[it].name }) { index ->
+                val language = AppLanguage.entries[index]
+                val isSelected = language == selectedLanguage
+                ClickableListItem(
+                    items = AppLanguage.entries.size,
+                    index = index,
+                    content = { SettingsItemTitle(language.settingsDisplayName()) },
+                    trailingContent = {
+                        if (isSelected) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_check_rounded_24),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    },
+                    modifier = Modifier.semantics {
+                        selected = isSelected
+                        role = Role.RadioButton
+                    },
+                    onClick = { if (!isSelected) onLanguageChange(language) },
+                )
+            }
+            item { Spacer(Modifier.height(12.dp)) }
+        }
+    }
+}
+
+@Composable
+private fun AppLanguage.settingsDisplayName(): String =
+    if (this == AppLanguage.System) stringResource(R.string.settings_language_system)
+    else displayName(LocalContext.current)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -2260,6 +2348,7 @@ private fun AboutSettingsScreen(
     val issueReportActiveColor = MaterialTheme.colorScheme.error
     val issueReportSummary = remember(
         context,
+        LocalConfiguration.current,
         issueReportState,
         issueReportExporting,
         issueReportClearing,
@@ -3631,7 +3720,7 @@ private fun buildIssueReportSummary(
 
     val sizeLabel = Formatter.formatShortFileSize(context, state.totalBytes)
     if (state.enabled) {
-        val enabledSince = formatIssueReportTimestamp(state.loggingStartedAtMillis)
+        val enabledSince = formatIssueReportTimestamp(context, state.loggingStartedAtMillis)
         pushStyle(
             SpanStyle(
                 color = activeColor,
@@ -3647,8 +3736,6 @@ private fun buildIssueReportSummary(
                     enabledSince,
                 ),
             )
-        } else {
-            append('。')
         }
     } else {
         append(context.getString(R.string.settings_issue_report_status_disabled))
@@ -3662,24 +3749,24 @@ private fun buildIssueReportSummary(
         ),
     )
     state.latestLogAtMillis?.let { latest ->
-        formatIssueReportTimestamp(latest)?.let { label ->
+        formatIssueReportTimestamp(context, latest)?.let { label ->
             append('\n')
             append(context.getString(R.string.settings_issue_report_status_last_capture, label))
         }
     }
     state.lastExportedAtMillis?.let { exported ->
-        formatIssueReportTimestamp(exported)?.let { label ->
+        formatIssueReportTimestamp(context, exported)?.let { label ->
             append('\n')
             append(context.getString(R.string.settings_issue_report_status_last_export, label))
         }
     }
 }
 
-private fun formatIssueReportTimestamp(epochMillis: Long?): String? {
+private fun formatIssueReportTimestamp(context: android.content.Context, epochMillis: Long?): String? {
     if (epochMillis == null || epochMillis <= 0L) return null
-    return ISSUE_REPORT_TIME_FORMATTER.format(
-        Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()),
-    )
+    return DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT)
+        .withLocale(context.resources.configuration.locales[0])
+        .format(Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()))
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -3795,8 +3882,3 @@ private object SettingsExpressiveShapes {
         }
     }
 }
-
-private val ISSUE_REPORT_TIME_FORMATTER = DateTimeFormatter.ofPattern(
-    "yyyy-MM-dd HH:mm",
-    Locale.ROOT,
-)

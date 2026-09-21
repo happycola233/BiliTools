@@ -3,11 +3,13 @@ package com.happycola233.bilitools.download
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.content.pm.ServiceInfo
 import android.os.IBinder
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import com.happycola233.bilitools.core.appContainer
+import com.happycola233.bilitools.core.AppLanguage
 import com.happycola233.bilitools.data.DownloadNotificationState
 import com.happycola233.bilitools.data.DownloadRepository
 import com.happycola233.bilitools.data.SettingsRepository
@@ -16,6 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.drop
 
 class DownloadForegroundService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -42,6 +45,21 @@ class DownloadForegroundService : Service() {
             downloadRepository.notificationState.collect { state ->
                 publishState(state, allowThrottle = true)
             }
+        }
+        serviceScope.launch {
+            AppLanguage.changes.drop(1).collect { refreshNotificationLanguage() }
+        }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        refreshNotificationLanguage()
+    }
+
+    private fun refreshNotificationLanguage() {
+        notificationManager.ensureChannels()
+        if (isForegroundStarted) {
+            publishState(downloadRepository.notificationState.value, allowThrottle = false)
         }
     }
 

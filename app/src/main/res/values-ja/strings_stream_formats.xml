@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="parse_formats_unavailable">%1$sは、このコンテンツでは利用できません。</string>
+    <string name="parse_formats_unavailable_batch">%1$s は、選択された一部のアイテムでは利用できません。</string>
+    <string name="parse_formats_no_common">選択された項目には共通のストリーム形式がありません。個別にダウンロードしてください。</string>
+</resources>

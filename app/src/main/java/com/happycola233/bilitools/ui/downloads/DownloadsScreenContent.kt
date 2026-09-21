@@ -1,9 +1,6 @@
 package com.happycola233.bilitools.ui.downloads
 
 import android.graphics.Typeface
-import android.text.SpannableStringBuilder
-import android.text.Spanned
-import android.text.TextPaint
 import android.text.style.ForegroundColorSpan
 import android.text.style.StyleSpan
 import android.text.style.UnderlineSpan
@@ -71,7 +68,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.text.HtmlCompat
-import android.text.style.MetricAffectingSpan
 import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.material3.Icon
@@ -651,9 +647,7 @@ internal fun DownloadsBatchPanel(
                 }
             },
             update = { textView ->
-                textView.text = refineHintText(
-                    HtmlCompat.fromHtml(hintHtml, HtmlCompat.FROM_HTML_MODE_LEGACY),
-                )
+                textView.text = HtmlCompat.fromHtml(hintHtml, HtmlCompat.FROM_HTML_MODE_LEGACY)
                 textView.setTextColor(panelSubTextColor.toArgb())
             },
         )
@@ -754,7 +748,7 @@ private fun GlassDebugPanel(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             BasicText(
-                text = "液态玻璃调试",
+                text = stringResource(R.string.runtime_glass_debug),
                 modifier = Modifier.weight(1f),
                 style = TextStyle(
                     color = colorScheme.onSurface,
@@ -762,7 +756,7 @@ private fun GlassDebugPanel(
                     fontWeight = FontWeight.Medium,
                 ),
             )
-            DebugSmallButton(text = "收起", onClick = onToggleExpand)
+            DebugSmallButton(text = stringResource(R.string.runtime_collapse), onClick = onToggleExpand)
         }
 
         Column(
@@ -771,70 +765,70 @@ private fun GlassDebugPanel(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            DebugSectionHeader(title = "下载页玻璃浮窗", onReset = onReset)
+            DebugSectionHeader(title = stringResource(R.string.runtime_downloads_glass_panel), onReset = onReset)
             DebugStepperRow(
-                label = "圆角半径",
+                label = stringResource(R.string.runtime_corner_radius),
                 value = "${formatFloat(cornerRadiusDp)} dp",
                 onMinus = { onCornerRadiusChange((cornerRadiusDp - 1f).coerceIn(0f, 64f)) },
                 onPlus = { onCornerRadiusChange((cornerRadiusDp + 1f).coerceIn(0f, 64f)) },
             )
             DebugStepperRow(
-                label = "模糊半径",
+                label = stringResource(R.string.runtime_blur_radius),
                 value = "${formatFloat(blurRadiusDp)} dp",
                 onMinus = { onBlurRadiusChange((blurRadiusDp - 1f).coerceIn(0f, 48f)) },
                 onPlus = { onBlurRadiusChange((blurRadiusDp + 1f).coerceIn(0f, 48f)) },
             )
             DebugStepperRow(
-                label = "折射高度",
+                label = stringResource(R.string.runtime_refraction_height),
                 value = "${formatFloat(refractionHeightDp)} dp",
                 onMinus = { onRefractionHeightChange((refractionHeightDp - 1f).coerceIn(0f, 72f)) },
                 onPlus = { onRefractionHeightChange((refractionHeightDp + 1f).coerceIn(0f, 72f)) },
             )
             DebugStepperRow(
-                label = "折射强度",
+                label = stringResource(R.string.runtime_refraction_amount),
                 value = formatFloat(refractionAmountFrac),
                 onMinus = { onRefractionAmountChange((refractionAmountFrac - 0.05f).coerceIn(0f, 1f)) },
                 onPlus = { onRefractionAmountChange((refractionAmountFrac + 0.05f).coerceIn(0f, 1f)) },
             )
             DebugStepperRow(
-                label = "表层透明度",
+                label = stringResource(R.string.runtime_surface_opacity),
                 value = formatFloat(surfaceAlpha),
                 onMinus = { onSurfaceAlphaChange((surfaceAlpha - 0.05f).coerceIn(0f, 1f)) },
                 onPlus = { onSurfaceAlphaChange((surfaceAlpha + 0.05f).coerceIn(0f, 1f)) },
             )
             DebugToggleRow(
-                label = "色差",
+                label = stringResource(R.string.runtime_chromatic_aberration),
                 checked = chromaticAberration,
                 onToggle = onChromaticAberrationChange,
             )
 
-            DebugSectionHeader(title = "底部导航栏", onReset = onBarReset)
+            DebugSectionHeader(title = stringResource(R.string.runtime_bottom_navigation), onReset = onBarReset)
             DebugStepperRow(
-                label = "模糊半径",
+                label = stringResource(R.string.runtime_blur_radius),
                 value = "${formatFloat(barBlurRadiusDp)} dp",
                 onMinus = { onBarBlurRadiusChange((barBlurRadiusDp - 1f).coerceIn(0f, 48f)) },
                 onPlus = { onBarBlurRadiusChange((barBlurRadiusDp + 1f).coerceIn(0f, 48f)) },
             )
             DebugStepperRow(
-                label = "折射高度",
+                label = stringResource(R.string.runtime_refraction_height),
                 value = "${formatFloat(barRefractionHeightDp)} dp",
                 onMinus = { onBarRefractionHeightChange((barRefractionHeightDp - 1f).coerceIn(0f, 72f)) },
                 onPlus = { onBarRefractionHeightChange((barRefractionHeightDp + 1f).coerceIn(0f, 72f)) },
             )
             DebugStepperRow(
-                label = "折射强度",
+                label = stringResource(R.string.runtime_refraction_amount),
                 value = formatFloat(barRefractionAmountFrac),
                 onMinus = { onBarRefractionAmountChange((barRefractionAmountFrac - 0.05f).coerceIn(0f, 1f)) },
                 onPlus = { onBarRefractionAmountChange((barRefractionAmountFrac + 0.05f).coerceIn(0f, 1f)) },
             )
             DebugStepperRow(
-                label = "表层透明度",
+                label = stringResource(R.string.runtime_surface_opacity),
                 value = formatFloat(barSurfaceAlpha),
                 onMinus = { onBarSurfaceAlphaChange((barSurfaceAlpha - 0.05f).coerceIn(0f, 1f)) },
                 onPlus = { onBarSurfaceAlphaChange((barSurfaceAlpha + 0.05f).coerceIn(0f, 1f)) },
             )
             DebugToggleRow(
-                label = "色差",
+                label = stringResource(R.string.runtime_chromatic_aberration),
                 checked = barChromaticAberration,
                 onToggle = onBarChromaticAberrationChange,
             )
@@ -862,7 +856,7 @@ private fun DebugSectionHeader(
                 fontWeight = FontWeight.Medium,
             ),
         )
-        DebugSmallButton(text = "重置", onClick = onReset)
+        DebugSmallButton(text = stringResource(R.string.runtime_reset), onClick = onReset)
     }
 }
 
@@ -888,7 +882,7 @@ private fun DebugToggleRow(
             style = TextStyle(color = colorScheme.onSurfaceVariant, fontSize = 12.sp),
         )
         BasicText(
-            text = if (checked) "开" else "关",
+            text = if (checked) stringResource(R.string.runtime_on) else stringResource(R.string.runtime_off),
             style = TextStyle(
                 color = if (checked) colorScheme.primary else colorScheme.onSurfaceVariant,
                 fontSize = 12.sp,
@@ -1032,44 +1026,6 @@ private fun BatchActionButton(
     }
 }
 
-private fun refineHintText(spanned: CharSequence): CharSequence {
-    val raw = spanned.toString()
-    if (raw.isBlank()) return raw
-
-    val normalized =
-        raw.replace("\r\n", "\n")
-            .replace(Regex("\\n{3,}"), "\n\n")
-            .trim()
-
-    return SpannableStringBuilder(normalized).apply {
-        applyBoldToken("清除记录")
-        applyBoldToken("删除文件")
-    }
-}
-
-private fun SpannableStringBuilder.applyBoldToken(token: String) {
-    var start = indexOf(token)
-    while (start >= 0) {
-        setSpan(
-            MediumBoldSpan(),
-            start,
-            start + token.length,
-            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
-        )
-        start = indexOf(token, start + token.length)
-    }
-}
-
-private class MediumBoldSpan : MetricAffectingSpan() {
-    override fun updateDrawState(textPaint: TextPaint) {
-        textPaint.isFakeBoldText = true
-    }
-
-    override fun updateMeasureState(textPaint: TextPaint) {
-        textPaint.isFakeBoldText = true
-    }
-}
-
 private fun htmlToAnnotatedString(rawHtml: String): AnnotatedString {
     val spanned = HtmlCompat.fromHtml(rawHtml, HtmlCompat.FROM_HTML_MODE_LEGACY)
     val builder = AnnotatedString.Builder(spanned.toString())
@@ -1116,5 +1072,5 @@ private fun htmlToAnnotatedString(rawHtml: String): AnnotatedString {
 }
 
 private fun formatFloat(value: Float): String {
-    return String.format(Locale.US, "%.2f", value)
+    return String.format(Locale.getDefault(), "%.2f", value)
 }

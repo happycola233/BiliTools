@@ -698,7 +698,7 @@ private fun shareWith(context: Context, uri: Uri, fileName: String) {
 
 private fun resolveMimeType(context: Context, uri: Uri, fileName: String): String? {
     context.contentResolver.getType(uri)?.takeIf { it.isNotBlank() }?.let { return it }
-    val extension = fileName.substringAfterLast('.', "").lowercase(Locale.getDefault())
+    val extension = fileName.substringAfterLast('.', "").lowercase(Locale.ROOT)
     if (extension.isBlank()) return null
     return MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
 }

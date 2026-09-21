@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="parse_formats_unavailable">%1$s غير متاح لهذا المحتوى.</string>
+    <string name="parse_formats_unavailable_batch">%1$s غير متاح لبعض العناصر المحددة.</string>
+    <string name="parse_formats_no_common">لا تحتوي العناصر المحددة على تنسيق دفق مشترك. قم بتنزيلها بشكل منفصل.</string>
+</resources>

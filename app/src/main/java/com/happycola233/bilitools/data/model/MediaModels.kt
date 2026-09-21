@@ -73,8 +73,27 @@ data class MediaContributor(
 
 data class MediaPaymentInfo(
     val description: String? = null,
-    val price: String? = null,
+    /** 接口返回的 B 币价格，不拼接本地化单位。 */
+    val priceBCoins: String? = null,
 )
+
+enum class MediaContentKind {
+    Anime,
+    Movie,
+    Documentary,
+    ChineseAnimation,
+    Series,
+    Variety,
+}
+
+enum class MediaAccess {
+    Available,
+    PurchaseRequired,
+    Unavailable,
+}
+
+/** 目录和接口的名称保持原文；本地追加的停用提示由界面翻译。 */
+data class MediaCategory(val name: String, val offline: Boolean = false)
 
 data class MediaResolution(
     val width: Int,
@@ -110,8 +129,8 @@ data class MediaMetadata(
     val partCount: Int? = null,
     val itemCount: Int? = null,
     val imageCount: Int? = null,
-    val legacyCategory: String? = null,
-    val modernCategory: String? = null,
+    val legacyCategory: MediaCategory? = null,
+    val modernCategory: MediaCategory? = null,
     val copyrightType: MediaCopyrightType? = null,
     val noReprint: Boolean = false,
     val rareAttributes: Set<MediaRareAttribute> = emptySet(),
@@ -137,16 +156,17 @@ data class MediaMetadata(
      */
     val submittedAt: Long? = null,
     val mediaId: Long? = null,
-    val contentKind: String? = null,
+    val contentKind: MediaContentKind? = null,
     val area: String? = null,
     val rating: Double? = null,
-    val copyrightLabel: String? = null,
+    /** 番剧接口版权标志；未知值保留原文，已知值由展示层本地化。 */
+    val copyrightCode: String? = null,
     val isCompleted: Boolean? = null,
     val updateText: String? = null,
     val actors: String? = null,
     val productionStaff: String? = null,
     val contributors: List<MediaContributor> = emptyList(),
-    val accessLabel: String? = null,
+    val access: MediaAccess? = null,
     val payment: MediaPaymentInfo? = null,
     val artist: String? = null,
     val tags: List<String> = emptyList(),

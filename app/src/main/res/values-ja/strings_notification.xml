@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_channel_download_progress_desc">ダウンロードの進行状況と制御</string>
+    <string name="notification_channel_download_result_name">ダウンロード結果</string>
+    <string name="notification_channel_download_result_desc">ダウンロードタスクの完了ステータスを表示する</string>
+    <string name="notification_title_downloading_default">ダウンロード</string>
+    <string name="notification_title_downloading_multiple">ダウンロード中: %1$d</string>
+    <string name="notification_title_paused_multiple">一時停止中のタスク: %1$d</string>
+    <string name="notification_status_downloading">ダウンロード</string>
+    <string name="notification_status_preparing">ダウンロードの準備中</string>
+    <string name="notification_status_merging">処理</string>
+    <string name="notification_status_paused">一時停止</string>
+    <string name="notification_content_progress_percent">%1$d%%</string>
+    <string name="notification_content_progress_bytes">%1$d%% %2$s / %3$s</string>
+    <string name="notification_content_paused_count">一時停止中: %1$d</string>
+    <string name="notification_short_downloading">ダウンロード</string>
+    <string name="notification_short_preparing">準備する</string>
+    <string name="notification_short_merging">処理</string>
+    <string name="notification_short_paused">一時停止</string>
+    <string name="notification_short_progress">%1$d%%</string>
+    <string name="notification_summary_all_completed">ダウンロード完了</string>
+    <string name="notification_summary_finished">ダウンロードが完了しました</string>
+    <string name="notification_summary_content">完了: %1$d · 失敗: %2$d · キャンセル: %3$d</string>
+    <string name="notification_permission_denied_tip">通知許可が拒否されました。ダウンロードは続行されますが、進行状況は通知に表示されません。</string>
+</resources>

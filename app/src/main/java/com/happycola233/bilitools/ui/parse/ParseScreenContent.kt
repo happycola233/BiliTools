@@ -126,6 +126,7 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.node.DelegatableNode
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalResources
@@ -1377,7 +1378,7 @@ private fun ParseResultCard(
     onCopyResultContent: (ParseResultCopyTarget, String) -> Unit,
     contentBelowSectionControls: @Composable ColumnScope.() -> Unit,
 ) {
-    val display = resolveParseResultCardDisplay(state, info, selectedItem)
+    val display = resolveParseResultCardDisplay(LocalContext.current, state, info, selectedItem)
     var detailSubjectKey by rememberSaveable { mutableStateOf<String?>(null) }
     val contentSizeSpec = tween<IntSize>(
         durationMillis = parseContentAnimationDurationMillis,
@@ -2212,7 +2213,7 @@ private fun FormattedStatValue(
             style = ParseTextStyles.supporting,
         )
         Text(
-            text = formatMediaStatValue(value),
+            text = formatMediaStatValue(value, LocalConfiguration.current.locales[0]),
             modifier = Modifier.padding(start = 5.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
@@ -4422,6 +4423,7 @@ private data class SegmentedOption<T>(
 )
 
 internal fun resolveParseResultCardDisplay(
+    context: android.content.Context,
     state: ParseUiState,
     info: MediaInfo,
     selectedItem: MediaItem?,
@@ -4450,6 +4452,7 @@ internal fun resolveParseResultCardDisplay(
             stat = stat,
             upper = previewItem.resolvedUpper(info),
             metadata = buildParseMetadataDisplay(
+                context = context,
                 info = info,
                 subjectItem = previewItem,
                 collectionOverview = false,
@@ -4474,6 +4477,7 @@ internal fun resolveParseResultCardDisplay(
             stat = selectedItem?.stat ?: state.selectedItemStat ?: info.nfo.stat,
             upper = info.nfo.upper,
             metadata = buildParseMetadataDisplay(
+                context = context,
                 info = info,
                 subjectItem = null,
                 collectionOverview = true,
@@ -4496,6 +4500,7 @@ internal fun resolveParseResultCardDisplay(
             stat = selectedItem?.stat ?: state.selectedItemStat ?: info.nfo.stat,
             upper = selectedItem?.resolvedUpper(info) ?: info.nfo.upper,
             metadata = buildParseMetadataDisplay(
+                context = context,
                 info = info,
                 subjectItem = selectedItem,
                 collectionOverview = false,
@@ -4535,6 +4540,7 @@ internal fun resolveParseResultCardDisplay(
         stat = stat,
         upper = displayItem?.resolvedUpper(info) ?: info.nfo.upper,
         metadata = buildParseMetadataDisplay(
+            context = context,
             info = info,
             subjectItem = displayItem,
             collectionOverview = false,

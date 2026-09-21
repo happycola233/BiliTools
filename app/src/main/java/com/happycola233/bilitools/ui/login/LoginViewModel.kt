@@ -40,7 +40,7 @@ data class CountryOption(
 
 data class LoginUiState(
     val qrBitmap: Bitmap? = null,
-    val qrStatusText: String = "",
+    @androidx.annotation.StringRes val qrStatusRes: Int = R.string.login_status_idle,
     val isPolling: Boolean = false,
     val isLoggedIn: Boolean = false,
     val currentMid: Long? = null,
@@ -98,7 +98,7 @@ class LoginViewModel(
 ) : ViewModel() {
     private val _state = MutableStateFlow(
         LoginUiState(
-            qrStatusText = strings.get(R.string.login_status_idle),
+            qrStatusRes = R.string.login_status_idle,
             isLoggedIn = authRepository.isLoggedIn(),
             currentMid = authRepository.getCachedMid(),
         ),
@@ -180,7 +180,7 @@ class LoginViewModel(
         viewModelScope.launch {
             _state.update {
                 it.copy(
-                    qrStatusText = strings.get(R.string.login_status_generating),
+                    qrStatusRes = R.string.login_status_generating,
                     isPolling = true,
                     errorText = null,
                 )
@@ -193,7 +193,7 @@ class LoginViewModel(
                 _state.update {
                     it.copy(
                         qrBitmap = bitmap,
-                        qrStatusText = strings.get(R.string.login_status_scan),
+                        qrStatusRes = R.string.login_status_scan,
                         isPolling = true,
                         errorText = null,
                     )
@@ -202,7 +202,7 @@ class LoginViewModel(
             }.onFailure { err ->
                 _state.update {
                     it.copy(
-                        qrStatusText = strings.get(R.string.login_status_qr_failed),
+                        qrStatusRes = R.string.login_status_qr_failed,
                         isPolling = false,
                         errorText = err.message,
                     )
@@ -216,7 +216,7 @@ class LoginViewModel(
         _state.update {
             it.copy(
                 isPolling = false,
-                qrStatusText = strings.get(R.string.login_status_polling_stopped),
+                qrStatusRes = R.string.login_status_polling_stopped,
             )
         }
     }
@@ -238,7 +238,7 @@ class LoginViewModel(
                 riskPrefillPhone = null,
                 riskLockPhoneInput = false,
                 qrBitmap = null,
-                qrStatusText = strings.get(R.string.login_status_signed_out),
+                qrStatusRes = R.string.login_status_signed_out,
             )
         }
         prepareLogin()
@@ -482,7 +482,7 @@ class LoginViewModel(
                 isRiskSmsMode = false,
                 riskPrefillPhone = null,
                 riskLockPhoneInput = false,
-                qrStatusText = strings.get(R.string.login_status_signed_in),
+                qrStatusRes = R.string.login_status_signed_in,
                 isLoggedIn = true,
                 currentMid = authRepository.getCachedMid(),
                 errorText = null,
@@ -525,16 +525,16 @@ class LoginViewModel(
         pollJob = viewModelScope.launch {
             while (isActive) {
                 val result = authRepository.pollQr(qrKey)
-                val statusText = when (result.status) {
-                    QrLoginStatus.Waiting -> strings.get(R.string.login_status_waiting)
-                    QrLoginStatus.Scanned -> strings.get(R.string.login_status_scanned)
-                    QrLoginStatus.Success -> strings.get(R.string.login_status_signed_in)
-                    QrLoginStatus.Expired -> strings.get(R.string.login_status_expired)
-                    QrLoginStatus.Error -> strings.get(R.string.login_status_failed_retry)
+                val statusRes = when (result.status) {
+                    QrLoginStatus.Waiting -> R.string.login_status_waiting
+                    QrLoginStatus.Scanned -> R.string.login_status_scanned
+                    QrLoginStatus.Success -> R.string.login_status_signed_in
+                    QrLoginStatus.Expired -> R.string.login_status_expired
+                    QrLoginStatus.Error -> R.string.login_status_failed_retry
                 }
                 _state.update {
                     it.copy(
-                        qrStatusText = statusText,
+                        qrStatusRes = statusRes,
                         isLoggedIn = authRepository.isLoggedIn(),
                         currentMid = authRepository.getCachedMid(),
                         errorText = null,
@@ -545,7 +545,7 @@ class LoginViewModel(
                         _state.update {
                             it.copy(
                                 isPolling = false,
-                                qrStatusText = strings.get(R.string.login_status_signed_in),
+                                qrStatusRes = R.string.login_status_signed_in,
                                 isLoggedIn = true,
                                 currentMid = authRepository.getCachedMid(),
                             )
@@ -557,7 +557,7 @@ class LoginViewModel(
                         _state.update {
                             it.copy(
                                 isPolling = false,
-                                qrStatusText = strings.get(R.string.login_status_expired),
+                                qrStatusRes = R.string.login_status_expired,
                             )
                         }
                         break
@@ -566,7 +566,7 @@ class LoginViewModel(
                         _state.update {
                             it.copy(
                                 isPolling = false,
-                                qrStatusText = strings.get(R.string.login_status_failed_retry),
+                                qrStatusRes = R.string.login_status_failed_retry,
                             )
                         }
                         break

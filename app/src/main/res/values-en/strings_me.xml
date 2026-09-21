@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="me_section_content">My content</string>
+    <string name="me_section_manage">Management</string>
+    <string name="me_login_entry_title">Log in for more features</string>
+    <string name="me_login_entry_summary">Access more download options and your Bilibili content.</string>
+    <string name="me_history_entry_disabled_desc">Log in to view your history</string>
+    <string name="me_favorite_entry_disabled_desc">Log in to view your favorites</string>
+    <string name="me_watch_later_entry_disabled_desc">Log in to view Watch later</string>
+    <string name="me_logout_summary">Remove your login from this device</string>
+    <string name="me_login_screen_subtitle">Choose a login method and verify your account</string>
+</resources>

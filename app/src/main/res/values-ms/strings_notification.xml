@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_channel_download_progress_desc">Muat turun kemajuan dan kawalan</string>
+    <string name="notification_channel_download_result_name">Muat turun keputusan</string>
+    <string name="notification_channel_download_result_desc">Paparkan status penyelesaian tugas muat turun</string>
+    <string name="notification_title_downloading_default">Memuat turun</string>
+    <string name="notification_title_downloading_multiple">Sedang dimuat turun: %1$d</string>
+    <string name="notification_title_paused_multiple">Tugas dijeda: %1$d</string>
+    <string name="notification_status_downloading">Memuat turun</string>
+    <string name="notification_status_preparing">Menyediakan muat turun</string>
+    <string name="notification_status_merging">Pemprosesan</string>
+    <string name="notification_status_paused">Dijeda</string>
+    <string name="notification_content_progress_percent">%1$d%%</string>
+    <string name="notification_content_progress_bytes">%1$d%% %2$s / %3$s</string>
+    <string name="notification_content_paused_count">Dijeda: %1$d</string>
+    <string name="notification_short_downloading">Memuat turun</string>
+    <string name="notification_short_preparing">Bersedia</string>
+    <string name="notification_short_merging">Pemprosesan</string>
+    <string name="notification_short_paused">Dijeda</string>
+    <string name="notification_short_progress">%1$d%%</string>
+    <string name="notification_summary_all_completed">Muat turun selesai</string>
+    <string name="notification_summary_finished">Muat turun selesai</string>
+    <string name="notification_summary_content">Selesai: %1$d · Gagal: %2$d · Dibatalkan: %3$d</string>
+    <string name="notification_permission_denied_tip">Kebenaran pemberitahuan telah ditolak. Muat turun akan diteruskan, tetapi kemajuan tidak akan muncul dalam pemberitahuan.</string>
+</resources>

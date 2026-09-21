@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="me_section_content">İçeriğim</string>
+    <string name="me_section_manage">Yönetim</string>
+    <string name="me_login_entry_title">Daha fazla özellik için oturum açın</string>
+    <string name="me_login_entry_summary">Daha fazla indirme seçeneğine ve Bilibili içeriğinize erişin.</string>
+    <string name="me_history_entry_disabled_desc">Geçmişinizi görüntülemek için oturum açın</string>
+    <string name="me_favorite_entry_disabled_desc">Favorilerinizi görüntülemek için oturum açın</string>
+    <string name="me_watch_later_entry_disabled_desc">Daha sonra izle\'yi görüntülemek için oturum açın</string>
+    <string name="me_logout_summary">Giriş bilgilerinizi bu cihazdan kaldırın</string>
+    <string name="me_login_screen_subtitle">Bir giriş yöntemi seçin ve hesabınızı doğrulayın</string>
+</resources>

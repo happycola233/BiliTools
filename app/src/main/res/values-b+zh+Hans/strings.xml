@@ -1,0 +1,632 @@
+<resources>
+    
+    <string name="nav_parse">解析</string>
+    <string name="nav_downloads">下载</string>
+    <string name="nav_me">我</string>
+    <string name="common_copy_message">复制消息</string>
+    <string name="common_dismiss_message">关闭消息</string>
+    <string name="common_open_link_failed">无法打开链接</string>
+    <string name="common_copy_title">复制标题</string>
+    <string name="common_title_clip_label">BiliTools 标题</string>
+    <string name="common_title_copied">标题已复制到剪贴板</string>
+    <string name="common_copy_upper_name">复制 UP 主名称</string>
+    <string name="common_upper_name_clip_label">BiliTools UP 主名称</string>
+    <string name="common_upper_name_copied">UP 主名称已复制到剪贴板</string>
+
+    <string name="login_title">登录</string>
+    <string name="login_qr_desc">登录二维码</string>
+    <string name="login_refresh">生成二维码</string>
+    <string name="login_logout">退出登录</string>
+    <string name="login_logout_confirm_title">确认退出登录</string>
+    <string name="login_logout_confirm_message">确定要退出登录吗？</string>
+    <string name="login_status_idle">点击生成二维码开始登录</string>
+    <string name="login_status_generating">正在生成二维码…</string>
+    <string name="login_status_scan">请使用哔哩哔哩 App 扫码登录</string>
+    <string name="login_status_qr_failed">二维码生成失败</string>
+    <string name="login_status_polling_stopped">已停止轮询</string>
+    <string name="login_status_signed_out">已退出登录</string>
+    <string name="login_status_signed_in">登录成功</string>
+    <string name="login_status_waiting">等待扫码中…</string>
+    <string name="login_status_scanned">已扫码，请确认登录</string>
+    <string name="login_status_expired">二维码已过期，请刷新</string>
+    <string name="login_status_failed_retry">登录失败，请重试</string>
+    <string name="login_tab_qr">扫码</string>
+    <string name="login_tab_password">密码</string>
+    <string name="login_tab_sms">短信</string>
+    <string name="login_account_subtitle">请使用哔哩哔哩账号登录</string>
+    <string name="login_account_hint">账号</string>
+    <string name="login_password_hint">密码</string>
+    <string name="login_password_show">显示密码</string>
+    <string name="login_password_hide">隐藏密码</string>
+    <string name="login_password_note">建议使用扫码或短信登录，密码登录大概率仍需验证短信</string>
+    <string name="login_phone_hint">手机号</string>
+    <string name="login_sms_code_hint">验证码</string>
+    <string name="login_send_sms">获取验证码</string>
+    <string name="login_action">登录</string>
+    <string name="login_sms_sent">验证码已发送</string>
+    <string name="login_error_account_empty">请输入账号</string>
+    <string name="login_error_password_empty">请输入密码</string>
+    <string name="login_error_phone_empty">请输入手机号</string>
+    <string name="login_error_sms_code_empty">请输入验证码</string>
+    <string name="login_error_sms_request_first">请先获取验证码</string>
+    <string name="login_error_captcha_failed">验证加载失败，请重试</string>
+    <string name="login_error_failed">登录失败，请稍后再试</string>
+    <string name="login_cover_desc">账号封面</string>
+    <string name="login_vip_badge_desc">大会员徽标</string>
+    <string name="login_vip_label_desc">会员标签</string>
+    <string name="login_stat_following">关注</string>
+    <string name="login_stat_follower">粉丝</string>
+    <string name="login_stat_dynamic">动态</string>
+    <string name="login_stat_coins">硬币</string>
+    <string name="login_captcha_title">请完成验证</string>
+    <string name="login_captcha_loading">正在加载验证</string>
+
+    <string name="parse_input_card_title">解析资源</string>
+    <string name="parse_hint">链接/AV/BV/SS/EP/AU/AM/SID/FID/CV/RL/UID</string>
+    <string name="parse_paste">粘贴</string>
+    <string name="parse_action">解析</string>
+    <string name="parse_cover_desc">内容封面</string>
+    <string name="parse_section_result">解析结果</string>
+    <string name="parse_copy_description">复制简介</string>
+    <string name="parse_copy_cover_url">复制封面链接</string>
+    <string name="parse_description_clip_label">BiliTools 简介</string>
+    <string name="parse_cover_url_clip_label">BiliTools 封面链接</string>
+    <string name="parse_description_copied">简介已复制到剪贴板</string>
+    <string name="parse_cover_url_copied">封面链接已复制到剪贴板</string>
+    <string name="parse_description_expand">展开简介</string>
+    <string name="parse_description_collapse">收起简介</string>
+    <string name="parse_metadata_view_details">查看详细信息</string>
+    <string name="parse_metadata_copy_identifier">复制 %1$s</string>
+    
+    <string name="parse_metadata_identifier_copied">已复制 %1$s</string>
+    <string name="parse_metadata_details_title">详细信息</string>
+    <string name="parse_metadata_copy_value">复制此项</string>
+    <string name="parse_metadata_part_preview_desc">分 P 预览图</string>
+    <string name="parse_metadata_copy_part_preview_url">复制预览图链接</string>
+    <string name="parse_metadata_value_clip_label">BiliTools 详细信息</string>
+    <string name="parse_metadata_value_copied">内容已复制到剪贴板</string>
+    <string name="parse_section_options">下载与导出</string>
+    <string name="parse_page_label">选择分P</string>
+    <string name="parse_media_type_label">解析类型</string>
+    <string name="parse_media_type_auto">自动识别</string>
+    <string name="parse_media_type_video">视频</string>
+    <string name="parse_media_type_bangumi">番剧</string>
+    <string name="parse_media_type_lesson">课程</string>
+    <string name="parse_media_type_music">音频</string>
+    <string name="parse_media_type_music_list">歌单</string>
+    <string name="parse_media_type_watch_later">稍后再看</string>
+    <string name="parse_media_type_favorite">收藏夹</string>
+    <string name="parse_media_type_opus">图文</string>
+    <string name="parse_media_type_opus_list">图文合集</string>
+    <string name="parse_media_type_user_video">用户视频</string>
+    <string name="parse_media_type_user_opus">用户图文</string>
+    <string name="parse_media_type_user_audio">用户音频</string>
+    <string name="parse_section_label">选集（合集）</string>
+    <string name="parse_page_label_episode">选集</string>
+    <string name="parse_page_label_video">选择视频</string>
+    <string name="parse_page_nav_label">页码</string>
+    <string name="parse_page_prev">上一页</string>
+    <string name="parse_page_next">下一页</string>
+    <string name="parse_load_more_failed">加载失败，点击重试</string>
+    <string name="parse_list_empty">暂无可显示的内容</string>
+    <string name="parse_page_status">第 %1$d 页</string>
+    <string name="parse_page_status_with_pages">第 %1$d 页 · 共 %2$d 页</string>
+    <string name="parse_section_label_favorite">选择收藏夹</string>
+    <string name="parse_section_label_bangumi">选择版本</string>
+
+    <string name="parse_download">下载</string>
+    <string name="parse_login_limited">登录可解锁更多更高清的下载参数</string>
+    <string name="parse_error_empty_input">请先输入或粘贴链接</string>
+    <string name="parse_error_invalid_input">无法识别，请输入链接或 AV/BV/SS/EP/AU/AM/SID/FID/CV/RL/UID 号</string>
+    <string name="parse_error_failed">解析失败，请稍后重试</string>
+    <string name="parse_stream_format">流媒体格式</string>
+    <string name="parse_stream_format_hint_prefix">如无特殊需求，建议保持默认的 DASH 格式。</string>
+    <string name="format_dash">DASH 格式</string>
+    <string name="format_mp4">MP4 格式</string>
+    <string name="format_flv">FLV 格式</string>
+    <string name="parse_output_type">输出类型</string>
+    <string name="parse_resolution_mode_label">分辨率策略</string>
+    <string name="parse_resolution_mode_highest">全部使用最高分辨率</string>
+    <string name="parse_resolution_mode_lowest">全部使用最低分辨率</string>
+    <string name="parse_resolution_mode_fixed">指定固定分辨率</string>
+    <string name="parse_quality_multi_hint">若某条目不支持指定档位，将使用该条目的最高可用档位。</string>
+    <string name="parse_bitrate_mode_label">音频比特率策略</string>
+    <string name="parse_bitrate_mode_highest">全部使用最高音频比特率</string>
+    <string name="parse_bitrate_mode_lowest">全部使用最低音频比特率</string>
+    <string name="parse_bitrate_mode_fixed">指定固定比特率</string>
+    <string name="output_audio_video">音视频</string>
+    <string name="output_video">仅视频</string>
+    <string name="output_audio">仅音频</string>
+    <string name="parse_resolution_label">分辨率</string>
+    <string name="parse_video_codec_label">视频编码</string>
+    <string name="parse_bitrate_label">音频比特率</string>
+    <string name="parse_misc_label">杂项</string>
+    <string name="parse_opus_label">图文</string>
+    <string name="parse_opus_content">图文内容</string>
+    <string name="parse_opus_images">图文图片</string>
+    <string name="parse_subtitle_label">字幕</string>
+    <string name="parse_embed_subtitles_label">内嵌字幕</string>
+    <string name="parse_embed_subtitles_option">嵌入到视频文件</string>
+    <string name="parse_embed_lyrics_label">内嵌歌词</string>
+    <string name="parse_embed_lyrics_option">嵌入到音频文件</string>
+    <string name="parse_embed_subtitles_flv">内嵌字幕后将保存为 MP4。</string>
+    <string name="parse_copy_subtitle_now">复制字幕</string>
+    <string name="parse_subtitle_copy_dialog_title">字幕预览与复制</string>
+    <string name="parse_subtitle_copy_dialog_subtitle">可切换条目预览字幕，支持复制当前或复制全部。</string>
+    <string name="parse_subtitle_copy_item_label">条目</string>
+    <string name="parse_subtitle_copy_current">复制当前条目</string>
+    <string name="parse_subtitle_copy_all">复制全部</string>
+    <string name="parse_subtitle_copy_status_ready">已加载：%1$s</string>
+    <string name="parse_subtitle_copy_preview_empty">该条目暂无可预览字幕。</string>
+    <string name="parse_subtitle_copy_unavailable">未找到可用字幕</string>
+    <string name="parse_subtitle_copy_item_unavailable">%1$s（无可用字幕）</string>
+    <string name="parse_subtitle_copy_clip_label_single">BiliTools 字幕 - %1$s</string>
+    <string name="parse_subtitle_copy_clip_label_all">BiliTools 字幕合集</string>
+    <string name="parse_subtitle_copy_single_done">字幕已复制到剪贴板</string>
+    <string name="parse_subtitle_copy_current_done">已复制当前字幕</string>
+    <string name="parse_subtitle_copy_all_done">已复制全部字幕</string>
+    <string name="parse_copy_ai_summary_now">复制AI总结</string>
+    <string name="parse_ai_summary_copy_dialog_title">AI总结预览与复制</string>
+    <string name="parse_ai_summary_copy_dialog_subtitle">可切换条目预览AI总结，支持复制当前或复制全部。</string>
+    <string name="parse_ai_summary_copy_item_label">条目</string>
+    <string name="parse_ai_summary_copy_current">复制当前条目</string>
+    <string name="parse_ai_summary_copy_all">复制全部</string>
+    <string name="parse_ai_summary_copy_status_ready">已加载 AI 总结</string>
+    <string name="parse_ai_summary_copy_preview_empty">该条目暂无可预览 AI 总结。</string>
+    <string name="parse_ai_summary_copy_unavailable">该视频暂无 AI 总结</string>
+    <string name="parse_ai_summary_copy_item_unavailable">%1$s（暂无AI总结）</string>
+    <string name="parse_ai_summary_copy_clip_label_single">BiliTools AI总结 - %1$s</string>
+    <string name="parse_ai_summary_copy_clip_label_all">BiliTools AI总结合集</string>
+    <string name="parse_ai_summary_copy_single_done">AI总结已复制到剪贴板</string>
+    <string name="parse_ai_summary_copy_current_done">已复制当前AI总结</string>
+    <string name="parse_ai_summary_copy_all_done">已复制全部AI总结</string>
+    <string name="parse_ai_summary_label">AI 总结</string>
+    <string name="parse_nfo_label">NFO 元数据</string>
+    <string name="parse_nfo_collection">合集 / 剧集刮削</string>
+    <string name="parse_nfo_single">单集刮削</string>
+    <string name="parse_danmaku_label">弹幕</string>
+    <string name="parse_danmaku_live">实时弹幕</string>
+    <string name="parse_danmaku_history">历史弹幕</string>
+    <string name="parse_danmaku_date">日期 (YYYY-MM-DD)</string>
+    <string name="parse_danmaku_hour">小时 (00-23)</string>
+    <string name="parse_image_label">图像</string>
+    <string name="parse_image_option_cover">封面</string>
+    <string name="parse_image_option_square_cover">方形封面</string>
+    <string name="parse_image_option_first_frame">首帧画面</string>
+    <string name="parse_image_option_ugc_cover">合集封面</string>
+    <string name="parse_image_option_season_cover">本季封面</string>
+    <string name="parse_image_option_season_horizontal_cover_1610">本季海报 (16:10)</string>
+    <string name="parse_image_option_season_horizontal_cover_169">本季海报 (16:9)</string>
+    <string name="parse_image_option_brief">预览-%1$d</string>
+    <string name="parse_resolution_8k">8K 超高清</string>
+    <string name="parse_resolution_dolby">杜比视界</string>
+    <string name="parse_resolution_hdr">HDR 真彩</string>
+    <string name="parse_resolution_4k">4K 超高清</string>
+    <string name="parse_resolution_1080_60">1080P 60帧</string>
+    <string name="parse_resolution_1080_high">1080P 高码率</string>
+    <string name="parse_resolution_1080">1080P 高清</string>
+    <string name="parse_resolution_720">720P 准高清</string>
+    <string name="parse_resolution_480">480P 标清</string>
+    <string name="parse_resolution_360">360P 流畅</string>
+    <string name="parse_resolution_240">240P 极速</string>
+    <string name="parse_resolution_other">其他</string>
+    
+    
+    
+    
+    
+    
+    
+    
+    <string name="parse_bitrate_dolby">杜比全景声</string>
+    <string name="parse_bitrate_hires">Hi-Res 无损</string>
+    <string name="parse_bitrate_flac">无损 FLAC</string>
+    <string name="parse_bitrate_other">其他</string>
+    <string name="parse_error_no_stream">请先加载资源信息</string>
+    <string name="parse_error_no_subtitle">未找到可用字幕</string>
+    <string name="parse_error_no_ai">该视频暂无 AI 总结</string>
+    <string name="parse_error_no_nfo">无可用 NFO 元数据</string>
+    <string name="parse_error_invalid_date">历史弹幕日期无效</string>
+    <string name="parse_error_invalid_hour">历史弹幕小时需为 00-23</string>
+    <string name="download_unavailable_generic">当前条目没有所选资源</string>
+    <string name="download_unavailable_audio">当前条目没有可用音频</string>
+    <string name="download_unavailable_video">当前条目没有可用视频</string>
+    <string name="download_unavailable_audio_video">当前条目缺少可合并的音频或视频</string>
+    <string name="download_unavailable_image">当前条目没有对应图片资源</string>
+    <string name="download_unavailable_opus_images">该图文没有正文图片</string>
+    <string name="parse_error_opus_risk_control">图文详情请求受限，请稍后重试</string>
+    <string name="parse_error_opus_login_required">请登录后查看该图文</string>
+    <string name="parse_error_opus_permission_denied">当前账号无权查看该图文</string>
+    <string name="parse_error_opus_not_found">图文不存在或已不可见</string>
+    <string name="parse_error_opus_invalid_response">图文详情数据不完整，请稍后重试</string>
+
+    <string name="common_error_unknown">发生未知错误</string>
+
+    <string name="downloads_title">下载任务</string>
+    <string name="downloads_empty">空空如也~</string>
+    <string name="downloads_clear_completed">清除已完成记录</string>
+    <string name="downloads_clear_all">清除全部记录</string>
+    <string name="downloads_actions_menu">下载管理操作</string>
+    <string name="downloads_multi_manage">批量管理</string>
+    <string name="downloads_multi_select_all">全选</string>
+    <string name="downloads_multi_unselect_all">取消全选</string>
+    <string name="downloads_multi_exit">退出</string>
+    <string name="downloads_multi_status">已选择 %1$d/%2$d</string>
+    <string name="downloads_multi_clear_records">清除记录</string>
+    <string name="downloads_multi_delete_files">删除文件</string>
+    <string name="downloads_multi_no_task">暂无可操作任务</string>
+    <string name="downloads_multi_confirm_clear_title">清除所选记录</string>
+    <string name="downloads_multi_confirm_clear_message"><![CDATA[
+已选择 <b>%1$d</b> 项，确认执行“清除记录”？
+<br/>
+<br/>
+<b>已完成任务</b>
+<br/>仅删除记录，不删除已下载文件
+<br/>
+<br/>
+<b>进行中任务</b>
+<br/>停止下载，并删除任务与临时文件
+]]></string>
+    <string name="downloads_multi_confirm_delete_title">删除所选文件与记录</string>
+    <string name="downloads_multi_confirm_delete_message"><![CDATA[
+已选择 <b>%1$d</b> 项，确认执行“删除文件”？
+<br/>
+<br/>
+<b>执行结果</b>
+<br/>删除任务、记录和本地文件（含临时文件）
+]]></string>
+    <string name="downloads_multi_hint_default">选择项目组后可批量处理记录和文件。</string>
+    <string name="downloads_multi_hint_running"><![CDATA[
+<b>清除记录</b>
+<br/>已完成项目仅删记录
+<br/>进行中项目会停止并删除任务及临时文件
+<br/>
+<br/>
+<b>删除文件</b>
+<br/>删除任务、记录和文件
+]]></string>
+    <string name="downloads_multi_hint_has_file"><![CDATA[
+<b>清除记录</b>
+<br/>已完成项目仅删记录
+<br/>进行中项目会停止并删除任务及临时文件
+<br/>
+<br/>
+<b>删除文件</b>
+<br/>删除任务、记录和文件
+]]></string>
+    <string name="downloads_multi_done_clear">已清除 %1$d 项记录</string>
+    <string name="downloads_multi_done_delete">已处理 %1$d 项任务</string>
+    <string name="downloads_group_progress_compact">%1$d/%2$d 项 · %3$d%%</string>
+    <string name="downloads_group_progress_failed">存在失败项</string>
+    <string name="downloads_group_progress_unavailable">跳过 %1$d 项</string>
+    <string name="downloads_group_toggle">展开详情</string>
+    <string name="downloads_group_delete">删除该组</string>
+    <string name="downloads_group_cover_desc">视频封面</string>
+    <string name="downloads_group_actions_summary_size">共 %1$d 项 · %2$s</string>
+    <string name="downloads_group_actions_summary_size_speed">共 %1$d 项 · %2$s - %3$s</string>
+    <string name="downloads_section_downloading">正在下载</string>
+    <string name="downloads_section_downloaded">已完成</string>
+    <string name="downloads_section_count">%1$d 项</string>
+    <string name="downloads_resume_all_with_count">全部开始（%1$d）</string>
+    <string name="downloads_pause_all_with_count">全部暂停（%1$d）</string>
+    <string name="downloads_resume_all_done">已开始 %1$d 项任务</string>
+    <string name="downloads_resume_all_done_with_retry">已开始 %1$d 项任务（含重试 %2$d 项）</string>
+    <string name="downloads_pause_all_done">已暂停 %1$d 项任务</string>
+    <string name="downloads_resume_all_empty">暂无可开始任务</string>
+    <string name="downloads_pause_all_empty">暂无可暂停任务</string>
+    <string name="download_status_pending">排队中</string>
+    <string name="download_status_running">下载中 %1$d%%</string>
+    <string name="download_detail_fetching_danmaku_segment">正在获取弹幕分段 %1$d/%2$d</string>
+    <string name="download_detail_converting_danmaku">正在转换弹幕</string>
+    <string name="download_detail_saving_file">正在保存文件</string>
+    <string name="download_status_paused">已暂停 %1$d%%</string>
+    <string name="download_status_success">已完成</string>
+    <string name="download_status_missing">已完成（文件已丢失）</string>
+    <string name="download_status_failed">下载失败</string>
+    <string name="download_status_unavailable">无对应资源</string>
+    <string name="download_status_cancelled">已取消</string>
+    <string name="download_pause">暂停</string>
+    <string name="download_resume">继续</string>
+    <string name="download_cancel">取消</string>
+    <string name="download_retry">重试</string>
+    <string name="download_delete">删除</string>
+    <string name="download_delete_with_file">同时删除已下载的文件</string>
+    <string name="download_delete_confirm_task">确定要删除该任务吗？</string>
+    <string name="download_delete_confirm_group">确定要删除该任务组吗？此操作将删除组内所有任务。</string>
+    <string name="download_task_params">参数：%1$s</string>
+    <string name="download_time_unknown">时间未知</string>
+    <string name="downloads_reparse">重新解析</string>
+    <string name="downloads_view_details">查看详细信息</string>
+    <string name="downloads_details_title">下载详情</string>
+    <string name="downloads_details_source">基本信息</string>
+    <string name="downloads_details_storage">文件与保存位置</string>
+    <string name="downloads_size_unknown">大小未知</string>
+    <string name="downloads_size_transferred">已下载 %1$s</string>
+    <string name="downloads_size_known">已知大小 %1$s</string>
+    <string name="downloads_no_saved_files">尚无已保存文件</string>
+    <string name="downloads_saved_count">已保存 %1$d / %2$d 项</string>
+    <string name="download_action_open">打开方式</string>
+    <string name="download_action_open_with">选择打开方式</string>
+    <string name="download_action_share">分享</string>
+    <string name="download_action_unavailable">任务尚未保存，无法打开或分享</string>
+    <string name="download_task_opus_content">图文内容</string>
+    <string name="download_task_opus_image">图文图片</string>
+    <string name="download_progress_percent">%1$d%%</string>
+    <string name="download_size_progress">%1$s / %2$s</string>
+    <string name="download_size_downloaded">%1$s</string>
+    <string name="download_speed_format">%1$s/s</string>
+    <string name="download_eta_format">剩余 %1$s</string>
+    <string name="download_detail_unavailable">%1$s，已跳过</string>
+    <string name="download_reason_unknown">原因未知</string>
+    <string name="download_failure_save">文件保存失败，请检查下载位置和剩余空间</string>
+    <string name="download_failure_download_unknown">下载过程中发生未知错误</string>
+    <string name="download_failure_merge">音视频合并失败</string>
+    <string name="download_failure_convert_audio">音频转 MP3 失败</string>
+    <string name="download_failure_convert_video">视频转 MP4 失败</string>
+    <string name="download_failure_resume_data_missing">续传数据已丢失，请重新下载</string>
+    <string name="download_failure_retry_data_missing">任务数据不完整，无法重试</string>
+    <string name="download_failure_extra">%1$s处理失败：%2$s</string>
+    <string name="login_user_mid">UID：%1$d</string>
+    <string name="login_user_level">等级：Lv%1$d</string>
+    <string name="login_avatar_desc">头像</string>
+    <string name="download_detail_merging">正在合并音视频</string>
+    <string name="download_detail_converting_audio">正在转换为 MP3 格式</string>
+    <string name="download_detail_converting_video">正在转换为 MP4 格式</string>
+    <string name="history_title">历史记录</string>
+    <string name="history_entry_desc">浏览观看足迹。</string>
+    <string name="login_entry_favorite_title">我的收藏</string>
+    <string name="login_entry_favorite_desc">下载宝藏视频！</string>
+    <string name="login_entry_watch_later_title">稍后再看</string>
+    <string name="login_entry_watch_later_desc">下次一定？</string>
+    <string name="login_entry_settings_title">设置</string>
+    <string name="login_entry_settings_desc">配置 BiliTools 的各项行为</string>
+    <string name="history_cover_desc">历史记录封面</string>
+    <string name="history_empty">暂无历史记录</string>
+    <string name="history_login_required">请先登录后查看历史记录</string>
+    <string name="history_error_load">历史记录加载失败，请稍后重试</string>
+    <string name="history_refresh">刷新</string>
+    <string name="history_more_filters">更多筛选</string>
+    <string name="history_download">跳转下载</string>
+    <string name="history_progress_format">%1$s / %2$s</string>
+    <string name="history_progress_completed">已看完 · %1$s</string>
+    <string name="history_page_prev">上一页</string>
+    <string name="history_page_next">下一页</string>
+    <string name="history_page_status">第 %1$d 页</string>
+    <string name="history_page_status_with_pages">第 %1$d 页 · 共 %2$d 页</string>
+    <string name="history_page_status_with_pages_and_total">第 %1$d 页 · 共 %2$d 页 · 共 %3$d 条</string>
+    <string name="history_loading_prev_page">正在加载上一页</string>
+    <string name="history_load_more_failed">加载失败，点击重试</string>
+    <string name="history_no_more">没有更多了</string>
+    <string name="history_keyword">关键词</string>
+    <string name="history_filter_apply">应用筛选</string>
+    <string name="history_filter_reset">重置</string>
+    <string name="history_filter_duration">时长</string>
+    <string name="history_filter_duration_all">全部时长</string>
+    <string name="history_filter_duration_under_10">10分钟以下</string>
+    <string name="history_filter_duration_10_30">10-30分钟</string>
+    <string name="history_filter_duration_30_60">30-60分钟</string>
+    <string name="history_filter_duration_over_60">60分钟以上</string>
+    <string name="history_filter_time">时间</string>
+    <string name="history_filter_time_all">全部时间</string>
+    <string name="history_filter_time_today">今天</string>
+    <string name="history_filter_time_yesterday">昨天</string>
+    <string name="history_filter_time_week">近一周</string>
+    <string name="history_filter_time_custom">自定义</string>
+    <string name="history_filter_custom_range_pick">选择日期范围</string>
+    <string name="history_filter_custom_range_none">未选择日期范围</string>
+    <string name="history_filter_custom_range_value">%1$s - %2$s</string>
+    <string name="history_filter_device">设备</string>
+    <string name="history_filter_device_all">全部设备</string>
+    
+    <string name="history_filter_device_phone">手机</string>
+    <string name="history_filter_device_pad">平板</string>
+    
+    <string name="parse_warning_dash">DASH 将自动合并音视频为单文件</string>
+
+    <string name="parse_collection_toggle">切换为合集模式</string>
+    <string name="parse_collection_toggle_hint">切换后可批量在合集内选集下载，选集将自动下载全部分P。\n单分P按选集标题命名，多分P按分P标题命名。</string>
+    <string name="parse_selected_count">已选 %1$d/%2$d</string>
+    <string name="parse_select_all">全选</string>
+    <string name="parse_clear_all">清空</string>
+    <string name="parse_notice_download_started">已开始下载</string>
+    <string name="parse_notice_download_started_partial">已开始下载，%1$d 条图文暂时无法读取</string>
+    <string name="parse_mobile_confirm_title">当前使用移动网络</string>
+    <string name="parse_mobile_confirm_message">你正在使用移动网络，继续下载可能产生流量费用。是否继续？</string>
+    <string name="parse_mobile_confirm_action">继续下载</string>
+    <string name="parse_error_no_selection">请先选择至少一项</string>
+    <string name="parse_error_no_download_content">请选择输出类型或附加内容</string>
+    
+    
+    
+    
+    
+    
+    
+    
+    <string name="parse_error_no_danmaku">未找到可用弹幕</string>
+    <string name="parse_notice_no_more">没有更多内容</string>
+    <string name="parse_notice_page_not_loaded">请先逐页加载到这里</string>
+    <string name="delete">删除</string>
+    <string name="download_error_unsafe_exit">应用意外退出，任务未完成，请重试</string>
+
+    <string name="settings_screen_title">设置</string>
+    <string name="settings_back">返回</string>
+    <string name="settings_general_title">通用</string>
+    <string name="settings_download_title">下载</string>
+    <string name="settings_appearance_title">外观</string>
+    <string name="settings_general_summary">语言、触感反馈、启动动画、实时活动通知</string>
+    <string name="settings_download_summary">下载位置、并发数量、默认质量、元数据、格式转换、移动网络、系统相册</string>
+    <string name="settings_appearance_summary">主题、配色、纯黑主题、液态玻璃</string>
+    <string name="settings_about_summary">版本、更新、日志导出、开源协议、免责声明</string>
+    <string name="settings_add_metadata">为下载文件添加元数据</string>
+    <string name="settings_add_metadata_desc">将标题、艺术家、专辑和来源嵌入到音频或视频文件中。</string>
+    <string name="settings_metadata_options">元数据选项</string>
+    <string name="settings_metadata_options_desc">封面、艺术家和专辑</string>
+    <string name="settings_metadata_cover">嵌入封面</string>
+    <string name="settings_metadata_cover_desc">将当前视频或歌曲的封面嵌入到文件。</string>
+    <string name="settings_metadata_disabled">元数据已关闭，可在“下载”设置中开启。</string>
+    <string name="settings_metadata_uploader">用 UP 主补充艺术家</string>
+    <string name="settings_metadata_uploader_desc">没有歌曲作者时（例如稿件视频），将 UP 主作为艺术家填入。转载视频和番剧只在备注中保留 UP 主。</string>
+    <string name="settings_metadata_collection">将合集作为专辑</string>
+    <string name="settings_metadata_collection_desc">用视频所属的 UP 主合集名称显示专辑。多 P 视频仍使用稿件标题；收藏夹、歌单不作为专辑。</string>
+    <string name="settings_download_preference_memory">记忆下载偏好</string>
+    <string name="settings_download_preference_memory_desc">下次解析时沿用上次在解析页选择的下载选项。</string>
+    <string name="settings_download_preference_memory_summary_off">每次解析都回到默认选项</string>
+    <string name="settings_download_preference_memory_summary_none">已开启，但没有选择要保留的选项</string>
+    <string name="settings_download_preference_memory_summary_all">保留解析页的全部下载选项</string>
+    <string name="settings_download_preference_memory_summary_some">保留 %1$d 类选项：%2$s</string>
+    <string name="settings_download_preference_memory_groups_title">要保留的选项</string>
+    <string name="settings_download_preference_memory_groups_desc">未保留的选项在每次解析后回到默认值。</string>
+    <string name="settings_download_preference_memory_disabled_hint">已关闭，解析页的所有下载选项每次都会回到默认值。</string>
+    <string name="settings_download_preference_group_output_type">输出类型</string>
+    <string name="settings_download_preference_group_output_type_desc">音视频、仅视频或仅音频；不保留时每次回到音视频。</string>
+    <string name="settings_download_preference_group_stream_format">流媒体格式</string>
+    <string name="settings_download_preference_group_stream_format_desc">DASH、MP4 或 FLV；不保留时每次回到 DASH。</string>
+    <string name="settings_download_preference_group_video_quality">分辨率与视频编码</string>
+    <string name="settings_download_preference_group_video_quality_desc">下次沿用选定的分辨率与视频编码；关闭后使用「默认下载质量」。</string>
+    <string name="settings_download_preference_group_audio_quality">音频比特率</string>
+    <string name="settings_download_preference_group_audio_quality_desc">下次沿用选定的音频比特率；关闭后使用「默认下载质量」。</string>
+    <string name="settings_download_preference_group_embedding">内嵌字幕与歌词</string>
+    <string name="settings_download_preference_group_embedding_desc">记住是否嵌入字幕或歌词，语言每次重新选择。</string>
+    <string name="settings_download_preference_group_misc_exports">字幕文件与 AI 总结</string>
+    <string name="settings_download_preference_group_misc_exports_desc">记住是否保存字幕文件、导出 AI 总结，字幕语言每次重新选择。</string>
+    <string name="settings_download_preference_group_nfo">NFO 元数据</string>
+    <string name="settings_download_preference_group_nfo_desc">合集 / 剧集刮削与单集刮削。</string>
+    <string name="settings_download_preference_group_danmaku">弹幕</string>
+    <string name="settings_download_preference_group_danmaku_desc">记住实时弹幕与历史弹幕的勾选状态，不保留指定日期和小时。</string>
+    <string name="settings_download_preference_group_images">图像</string>
+    <string name="settings_download_preference_group_images_desc">封面、方形封面、首帧画面等图片的勾选。</string>
+    <string name="settings_download_preference_group_opus">图文</string>
+    <string name="settings_download_preference_group_opus_desc">图文内容与图文图片。</string>
+    <string name="download_detail_metadata">正在写入元数据</string>
+    <string name="download_detail_metadata_subtitles">正在嵌入元数据与字幕</string>
+    <string name="download_detail_metadata_lyrics">正在嵌入元数据与歌词</string>
+    <string name="download_detail_embed_subtitles">正在嵌入字幕</string>
+    <string name="download_detail_embed_lyrics">正在嵌入歌词</string>
+    <string name="download_metadata_cover_failed">封面未嵌入</string>
+    <string name="download_embed_lyrics_unavailable">没有可用歌词</string>
+    <string name="download_embed_lyrics_failed">歌词获取失败</string>
+    <string name="download_embed_subtitles_unavailable">没有可用字幕</string>
+    <string name="download_embed_subtitles_failed">字幕获取失败</string>
+    <string name="download_embed_subtitles_partial">部分字幕获取失败</string>
+    <string name="download_embed_subtitles_container">当前文件格式无法嵌入字幕</string>
+    <string name="download_embed_write_failed">嵌入失败，已保留下载文件</string>
+    <string name="download_embed_unsupported">此格式不支持嵌入所选内容</string>
+    <string name="settings_max_concurrent_downloads">最大并发下载数</string>
+    <string name="settings_max_concurrent_downloads_desc">同时下载的视频、音频和图文图片数量，超出的会排队等待。数值过大可能增加风控风险。（字幕、弹幕、封面、刮削、AI 总结和图文内容不受此项限制）</string>
+    <string name="settings_convert_xml_danmaku_to_ass">将弹幕转为 ASS 格式</string>
+    <string name="settings_convert_xml_danmaku_to_ass_desc">若启用，则会在下载弹幕时将 XML 转换为 ASS 格式。</string>
+    <string name="settings_convert_audio_to_mp3">将音频转换为 MP3 格式</string>
+    <string name="settings_convert_audio_to_mp3_desc">下载音频后转换为 MP3 格式；音质可能因有损编码而降低，音视频不受影响。</string>
+    <string name="settings_convert_video_to_mp4">将视频转换为 MP4 格式</string>
+    <string name="settings_convert_video_to_mp4_desc">下载视频后保存为 MP4；保留兼容的音轨，FLAC 等音轨转换为 AAC。</string>
+    <string name="settings_confirm_cellular">移动网络下载前确认</string>
+    <string name="settings_confirm_cellular_desc">使用移动网络时，点击下载会先弹出确认提示。</string>
+    <string name="settings_hide_download_video_in_system_album">在系统相册隐藏下载的视频</string>
+    <string name="settings_hide_download_video_in_system_album_desc">在下载目录创建 .nomedia 文件，阻止系统相册索引该目录；部分系统下若仍未生效，可手动刷新缓存：先打开相册，再到文件管理中把下载目录改名；再切回到相册，稍等片刻，再到文件管理将目录名改回。</string>
+    <string name="settings_live_activity_style_notification">启用 Live Update 通知支持</string>
+    <string name="settings_live_activity_style_notification_desc">下载进行中时启用 Live Update 风格通知；关闭后回退为普通进度通知。</string>
+    <string name="settings_default_download_quality">默认下载质量</string>
+    <string name="settings_default_download_quality_summary_format">%1$s / %2$s / %3$s</string>
+    <string name="settings_default_download_quality_dialog_desc">当前解析视频时默认选择的下载质量：</string>
+    <string name="settings_default_quality_resolution_title">分辨率</string>
+    <string name="settings_default_quality_video_codec_title">视频编码</string>
+    <string name="settings_default_quality_audio_title">音频比特率</string>
+    <string name="settings_default_quality_mode_highest">最高</string>
+    <string name="settings_default_quality_mode_lowest">最低</string>
+    <string name="settings_default_quality_mode_fixed">固定</string>
+    <string name="settings_default_quality_resolution_highest">最高分辨率</string>
+    <string name="settings_default_quality_resolution_lowest">最低分辨率</string>
+    <string name="settings_default_quality_resolution_fixed_label">固定分辨率</string>
+    <string name="settings_default_quality_resolution_fixed_desc">若所选分辨率不可用，会自动回退到当前视频可用的最高分辨率。</string>
+    <string name="settings_default_quality_audio_highest">最高音频比特率</string>
+    <string name="settings_default_quality_audio_lowest">最低音频比特率</string>
+    <string name="settings_default_quality_audio_fixed_label">固定音频比特率</string>
+    <string name="settings_default_quality_audio_fixed_desc">若所选音频比特率不可用，会自动回退到当前视频可用的最高音频比特率。</string>
+    <string name="settings_default_quality_codec_desc">若所选编码不可用，会自动回退到当前视频可用的编码。</string>
+    <string name="settings_theme">主题</string>
+    <string name="settings_theme_system">跟随系统</string>
+    <string name="settings_theme_light">浅色</string>
+    <string name="settings_theme_dark">深色</string>
+    <string name="settings_downloads_glass_debug">启用液态玻璃调试窗口</string>
+    <string name="settings_downloads_glass_debug_desc">在下载页显示液态玻璃调试悬浮窗，可分别调节下载页玻璃浮窗与底部导航栏的玻璃参数并实时预览（需要调参时可临时启用，参数将持久化保存）。</string>
+    <string name="settings_liquid_bottom_tabs">液态玻璃底栏</string>
+    <string name="settings_liquid_glass_panels">液态玻璃面板</string>
+    <string name="settings_liquid_glass_panels_desc">下载任务菜单和批量管理面板使用液态玻璃效果；关闭后使用 Material 风格面板。</string>
+    <string name="settings_liquid_glass_panels_unavailable_desc">当前设备暂不支持液态玻璃，已自动使用 Material 风格面板。</string>
+    <string name="settings_liquid_bottom_tabs_unavailable_desc">当前设备暂不支持液态玻璃，已自动使用 Material 风格底栏。</string>
+    <string name="settings_liquid_bar_width">液态底栏宽度</string>
+    <string name="settings_liquid_bar_width_desc">调整底栏胶囊占屏幕可用宽度的比例。</string>
+    <string name="settings_liquid_bottom_tabs_desc">底部导航栏使用液态玻璃效果；关闭后使用 Material 风格底栏。</string>
+    <string name="settings_black_theme_title">纯黑主题</string>
+    <string name="settings_black_theme_desc">在深色模式下使用 AMOLED 纯黑背景。</string>
+    <string name="settings_launch_splash_animation">启动动画</string>
+    <string name="settings_launch_splash_animation_desc">启动时播放小电视弹跳动画；关闭后将直接进入首页。</string>
+    <string name="settings_haptic_feedback">触感反馈</string>
+    <string name="settings_haptic_feedback_desc">交互时的震动反馈强度。轻量档仅保留长按、滑动吸附与操作成败提示；完整档额外包含点击、勾选与拖动步进。系统「触感反馈」总开关关闭时本设置不生效。</string>
+    <string name="settings_haptic_feedback_off">关闭</string>
+    <string name="settings_haptic_feedback_light">轻量</string>
+    <string name="settings_haptic_feedback_full">完整</string>
+    <string name="settings_dynamic_color_title">动态取色</string>
+    <string name="settings_dynamic_color_desc">在支持的设备上使用系统动态配色。</string>
+    <string name="settings_color_scheme_title">配色方案</string>
+    <string name="settings_color_scheme_dynamic">动态</string>
+    <string name="settings_color_scheme_sakura">樱粉</string>
+    <string name="settings_color_scheme_coral">珊瑚</string>
+    <string name="settings_color_scheme_apricot">蜜杏</string>
+    <string name="settings_color_scheme_sand">沙金</string>
+    <string name="settings_color_scheme_matcha">抹茶</string>
+    <string name="settings_color_scheme_mint">青苹</string>
+    <string name="settings_color_scheme_seafoam">薄荷</string>
+    <string name="settings_color_scheme_lagoon">湖蓝</string>
+    <string name="settings_color_scheme_sky">天蓝</string>
+    <string name="settings_color_scheme_iris">鸢尾</string>
+    <string name="settings_color_scheme_periwinkle">蓝紫</string>
+    <string name="settings_color_scheme_lilac">丁香</string>
+    <string name="settings_color_scheme_orchid">藕荷</string>
+    <!-- 无障碍朗读色块用；配色名会填进 %1$s -->
+    <string name="settings_color_scheme_swatch_desc">%1$s 配色</string>
+    <string name="settings_download_location">下载位置</string>
+    <string name="settings_download_location_value">当前目录：%1$s</string>
+    <string name="settings_download_location_updated">下载位置已更新</string>
+    <string name="settings_download_location_invalid">所选目录无效，请选择 Download 目录或其子目录</string>
+
+    <string name="settings_about_title">关于</string>
+    <string name="settings_about_open_github">打开 GitHub 仓库</string>
+    <string name="settings_about_version">当前版本：v%1$s</string>
+    <string name="settings_check_update_title">检查更新</string>
+    <string name="settings_check_update_desc">点击检查是否有新版本</string>
+    <string name="settings_check_update_desc_checking">正在检查更新…</string>
+    <string name="settings_check_update_desc_available">发现新版本：%1$s</string>
+    <string name="settings_check_update_desc_latest">当前已是最新版本</string>
+    <string name="settings_check_update_desc_failed">检查失败，点击重试</string>
+    <string name="settings_check_update_toast_latest">当前已是最新版本</string>
+    <string name="settings_check_update_toast_failed">检查更新失败：%1$s</string>
+    <string name="settings_license_title">开源协议</string>
+    
+    <string name="settings_opensource_licenses_title">开源许可证</string>
+    <string name="settings_opensource_licenses_summary">本应用使用的第三方开源库</string>
+    <string name="settings_issue_report_enabled_title">记录详细 issue 日志</string>
+    <string name="settings_issue_report_enabled_desc">日志仅保存在本地，导出时会附带设备信息、当前设置和网络状态摘要；Cookie、Set-Cookie 与 Authorization 已做脱敏。</string>
+    <string name="settings_issue_report_export_title">导出并分享日志</string>
+    <string name="settings_issue_report_clear_title">清空本地日志</string>
+    <string name="settings_issue_report_clear_desc">删除应用内已记录的诊断日志。建议在复现问题前先清空一次，便于只保留本次问题相关日志。</string>
+    <string name="settings_issue_report_export_success">诊断日志已导出，正在打开分享面板</string>
+    <string name="settings_issue_report_export_failed">导出诊断日志失败，请稍后重试</string>
+    <string name="settings_issue_report_share_failed">日志已导出，但无法打开分享面板</string>
+    <string name="settings_issue_report_clear_success">本地诊断日志已清空</string>
+    <string name="settings_issue_report_export_running">正在生成并导出诊断日志…</string>
+    <string name="settings_issue_report_clear_running">正在清空本地诊断日志…</string>
+    <string name="settings_issue_report_status_disabled">详细日志当前未开启，导出文件将主要包含基础诊断信息。</string>
+    <string name="settings_issue_report_status_enabled">详细日志记录中。</string>
+    <string name="settings_issue_report_status_enabled_since_suffix">自 %1$s 起。</string>
+    <string name="settings_issue_report_status_files">已缓存 %1$d 个日志文件，约 %2$s。</string>
+    <string name="settings_issue_report_status_last_capture">最近写入：%1$s</string>
+    <string name="settings_issue_report_status_last_export">最近导出：%1$s</string>
+    <string name="settings_disclaimer_title">免责声明</string>
+    <string name="settings_about_disclaimer">该应用用于持久化的所有数据均仅明文存储于用户本地！\n因使用本项目而产生的任何后果均由用户个人承担，与开发者无关，概不负责。\n“哔哩哔哩” 及 “Bilibili” 名称、LOGO及相关图形是上海幻电信息科技有限公司的注册商标或商标。\n本项目与哔哩哔哩及其关联公司无任何关联、合作、授权或背书等关系。</string>
+    <string name="update_dialog_title">发现新版本</string>
+    <string name="update_dialog_notes_empty">该版本未提供更新说明。</string>
+    <string name="update_dialog_open_release">前往发布页</string>
+    <string name="update_dialog_open_release_failed">无法打开发布页</string>
+</resources>

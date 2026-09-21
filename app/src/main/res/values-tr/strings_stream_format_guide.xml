@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="stream_format_guide_title">DASH / MP4 / FLV Hakkında</string>
+    <string name="stream_format_guide_subtitle">Bir akış formatının seçilmesi</string>
+    <string name="stream_format_guide_intro">Bilibili üç akış formatı kullanmıştır. DASH 2018\'de tanıtıldı ve ana format olmaya devam ediyor. MP4 ve FLV artık yalnızca sınırlı durumlarda kullanılıyor.</string>
+    <string name="stream_format_guide_dash_status">Önerilen</string>
+    <string name="stream_format_guide_dash_notice">Bilibili\'nin mevcut akış formatı en iyi ses ve video kalitesini ve en hızlı indirmeleri sunar.</string>
+    <string name="stream_format_guide_dash_default">Çoğu indirme için bu formatı koruyun. Emin değilseniz Akış biçimini değiştirmeden bırakın.</string>
+    <string name="stream_format_guide_dash_body">Ses ve video bölümler halinde ayrı ayrı sunulur. Video akışında ses yok ve ses akışında resim yok.</string>
+    <string name="stream_format_guide_dash_merge">Hem ses hem de video içeren tek bir dosya oluşturmak için akışların FFmpeg kullanılarak birleştirilmesi gerekir. Bunu yapmak için Ses ve video çıkış türünü seçin.</string>
+    <string name="stream_format_guide_mp4_status">Dikkatlice seçin</string>
+    <string name="stream_format_guide_mp4_notice">Bunu sırf MP4 dosyası istediğiniz için seçmeyin. İndirmeler genellikle DASH\'den daha yavaş ve daha düşük kalitededir.</string>
+    <string name="stream_format_guide_mp4_body">Bu format, halihazırda ses içeren MP4 dosya sunar, dolayısıyla birleştirme gerekmez.</string>
+    <string name="stream_format_guide_mp4_exception">Bu format, ücretli şovların, filmlerin ve kursların önizlemeleri dışında artık nadiren kullanılıyor. Bu tür önizlemeler genellikle yalnızca sınırlı resim ve ses kalitesiyle MP4 olarak mevcuttur.</string>
+    <string name="stream_format_guide_flv_status">Çoğunlukla emekli</string>
+    <string name="stream_format_guide_flv_notice">Daha önceki yıllarda kullanılan bölümlenmiş FLV biçimi neredeyse tamamen kullanımdan kaldırılmıştır.</string>
+    <string name="stream_format_guide_flv_body">Bu seçenek uyumluluk ve arşivleme amacıyla tutulur. Bazı eski içerikler hâlâ indirilebilir olabilir ancak FLV günlük kullanım için önerilmez.</string>
+    <string name="stream_format_guide_footer">Başka bir formata ihtiyaç duymadığınız sürece varsayılan DASH formatını koruyun.</string>
+</resources>

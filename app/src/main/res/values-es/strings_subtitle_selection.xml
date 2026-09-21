@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="parse_subtitle_file_option">Guardar archivo de subtítulos</string>
+    <string name="subtitle_source_language">Idioma de los subtítulos</string>
+    <string name="subtitle_source_lyrics_language">Idioma de las letras</string>
+    <string name="subtitle_source_embed_title">Idioma de subtítulos incorporado</string>
+    <string name="subtitle_source_file_title">Idioma del archivo de subtítulos</string>
+    <string name="subtitle_source_ai_description">Subtítulos de IA</string>
+    <string name="subtitle_source_select">Seleccionar idioma</string>
+    <string name="subtitle_source_select_all">Seleccionar todo</string>
+    <string name="subtitle_source_all_count">Todos los subtítulos · Idiomas: %1$d</string>
+    <string name="subtitle_source_selected_count">Idiomas seleccionados: %1$d</string>
+    <string name="subtitle_source_cancel">Cancelar</string>
+    <string name="subtitle_source_done">Hecho</string>
+    <string name="subtitle_source_coverage">Disponibles: %1$d / %2$d</string>
+    <string name="subtitle_source_coverage_pending">Confirmados: %1$d / %2$d</string>
+    <string name="subtitle_source_unconfirmed">Disponibilidad aún no confirmada</string>
+    <string name="subtitle_source_unavailable">No disponible para este artículo</string>
+    <string name="subtitle_source_loading">Cargando subtítulos…</string>
+    <string name="subtitle_source_loading_batch">Cargando subtítulos: %1$d / %2$d</string>
+    <string name="subtitle_source_failure">Falló la carga de subtítulos.</string>
+    <string name="subtitle_source_partial_failure">Elementos con errores de subtítulos: %1$d</string>
+    <string name="subtitle_source_retry">Inténtalo de nuevo</string>
+    <string name="subtitle_source_empty">No hay subtítulos disponibles para este vídeo.</string>
+    <string name="subtitle_source_empty_batch">No hay subtítulos disponibles para estos artículos.</string>
+    <string name="subtitle_source_login">Inicie sesión para acceder a los subtítulos de vídeo.</string>
+    <string name="subtitle_source_login_lyrics">Inicie sesión para elegir un idioma de letras o desactive las letras incrustadas.</string>
+    <string name="subtitle_source_choose_lyrics">Seleccione una pista de subtítulos para usar como letra.</string>
+    <string name="subtitle_source_no_lyrics">No hay subtítulos disponibles. Desactive las letras incrustadas antes de descargarlas.</string>
+    <string name="subtitle_source_choose_subtitles">Seleccione al menos un subtítulo.</string>
+    <string name="subtitle_source_missing_selection">El idioma de subtítulos seleccionado falta en algunos elementos.</string>
+</resources>

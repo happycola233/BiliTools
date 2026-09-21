@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="stream_format_guide_title">關於 DASH / MP4 / FLV</string>
+    <string name="stream_format_guide_subtitle">流媒體格式選擇指南</string>
+    <string name="stream_format_guide_intro">嗶哩嗶哩歷史上採用過三種流媒體串流方案。2018 年引入 DASH 後沿用至今，MP4 與 FLV 僅在少數場景下還會出現。</string>
+    <string name="stream_format_guide_dash_status">推薦</string>
+    <string name="stream_format_guide_dash_notice">嗶哩嗶哩目前採用的串流格式，音影片質量最好，下載速度也最快。</string>
+    <string name="stream_format_guide_dash_default">在大多數情況下保持該格式即可。若不瞭解其他格式，不要修改下載引數中的“流媒體格式”。</string>
+    <string name="stream_format_guide_dash_body">音訊與影片會被切片後單獨下發，因此拿到的分別是無聲影片和無畫面音訊。</string>
+    <string name="stream_format_guide_dash_merge">若要得到單個音影片檔案，必須經 FFmpeg 混流，也就是應用內名為“音影片”的輸出型別。</string>
+    <string name="stream_format_guide_mp4_status">謹慎選擇</string>
+    <string name="stream_format_guide_mp4_notice">不要因為字尾看起來是 MP4 就選它，下載速度通常更慢，質量也不如 DASH。</string>
+    <string name="stream_format_guide_mp4_body">該方案直接下發 MP4 格式媒體，影片自帶音訊，無需混流。</string>
+    <string name="stream_format_guide_mp4_exception">目前基本已不再使用，主要例外是試看資源，例如需要付費的番劇、影視或課程。這類資源通常只能取到 MP4，且畫質與音質大多欠佳。</string>
+    <string name="stream_format_guide_flv_status">基本退役</string>
+    <string name="stream_format_guide_flv_notice">早年採用的 FLV 分段格式，現已基本完全退役。</string>
+    <string name="stream_format_guide_flv_body">保留該選項僅用於相容與存檔，部分舊資源可能仍可下載，不建議作為日常選擇。</string>
+    <string name="stream_format_guide_footer">如無特殊需求，建議保持預設的 DASH 格式。</string>
+</resources>

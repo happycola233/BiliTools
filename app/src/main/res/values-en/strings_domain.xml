@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="media_kind_anime">Anime</string>
+    <string name="media_kind_movie">Movie</string>
+    <string name="media_kind_documentary">Documentary</string>
+    <string name="media_kind_chinese_animation">Chinese animation</string>
+    <string name="media_kind_series">TV series</string>
+    <string name="media_kind_variety">Variety show</string>
+    <string name="media_copyright_licensed">Licensed</string>
+    <string name="media_copyright_exclusive">Exclusive</string>
+    <string name="media_price_bcoin">%1$s B-Coins</string>
+    <string name="media_access_available">Available</string>
+    <string name="media_access_purchase">Purchase required</string>
+    <string name="media_access_unavailable">Currently unavailable</string>
+    <string name="download_saved_file_unavailable">The saved file is no longer available</string>
+    <string name="export_author">Author: %1$s</string>
+    <string name="export_published_at">Published: %1$s</string>
+    <string name="export_statistics">Statistics: %1$s</string>
+    <string name="export_source">Source: %1$s</string>
+    <string name="export_original">Original post</string>
+    <string name="export_image">Image %1$d</string>
+    <string name="export_views">Views: %1$d</string>
+    <string name="export_likes">Likes: %1$d</string>
+    <string name="export_coins">Coins: %1$d</string>
+    <string name="export_favorites">Favorites: %1$d</string>
+    <string name="export_replies">Comments: %1$d</string>
+    <string name="export_shares">Shares: %1$d</string>
+    <string name="metadata_uploader">Creator: %1$s</string>
+    <string name="metadata_published_at">Published on Bilibili: %1$s</string>
+    <string name="metadata_tags">Tags: %1$s</string>
+    <string name="metadata_lyrics_source">Lyrics source: %1$s</string>
+    <string name="lyrics_source_original">Original audio lyrics</string>
+    <string name="lyrics_source_subtitles">%1$s (transcribed from subtitles)</string>
+    <string name="update_error_empty_response">The update server returned empty content</string>
+    <string name="update_error_invalid_response">Unable to read update information</string>
+    <string name="update_error_no_route">Temporarily unable to connect to the update server, please try again later.</string>
+</resources>

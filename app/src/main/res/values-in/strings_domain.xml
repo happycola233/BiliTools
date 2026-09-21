@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="media_kind_anime">Anime</string>
+    <string name="media_kind_movie">Film</string>
+    <string name="media_kind_documentary">Dokumenter</string>
+    <string name="media_kind_chinese_animation">Animasi Tiongkok</string>
+    <string name="media_kind_series">serial TV</string>
+    <string name="media_kind_variety">Pertunjukan ragam</string>
+    <string name="media_copyright_licensed">Berlisensi</string>
+    <string name="media_copyright_exclusive">Eksklusif</string>
+    <string name="media_price_bcoin">%1$s B-Koin</string>
+    <string name="media_access_available">Tersedia</string>
+    <string name="media_access_purchase">Diperlukan pembelian</string>
+    <string name="media_access_unavailable">Saat ini tidak tersedia</string>
+    <string name="download_saved_file_unavailable">File yang disimpan tidak lagi tersedia</string>
+    <string name="export_author">Penulis: %1$s</string>
+    <string name="export_published_at">Diterbitkan: %1$s</string>
+    <string name="export_statistics">Statistik: %1$s</string>
+    <string name="export_source">Sumber: %1$s</string>
+    <string name="export_original">Postingan asli</string>
+    <string name="export_image">Gambar %1$d</string>
+    <string name="export_views">Penayangan: %1$d</string>
+    <string name="export_likes">Suka: %1$d</string>
+    <string name="export_coins">Koin: %1$d</string>
+    <string name="export_favorites">Favorit: %1$d</string>
+    <string name="export_replies">Komentar: %1$d</string>
+    <string name="export_shares">Dibagikan: %1$d</string>
+    <string name="metadata_uploader">Pencipta: %1$s</string>
+    <string name="metadata_published_at">Diterbitkan pada Bilibili: %1$s</string>
+    <string name="metadata_tags">Tag: %1$s</string>
+    <string name="metadata_lyrics_source">Sumber lirik: %1$s</string>
+    <string name="lyrics_source_original">Lirik audio asli</string>
+    <string name="lyrics_source_subtitles">%1$s (ditranskripsikan dari subtitle)</string>
+    <string name="update_error_empty_response">Server pembaruan mengembalikan konten kosong</string>
+    <string name="update_error_invalid_response">Tidak dapat membaca informasi pembaruan</string>
+    <string name="update_error_no_route">Untuk sementara tidak dapat terhubung ke server pembaruan, silakan coba lagi nanti.</string>
+</resources>

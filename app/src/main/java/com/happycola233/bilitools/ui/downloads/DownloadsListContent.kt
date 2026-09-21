@@ -76,6 +76,8 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -95,6 +97,11 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.google.android.material.progressindicator.LinearProgressIndicator
+import com.happycola233.bilitools.core.formatEstimatedTime
+import com.happycola233.bilitools.core.localized
+import com.happycola233.bilitools.core.localizedStatusDetail
+import com.happycola233.bilitools.core.localizedErrorMessage
+import com.happycola233.bilitools.core.localizedEmbedWarning
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.model.DownloadGroup
 import com.happycola233.bilitools.data.model.DownloadItem
@@ -108,7 +115,6 @@ import com.happycola233.bilitools.ui.haptics.HapticThresholdGate
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import com.happycola233.bilitools.ui.theme.AppAccents
 import com.happycola233.bilitools.ui.theme.AppSurfaces
-import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -417,14 +423,9 @@ private fun DownloadsSectionHeader(
         DownloadSectionType.Downloading -> stringResource(R.string.downloads_section_downloading)
         DownloadSectionType.Downloaded -> stringResource(R.string.downloads_section_downloaded)
     }
-    val displayTitle = title.ifBlank {
-        when (section.type) {
-            DownloadSectionType.Downloading -> "正在下载"
-            DownloadSectionType.Downloaded -> "已下载"
-        }
-    }
+    val collapsedRotation = if (LocalLayoutDirection.current == LayoutDirection.Rtl) 90f else -90f
     val rotation by animateFloatAsState(
-        targetValue = if (section.collapsed) -90f else 0f,
+        targetValue = if (section.collapsed) collapsedRotation else 0f,
         animationSpec = tween(durationMillis = GROUP_ARROW_DURATION_MILLIS),
         label = "downloadsSectionArrow",
     )
@@ -449,7 +450,7 @@ private fun DownloadsSectionHeader(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
             Text(
-                text = displayTitle,
+                text = title,
                 style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
@@ -1166,11 +1167,11 @@ private fun TaskOutcomeMessage(
     val detail = if (unavailable) {
         stringResource(
             R.string.download_detail_unavailable,
-            item.statusDetail?.trim()?.takeIf { it.isNotBlank() }
+            item.localizedStatusDetail(context)?.trim()?.takeIf { it.isNotBlank() }
                 ?: stringResource(R.string.download_unavailable_generic),
         )
     } else {
-        resolveFailureReason(item.errorMessage)
+        resolveFailureReason(item.localizedErrorMessage(context))
     }
     val paramsText = listOfNotNull(
         buildDownloadSizeText(context, item)?.keepSizeUnitsTogether(),
@@ -1334,31 +1335,19 @@ private fun buildDownloadsSections(
     )
 }
 
-private fun buildSectionMetaTextLegacy(section: DownloadsSectionUi): String {
-    val countText = "${section.count} 项"
-    if (section.type != DownloadSectionType.Downloading) {
-        return countText
-    }
-    val parts = buildList {
-        add(countText)
-        add("${formatDownloadBytes(section.speedBytesPerSec)}/s")
-        section.etaSeconds?.let { add("剩余 ${formatEta(it)}") }
-    }
-    return parts.joinToString(" · ")
-}
-
 @Composable
 private fun buildSectionMetaLabelText(section: DownloadsSectionUi): String {
+    val context = LocalContext.current
     val countText = stringResource(R.string.downloads_section_count, section.count)
     if (section.type != DownloadSectionType.Downloading) {
         return countText
     }
     val speedText = stringResource(
         R.string.download_speed_format,
-        formatDownloadBytes(section.speedBytesPerSec),
+        context.formatDownloadBytes(section.speedBytesPerSec),
     )
     val etaText = section.etaSeconds?.let { seconds ->
-        stringResource(R.string.download_eta_format, formatEta(seconds))
+        stringResource(R.string.download_eta_format, LocalContext.current.formatEstimatedTime(seconds))
     }
     return listOfNotNull(countText, speedText, etaText).joinToString(" · ")
 }
@@ -1417,14 +1406,14 @@ private fun buildGroupActionsSummaryText(
     val sizeSummary = if (totalBytes > 0L) {
         context.getString(
             R.string.download_size_progress,
-            formatDownloadBytes(downloadedBytes),
-            formatDownloadBytes(totalBytes),
+            context.formatDownloadBytes(downloadedBytes),
+            context.formatDownloadBytes(totalBytes),
         )
     } else {
         val fallbackDownloaded = group.tasks.sumOf { it.downloadedBytes.coerceAtLeast(0L) }
         context.getString(
             R.string.download_size_downloaded,
-            formatDownloadBytes(fallbackDownloaded),
+            context.formatDownloadBytes(fallbackDownloaded),
         )
     }
     val totalSpeedBytesPerSec = group.tasks.sumOf { item ->
@@ -1437,7 +1426,7 @@ private fun buildGroupActionsSummaryText(
             sizeSummary,
             context.getString(
                 R.string.download_speed_format,
-                formatDownloadBytes(totalSpeedBytesPerSec),
+                context.formatDownloadBytes(totalSpeedBytesPerSec),
             ),
         )
     } else {
@@ -1456,9 +1445,9 @@ private fun buildTaskDetailText(
     val progress = DownloadProgressRules.normalizeTaskProgress(item.status, item.progress)
     val baseText = when (item.status) {
         DownloadStatus.Running -> {
-            val statusDetail = item.statusDetail?.takeIf { it.isNotBlank() }
+            val statusDetail = item.localizedStatusDetail(context)?.takeIf { it.isNotBlank() }
             val speedText = if (item.speedBytesPerSec > 0L) {
-                context.getString(R.string.download_speed_format, formatDownloadBytes(item.speedBytesPerSec))
+                context.getString(R.string.download_speed_format, context.formatDownloadBytes(item.speedBytesPerSec))
             } else {
                 ""
             }
@@ -1474,14 +1463,14 @@ private fun buildTaskDetailText(
         DownloadStatus.Paused -> context.getString(R.string.download_status_paused, progress)
         DownloadStatus.Failed -> context.getString(R.string.download_status_failed)
         DownloadStatus.Unavailable -> context.getString(R.string.download_status_unavailable)
-        DownloadStatus.Merging -> item.statusDetail?.takeIf { it.isNotBlank() }
+        DownloadStatus.Merging -> item.localizedStatusDetail(context)?.takeIf { it.isNotBlank() }
             ?: context.getString(R.string.download_detail_merging)
         DownloadStatus.Success -> if (item.outputMissing) {
             context.getString(R.string.download_status_missing)
         } else {
             listOfNotNull(
                 context.getString(R.string.download_status_success),
-                item.embedWarning,
+                item.localizedEmbedWarning(context),
             ).joinToString(" · ")
         }
 
@@ -1492,7 +1481,7 @@ private fun buildTaskDetailText(
 }
 
 private fun buildTaskParamsText(context: Context, item: DownloadItem): String? =
-    buildMediaParams(context, item.mediaParams, item.fileName, item.taskType)?.let {
+    buildMediaParams(context, item.mediaParams?.localized(context), item.fileName, item.taskType)?.let {
         context.getString(R.string.download_task_params, it)
     }
 
@@ -1681,28 +1670,4 @@ private fun isManagedTask(item: DownloadItem): Boolean = isManagedTask(item.task
 
 private fun isManagedTask(taskType: DownloadTaskType): Boolean {
     return taskType.isManagedTransfer
-}
-
-private fun formatEta(totalSeconds: Long): String {
-    val seconds = totalSeconds.coerceAtLeast(0L)
-    val hours = seconds / 3600
-    val minutes = (seconds % 3600) / 60
-    val remain = seconds % 60
-    return when {
-        hours > 0L -> String.format(Locale.getDefault(), "%d 小时 %02d 分", hours, minutes)
-        minutes > 0L -> String.format(Locale.getDefault(), "%d 分 %02d 秒", minutes, remain)
-        else -> String.format(Locale.getDefault(), "%d 秒", remain)
-    }
-}
-
-private fun formatEtaLegacy(totalSeconds: Long): String {
-    val seconds = totalSeconds.coerceAtLeast(0L)
-    val hours = seconds / 3600
-    val minutes = (seconds % 3600) / 60
-    val remain = seconds % 60
-    return when {
-        hours > 0L -> String.format(Locale.getDefault(), "%d小时%02d分", hours, minutes)
-        minutes > 0L -> String.format(Locale.getDefault(), "%d分%02d秒", minutes, remain)
-        else -> String.format(Locale.getDefault(), "%d秒", remain)
-    }
 }

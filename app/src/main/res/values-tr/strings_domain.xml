@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="media_kind_anime">Anime</string>
+    <string name="media_kind_movie">Film</string>
+    <string name="media_kind_documentary">Belgesel</string>
+    <string name="media_kind_chinese_animation">Çin animasyonu</string>
+    <string name="media_kind_series">TV dizisi</string>
+    <string name="media_kind_variety">Çeşitlilik gösterisi</string>
+    <string name="media_copyright_licensed">Lisanslı</string>
+    <string name="media_copyright_exclusive">Özel</string>
+    <string name="media_price_bcoin">%1$s B-Paralar</string>
+    <string name="media_access_available">Mevcut</string>
+    <string name="media_access_purchase">Satın alma gerekli</string>
+    <string name="media_access_unavailable">Şu anda mevcut değil</string>
+    <string name="download_saved_file_unavailable">Kaydedilen dosya artık mevcut değil</string>
+    <string name="export_author">Yazar: %1$s</string>
+    <string name="export_published_at">Yayınlandı: %1$s</string>
+    <string name="export_statistics">İstatistikler: %1$s</string>
+    <string name="export_source">Kaynak: %1$s</string>
+    <string name="export_original">Orijinal yazı</string>
+    <string name="export_image">Resim %1$d</string>
+    <string name="export_views">Görüntülemeler: %1$d</string>
+    <string name="export_likes">Beğeniler: %1$d</string>
+    <string name="export_coins">Paralar: %1$d</string>
+    <string name="export_favorites">Favoriler: %1$d</string>
+    <string name="export_replies">Yorumlar: %1$d</string>
+    <string name="export_shares">Paylaşımlar: %1$d</string>
+    <string name="metadata_uploader">Yaratıcı: %1$s</string>
+    <string name="metadata_published_at">Bilibili tarihinde yayınlandı: %1$s</string>
+    <string name="metadata_tags">Etiketler: %1$s</string>
+    <string name="metadata_lyrics_source">Şarkı sözü kaynağı: %1$s</string>
+    <string name="lyrics_source_original">Orijinal sesli şarkı sözleri</string>
+    <string name="lyrics_source_subtitles">%1$s (altyazılardan kopyalanmıştır)</string>
+    <string name="update_error_empty_response">Güncelleme sunucusu boş içerik döndürdü</string>
+    <string name="update_error_invalid_response">Güncelleme bilgileri okunamıyor</string>
+    <string name="update_error_no_route">Güncelleme sunucusuna geçici olarak bağlanılamıyor, lütfen daha sonra tekrar deneyin.</string>
+</resources>

@@ -269,7 +269,7 @@ private object OpusDocumentParser {
         val title = titleModule
             ?: basic?.title?.trim()?.takeIf(String::isNotBlank)
             ?: plainText.lineSequence().firstOrNull(String::isNotBlank)?.trim()?.take(120)
-            ?: "图文_$canonicalId"
+            ?: "opus_$canonicalId"
         val tags = modules.orEmpty()
             .flatMap { module ->
                 buildList {

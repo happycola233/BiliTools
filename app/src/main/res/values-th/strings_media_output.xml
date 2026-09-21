@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_detail_preparing_media">กำลังเตรียมไฟล์มีเดีย</string>
+    <string name="download_failure_prepare_media">ไม่สามารถเตรียมไฟล์มีเดียได้</string>
+    <string name="download_embed_missing_languages">ไม่มีคำบรรยาย: %1$s</string>
+    <string name="parse_subtitle_selection_required">เลือกภาษาคำบรรยายหรือเนื้อเพลง หรือปิดตัวเลือกที่เกี่ยวข้องเพื่อดำเนินการต่อ</string>
+    <string name="parse_dolby_mp3_notice">การแปลง MP3 เปิดอยู่ Dolby Atmos จะไม่ถูกเก็บรักษาไว้</string>
+</resources>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="parse_formats_unavailable">%1$s no está disponible para este contenido.</string>
+    <string name="parse_formats_unavailable_batch">%1$s no está disponible para algunos artículos seleccionados.</string>
+    <string name="parse_formats_no_common">Los elementos seleccionados no tienen ningún formato de transmisión en común. Descárgalos por separado.</string>
+</resources>

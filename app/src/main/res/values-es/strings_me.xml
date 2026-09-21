@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="me_section_content">Mi contenido</string>
+    <string name="me_section_manage">Gestión</string>
+    <string name="me_login_entry_title">Inicie sesión para obtener más funciones</string>
+    <string name="me_login_entry_summary">Acceda a más opciones de descarga y a su contenido Bilibili.</string>
+    <string name="me_history_entry_disabled_desc">Inicie sesión para ver su historial</string>
+    <string name="me_favorite_entry_disabled_desc">Inicie sesión para ver sus favoritos</string>
+    <string name="me_watch_later_entry_disabled_desc">Inicie sesión para ver Ver más tarde</string>
+    <string name="me_logout_summary">Elimina tu inicio de sesión de este dispositivo</string>
+    <string name="me_login_screen_subtitle">Elija un método de inicio de sesión y verifique su cuenta</string>
+</resources>

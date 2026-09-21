@@ -2,10 +2,14 @@ package com.happycola233.bilitools.update
 
 import android.app.Service
 import android.content.Intent
+import android.content.res.Configuration
 import android.content.pm.ServiceInfo
 import android.os.IBinder
 import android.os.SystemClock
 import com.happycola233.bilitools.BiliToolsApp
+import com.happycola233.bilitools.R
+import com.happycola233.bilitools.core.AppLanguage
+import com.happycola233.bilitools.core.StringProvider
 import com.happycola233.bilitools.core.AppLog as Log
 import com.happycola233.bilitools.core.createHttpDiagnosticLoggingInterceptor
 import com.happycola233.bilitools.core.appContainer
@@ -20,6 +24,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.drop
 import java.io.File
 import java.io.IOException
 
@@ -40,12 +45,34 @@ class UpdateDownloadService : Service() {
 
     private var downloadJob: Job? = null
     private var activeCall: Call? = null
+    private val notificationLock = Any()
+    private var activeProgress: UpdateProgress? = null
+    private val strings by lazy { StringProvider(this) }
 
     override fun onCreate() {
         super.onCreate()
         notificationManager = UpdateNotificationManager(this)
         packageCleanupManager = UpdatePackageCleanupManager(this)
         notificationManager.ensureChannels()
+        serviceScope.launch(Dispatchers.Main.immediate) {
+            AppLanguage.changes.drop(1).collect { refreshNotificationLanguage() }
+        }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        refreshNotificationLanguage()
+    }
+
+    private fun refreshNotificationLanguage() = synchronized(notificationLock) {
+        notificationManager.ensureChannels()
+        activeProgress?.let { progress ->
+            notificationManager.notifyProgress(notificationManager.buildProgressNotification(
+                versionLabel = progress.versionLabel,
+                downloadedBytes = progress.downloadedBytes,
+                totalBytes = progress.totalBytes,
+            ))
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -59,15 +86,18 @@ class UpdateDownloadService : Service() {
         }
 
         isDownloading = true
-        startForeground(
-            UpdateNotificationManager.NOTIFICATION_ID_PROGRESS,
-            notificationManager.buildProgressNotification(
-                versionLabel = request.displayVersion,
-                downloadedBytes = 0L,
-                totalBytes = request.assetSizeBytes,
-            ),
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
-        )
+        synchronized(notificationLock) {
+            activeProgress = UpdateProgress(request.displayVersion, 0L, request.assetSizeBytes)
+            startForeground(
+                UpdateNotificationManager.NOTIFICATION_ID_PROGRESS,
+                notificationManager.buildProgressNotification(
+                    versionLabel = request.displayVersion,
+                    downloadedBytes = 0L,
+                    totalBytes = request.assetSizeBytes,
+                ),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+            )
+        }
 
         downloadJob = serviceScope.launch {
             try {
@@ -76,7 +106,7 @@ class UpdateDownloadService : Service() {
                     assetFileName = request.assetFileName,
                 )
                 downloadApk(request, targetFile)
-                stopForeground(STOP_FOREGROUND_REMOVE)
+                finishProgress()
                 notificationManager.showReadyToInstall(
                     versionLabel = request.displayVersion,
                     apkPath = targetFile.absolutePath,
@@ -91,10 +121,10 @@ class UpdateDownloadService : Service() {
                 runCatching {
                     packageCleanupManager.deleteDownloadedPackages()
                 }
-                stopForeground(STOP_FOREGROUND_REMOVE)
+                finishProgress()
                 notificationManager.showFailure(
                     versionLabel = request.displayVersion,
-                    errorMessage = error.message ?: "Unknown error",
+                    errorMessage = error.message ?: strings.get(R.string.common_error_unknown),
                     releasePageUrl = request.releasePageUrl,
                 )
             } finally {
@@ -109,6 +139,7 @@ class UpdateDownloadService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
+        synchronized(notificationLock) { activeProgress = null }
         activeCall?.cancel()
         downloadJob?.cancel()
         serviceScope.cancel()
@@ -180,7 +211,7 @@ class UpdateDownloadService : Service() {
             }
         }
 
-        throw IOException("No available GitHub download route", lastError)
+        throw IOException(strings.get(R.string.update_error_no_route), lastError)
     }
 
     private fun downloadApkViaRoute(
@@ -265,7 +296,9 @@ class UpdateDownloadService : Service() {
         versionLabel: String,
         downloadedBytes: Long,
         totalBytes: Long,
-    ) {
+    ) = synchronized(notificationLock) {
+        if (activeProgress == null) return@synchronized
+        activeProgress = UpdateProgress(versionLabel, downloadedBytes, totalBytes)
         notificationManager.notifyProgress(
             notificationManager.buildProgressNotification(
                 versionLabel = versionLabel,
@@ -274,6 +307,17 @@ class UpdateDownloadService : Service() {
             ),
         )
     }
+
+    private fun finishProgress() = synchronized(notificationLock) {
+        activeProgress = null
+        stopForeground(STOP_FOREGROUND_REMOVE)
+    }
+
+    private data class UpdateProgress(
+        val versionLabel: String,
+        val downloadedBytes: Long,
+        val totalBytes: Long,
+    )
 
     private fun Intent.toDownloadRequest(): UpdateDownloadRequest? {
         val versionName = getStringExtra(EXTRA_VERSION_NAME)?.trim().orEmpty()

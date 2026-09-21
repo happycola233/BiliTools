@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="parse_formats_unavailable">%1$s is not available for this content.</string>
+    <string name="parse_formats_unavailable_batch">%1$s is not available for some selected items.</string>
+    <string name="parse_formats_no_common">The selected items have no stream format in common. Download them separately.</string>
+</resources>

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">BiliTools</string>
+    <string name="app_name" translatable="false">BiliTools</string>
     <string name="nav_parse">解析</string>
     <string name="nav_downloads">下载</string>
     <string name="nav_me">我</string>
@@ -77,7 +77,7 @@
     <string name="parse_description_collapse">收起简介</string>
     <string name="parse_metadata_view_details">查看详细信息</string>
     <string name="parse_metadata_copy_identifier">复制 %1$s</string>
-    <string name="parse_metadata_identifier_clip_label">BiliTools %1$s</string>
+    <string name="parse_metadata_identifier_clip_label" translatable="false">BiliTools %1$s</string>
     <string name="parse_metadata_identifier_copied">已复制 %1$s</string>
     <string name="parse_metadata_details_title">详细信息</string>
     <string name="parse_metadata_copy_value">复制此项</string>
@@ -210,14 +210,14 @@
     <string name="parse_resolution_360">360P 流畅</string>
     <string name="parse_resolution_240">240P 极速</string>
     <string name="parse_resolution_other">其他</string>
-    <string name="parse_codec_avc">AVC (H.264)</string>
-    <string name="parse_codec_hevc">HEVC (H.265)</string>
-    <string name="parse_codec_av1">AV1</string>
-    <string name="parse_bitrate_192">192K</string>
-    <string name="parse_bitrate_128">128K</string>
-    <string name="parse_bitrate_132">132K</string>
-    <string name="parse_bitrate_64">64K</string>
-    <string name="parse_bitrate_320">320K</string>
+    <string name="parse_codec_avc" translatable="false">AVC (H.264)</string>
+    <string name="parse_codec_hevc" translatable="false">HEVC (H.265)</string>
+    <string name="parse_codec_av1" translatable="false">AV1</string>
+    <string name="parse_bitrate_192" translatable="false">192K</string>
+    <string name="parse_bitrate_128" translatable="false">128K</string>
+    <string name="parse_bitrate_132" translatable="false">132K</string>
+    <string name="parse_bitrate_64" translatable="false">64K</string>
+    <string name="parse_bitrate_320" translatable="false">320K</string>
     <string name="parse_bitrate_dolby">杜比全景声</string>
     <string name="parse_bitrate_hires">Hi-Res 无损</string>
     <string name="parse_bitrate_flac">无损 FLAC</string>
@@ -387,8 +387,8 @@
     <string name="history_refresh">刷新</string>
     <string name="history_more_filters">更多筛选</string>
     <string name="history_download">跳转下载</string>
-    <string name="history_progress_format">进度：%1$s / %2$s</string>
-    <string name="history_progress_completed">进度：已看完（%1$s）</string>
+    <string name="history_progress_format">%1$s / %2$s</string>
+    <string name="history_progress_completed">已看完 · %1$s</string>
     <string name="history_page_prev">上一页</string>
     <string name="history_page_next">下一页</string>
     <string name="history_page_status">第 %1$d 页</string>
@@ -417,10 +417,10 @@
     <string name="history_filter_custom_range_value">%1$s - %2$s</string>
     <string name="history_filter_device">设备</string>
     <string name="history_filter_device_all">全部设备</string>
-    <string name="history_filter_device_pc">PC</string>
+    <string name="history_filter_device_pc" translatable="false">PC</string>
     <string name="history_filter_device_phone">手机</string>
     <string name="history_filter_device_pad">平板</string>
-    <string name="history_filter_device_tv">TV</string>
+    <string name="history_filter_device_tv" translatable="false">TV</string>
     <string name="parse_warning_dash">DASH 将自动合并音视频为单文件</string>
 
     <string name="parse_collection_toggle">切换为合集模式</string>
@@ -435,14 +435,14 @@
     <string name="parse_mobile_confirm_action">继续下载</string>
     <string name="parse_error_no_selection">请先选择至少一项</string>
     <string name="parse_error_no_download_content">请选择输出类型或附加内容</string>
-    <string name="icon_stat_play">&#xE699;</string>
-    <string name="icon_stat_danmaku">&#xE6AB;</string>
-    <string name="icon_stat_reply">&#xE6AC;</string>
-    <string name="icon_stat_like">&#xE692;</string>
-    <string name="icon_stat_coin">&#xE69E;</string>
-    <string name="icon_stat_favorite">&#xE697;</string>
-    <string name="icon_stat_share">&#xE695;</string>
-    <string name="icon_stat_follower">&#xE64D;</string>
+    <string name="icon_stat_play" translatable="false">&#xE699;</string>
+    <string name="icon_stat_danmaku" translatable="false">&#xE6AB;</string>
+    <string name="icon_stat_reply" translatable="false">&#xE6AC;</string>
+    <string name="icon_stat_like" translatable="false">&#xE692;</string>
+    <string name="icon_stat_coin" translatable="false">&#xE69E;</string>
+    <string name="icon_stat_favorite" translatable="false">&#xE697;</string>
+    <string name="icon_stat_share" translatable="false">&#xE695;</string>
+    <string name="icon_stat_follower" translatable="false">&#xE64D;</string>
     <string name="parse_error_no_danmaku">未找到可用弹幕</string>
     <string name="parse_notice_no_more">没有更多内容</string>
     <string name="parse_notice_page_not_loaded">请先逐页加载到这里</string>
@@ -454,7 +454,7 @@
     <string name="settings_general_title">通用</string>
     <string name="settings_download_title">下载</string>
     <string name="settings_appearance_title">外观</string>
-    <string name="settings_general_summary">触感反馈、启动动画、实时活动通知</string>
+    <string name="settings_general_summary">语言、触感反馈、启动动画、实时活动通知</string>
     <string name="settings_download_summary">下载位置、并发数量、默认质量、元数据、格式转换、移动网络、系统相册</string>
     <string name="settings_appearance_summary">主题、配色、纯黑主题、液态玻璃</string>
     <string name="settings_about_summary">版本、更新、日志导出、开源协议、免责声明</string>
@@ -603,7 +603,7 @@
     <string name="settings_check_update_toast_latest">当前已是最新版本</string>
     <string name="settings_check_update_toast_failed">检查更新失败：%1$s</string>
     <string name="settings_license_title">开源协议</string>
-    <string name="settings_license_summary">GPL-3.0-or-later</string>
+    <string name="settings_license_summary" translatable="false">GPL-3.0-or-later</string>
     <string name="settings_opensource_licenses_title">开源许可证</string>
     <string name="settings_opensource_licenses_summary">本应用使用的第三方开源库</string>
     <string name="settings_issue_report_enabled_title">记录详细 issue 日志</string>

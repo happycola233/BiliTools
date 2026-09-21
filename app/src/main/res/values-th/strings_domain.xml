@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="media_kind_anime">อะนิเมะ</string>
+    <string name="media_kind_movie">ภาพยนตร์</string>
+    <string name="media_kind_documentary">สารคดี</string>
+    <string name="media_kind_chinese_animation">แอนิเมชันจีน</string>
+    <string name="media_kind_series">ละครโทรทัศน์</string>
+    <string name="media_kind_variety">รายการวาไรตี้</string>
+    <string name="media_copyright_licensed">ได้รับใบอนุญาต</string>
+    <string name="media_copyright_exclusive">พิเศษ</string>
+    <string name="media_price_bcoin">%1$s B-เหรียญ</string>
+    <string name="media_access_available">มีจำหน่าย</string>
+    <string name="media_access_purchase">จำเป็นต้องซื้อ</string>
+    <string name="media_access_unavailable">ไม่สามารถใช้งานได้ในขณะนี้</string>
+    <string name="download_saved_file_unavailable">ไฟล์ที่บันทึกไว้ไม่สามารถใช้งานได้อีกต่อไป</string>
+    <string name="export_author">ผู้แต่ง: %1$s</string>
+    <string name="export_published_at">เผยแพร่: %1$s</string>
+    <string name="export_statistics">สถิติ: %1$s</string>
+    <string name="export_source">ที่มา: %1$s</string>
+    <string name="export_original">โพสต์ต้นฉบับ</string>
+    <string name="export_image">รูปภาพ %1$d</string>
+    <string name="export_views">การดู: %1$d</string>
+    <string name="export_likes">ชอบ: %1$d</string>
+    <string name="export_coins">เหรียญ: %1$d</string>
+    <string name="export_favorites">รายการโปรด: %1$d</string>
+    <string name="export_replies">ความคิดเห็น: %1$d</string>
+    <string name="export_shares">แชร์: %1$d</string>
+    <string name="metadata_uploader">ผู้สร้าง: %1$s</string>
+    <string name="metadata_published_at">เผยแพร่เมื่อ Bilibili: %1$s</string>
+    <string name="metadata_tags">แท็ก: %1$s</string>
+    <string name="metadata_lyrics_source">แหล่งที่มาของเนื้อเพลง: %1$s</string>
+    <string name="lyrics_source_original">เนื้อเพลงเสียงต้นฉบับ</string>
+    <string name="lyrics_source_subtitles">%1$s (ถอดความจากคำบรรยาย)</string>
+    <string name="update_error_empty_response">เซิร์ฟเวอร์การอัพเดตส่งคืนเนื้อหาว่างเปล่า</string>
+    <string name="update_error_invalid_response">ไม่สามารถอ่านข้อมูลการอัพเดตได้</string>
+    <string name="update_error_no_route">ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์อัปเดตได้ชั่วคราว โปรดลองอีกครั้งในภายหลัง</string>
+</resources>

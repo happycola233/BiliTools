@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="parse_subtitle_file_option">Lưu file phụ đề</string>
+    <string name="subtitle_source_language">Ngôn ngữ phụ đề</string>
+    <string name="subtitle_source_lyrics_language">Ngôn ngữ lời bài hát</string>
+    <string name="subtitle_source_embed_title">Ngôn ngữ phụ đề được nhúng</string>
+    <string name="subtitle_source_file_title">Ngôn ngữ file phụ đề</string>
+    <string name="subtitle_source_ai_description">Phụ đề AI</string>
+    <string name="subtitle_source_select">Chọn ngôn ngữ</string>
+    <string name="subtitle_source_select_all">Chọn tất cả</string>
+    <string name="subtitle_source_all_count">Tất cả phụ đề · Số ngôn ngữ: %1$d</string>
+    <string name="subtitle_source_selected_count">Số ngôn ngữ đã chọn: %1$d</string>
+    <string name="subtitle_source_cancel">Hủy bỏ</string>
+    <string name="subtitle_source_done">Xong</string>
+    <string name="subtitle_source_coverage">Có sẵn: %1$d / %2$d</string>
+    <string name="subtitle_source_coverage_pending">Đã xác nhận: %1$d / %2$d</string>
+    <string name="subtitle_source_unconfirmed">Tính khả dụng chưa được xác nhận</string>
+    <string name="subtitle_source_unavailable">Không có sẵn cho mặt hàng này</string>
+    <string name="subtitle_source_loading">Đang tải phụ đề…</string>
+    <string name="subtitle_source_loading_batch">Đang tải phụ đề: %1$d / %2$d</string>
+    <string name="subtitle_source_failure">Tải phụ đề không thành công.</string>
+    <string name="subtitle_source_partial_failure">Mục không tải được phụ đề: %1$d</string>
+    <string name="subtitle_source_retry">Thử lại</string>
+    <string name="subtitle_source_empty">Không có phụ đề cho video này.</string>
+    <string name="subtitle_source_empty_batch">Không có phụ đề cho những mục này.</string>
+    <string name="subtitle_source_login">Đăng nhập để truy cập phụ đề video.</string>
+    <string name="subtitle_source_login_lyrics">Đăng nhập để chọn ngôn ngữ lời bài hát hoặc tắt lời bài hát được nhúng.</string>
+    <string name="subtitle_source_choose_lyrics">Chọn bản nhạc phụ đề để sử dụng làm lời bài hát.</string>
+    <string name="subtitle_source_no_lyrics">Không có phụ đề. Tắt lời bài hát được nhúng trước khi tải xuống.</string>
+    <string name="subtitle_source_choose_subtitles">Vui lòng chọn ít nhất một phụ đề.</string>
+    <string name="subtitle_source_missing_selection">Ngôn ngữ phụ đề đã chọn bị thiếu ở một số mục.</string>
+</resources>

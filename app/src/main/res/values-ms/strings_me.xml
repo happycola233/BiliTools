@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="me_section_content">Kandungan saya</string>
+    <string name="me_section_manage">Pengurusan</string>
+    <string name="me_login_entry_title">Log masuk untuk mendapatkan lebih banyak ciri</string>
+    <string name="me_login_entry_summary">Akses lebih banyak pilihan muat turun dan kandungan Bilibili anda.</string>
+    <string name="me_history_entry_disabled_desc">Log masuk untuk melihat sejarah anda</string>
+    <string name="me_favorite_entry_disabled_desc">Log masuk untuk melihat kegemaran anda</string>
+    <string name="me_watch_later_entry_disabled_desc">Log masuk untuk melihat Tonton kemudian</string>
+    <string name="me_logout_summary">Alih keluar log masuk anda daripada peranti ini</string>
+    <string name="me_login_screen_subtitle">Pilih kaedah log masuk dan sahkan akaun anda</string>
+</resources>

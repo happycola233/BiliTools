@@ -3,6 +3,7 @@ package com.happycola233.bilitools.core
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.util.Locale
 
 data class DanmakuElem(
     val progressMs: Long,
@@ -289,7 +290,8 @@ object DanmakuParser {
         val minutes = (total.toInt() % 3600) / 60
         val secs = total.toInt() % 60
         val centis = ((total - total.toInt()) * 100).toInt().coerceIn(0, 99)
-        return String.format("%d:%02d:%02d.%02d", hours, minutes, secs, centis)
+        // ASS 时间和颜色是文件格式语法，不能使用阿拉伯语等界面的本地数字。
+        return String.format(Locale.ROOT, "%d:%02d:%02d.%02d", hours, minutes, secs, centis)
     }
 
     private fun escapeAss(text: String): String {
@@ -306,7 +308,7 @@ object DanmakuParser {
         val r = (rgb shr 16) and 0xFF
         val g = (rgb shr 8) and 0xFF
         val b = rgb and 0xFF
-        return String.format("&H00%02X%02X%02X&", b, g, r)
+        return String.format(Locale.ROOT, "&H00%02X%02X%02X&", b, g, r)
     }
 
     private fun estimateTextWidth(text: String, fontSize: Int): Double {

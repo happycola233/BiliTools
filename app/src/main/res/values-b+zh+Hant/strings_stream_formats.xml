@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="parse_formats_unavailable">當前內容不提供 %1$s。</string>
+    <string name="parse_formats_unavailable_batch">部分所選條目不提供 %1$s。</string>
+    <string name="parse_formats_no_common">所選條目沒有共同的流媒體格式，請分開下載。</string>
+</resources>

@@ -1,5 +1,6 @@
 package com.happycola233.bilitools.core
 
+import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.DownloadMetadataSettings
 import com.happycola233.bilitools.data.model.DownloadEmbeddedMetadata
 import org.jaudiotagger.audio.AudioFileIO
@@ -15,6 +16,7 @@ internal data class EmbeddedCover(val file: File, val width: Int, val height: In
 
 internal fun DownloadEmbeddedMetadata.tagValues(
     settings: DownloadMetadataSettings,
+    strings: StringProvider,
     lyrics: String? = null,
     lyricsSource: String? = null,
 ): Map<String, String> = buildMap {
@@ -32,11 +34,11 @@ internal fun DownloadEmbeddedMetadata.tagValues(
     // 来源链接是内容页，不冒充唱片发行官网；普通 TAG 也不冒充音乐流派。
     add("comment", buildList {
         comment?.trim()?.takeIf(String::isNotBlank)?.let(::add)
-        uploader?.let { add("UP 主：$it") }
-        publishedDate?.let { add("B站发布时间：$it") }
-        if (tags.isNotEmpty()) add("标签：${tags.joinToString("、")}")
-        lyricsSource?.let { add("歌词来源：$it") }
-        originalUrl?.let { add("来源：$it") }
+        uploader?.let { add(strings.get(R.string.metadata_uploader, it)) }
+        publishedDate?.let { add(strings.get(R.string.metadata_published_at, it)) }
+        if (tags.isNotEmpty()) add(strings.get(R.string.metadata_tags, tags.joinToString(strings.get(R.string.runtime_list_separator))))
+        lyricsSource?.let { add(strings.get(R.string.metadata_lyrics_source, it)) }
+        originalUrl?.let { add(strings.get(R.string.export_source, it)) }
     }.joinToString("\n"))
 }
 

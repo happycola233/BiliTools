@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_dialog_download">Descargar actualización</string>
+    <string name="update_dialog_ignore_once">Ignorar esta actualización</string>
+    <string name="update_dialog_download_started">La actualización se está descargando en segundo plano.</string>
+    <string name="update_dialog_download_running">Ya se está descargando una actualización en segundo plano.</string>
+    <string name="update_dialog_download_failed">No se pudo iniciar la descarga de la actualización: %1$s</string>
+    <string name="update_dialog_apk_missing">No hay ningún paquete de actualización disponible para este dispositivo.</string>
+    <string name="update_dialog_ignore_saved">Los recordatorios de actualización para %1$s ahora están ocultos</string>
+    <string name="update_install_file_missing">El paquete de actualización falta o ha sido eliminado</string>
+    <string name="update_install_launch_failed">No se puede abrir el instalador</string>
+    <string name="update_notification_channel_progress_name">Descargas de actualizaciones de aplicaciones</string>
+    <string name="update_notification_channel_progress_desc">Progreso de las descargas de actualizaciones de aplicaciones</string>
+    <string name="update_notification_channel_result_name">Instalación de actualización de la aplicación</string>
+    <string name="update_notification_channel_result_desc">Resultados de la descarga de la actualización de la aplicación</string>
+    <string name="update_notification_progress_title">Descargando la actualización %1$s</string>
+    <string name="update_notification_progress_content_known">%1$d%% %2$s / %3$s</string>
+    <string name="update_notification_progress_content_unknown">Descargado %1$s</string>
+    <string name="update_notification_ready_title">Actualización lista para instalar</string>
+    <string name="update_notification_ready_content">Toque para instalar %1$s</string>
+    <string name="update_notification_action_install">Instalar</string>
+    <string name="update_notification_failed_title">Error en la descarga de la actualización: %1$s</string>
+    <string name="update_notification_failed_content">%1$s</string>
+    <string name="update_notification_action_open_release">Abrir página de lanzamiento</string>
+</resources>

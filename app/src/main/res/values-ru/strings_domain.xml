@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="media_kind_anime">Аниме</string>
+    <string name="media_kind_movie">Фильм</string>
+    <string name="media_kind_documentary">Документальный фильм</string>
+    <string name="media_kind_chinese_animation">Китайская анимация</string>
+    <string name="media_kind_series">Телесериал</string>
+    <string name="media_kind_variety">Варьете</string>
+    <string name="media_copyright_licensed">Лицензия</string>
+    <string name="media_copyright_exclusive">Эксклюзивный</string>
+    <string name="media_price_bcoin">%1$s B-монеты</string>
+    <string name="media_access_available">Доступен</string>
+    <string name="media_access_purchase">Требуется покупка</string>
+    <string name="media_access_unavailable">В настоящее время недоступен</string>
+    <string name="download_saved_file_unavailable">Сохраненный файл больше не доступен.</string>
+    <string name="export_author">Автор: %1$s</string>
+    <string name="export_published_at">Опубликовано: %1$s</string>
+    <string name="export_statistics">Статистика: %1$s</string>
+    <string name="export_source">Источник: %1$s</string>
+    <string name="export_original">Исходное сообщение</string>
+    <string name="export_image">Изображение %1$d</string>
+    <string name="export_views">Просмотров: %1$d</string>
+    <string name="export_likes">Нравится: %1$d</string>
+    <string name="export_coins">Монеты: %1$d</string>
+    <string name="export_favorites">Избранное: %1$d</string>
+    <string name="export_replies">Комментарии: %1$d</string>
+    <string name="export_shares">Доли: %1$d</string>
+    <string name="metadata_uploader">Создатель: %1$s</string>
+    <string name="metadata_published_at">Опубликовано Bilibili: %1$s</string>
+    <string name="metadata_tags">Теги: %1$s</string>
+    <string name="metadata_lyrics_source">Источник текста: %1$s</string>
+    <string name="lyrics_source_original">Оригинальные аудиотексты</string>
+    <string name="lyrics_source_subtitles">%1$s (расшифровка из субтитров)</string>
+    <string name="update_error_empty_response">Сервер обновлений вернул пустой контент</string>
+    <string name="update_error_invalid_response">Невозможно прочитать информацию об обновлении.</string>
+    <string name="update_error_no_route">Временно невозможно подключиться к серверу обновлений, повторите попытку позже.</string>
+</resources>

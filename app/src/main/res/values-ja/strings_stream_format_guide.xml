@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="stream_format_guide_title">DASH / MP4 / FLV について</string>
+    <string name="stream_format_guide_subtitle">ストリームフォーマットの選択</string>
+    <string name="stream_format_guide_intro">Bilibili は 3 つのストリーミング形式を使用しています。 DASH は 2018 年に導入され、依然として主要な形式です。 MP4 および FLV は、限られた場合にのみ使用されるようになりました。</string>
+    <string name="stream_format_guide_dash_status">推奨</string>
+    <string name="stream_format_guide_dash_notice">Bilibili の現在のストリーミング形式は、最高のオーディオおよびビデオ品質と最速のダウンロードを提供します。</string>
+    <string name="stream_format_guide_dash_default">ほとんどのダウンロードではこの形式を維持してください。よくわからない場合は、ストリーム形式を変更しないでください。</string>
+    <string name="stream_format_guide_dash_body">オーディオとビデオはセグメントに分けて配信される。ビデオ ストリームには音声がなく、オーディオ ストリームには画像がありません。</string>
+    <string name="stream_format_guide_dash_merge">オーディオとビデオの両方を含む単一のファイルを作成するには、FFmpegを使用してストリームをマージする必要があります。これを行うには、オーディオとビデオの出力タイプを選択します。</string>
+    <string name="stream_format_guide_mp4_status">慎重に選択してください</string>
+    <string name="stream_format_guide_mp4_notice">単にMP4ファイルが欲しいという理由だけでこれを選択しないでください。通常、ダウンロードは DASH よりも遅く、品質も低くなります。</string>
+    <string name="stream_format_guide_mp4_body">このフォーマットは、オーディオがすでに含まれているMP4ファイルを配信するため、マージは不要です。</string>
+    <string name="stream_format_guide_mp4_exception">この形式は、有料の番組、映画、コースのプレビューを除いて、現在ではほとんど使用されていません。このようなプレビューは、多くの場合、画質と音質が制限された MP4 としてのみ利用可能です。</string>
+    <string name="stream_format_guide_flv_status">ほとんどが退職者</string>
+    <string name="stream_format_guide_flv_notice">初期に使用されていたセグメント化されたFLVフォーマットは、ほぼ完全に廃止された。</string>
+    <string name="stream_format_guide_flv_body">このオプションは、互換性とアーカイブのために残されています。一部の古いコンテンツはまだダウンロードできる場合がありますが、FLV は日常的な使用には推奨されません。</string>
+    <string name="stream_format_guide_footer">別のフォーマットが必要でない限り、デフォルトのDASHフォーマットを維持してください。</string>
+</resources>

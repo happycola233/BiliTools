@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="parse_subtitle_file_option">字幕ファイルの保存</string>
+    <string name="subtitle_source_language">字幕言語</string>
+    <string name="subtitle_source_lyrics_language">歌詞言語</string>
+    <string name="subtitle_source_embed_title">埋め込み字幕言語</string>
+    <string name="subtitle_source_file_title">字幕ファイルの言語</string>
+    <string name="subtitle_source_ai_description">AI字幕</string>
+    <string name="subtitle_source_select">言語の選択</string>
+    <string name="subtitle_source_select_all">すべて選択</string>
+    <string name="subtitle_source_all_count">すべての字幕 · 言語数: %1$d</string>
+    <string name="subtitle_source_selected_count">選択した言語: %1$d</string>
+    <string name="subtitle_source_cancel">キャンセル</string>
+    <string name="subtitle_source_done">完了</string>
+    <string name="subtitle_source_coverage">利用可能: %1$d / %2$d</string>
+    <string name="subtitle_source_coverage_pending">確認済み: %1$d / %2$d</string>
+    <string name="subtitle_source_unconfirmed">入手可能性はまだ確認されていません</string>
+    <string name="subtitle_source_unavailable">この商品は利用できません</string>
+    <string name="subtitle_source_loading">字幕を読み込み中…</string>
+    <string name="subtitle_source_loading_batch">字幕のロード: %1$d / %2$d</string>
+    <string name="subtitle_source_failure">字幕のロードに失敗しました。</string>
+    <string name="subtitle_source_partial_failure">字幕の読み込みに失敗した項目: %1$d</string>
+    <string name="subtitle_source_retry">もう一度試してください</string>
+    <string name="subtitle_source_empty">このビデオには字幕がありません。</string>
+    <string name="subtitle_source_empty_batch">これらの項目には字幕が利用できない。</string>
+    <string name="subtitle_source_login">ビデオ字幕にアクセスするにはログインする。</string>
+    <string name="subtitle_source_login_lyrics">ログインして歌詞言語を選択するか、埋め込み歌詞をオフにする。</string>
+    <string name="subtitle_source_choose_lyrics">歌詞として使用する字幕トラックを選択します。</string>
+    <string name="subtitle_source_no_lyrics">字幕はありません。ダウンロードする前に埋め込み歌詞をオフにしてください。</string>
+    <string name="subtitle_source_choose_subtitles">少なくとも 1 つのサブタイトルを選択してください。</string>
+    <string name="subtitle_source_missing_selection">選択された字幕言語が一部の項目で欠落している。</string>
+</resources>

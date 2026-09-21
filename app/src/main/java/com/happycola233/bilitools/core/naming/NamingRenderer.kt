@@ -42,7 +42,7 @@ object NamingRenderer {
     private val illegalPathCharsRegex = Regex("""[\\/:*?"<>|]""")
     private val dayjsFormatterFallback = DateTimeFormatter.ofPattern(
         "yyyy-MM-dd_HH-mm-ss",
-        Locale.getDefault(),
+        Locale.ROOT,
     )
 
     fun render(template: String, context: NamingContext): String {

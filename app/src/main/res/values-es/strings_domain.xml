@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="media_kind_anime">animado</string>
+    <string name="media_kind_movie">Película</string>
+    <string name="media_kind_documentary">Documental</string>
+    <string name="media_kind_chinese_animation">animación china</string>
+    <string name="media_kind_series">serie de televisión</string>
+    <string name="media_kind_variety">Programa de variedades</string>
+    <string name="media_copyright_licensed">Licenciado</string>
+    <string name="media_copyright_exclusive">Exclusivo</string>
+    <string name="media_price_bcoin">%1$s B-Monedas</string>
+    <string name="media_access_available">Disponible</string>
+    <string name="media_access_purchase">Compra requerida</string>
+    <string name="media_access_unavailable">Actualmente no disponible</string>
+    <string name="download_saved_file_unavailable">El archivo guardado ya no está disponible</string>
+    <string name="export_author">Autor: %1$s</string>
+    <string name="export_published_at">Publicado: %1$s</string>
+    <string name="export_statistics">Estadísticas: %1$s</string>
+    <string name="export_source">Fuente: %1$s</string>
+    <string name="export_original">Publicación original</string>
+    <string name="export_image">Imagen %1$d</string>
+    <string name="export_views">Vistas: %1$d</string>
+    <string name="export_likes">Me gusta: %1$d</string>
+    <string name="export_coins">Monedas: %1$d</string>
+    <string name="export_favorites">Favoritos: %1$d</string>
+    <string name="export_replies">Comentarios: %1$d</string>
+    <string name="export_shares">Acciones: %1$d</string>
+    <string name="metadata_uploader">Creador: %1$s</string>
+    <string name="metadata_published_at">Publicado el Bilibili: %1$s</string>
+    <string name="metadata_tags">Etiquetas: %1$s</string>
+    <string name="metadata_lyrics_source">Fuente de la letra: %1$s</string>
+    <string name="lyrics_source_original">Letras de audio originales</string>
+    <string name="lyrics_source_subtitles">%1$s (transcrito de subtítulos)</string>
+    <string name="update_error_empty_response">El servidor de actualización devolvió contenido vacío</string>
+    <string name="update_error_invalid_response">No se puede leer la información de actualización</string>
+    <string name="update_error_no_route">Temporalmente no se puede conectar con el servidor de actualización, inténtelo nuevamente más tarde.</string>
+</resources>

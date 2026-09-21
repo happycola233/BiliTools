@@ -1,5 +1,7 @@
 package com.happycola233.bilitools.data
 
+import com.happycola233.bilitools.R
+import com.happycola233.bilitools.core.StringProvider
 import android.content.Context
 import android.os.Build
 import com.happycola233.bilitools.core.AppLog as Log
@@ -56,6 +58,7 @@ class UpdateRepository(
     private val settingsRepository: SettingsRepository,
 ) {
     private val appContext = context.applicationContext
+    private val strings = StringProvider(context)
 
     private val client by lazy {
         OkHttpClient.Builder()
@@ -96,7 +99,7 @@ class UpdateRepository(
         }.getOrElse { error ->
             UpdateCheckResult.Failed(
                 currentVersion = currentVersion,
-                errorMessage = error.message ?: "Unknown error",
+                errorMessage = error.message ?: strings.get(R.string.download_reason_unknown),
             )
         }
     }
@@ -121,14 +124,14 @@ class UpdateRepository(
                     }
                     val payload = response.body.string()
                     val parsed = latestAdapter.fromJson(payload)
-                        ?: throw IOException("Empty release response")
+                        ?: throw IOException(strings.get(R.string.update_error_empty_response))
 
                     val tagName = parsed.tagName?.trim().orEmpty()
                     val htmlUrl = gitHubRouteManager.normalizeGitHubUrl(
                         parsed.htmlUrl?.trim().orEmpty(),
                     )
                     if (tagName.isBlank() || htmlUrl.isBlank()) {
-                        throw IOException("Invalid release response")
+                        throw IOException(strings.get(R.string.update_error_invalid_response))
                     }
                     val releaseAssets = parsed.assets
                         .orEmpty()
@@ -177,7 +180,7 @@ class UpdateRepository(
             }
         }
 
-        throw IOException("No available GitHub update route", lastError)
+        throw IOException(strings.get(R.string.update_error_no_route), lastError)
     }
 
     private fun compareVersions(current: String, latest: String): Int {

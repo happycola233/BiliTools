@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="media_kind_anime">アニメ</string>
+    <string name="media_kind_movie">映画</string>
+    <string name="media_kind_documentary">ドキュメンタリー</string>
+    <string name="media_kind_chinese_animation">中国アニメーション</string>
+    <string name="media_kind_series">TVシリーズ</string>
+    <string name="media_kind_variety">バラエティ番組</string>
+    <string name="media_copyright_licensed">ライセンス取得済み</string>
+    <string name="media_copyright_exclusive">独占的</string>
+    <string name="media_price_bcoin">%1$s Bコイン</string>
+    <string name="media_access_available">利用可能</string>
+    <string name="media_access_purchase">購入が必要です</string>
+    <string name="media_access_unavailable">現在入手不可</string>
+    <string name="download_saved_file_unavailable">保存されたファイルは利用できなくなりました</string>
+    <string name="export_author">著者: %1$s</string>
+    <string name="export_published_at">公開日: %1$s</string>
+    <string name="export_statistics">統計: %1$s</string>
+    <string name="export_source">出典: %1$s</string>
+    <string name="export_original">元の投稿</string>
+    <string name="export_image">画像%1$d</string>
+    <string name="export_views">ビュー: %1$d</string>
+    <string name="export_likes">いいね: %1$d</string>
+    <string name="export_coins">コイン: %1$d</string>
+    <string name="export_favorites">お気に入り: %1$d</string>
+    <string name="export_replies">コメント: %1$d</string>
+    <string name="export_shares">株式: %1$d</string>
+    <string name="metadata_uploader">作成者: %1$s</string>
+    <string name="metadata_published_at">Bilibili に公開: %1$s</string>
+    <string name="metadata_tags">タグ: %1$s</string>
+    <string name="metadata_lyrics_source">歌詞ソース: %1$s</string>
+    <string name="lyrics_source_original">オリジナルのオーディオ歌詞</string>
+    <string name="lyrics_source_subtitles">%1$s (字幕から転記)</string>
+    <string name="update_error_empty_response">アップデートサーバーは空のコンテンツを返しました</string>
+    <string name="update_error_invalid_response">更新情報を読み取れない</string>
+    <string name="update_error_no_route">一時的にアップデートサーバーに接続できません。しばらくしてからもう一度お試しください。</string>
+</resources>

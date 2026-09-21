@@ -1,5 +1,7 @@
 package com.happycola233.bilitools.data
 
+import com.happycola233.bilitools.R
+import com.happycola233.bilitools.core.StringProvider
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import com.happycola233.bilitools.core.AppLog
@@ -55,6 +57,7 @@ internal data class EmbeddedContentResult(
 internal class EmbeddedContentWriter(
     private val httpClient: OkHttpClient,
     private val extrasRepository: ExtrasRepository,
+    private val strings: StringProvider,
 ) {
     /**
      * @param metadata 要写入的元数据；「添加元数据」关闭时传 null，此时只处理 [DownloadItem.embedding]。
@@ -125,7 +128,7 @@ internal class EmbeddedContentWriter(
                 )
             }
 
-            val values = metadata?.tagValues(settings, lyrics, lyricsSource.takeIf { lyrics != null })
+            val values = metadata?.tagValues(settings, strings, lyrics, lyricsSource.takeIf { lyrics != null })
                 ?: buildMap { lyrics?.let { put("lyrics", it) } }
             if (values.isEmpty() && cover == null && subtitleTracks.isEmpty()) {
                 return EmbeddedContentResult(issues = issues, incompleteSubtitleTitles = incompleteSubtitleTitles)
@@ -166,18 +169,18 @@ internal class EmbeddedContentWriter(
         onSource: (String) -> Unit,
     ): String? {
         if (sources.lyricUrl != null) {
-            onSource("音频原始歌词")
+            onSource(strings.get(R.string.lyrics_source_original))
             return normalizeOriginalLyrics(readTextAsset(sources.lyricUrl))
         }
         if (sources.musicSid != null) {
-            onSource("音频原始歌词")
+            onSource(strings.get(R.string.lyrics_source_original))
             return extrasRepository.getMusicLyrics(sources.musicSid)
         }
         if (request.language == null) return null
         val aid = sources.subtitleAid ?: return null
         val cid = sources.subtitleCid ?: return null
         val subtitle = selectLyricsSubtitle(extrasRepository.getSubtitles(aid, cid), request) ?: return null
-        onSource("${subtitle.displayName}（字幕转写）")
+        onSource(strings.get(R.string.lyrics_source_subtitles, subtitle.displayName))
         return extrasRepository.getSubtitleLyrics(subtitle)
     }
 

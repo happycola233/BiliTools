@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_dialog_download">تنزيل التحديث</string>
+    <string name="update_dialog_ignore_once">تجاهل هذا التحديث</string>
+    <string name="update_dialog_download_started">يتم تنزيل التحديث في الخلفية</string>
+    <string name="update_dialog_download_running">يتم تنزيل أحد التحديثات بالفعل في الخلفية</string>
+    <string name="update_dialog_download_failed">فشل بدء تنزيل التحديث: %1$s</string>
+    <string name="update_dialog_apk_missing">لا تتوفر حزمة تحديث لهذا الجهاز.</string>
+    <string name="update_dialog_ignore_saved">أصبحت الآن تذكيرات التحديث لـ %1$s مخفية</string>
+    <string name="update_install_file_missing">حزمة التحديث مفقودة أو تم حذفها</string>
+    <string name="update_install_launch_failed">غير قادر على فتح المثبت</string>
+    <string name="update_notification_channel_progress_name">تنزيلات تحديث التطبيق</string>
+    <string name="update_notification_channel_progress_desc">تقدم تنزيلات تحديث التطبيق</string>
+    <string name="update_notification_channel_result_name">تثبيت تحديث التطبيق</string>
+    <string name="update_notification_channel_result_desc">نتائج تنزيل تحديث التطبيق</string>
+    <string name="update_notification_progress_title">جاري تنزيل التحديث %1$s</string>
+    <string name="update_notification_progress_content_known">%1$d%% %2$s / %3$s</string>
+    <string name="update_notification_progress_content_unknown">تم التنزيل %1$s</string>
+    <string name="update_notification_ready_title">التحديث جاهز للتثبيت</string>
+    <string name="update_notification_ready_content">اضغط لتثبيت %1$s</string>
+    <string name="update_notification_action_install">التثبيت</string>
+    <string name="update_notification_failed_title">فشل تنزيل التحديث: %1$s</string>
+    <string name="update_notification_failed_content">%1$s</string>
+    <string name="update_notification_action_open_release">فتح صفحة الإصدار</string>
+</resources>

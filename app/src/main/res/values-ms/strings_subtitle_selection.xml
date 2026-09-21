@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="parse_subtitle_file_option">Simpan fail sari kata</string>
+    <string name="subtitle_source_language">Bahasa sari kata</string>
+    <string name="subtitle_source_lyrics_language">Bahasa lirik</string>
+    <string name="subtitle_source_embed_title">Bahasa sari kata terbenam</string>
+    <string name="subtitle_source_file_title">Bahasa fail sari kata</string>
+    <string name="subtitle_source_ai_description">Sari kata AI</string>
+    <string name="subtitle_source_select">Pilih bahasa</string>
+    <string name="subtitle_source_select_all">Pilih semua</string>
+    <string name="subtitle_source_all_count">Semua sari kata · Bahasa: %1$d</string>
+    <string name="subtitle_source_selected_count">Bahasa dipilih: %1$d</string>
+    <string name="subtitle_source_cancel">Batal</string>
+    <string name="subtitle_source_done">Selesai</string>
+    <string name="subtitle_source_coverage">Tersedia: %1$d / %2$d</string>
+    <string name="subtitle_source_coverage_pending">Disahkan: %1$d / %2$d</string>
+    <string name="subtitle_source_unconfirmed">Ketersediaan belum disahkan</string>
+    <string name="subtitle_source_unavailable">Tidak tersedia untuk item ini</string>
+    <string name="subtitle_source_loading">Memuatkan sari kata…</string>
+    <string name="subtitle_source_loading_batch">Memuatkan sari kata: %1$d / %2$d</string>
+    <string name="subtitle_source_failure">Pemuatan sari kata gagal.</string>
+    <string name="subtitle_source_partial_failure">Item yang gagal memuatkan sari kata: %1$d</string>
+    <string name="subtitle_source_retry">Cuba lagi</string>
+    <string name="subtitle_source_empty">Tiada sari kata tersedia untuk video ini.</string>
+    <string name="subtitle_source_empty_batch">Tiada sari kata tersedia untuk item ini.</string>
+    <string name="subtitle_source_login">Log masuk untuk mengakses sari kata video.</string>
+    <string name="subtitle_source_login_lyrics">Log masuk untuk memilih bahasa lirik, atau matikan lirik terbenam.</string>
+    <string name="subtitle_source_choose_lyrics">Pilih lagu sari kata untuk digunakan sebagai lirik.</string>
+    <string name="subtitle_source_no_lyrics">Tiada sarikata tersedia. Matikan lirik terbenam sebelum memuat turun.</string>
+    <string name="subtitle_source_choose_subtitles">Sila pilih sekurang-kurangnya satu sari kata.</string>
+    <string name="subtitle_source_missing_selection">Bahasa sari kata yang dipilih tiada daripada beberapa item.</string>
+</resources>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="media_kind_anime">الانمي</string>
+    <string name="media_kind_movie">الفيلم</string>
+    <string name="media_kind_documentary">وثائقي</string>
+    <string name="media_kind_chinese_animation">الرسوم المتحركة الصينية</string>
+    <string name="media_kind_series">مسلسل تلفزيوني</string>
+    <string name="media_kind_variety">عرض منوعات</string>
+    <string name="media_copyright_licensed">مرخص</string>
+    <string name="media_copyright_exclusive">حصريا</string>
+    <string name="media_price_bcoin">%1$s عملات B</string>
+    <string name="media_access_available">متاح</string>
+    <string name="media_access_purchase">الشراء مطلوب</string>
+    <string name="media_access_unavailable">غير متوفر حاليًا</string>
+    <string name="download_saved_file_unavailable">الملف المحفوظ لم يعد متوفرا</string>
+    <string name="export_author">المؤلف: %1$s</string>
+    <string name="export_published_at">تاريخ النشر: %1$s</string>
+    <string name="export_statistics">الإحصائيات: %1$s</string>
+    <string name="export_source">المصدر: %1$s</string>
+    <string name="export_original">المشاركة الأصلية</string>
+    <string name="export_image">الصورة %1$d</string>
+    <string name="export_views">المشاهدات: %1$d</string>
+    <string name="export_likes">الإعجابات: %1$d</string>
+    <string name="export_coins">العملات المعدنية: %1$d</string>
+    <string name="export_favorites">المفضلة: %1$d</string>
+    <string name="export_replies">التعليقات: %1$d</string>
+    <string name="export_shares">المشاركات: %1$d</string>
+    <string name="metadata_uploader">المنشئ: %1$s</string>
+    <string name="metadata_published_at">تم النشر بتاريخ Bilibili: %1$s</string>
+    <string name="metadata_tags">العلامات: %1$s</string>
+    <string name="metadata_lyrics_source">مصدر الكلمات: %1$s</string>
+    <string name="lyrics_source_original">كلمات الصوت الأصلية</string>
+    <string name="lyrics_source_subtitles">%1$s (منقول من الترجمة)</string>
+    <string name="update_error_empty_response">قام خادم التحديث بإرجاع محتوى فارغ</string>
+    <string name="update_error_invalid_response">غير قادر على قراءة معلومات التحديث</string>
+    <string name="update_error_no_route">غير قادر مؤقتًا على الاتصال بخادم التحديث، يرجى المحاولة مرة أخرى لاحقًا.</string>
+</resources>

@@ -132,7 +132,7 @@ internal fun LiquidBottomTabs(
         val currentSelectedTabIndex by rememberUpdatedState(selectedTabIndex)
         val currentOnTabSelected by rememberUpdatedState(onTabSelected)
         // tabWidth 会随底栏宽度设置变化，作为 key 重建动画对象以刷新闭包内捕获的值
-        val dampedDragAnimation = remember(animationScope, tabWidth) {
+        val dampedDragAnimation = remember(animationScope, tabWidth, isLtr) {
             DampedDragAnimation(
                 animationScope = animationScope,
                 // 初始化只读取一次当前页，不让整块玻璃绘制层订阅 Tab 状态；后续同步由

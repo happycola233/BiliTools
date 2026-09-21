@@ -1,15 +1,15 @@
 package com.happycola233.bilitools.ui.downloads
 
 import android.content.Context
+import com.happycola233.bilitools.core.formatByteCount
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.model.DownloadEmbeddedMetadata
 import com.happycola233.bilitools.data.model.DownloadGroup
 import com.happycola233.bilitools.data.model.DownloadItem
 import com.happycola233.bilitools.data.model.DownloadStatus
 import com.happycola233.bilitools.data.model.DownloadTaskType
-import java.text.SimpleDateFormat
+import java.text.DateFormat
 import java.util.Date
-import java.util.Locale
 
 internal val DownloadGroup.detailsMetadata: DownloadEmbeddedMetadata?
     get() = sourceMetadata ?: tasks.firstNotNullOfOrNull { it.embeddedMetadata }
@@ -31,11 +31,11 @@ internal val DownloadItem.isAudioVideoFile: Boolean
 internal fun buildDownloadSizeText(context: Context, item: DownloadItem): String? {
     if (!item.isAudioVideoFile) return null
     if (item.status == DownloadStatus.Success) {
-        item.outputBytes?.let { return formatDownloadBytes(it) }
+        item.outputBytes?.let { return context.formatDownloadBytes(it) }
         // 老记录尚未读到成品大小时，把传输量明确标成「已下载」，不冒充转码后的大小。
         val transferred = maxOf(item.downloadedBytes, item.totalBytes)
         return if (transferred > 0L) {
-            context.getString(R.string.downloads_size_transferred, formatDownloadBytes(transferred))
+            context.getString(R.string.downloads_size_transferred, context.formatDownloadBytes(transferred))
         } else {
             context.getString(R.string.downloads_size_unknown)
         }
@@ -43,12 +43,12 @@ internal fun buildDownloadSizeText(context: Context, item: DownloadItem): String
     return when {
         item.totalBytes > 0L -> context.getString(
             R.string.download_size_progress,
-            formatDownloadBytes(item.downloadedBytes),
-            formatDownloadBytes(item.totalBytes),
+            context.formatDownloadBytes(item.downloadedBytes),
+            context.formatDownloadBytes(item.totalBytes),
         )
         item.downloadedBytes > 0L -> context.getString(
             R.string.downloads_size_transferred,
-            formatDownloadBytes(item.downloadedBytes),
+            context.formatDownloadBytes(item.downloadedBytes),
         )
         else -> context.getString(R.string.downloads_size_unknown)
     }
@@ -58,17 +58,8 @@ internal fun formatDownloadCreatedAt(context: Context, createdAt: Long): String 
     if (createdAt <= 0L) {
         context.getString(R.string.download_time_unknown)
     } else {
-        SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(createdAt))
+        DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM, context.resources.configuration.locales[0])
+            .format(Date(createdAt))
     }
 
-internal fun formatDownloadBytes(bytes: Long): String {
-    if (bytes <= 0L) return "0 B"
-    val units = arrayOf("B", "KB", "MB", "GB", "TB")
-    var value = bytes.toDouble()
-    var index = 0
-    while (value >= 1024 && index < units.lastIndex) {
-        value /= 1024
-        index++
-    }
-    return String.format(Locale.US, "%.1f %s", value, units[index])
-}
+internal fun Context.formatDownloadBytes(bytes: Long): String = formatByteCount(bytes)

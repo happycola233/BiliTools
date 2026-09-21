@@ -111,7 +111,7 @@ internal fun downloadPreferenceMemorySummary(settings: DownloadPreferenceMemoryS
             stringResource(
                 R.string.settings_download_preference_memory_summary_some,
                 remembered.size,
-                titles.joinToString("、"),
+                titles.joinToString(stringResource(R.string.runtime_list_separator)),
             )
         }
     }

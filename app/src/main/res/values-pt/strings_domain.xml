@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="media_kind_anime">Anime</string>
+    <string name="media_kind_movie">Filme</string>
+    <string name="media_kind_documentary">Documentário</string>
+    <string name="media_kind_chinese_animation">Animação chinesa</string>
+    <string name="media_kind_series">Séries de TV</string>
+    <string name="media_kind_variety">Programa de variedades</string>
+    <string name="media_copyright_licensed">Licenciado</string>
+    <string name="media_copyright_exclusive">Exclusivo</string>
+    <string name="media_price_bcoin">%1$s Moedas B</string>
+    <string name="media_access_available">Disponível</string>
+    <string name="media_access_purchase">Compra necessária</string>
+    <string name="media_access_unavailable">Atualmente indisponível</string>
+    <string name="download_saved_file_unavailable">O arquivo salvo não está mais disponível</string>
+    <string name="export_author">Autor: %1$s</string>
+    <string name="export_published_at">Publicado: %1$s</string>
+    <string name="export_statistics">Estatísticas: %1$s</string>
+    <string name="export_source">Fonte: %1$s</string>
+    <string name="export_original">Postagem original</string>
+    <string name="export_image">Imagem %1$d</string>
+    <string name="export_views">Visualizações: %1$d</string>
+    <string name="export_likes">Curtidas: %1$d</string>
+    <string name="export_coins">Moedas: %1$d</string>
+    <string name="export_favorites">Favoritos: %1$d</string>
+    <string name="export_replies">Comentários: %1$d</string>
+    <string name="export_shares">Ações: %1$d</string>
+    <string name="metadata_uploader">Criador: %1$s</string>
+    <string name="metadata_published_at">Publicado em Bilibili: %1$s</string>
+    <string name="metadata_tags">Etiquetas: %1$s</string>
+    <string name="metadata_lyrics_source">Fonte da letra: %1$s</string>
+    <string name="lyrics_source_original">Letras de áudio originais</string>
+    <string name="lyrics_source_subtitles">%1$s (transcrito das legendas)</string>
+    <string name="update_error_empty_response">O servidor de atualização retornou conteúdo vazio</string>
+    <string name="update_error_invalid_response">Incapaz de ler informações de atualização</string>
+    <string name="update_error_no_route">Temporariamente não é possível conectar-se ao servidor de atualização, tente novamente mais tarde.</string>
+</resources>

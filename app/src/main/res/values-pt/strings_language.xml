@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_language_title">Idioma</string>
+    <string name="settings_language_system">Seguir o sistema</string>
+    <string name="settings_live_activity_unavailable">As notificações do Live Update não são suportadas nesta versão do Android.</string>
+    <string name="settings_update_summary_format">%1$s (%2$s)</string>
+</resources>

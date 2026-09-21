@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_detail_preparing_media">Mempersiapkan file media</string>
+    <string name="download_failure_prepare_media">Tidak dapat menyiapkan file media</string>
+    <string name="download_embed_missing_languages">Subtitle tidak ada: %1$s</string>
+    <string name="parse_subtitle_selection_required">Pilih bahasa subtitle atau lirik, atau matikan opsi yang sesuai untuk melanjutkan.</string>
+    <string name="parse_dolby_mp3_notice">MP3 konversi aktif. Dolby Atmos tidak akan dipertahankan.</string>
+</resources>

@@ -1,5 +1,10 @@
 package com.happycola233.bilitools.core
 
+import com.happycola233.bilitools.core.StringProvider
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
+import org.robolectric.annotation.Config
 import com.happycola233.bilitools.data.model.MediaStat
 import com.happycola233.bilitools.data.model.MediaUpper
 import com.happycola233.bilitools.data.model.OpusBlock
@@ -13,7 +18,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.net.URI
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35], qualifiers = "zh-rCN")
 class OpusMarkdownRendererTest {
+    private val strings = StringProvider(RuntimeEnvironment.getApplication())
     @Test
     fun normalizeImageUrl_keepsOriginalBiliAssetAndForcesHttps() {
         assertEquals(
@@ -91,7 +99,7 @@ class OpusMarkdownRendererTest {
         )
         val assets = OpusAssetPlanner.plan(document) { _, _ -> "示例 图文图片" }
 
-        val markdown = OpusMarkdownRenderer.render(document, assets)
+        val markdown = OpusMarkdownRenderer.render(document, assets, strings)
 
         assertTrue(markdown.contains("# 示例\\[标题\\]"))
         assertTrue(markdown.contains("- 作者：测试 UP"))
@@ -117,7 +125,7 @@ class OpusMarkdownRendererTest {
             images = listOf(image),
         )
 
-        val markdown = OpusMarkdownRenderer.render(document)
+        val markdown = OpusMarkdownRenderer.render(document, strings = strings)
 
         assertTrue(markdown.contains("![原图](https://i0.hdslb.com/original.jpg)"))
     }

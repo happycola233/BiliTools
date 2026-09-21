@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_dialog_download">Unduh pembaruan</string>
+    <string name="update_dialog_ignore_once">Abaikan pembaruan ini</string>
+    <string name="update_dialog_download_started">Pembaruan sedang diunduh di latar belakang</string>
+    <string name="update_dialog_download_running">Pembaruan sudah diunduh di latar belakang</string>
+    <string name="update_dialog_download_failed">Gagal memulai pengunduhan pembaruan: %1$s</string>
+    <string name="update_dialog_apk_missing">Tidak ada paket pembaruan yang tersedia untuk perangkat ini.</string>
+    <string name="update_dialog_ignore_saved">Pengingat pembaruan untuk %1$s kini disembunyikan</string>
+    <string name="update_install_file_missing">Paket pembaruan hilang atau telah dihapus</string>
+    <string name="update_install_launch_failed">Tidak dapat membuka pemasang</string>
+    <string name="update_notification_channel_progress_name">Unduhan pembaruan aplikasi</string>
+    <string name="update_notification_channel_progress_desc">Kemajuan pengunduhan pembaruan aplikasi</string>
+    <string name="update_notification_channel_result_name">Instalasi pembaruan aplikasi</string>
+    <string name="update_notification_channel_result_desc">Hasil pengunduhan pembaruan aplikasi</string>
+    <string name="update_notification_progress_title">Mengunduh pembaruan %1$s</string>
+    <string name="update_notification_progress_content_known">%1$d%% %2$s / %3$s</string>
+    <string name="update_notification_progress_content_unknown">Diunduh %1$s</string>
+    <string name="update_notification_ready_title">Pembaruan siap dipasang</string>
+    <string name="update_notification_ready_content">Ketuk untuk memasang %1$s</string>
+    <string name="update_notification_action_install">Pasang</string>
+    <string name="update_notification_failed_title">Pengunduhan pembaruan gagal: %1$s</string>
+    <string name="update_notification_failed_content">%1$s</string>
+    <string name="update_notification_action_open_release">Buka halaman rilis</string>
+</resources>

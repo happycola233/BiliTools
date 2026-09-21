@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_detail_preparing_media">Menyediakan fail media</string>
+    <string name="download_failure_prepare_media">Tidak dapat menyediakan fail media</string>
+    <string name="download_embed_missing_languages">Sari kata tiada: %1$s</string>
+    <string name="parse_subtitle_selection_required">Pilih bahasa sari kata atau lirik, atau matikan pilihan yang sepadan untuk meneruskan.</string>
+    <string name="parse_dolby_mp3_notice">MP3 penukaran dihidupkan. Dolby Atmos tidak akan disimpan.</string>
+</resources>

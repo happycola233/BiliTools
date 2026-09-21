@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="me_section_content">私のコンテンツ</string>
+    <string name="me_section_manage">管理</string>
+    <string name="me_login_entry_title">さらに多くの機能を利用するにはログインしてください</string>
+    <string name="me_login_entry_summary">より多くのダウンロード オプションと Bilibili コンテンツにアクセスします。</string>
+    <string name="me_history_entry_disabled_desc">ログインして履歴を表示してください</string>
+    <string name="me_favorite_entry_disabled_desc">お気に入りを表示するにはログインしてください</string>
+    <string name="me_watch_later_entry_disabled_desc">ログインして後で見る</string>
+    <string name="me_logout_summary">このデバイスからログイン情報を削除します</string>
+    <string name="me_login_screen_subtitle">ログイン方法を選択し、アカウントを確認してください</string>
+</resources>

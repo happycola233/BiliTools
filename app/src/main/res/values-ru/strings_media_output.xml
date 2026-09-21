@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_detail_preparing_media">Подготовка медиафайлов</string>
+    <string name="download_failure_prepare_media">Не удалось подготовить медиафайлы.</string>
+    <string name="download_embed_missing_languages">Отсутствуют субтитры: %1$s</string>
+    <string name="parse_subtitle_selection_required">Выберите язык субтитров или текста песни или отключите соответствующую опцию, чтобы продолжить.</string>
+    <string name="parse_dolby_mp3_notice">Преобразование MP3 включено. Dolby Atmos не сохранится.</string>
+</resources>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_detail_preparing_media">Medya dosyalarının hazırlanması</string>
+    <string name="download_failure_prepare_media">Medya dosyaları hazırlanamadı</string>
+    <string name="download_embed_missing_languages">Eksik altyazılar: %1$s</string>
+    <string name="parse_subtitle_selection_required">Bir altyazı veya şarkı sözü dili seçin veya devam etmek için ilgili seçeneği kapatın.</string>
+    <string name="parse_dolby_mp3_notice">MP3 dönüşümü açık. Dolby Atmos korunmayacaktır.</string>
+</resources>

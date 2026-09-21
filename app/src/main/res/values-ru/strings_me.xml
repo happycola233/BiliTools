@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="me_section_content">Мой контент</string>
+    <string name="me_section_manage">Управление</string>
+    <string name="me_login_entry_title">Войдите в систему, чтобы получить больше возможностей</string>
+    <string name="me_login_entry_summary">Доступ к дополнительным параметрам загрузки и вашему контенту Bilibili.</string>
+    <string name="me_history_entry_disabled_desc">Войдите, чтобы просмотреть свою историю.</string>
+    <string name="me_favorite_entry_disabled_desc">Войдите в систему, чтобы просмотреть избранное</string>
+    <string name="me_watch_later_entry_disabled_desc">Войдите, чтобы просмотреть Посмотреть позже</string>
+    <string name="me_logout_summary">Удалите свой логин с этого устройства</string>
+    <string name="me_login_screen_subtitle">Выберите способ входа и подтвердите свою учетную запись.</string>
+</resources>

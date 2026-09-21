@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_language_title">Dil</string>
+    <string name="settings_language_system">Sistem dili</string>
+    <string name="settings_live_activity_unavailable">Canlı Güncelleme bildirimleri Android\'in bu sürümünde desteklenmemektedir.</string>
+    <string name="settings_update_summary_format">%1$s (%2$s)</string>
+</resources>

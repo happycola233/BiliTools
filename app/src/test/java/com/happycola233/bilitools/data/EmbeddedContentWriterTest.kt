@@ -1,5 +1,6 @@
 package com.happycola233.bilitools.data
 
+import com.happycola233.bilitools.core.StringProvider
 import com.happycola233.bilitools.core.BiliHttpClient
 import com.happycola233.bilitools.core.CookieStore
 import com.happycola233.bilitools.core.WbiSigner
@@ -31,7 +32,7 @@ import org.robolectric.annotation.GraphicsMode
 import org.robolectric.util.ReflectionHelpers
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [35], qualifiers = "zh-rCN")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class EmbeddedContentWriterTest {
     private var requests = 0
@@ -154,7 +155,7 @@ class EmbeddedContentWriterTest {
                 onTemporaryFile = { temporaryFiles += it },
             )
             assertEquals(setOf(EmbeddedContentIssue.SubtitlesPartiallyFailed), issues)
-            assertEquals(listOf("中文 · AI 字幕"), incomplete)
+            assertEquals(listOf("中文 · AI"), incomplete)
             assertEquals(listOf("中文（简体）"), tracks.map { it.title })
             assertEquals(tracks.map { it.file }, temporaryFiles)
             assertTrue(temporaryFiles.single().readText().contains("字幕示例"))
@@ -173,7 +174,7 @@ class EmbeddedContentWriterTest {
                 SubtitleTrackEmbedding(),
                 directory, issues, incomplete, onTemporaryFile = { temporaryFiles += it },
             )
-            assertEquals(listOf("中文（简体）", "英语 · AI 字幕"), tracks.map { it.title })
+            assertEquals(listOf("中文（简体）", "英语 · AI"), tracks.map { it.title })
             assertTrue(issues.isEmpty())
             assertTrue(incomplete.isEmpty())
         } finally {
@@ -254,7 +255,7 @@ class EmbeddedContentWriterTest {
         }.build()
         val context = RuntimeEnvironment.getApplication()
         val bili = BiliHttpClient(CookieStore(context), SettingsRepository(context))
-        return EmbeddedContentWriter(client, ExtrasRepository(bili, WbiSigner(bili)))
+        return EmbeddedContentWriter(client, ExtrasRepository(bili, WbiSigner(bili)), StringProvider(RuntimeEnvironment.getApplication()))
     }
 
     private fun subtitleWriter(onRequest: (Request) -> Unit = {}): EmbeddedContentWriter {
@@ -278,7 +279,7 @@ class EmbeddedContentWriterTest {
         val signer = WbiSigner(bili)
         ReflectionHelpers.setField(signer, "cachedMixinKey", "fixture")
         ReflectionHelpers.setField(signer, "lastUpdateMs", System.currentTimeMillis())
-        return EmbeddedContentWriter(client, ExtrasRepository(bili, signer))
+        return EmbeddedContentWriter(client, ExtrasRepository(bili, signer), StringProvider(RuntimeEnvironment.getApplication()))
     }
 
     private fun item(file: File, embedding: DownloadEmbedding?) = DownloadItem(

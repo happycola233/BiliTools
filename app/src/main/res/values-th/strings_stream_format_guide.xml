@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="stream_format_guide_title">เกี่ยวกับ DASH / MP4 / FLV</string>
+    <string name="stream_format_guide_subtitle">การเลือกรูปแบบสตรีม</string>
+    <string name="stream_format_guide_intro">Bilibili ใช้รูปแบบการสตรีมสามรูปแบบ DASH เปิดตัวในปี 2018 และยังคงเป็นรูปแบบหลัก ขณะนี้ MP4 และ FLV ถูกใช้เฉพาะในกรณีที่จำกัดเท่านั้น</string>
+    <string name="stream_format_guide_dash_status">แนะนำ</string>
+    <string name="stream_format_guide_dash_notice">Bilibili รูปแบบการสตรีมปัจจุบันให้คุณภาพเสียงและวิดีโอที่ดีที่สุด และการดาวน์โหลดที่เร็วที่สุด</string>
+    <string name="stream_format_guide_dash_default">เก็บรูปแบบนี้ไว้เพื่อการดาวน์โหลดส่วนใหญ่ หากคุณไม่แน่ใจ ปล่อยให้รูปแบบสตรีมไม่เปลี่ยนแปลง</string>
+    <string name="stream_format_guide_dash_body">เสียงและวิดีโอจัดส่งแยกกันเป็นเซ็กเมนต์ สตรีมวิดีโอไม่มีเสียง และเสียงสตรีมไม่มีภาพ</string>
+    <string name="stream_format_guide_dash_merge">หากต้องการสร้างไฟล์เดียวที่มีทั้งเสียงและวิดีโอ สตรีมจะต้องรวมเข้าด้วยกันโดยใช้ FFmpeg เลือกประเภทเอาต์พุตเสียงและวิดีโอเพื่อทำสิ่งนี้</string>
+    <string name="stream_format_guide_mp4_status">เลือกอย่างระมัดระวัง</string>
+    <string name="stream_format_guide_mp4_notice">อย่าเลือกสิ่งนี้เพียงเพราะคุณต้องการไฟล์ MP4 การดาวน์โหลดมักจะช้ากว่าและคุณภาพต่ำกว่า DASH</string>
+    <string name="stream_format_guide_mp4_body">รูปแบบนี้ส่งไฟล์ MP4 พร้อมเสียงอยู่แล้ว ดังนั้นจึงไม่จำเป็นต้องรวมเข้าด้วยกัน</string>
+    <string name="stream_format_guide_mp4_exception">ปัจจุบันไม่ค่อยมีการใช้รูปแบบนี้ ยกเว้นตัวอย่างรายการที่ต้องชำระเงิน ภาพยนตร์ และหลักสูตรต่างๆ การแสดงตัวอย่างดังกล่าวมักจะใช้ได้เฉพาะในขนาด MP4 โดยมีคุณภาพของภาพและเสียงที่จำกัด</string>
+    <string name="stream_format_guide_flv_status">ส่วนใหญ่เกษียณแล้ว</string>
+    <string name="stream_format_guide_flv_notice">รูปแบบ FLV แบบแบ่งส่วนที่ใช้ในปีก่อนหน้าได้เลิกใช้ไปเกือบทั้งหมดแล้ว</string>
+    <string name="stream_format_guide_flv_body">ตัวเลือกนี้จะถูกเก็บไว้เพื่อความเข้ากันได้และการเก็บถาวร เนื้อหาเก่าบางรายการอาจยังดาวน์โหลดได้ แต่ไม่แนะนำให้ใช้ FLV สำหรับการใช้งานในชีวิตประจำวัน</string>
+    <string name="stream_format_guide_footer">คงรูปแบบ DASH เริ่มต้นไว้ เว้นแต่ว่าคุณต้องการรูปแบบอื่น</string>
+</resources>

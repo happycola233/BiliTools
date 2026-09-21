@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_dialog_download">ดาวน์โหลดอัพเดต</string>
+    <string name="update_dialog_ignore_once">ละเว้นการอัปเดตนี้</string>
+    <string name="update_dialog_download_started">กำลังดาวน์โหลดการอัปเดตในเบื้องหลัง</string>
+    <string name="update_dialog_download_running">มีการดาวน์โหลดการอัปเดตในเบื้องหลังแล้ว</string>
+    <string name="update_dialog_download_failed">ไม่สามารถเริ่มการดาวน์โหลดอัปเดต: %1$s</string>
+    <string name="update_dialog_apk_missing">ไม่มีแพ็คเกจการอัปเดตสำหรับอุปกรณ์นี้</string>
+    <string name="update_dialog_ignore_saved">การแจ้งเตือนการอัปเดตสำหรับ %1$s ถูกซ่อนไว้แล้ว</string>
+    <string name="update_install_file_missing">แพ็คเกจอัพเดตหายไปหรือถูกลบไปแล้ว</string>
+    <string name="update_install_launch_failed">ไม่สามารถเปิดตัวติดตั้งได้</string>
+    <string name="update_notification_channel_progress_name">ดาวน์โหลดอัปเดตแอป</string>
+    <string name="update_notification_channel_progress_desc">ความคืบหน้าของการดาวน์โหลดแอปอัปเดต</string>
+    <string name="update_notification_channel_result_name">การติดตั้งการอัปเดตแอป</string>
+    <string name="update_notification_channel_result_desc">ผลการดาวน์โหลดการอัปเดตแอป</string>
+    <string name="update_notification_progress_title">กำลังดาวน์โหลดอัปเดต %1$s</string>
+    <string name="update_notification_progress_content_known">%1$d%% %2$s / %3$s</string>
+    <string name="update_notification_progress_content_unknown">ดาวน์โหลดแล้ว %1$s</string>
+    <string name="update_notification_ready_title">อัปเดตพร้อมสำหรับการติดตั้ง</string>
+    <string name="update_notification_ready_content">แตะเพื่อติดตั้ง %1$s</string>
+    <string name="update_notification_action_install">ติดตั้ง</string>
+    <string name="update_notification_failed_title">การดาวน์โหลดอัปเดตล้มเหลว: %1$s</string>
+    <string name="update_notification_failed_content">%1$s</string>
+    <string name="update_notification_action_open_release">เปิดหน้าเผยแพร่</string>
+</resources>

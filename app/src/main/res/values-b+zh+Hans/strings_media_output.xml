@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_detail_preparing_media">正在整理媒体文件</string>
+    <string name="download_failure_prepare_media">媒体文件整理失败</string>
+    <string name="download_embed_missing_languages">未完成的字幕：%1$s</string>
+    <string name="parse_subtitle_selection_required">请选择字幕或歌词的语言，或关闭对应选项后继续。</string>
+    <string name="parse_dolby_mp3_notice">已开启转为 MP3，将不再保留杜比全景声。</string>
+</resources>

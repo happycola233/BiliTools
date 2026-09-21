@@ -93,7 +93,7 @@
     <string name="settings_naming_token_artist">音频作者</string>
     <string name="settings_naming_token_aid">AV号</string>
     <string name="settings_naming_token_bvid">BV号</string>
-    <string name="settings_naming_token_cid">CID</string>
+    <string name="settings_naming_token_cid" translatable="false">CID</string>
     <string name="settings_naming_token_epid">EP号</string>
     <string name="settings_naming_token_ssid">SS号</string>
     <string name="settings_naming_token_sid">歌曲号</string>

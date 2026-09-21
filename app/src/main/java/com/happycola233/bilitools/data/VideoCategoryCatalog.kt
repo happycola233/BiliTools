@@ -1,5 +1,7 @@
 package com.happycola233.bilitools.data
 
+import com.happycola233.bilitools.data.model.MediaCategory
+
 /**
  * view 接口经常只返回 tid 而不给 tname，因此保留 API 文档中的分区目录作为名称回退。
  * 目录只用于格式化本次 view 已返回的 tid，不会触发额外接口请求。
@@ -418,17 +420,17 @@ internal object VideoCategoryCatalog {
         2205 to Entry("生活经验", "婚嫁"),
     )
 
-    fun legacyLabel(tid: Int?, apiChildName: String?): String? =
-        formatLabel(tid, apiChildName, legacyCategories)
+    fun legacyCategory(tid: Int?, apiChildName: String?): MediaCategory? =
+        resolveCategory(tid, apiChildName, legacyCategories)
 
-    fun modernLabel(tid: Int?, apiChildName: String?): String? =
-        formatLabel(tid, apiChildName, modernCategories)
+    fun modernCategory(tid: Int?, apiChildName: String?): MediaCategory? =
+        resolveCategory(tid, apiChildName, modernCategories)
 
-    private fun formatLabel(
+    private fun resolveCategory(
         tid: Int?,
         apiChildName: String?,
         catalog: Map<Int, Entry>,
-    ): String? {
+    ): MediaCategory? {
         val entry = tid?.let(catalog::get)
         val child = apiChildName?.trim()?.takeIf(String::isNotBlank) ?: entry?.child
         val parent = entry?.parent
@@ -437,6 +439,6 @@ internal object VideoCategoryCatalog {
             parent.isNullOrBlank() || parent == child -> child
             else -> "$parent > $child"
         } ?: return null
-        return if (entry?.offline == true) "$category（已下线）" else category
+        return MediaCategory(category, offline = entry?.offline == true)
     }
 }

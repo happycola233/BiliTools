@@ -182,12 +182,16 @@ data class DownloadItem(
     val userPaused: Boolean = false,
     val errorMessage: String? = null,
     val statusDetail: String? = null,
+    /** 稳定消息代码用于重新渲染历史状态；旧版保存的原文仍保留作兼容。 */
+    val statusMessage: DownloadMessage? = null,
+    val failureMessage: DownloadMessage? = null,
     val mediaParams: DownloadMediaParams? = null,
     val embeddedMetadata: DownloadEmbeddedMetadata? = null,
     /** 解析页为这次下载单独选择的内嵌字幕 / 歌词；与元数据开关无关。 */
     val embedding: DownloadEmbedding? = null,
     /** 元数据、封面、字幕或歌词未能全部写入时的提示。 */
     val embedWarning: String? = null,
+    val embeddingMessages: List<DownloadMessage> = emptyList(),
     /** 实际写入文件的软字幕轨名称与歌词来源，供详情页展示。 */
     val embeddedSubtitleTitles: List<String> = emptyList(),
     val embeddedLyricsSource: String? = null,
@@ -199,6 +203,10 @@ data class DownloadMediaParams(
     val resolution: String? = null,
     val codec: String? = null,
     val audioBitrate: String? = null,
+    val resolutionId: Int? = null,
+    val resolutionHeight: Int? = null,
+    val codecType: VideoCodec? = null,
+    val audioQualityId: Int? = null,
 )
 
 /**

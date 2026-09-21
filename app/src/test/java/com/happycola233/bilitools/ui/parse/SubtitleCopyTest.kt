@@ -10,8 +10,14 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
+import org.junit.Before
+import org.junit.After
+import java.util.Locale
 
 class SubtitleCopyTest {
+    private lateinit var previousLocale: Locale
+    @Before fun useChineseDisplayLanguage() { previousLocale = Locale.getDefault(); Locale.setDefault(Locale.SIMPLIFIED_CHINESE) }
+    @After fun restoreDisplayLanguage() { Locale.setDefault(previousLocale) }
     private val chinese = SubtitleInfo("zh-Hans", "中文（简体）", "https://example.invalid/zh")
     private val english = SubtitleInfo("en", "英语", "https://example.invalid/en")
     private val generated = SubtitleInfo("ai-zh", "中文（自动生成）", "https://example.invalid/ai", isAi = true)
@@ -79,14 +85,14 @@ class SubtitleCopyTest {
             loadSubtitles = { listOf(chinese, generated) },
         )
         assertEquals("content:ai-zh", entries.single().content)
-        assertEquals("中文 · AI 字幕", entries.single().subtitleName)
+        assertEquals("中文 · AI", entries.single().subtitleName)
     }
 
     @Test
     fun allSubtitlesCopyIncludesAiSourcesWithoutASeparateFilter() = runBlocking {
         val entries = copy(loadSubtitles = { listOf(chinese, generated) })
         assertEquals(listOf("content:zh-Hans", "content:ai-zh"), entries.map { it.content })
-        assertEquals(listOf("中文（简体）", "中文 · AI 字幕"), entries.map { it.subtitleName })
+        assertEquals(listOf("中文（简体）", "中文 · AI"), entries.map { it.subtitleName })
     }
 
     @Test

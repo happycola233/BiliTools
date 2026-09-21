@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_language_title">語言</string>
+    <string name="settings_language_system">跟隨系統</string>
+    <string name="settings_live_activity_unavailable">當前系統不支援實時更新通知。</string>
+    <string name="settings_update_summary_format">%1$s（%2$s）</string>
+</resources>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="parse_subtitle_file_option">Salvar arquivo de legenda</string>
+    <string name="subtitle_source_language">Idioma da legenda</string>
+    <string name="subtitle_source_lyrics_language">Idioma das letras</string>
+    <string name="subtitle_source_embed_title">Idioma de legenda incorporado</string>
+    <string name="subtitle_source_file_title">Idioma do arquivo de legenda</string>
+    <string name="subtitle_source_ai_description">Legendas AI</string>
+    <string name="subtitle_source_select">Selecionar idioma</string>
+    <string name="subtitle_source_select_all">Selecionar tudo</string>
+    <string name="subtitle_source_all_count">Todas as legendas · Idiomas: %1$d</string>
+    <string name="subtitle_source_selected_count">Idiomas selecionados: %1$d</string>
+    <string name="subtitle_source_cancel">Cancelar</string>
+    <string name="subtitle_source_done">Feito</string>
+    <string name="subtitle_source_coverage">Disponíveis: %1$d / %2$d</string>
+    <string name="subtitle_source_coverage_pending">Confirmados: %1$d / %2$d</string>
+    <string name="subtitle_source_unconfirmed">Disponibilidade ainda não confirmada</string>
+    <string name="subtitle_source_unavailable">Indisponível para este item</string>
+    <string name="subtitle_source_loading">Carregando legendas…</string>
+    <string name="subtitle_source_loading_batch">Carregando legendas: %1$d / %2$d</string>
+    <string name="subtitle_source_failure">Falha no carregamento da legenda.</string>
+    <string name="subtitle_source_partial_failure">Itens com erros de legenda: %1$d</string>
+    <string name="subtitle_source_retry">Tente novamente</string>
+    <string name="subtitle_source_empty">Nenhuma legenda está disponível para este vídeo.</string>
+    <string name="subtitle_source_empty_batch">Nenhuma legenda está disponível para esses itens.</string>
+    <string name="subtitle_source_login">Faça login para acessar as legendas do vídeo.</string>
+    <string name="subtitle_source_login_lyrics">Faça login para escolher o idioma da letra ou desative as letras incorporadas.</string>
+    <string name="subtitle_source_choose_lyrics">Selecione uma faixa de legenda para usar como letra.</string>
+    <string name="subtitle_source_no_lyrics">Nenhuma legenda está disponível. Desative as letras incorporadas antes de fazer o download.</string>
+    <string name="subtitle_source_choose_subtitles">Selecione pelo menos uma legenda.</string>
+    <string name="subtitle_source_missing_selection">O idioma de legenda selecionado está faltando em alguns itens.</string>
+</resources>

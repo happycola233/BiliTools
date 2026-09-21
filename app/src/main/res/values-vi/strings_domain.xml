@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="media_kind_anime">Anime</string>
+    <string name="media_kind_movie">Phim</string>
+    <string name="media_kind_documentary">Phim tài liệu</string>
+    <string name="media_kind_chinese_animation">Hoạt hình Trung Quốc</string>
+    <string name="media_kind_series">phim truyền hình</string>
+    <string name="media_kind_variety">Chương trình tạp kỹ</string>
+    <string name="media_copyright_licensed">Được cấp phép</string>
+    <string name="media_copyright_exclusive">Độc quyền</string>
+    <string name="media_price_bcoin">%1$s B-Coin</string>
+    <string name="media_access_available">Có sẵn</string>
+    <string name="media_access_purchase">Yêu cầu mua hàng</string>
+    <string name="media_access_unavailable">Hiện không có sẵn</string>
+    <string name="download_saved_file_unavailable">Tệp đã lưu không còn tồn tại</string>
+    <string name="export_author">Tác giả: %1$s</string>
+    <string name="export_published_at">Đã xuất bản: %1$s</string>
+    <string name="export_statistics">Thống kê: %1$s</string>
+    <string name="export_source">Nguồn: %1$s</string>
+    <string name="export_original">Bài gốc</string>
+    <string name="export_image">Hình ảnh %1$d</string>
+    <string name="export_views">Lượt xem: %1$d</string>
+    <string name="export_likes">Lượt thích: %1$d</string>
+    <string name="export_coins">Đồng xu: %1$d</string>
+    <string name="export_favorites">Yêu thích: %1$d</string>
+    <string name="export_replies">Bình luận: %1$d</string>
+    <string name="export_shares">Lượt chia sẻ: %1$d</string>
+    <string name="metadata_uploader">Người tạo: %1$s</string>
+    <string name="metadata_published_at">Xuất bản vào ngày Bilibili: %1$s</string>
+    <string name="metadata_tags">Thẻ: %1$s</string>
+    <string name="metadata_lyrics_source">Nguồn lời bài hát: %1$s</string>
+    <string name="lyrics_source_original">Lời bài hát âm thanh gốc</string>
+    <string name="lyrics_source_subtitles">%1$s (trích từ phụ đề)</string>
+    <string name="update_error_empty_response">Máy chủ cập nhật trả về nội dung trống</string>
+    <string name="update_error_invalid_response">Không thể đọc thông tin cập nhật</string>
+    <string name="update_error_no_route">Tạm thời không thể kết nối với máy chủ cập nhật, vui lòng thử lại sau.</string>
+</resources>

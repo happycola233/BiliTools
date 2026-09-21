@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_channel_download_progress_desc">تنزيل التقدم وعناصر التحكم</string>
+    <string name="notification_channel_download_result_name">تنزيل النتائج</string>
+    <string name="notification_channel_download_result_desc">عرض حالة اكتمال مهمة التنزيل</string>
+    <string name="notification_title_downloading_default">جاري التحميل</string>
+    <string name="notification_title_downloading_multiple">قيد التنزيل: %1$d</string>
+    <string name="notification_title_paused_multiple">المهام المتوقفة مؤقتًا: %1$d</string>
+    <string name="notification_status_downloading">جاري التحميل</string>
+    <string name="notification_status_preparing">جاري التحميل</string>
+    <string name="notification_status_merging">المعالجة</string>
+    <string name="notification_status_paused">متوقف مؤقتًا</string>
+    <string name="notification_content_progress_percent">%1$d%%</string>
+    <string name="notification_content_progress_bytes">%1$d%% %2$s / %3$s</string>
+    <string name="notification_content_paused_count">متوقف مؤقتًا: %1$d</string>
+    <string name="notification_short_downloading">جاري التحميل</string>
+    <string name="notification_short_preparing">التحضير</string>
+    <string name="notification_short_merging">المعالجة</string>
+    <string name="notification_short_paused">متوقف مؤقتًا</string>
+    <string name="notification_short_progress">%1$d%%</string>
+    <string name="notification_summary_all_completed">اكتمل التحميل</string>
+    <string name="notification_summary_finished">انتهت التنزيلات</string>
+    <string name="notification_summary_content">مكتمل: %1$d · فشل: %2$d · تم الإلغاء: %3$d</string>
+    <string name="notification_permission_denied_tip">تم رفض إذن الإعلام. ستستمر التنزيلات، ولكن لن يظهر التقدم في الإشعارات.</string>
+</resources>

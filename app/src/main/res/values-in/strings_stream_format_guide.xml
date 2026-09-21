@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="stream_format_guide_title">Tentang DASH / MP4 / FLV</string>
+    <string name="stream_format_guide_subtitle">Memilih format streaming</string>
+    <string name="stream_format_guide_intro">Bilibili telah menggunakan tiga format streaming. DASH diperkenalkan pada tahun 2018 dan tetap menjadi format utama. MP4 dan FLV kini hanya digunakan dalam kasus tertentu.</string>
+    <string name="stream_format_guide_dash_status">Direkomendasikan</string>
+    <string name="stream_format_guide_dash_notice">Format streaming Bilibili saat ini menawarkan kualitas audio dan video terbaik serta pengunduhan tercepat.</string>
+    <string name="stream_format_guide_dash_default">Pertahankan format ini untuk sebagian besar unduhan. Jika Anda tidak yakin, biarkan format Stream tidak berubah.</string>
+    <string name="stream_format_guide_dash_body">Audio dan video dikirimkan secara terpisah dalam segmen. Aliran video tidak memiliki suara, dan aliran audio tidak memiliki gambar.</string>
+    <string name="stream_format_guide_dash_merge">Untuk membuat satu file dengan audio dan video, aliran harus digabungkan menggunakan FFmpeg. Pilih jenis keluaran Audio dan video untuk melakukan ini.</string>
+    <string name="stream_format_guide_mp4_status">Pilih dengan hati-hati</string>
+    <string name="stream_format_guide_mp4_notice">Jangan memilih ini hanya karena Anda menginginkan file MP4. Unduhan biasanya lebih lambat dan kualitasnya lebih rendah dibandingkan DASH.</string>
+    <string name="stream_format_guide_mp4_body">Format ini mengirimkan file MP4 dengan audio yang sudah disertakan, jadi penggabungan tidak diperlukan.</string>
+    <string name="stream_format_guide_mp4_exception">Format ini jarang digunakan sekarang, kecuali untuk pratinjau acara berbayar, film, dan kursus. Pratinjau seperti itu seringkali hanya tersedia sebagai MP4 dengan kualitas gambar dan suara terbatas.</string>
+    <string name="stream_format_guide_flv_status">Sebagian besar sudah pensiun</string>
+    <string name="stream_format_guide_flv_notice">Format FLV tersegmentasi yang digunakan pada tahun-tahun sebelumnya hampir seluruhnya telah dihentikan.</string>
+    <string name="stream_format_guide_flv_body">Opsi ini disimpan untuk kompatibilitas dan pengarsipan. Beberapa konten lama mungkin masih dapat diunduh, namun FLV tidak disarankan untuk penggunaan sehari-hari.</string>
+    <string name="stream_format_guide_footer">Pertahankan format DASH default kecuali Anda memerlukan format lain.</string>
+</resources>

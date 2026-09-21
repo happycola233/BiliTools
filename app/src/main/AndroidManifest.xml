@@ -18,9 +18,20 @@
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
+        android:localeConfig="@xml/locales_config"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.BiliTools">
+
+        <!-- Android 12 及以下由 AppCompat 保存语言，升级系统后自动交接给 LocaleManager。 -->
+        <service
+            android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
+            android:enabled="false"
+            android:exported="false">
+            <meta-data
+                android:name="autoStoreLocales"
+                android:value="true" />
+        </service>
 
         <!-- External share/open entry: dialog-style UI for parse + download without full-screen jump. -->
         <activity
@@ -70,6 +81,7 @@
 
         <activity
             android:name=".ui.settings.SettingsActivity"
+            android:configChanges="locale|layoutDirection"
             android:exported="false"
             android:theme="@style/Theme.BiliTools"
             android:windowSoftInputMode="adjustResize" />

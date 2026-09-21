@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="parse_subtitle_file_option">Save subtitle file</string>
+    <string name="subtitle_source_language">Subtitle language</string>
+    <string name="subtitle_source_lyrics_language">Lyrics language</string>
+    <string name="subtitle_source_embed_title">Embedded subtitle language</string>
+    <string name="subtitle_source_file_title">Subtitle file language</string>
+    <string name="subtitle_source_ai_description">AI subtitles</string>
+    <string name="subtitle_source_select">Select language</string>
+    <string name="subtitle_source_select_all">Select all</string>
+    <string name="subtitle_source_all_count">All subtitles · Languages: %1$d</string>
+    <string name="subtitle_source_selected_count">Languages selected: %1$d</string>
+    <string name="subtitle_source_cancel">Cancel</string>
+    <string name="subtitle_source_done">Done</string>
+    <string name="subtitle_source_coverage">Available: %1$d / %2$d</string>
+    <string name="subtitle_source_coverage_pending">Confirmed: %1$d / %2$d</string>
+    <string name="subtitle_source_unconfirmed">Availability not yet confirmed</string>
+    <string name="subtitle_source_unavailable">Unavailable for this item</string>
+    <string name="subtitle_source_loading">Loading subtitles…</string>
+    <string name="subtitle_source_loading_batch">Loading subtitles: %1$d / %2$d</string>
+    <string name="subtitle_source_failure">Subtitle loading failed.</string>
+    <string name="subtitle_source_partial_failure">Items with subtitle errors: %1$d</string>
+    <string name="subtitle_source_retry">Try again</string>
+    <string name="subtitle_source_empty">No subtitles are available for this video.</string>
+    <string name="subtitle_source_empty_batch">No subtitles are available for these items.</string>
+    <string name="subtitle_source_login">Log in to access video subtitles.</string>
+    <string name="subtitle_source_login_lyrics">Log in to choose a lyrics language, or turn off embedded lyrics.</string>
+    <string name="subtitle_source_choose_lyrics">Select a subtitle track to use as lyrics.</string>
+    <string name="subtitle_source_no_lyrics">No subtitles are available. Turn off embedded lyrics before downloading.</string>
+    <string name="subtitle_source_choose_subtitles">Please select at least one subtitle.</string>
+    <string name="subtitle_source_missing_selection">The selected subtitle language is missing from some items.</string>
+</resources>

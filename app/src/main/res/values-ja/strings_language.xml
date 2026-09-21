@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_language_title">言語</string>
+    <string name="settings_language_system">システムに合わせる</string>
+    <string name="settings_live_activity_unavailable">ライブアップデート通知は、このバージョンの Android ではサポートされていません。</string>
+    <string name="settings_update_summary_format">%1$s (%2$s)</string>
+</resources>

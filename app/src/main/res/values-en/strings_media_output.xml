@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_detail_preparing_media">Preparing media files</string>
+    <string name="download_failure_prepare_media">Could not prepare media files</string>
+    <string name="download_embed_missing_languages">Missing subtitles: %1$s</string>
+    <string name="parse_subtitle_selection_required">Choose a subtitle or lyrics language, or turn off the corresponding option to continue.</string>
+    <string name="parse_dolby_mp3_notice">MP3 conversion is on. Dolby Atmos will not be preserved.</string>
+</resources>

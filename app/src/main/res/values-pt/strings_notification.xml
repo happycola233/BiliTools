@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_channel_download_progress_desc">Progresso e controles de download</string>
+    <string name="notification_channel_download_result_name">Baixar resultados</string>
+    <string name="notification_channel_download_result_desc">Exibir o status de conclusão da tarefa de download</string>
+    <string name="notification_title_downloading_default">Baixando</string>
+    <string name="notification_title_downloading_multiple">Em download: %1$d</string>
+    <string name="notification_title_paused_multiple">Tarefas pausadas: %1$d</string>
+    <string name="notification_status_downloading">Baixando</string>
+    <string name="notification_status_preparing">Preparando download</string>
+    <string name="notification_status_merging">Processamento</string>
+    <string name="notification_status_paused">Pausado</string>
+    <string name="notification_content_progress_percent">%1$d%%</string>
+    <string name="notification_content_progress_bytes">%1$d%% %2$s / %3$s</string>
+    <string name="notification_content_paused_count">Pausado: %1$d</string>
+    <string name="notification_short_downloading">Baixando</string>
+    <string name="notification_short_preparing">Preparação</string>
+    <string name="notification_short_merging">Processamento</string>
+    <string name="notification_short_paused">Pausado</string>
+    <string name="notification_short_progress">%1$d%%</string>
+    <string name="notification_summary_all_completed">Download concluído</string>
+    <string name="notification_summary_finished">Downloads concluídos</string>
+    <string name="notification_summary_content">Concluído: %1$d · Falha: %2$d · Cancelado: %3$d</string>
+    <string name="notification_permission_denied_tip">A permissão de notificação foi negada. Os downloads continuarão, mas o progresso não aparecerá nas notificações.</string>
+</resources>

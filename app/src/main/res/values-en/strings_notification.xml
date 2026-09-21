@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_channel_download_progress_desc">Download progress and controls</string>
+    <string name="notification_channel_download_result_name">Download results</string>
+    <string name="notification_channel_download_result_desc">Display download task completion status</string>
+    <string name="notification_title_downloading_default">Downloading</string>
+    <string name="notification_title_downloading_multiple">Downloading: %1$d</string>
+    <string name="notification_title_paused_multiple">Paused tasks: %1$d</string>
+    <string name="notification_status_downloading">Downloading</string>
+    <string name="notification_status_preparing">Preparing download</string>
+    <string name="notification_status_merging">Processing</string>
+    <string name="notification_status_paused">Paused</string>
+    <string name="notification_content_progress_percent">%1$d%%</string>
+    <string name="notification_content_progress_bytes">%1$d%% %2$s/%3$s</string>
+    <string name="notification_content_paused_count">Paused: %1$d</string>
+    <string name="notification_short_downloading">Downloading</string>
+    <string name="notification_short_preparing">Preparing</string>
+    <string name="notification_short_merging">Processing</string>
+    <string name="notification_short_paused">Paused</string>
+    <string name="notification_short_progress">%1$d%%</string>
+    <string name="notification_summary_all_completed">Download completed</string>
+    <string name="notification_summary_finished">Downloads finished</string>
+    <string name="notification_summary_content">Completed: %1$d · Failed: %2$d · Canceled: %3$d</string>
+    <string name="notification_permission_denied_tip">Notification permission was denied. Downloads will continue, but progress will not appear in notifications.</string>
+</resources>

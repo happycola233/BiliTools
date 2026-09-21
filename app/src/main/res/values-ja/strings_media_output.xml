@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_detail_preparing_media">メディアファイルの準備</string>
+    <string name="download_failure_prepare_media">メディアファイルを準備できませんでした</string>
+    <string name="download_embed_missing_languages">字幕がありません: %1$s</string>
+    <string name="parse_subtitle_selection_required">字幕または歌詞の言語を選択するか、対応するオプションをオフにして続行します。</string>
+    <string name="parse_dolby_mp3_notice">MP3変換がオンになっています。 Dolby Atmos は保存されません。</string>
+</resources>

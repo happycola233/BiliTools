@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="media_kind_anime">番劇</string>
+    <string name="media_kind_movie">電影</string>
+    <string name="media_kind_documentary">紀錄片</string>
+    <string name="media_kind_chinese_animation">國創</string>
+    <string name="media_kind_series">電視劇</string>
+    <string name="media_kind_variety">綜藝</string>
+    <string name="media_copyright_licensed">授權</string>
+    <string name="media_copyright_exclusive">獨家</string>
+    <string name="media_price_bcoin">%1$s B幣</string>
+    <string name="media_access_available">可觀看</string>
+    <string name="media_access_purchase">需購買</string>
+    <string name="media_access_unavailable">暫不可觀看</string>
+    <string name="download_saved_file_unavailable">儲存的檔案已不可用</string>
+    <string name="export_author">作者：%1$s</string>
+    <string name="export_published_at">釋出時間：%1$s</string>
+    <string name="export_statistics">資料：%1$s</string>
+    <string name="export_source">來源：%1$s</string>
+    <string name="export_original">原文</string>
+    <string name="export_image">圖片 %1$d</string>
+    <string name="export_views">閱讀 %1$d</string>
+    <string name="export_likes">點贊 %1$d</string>
+    <string name="export_coins">投幣 %1$d</string>
+    <string name="export_favorites">收藏 %1$d</string>
+    <string name="export_replies">評論 %1$d</string>
+    <string name="export_shares">轉發 %1$d</string>
+    <string name="metadata_uploader">UP 主：%1$s</string>
+    <string name="metadata_published_at">B站釋出時間：%1$s</string>
+    <string name="metadata_tags">標籤：%1$s</string>
+    <string name="metadata_lyrics_source">歌詞來源：%1$s</string>
+    <string name="lyrics_source_original">音訊原始歌詞</string>
+    <string name="lyrics_source_subtitles">%1$s（字幕轉寫）</string>
+    <string name="update_error_empty_response">更新伺服器返回了空內容</string>
+    <string name="update_error_invalid_response">無法讀取更新資訊</string>
+    <string name="update_error_no_route">暫時無法連線更新伺服器，請稍後重試</string>
+</resources>

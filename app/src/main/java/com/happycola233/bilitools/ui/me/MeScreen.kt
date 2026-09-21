@@ -82,6 +82,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -117,7 +118,6 @@ import com.happycola233.bilitools.ui.theme.AppAccents
 import com.happycola233.bilitools.ui.theme.AppSurfaces
 import com.happycola233.bilitools.ui.theme.BiliToolsFonts
 import com.happycola233.bilitools.ui.theme.BiliToolsTheme
-import java.util.Locale
 import kotlin.math.abs
 import androidx.core.text.HtmlCompat
 
@@ -676,7 +676,6 @@ private fun QrLoginPanel(
     onRefreshQr: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val qrScannedStatus = stringResource(R.string.login_status_scanned)
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -725,9 +724,9 @@ private fun QrLoginPanel(
                 .heightIn(min = QrStatusSlotMinHeight),
         ) {
             Text(
-                text = state.qrStatusText,
+                text = stringResource(state.qrStatusRes),
                 style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 18.sp),
-                color = if (state.qrStatusText == qrScannedStatus) {
+                color = if (state.qrStatusRes == R.string.login_status_scanned) {
                     MaterialTheme.colorScheme.primary
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
@@ -1279,17 +1278,17 @@ private fun ProfileCard(
                 ) {
                     ProfileStat(
                         label = stringResource(R.string.login_stat_following),
-                        value = (userInfo.following ?: 0).toString(),
+                        value = formatUserCount(userInfo.following ?: 0),
                         modifier = Modifier.weight(1f),
                     )
                     ProfileStat(
                         label = stringResource(R.string.login_stat_follower),
-                        value = (userInfo.follower ?: 0).toString(),
+                        value = formatUserCount(userInfo.follower ?: 0),
                         modifier = Modifier.weight(1f),
                     )
                     ProfileStat(
                         label = stringResource(R.string.login_stat_dynamic),
-                        value = (userInfo.dynamic ?: 0).toString(),
+                        value = formatUserCount(userInfo.dynamic ?: 0),
                         modifier = Modifier.weight(1f),
                     )
                     ProfileStat(
@@ -1643,13 +1642,19 @@ private fun shouldShowVipBadge(info: UserInfo): Boolean {
     return !info.vipLabelImageUrl.isNullOrBlank() || !info.vipLabel.isNullOrBlank()
 }
 
+@Composable
+private fun formatUserCount(value: Number): String = java.text.NumberFormat
+    .getIntegerInstance(LocalConfiguration.current.locales[0]).format(value)
+
+@Composable
 private fun formatCoins(value: Double?): String {
+    val locale = LocalConfiguration.current.locales[0]
     if (value == null) return "-"
     val rounded = value.toLong().toDouble()
     return if (abs(value - rounded) < 0.01) {
-        rounded.toLong().toString()
+        java.text.NumberFormat.getIntegerInstance(locale).format(rounded.toLong())
     } else {
-        String.format(Locale.US, "%.1f", value)
+        String.format(locale, "%.1f", value)
     }
 }
 

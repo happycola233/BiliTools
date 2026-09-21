@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="me_section_content">Nội dung của tôi</string>
+    <string name="me_section_manage">Quản lý</string>
+    <string name="me_login_entry_title">Đăng nhập để biết thêm tính năng</string>
+    <string name="me_login_entry_summary">Truy cập nhiều tùy chọn tải xuống hơn vàBilibilinội dung.</string>
+    <string name="me_history_entry_disabled_desc">Đăng nhập để xem lịch sử của bạn</string>
+    <string name="me_favorite_entry_disabled_desc">Đăng nhập để xem mục yêu thích của bạn</string>
+    <string name="me_watch_later_entry_disabled_desc">Đăng nhập để xem Xem sau</string>
+    <string name="me_logout_summary">Xóa thông tin đăng nhập của bạn khỏi thiết bị này</string>
+    <string name="me_login_screen_subtitle">Chọn phương thức đăng nhập và xác minh tài khoản của bạn</string>
+</resources>

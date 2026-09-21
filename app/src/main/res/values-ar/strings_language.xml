@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_language_title">اللغة</string>
+    <string name="settings_language_system">لغة النظام</string>
+    <string name="settings_live_activity_unavailable">إشعارات التحديث المباشر غير مدعومة على هذا الإصدار من Android.</string>
+    <string name="settings_update_summary_format">%1$s (%2$s)</string>
+</resources>

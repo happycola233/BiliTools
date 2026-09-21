@@ -1,5 +1,10 @@
 package com.happycola233.bilitools.data
 
+import com.happycola233.bilitools.core.StringProvider
+import com.happycola233.bilitools.core.DownloadMessageCatalog
+import com.happycola233.bilitools.core.resolve
+import com.happycola233.bilitools.data.model.DownloadMessage
+import com.happycola233.bilitools.data.model.DownloadMessageCode
 import android.content.ContentValues
 import android.content.Context
 import android.media.MediaExtractor
@@ -77,6 +82,8 @@ class DownloadRepository(
     private val extrasRepository: ExtrasRepository,
     private val exportRepository: ExportRepository,
 ) {
+    private val strings = StringProvider(context)
+    private val messageCatalog = DownloadMessageCatalog(context)
     private val resolver = context.contentResolver
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val _groups = MutableStateFlow<List<DownloadGroup>>(emptyList())
@@ -508,7 +515,7 @@ class DownloadRepository(
 
             val id = extraTaskIds.getAndDecrement()
             val progress = if (status.isResolvedWithoutFailure) 100 else 0
-            val created = DownloadProgressRules.normalizeTask(
+            val created = normalizeTask(
                 buildItem(
                     id,
                     groupId,
@@ -543,13 +550,15 @@ class DownloadRepository(
         statusDetail: String? = null,
         progressIndeterminate: Boolean = false,
         userPaused: Boolean = false,
+        statusMessage: DownloadMessage? = null,
+        failureMessage: DownloadMessage? = null,
     ): Boolean {
         var updated = false
         var shouldPersist = false
         synchronized(lock) {
             val target = tasks[id] ?: return@synchronized
             if (isManagedTask(target)) return@synchronized
-            val next = DownloadProgressRules.normalizeTask(
+            val next = normalizeTask(
                 target.copy(
                     status = status,
                     progress = progress,
@@ -560,6 +569,8 @@ class DownloadRepository(
                     errorMessage = errorMessage,
                     localUri = localUri,
                     statusDetail = statusDetail,
+                    statusMessage = statusMessage,
+                    failureMessage = failureMessage,
                     progressIndeterminate = progressIndeterminate,
                     userPaused = userPaused,
                 ),
@@ -586,7 +597,7 @@ class DownloadRepository(
         synchronized(lock) {
             val target = tasks[id] ?: return@synchronized
             if (isManagedTask(target)) return@synchronized
-            val next = DownloadProgressRules.normalizeTask(
+            val next = normalizeTask(
                 target.copy(
                     title = taskTitle,
                     fileName = fileName,
@@ -688,7 +699,7 @@ class DownloadRepository(
                             id = id,
                             status = DownloadStatus.Failed,
                             progress = task.progress,
-                            errorMessage = context.getString(
+                            errorMessage = strings.get(
                                 R.string.download_failure_retry_data_missing,
                             ),
                         )
@@ -780,7 +791,8 @@ class DownloadRepository(
                     id = task.id,
                     status = DownloadStatus.Failed,
                     progress = 0,
-                    errorMessage = message,
+                    errorMessage = message.resolve(context),
+                    failureMessage = message,
                 )
             } finally {
                 val currentJob = coroutineContext[Job]
@@ -818,21 +830,21 @@ class DownloadRepository(
             DownloadExtraTaskOperation.DanmakuLive -> {
                 val onProgress: (DanmakuLiveProgress) -> Unit = { progress ->
                     val segmentCount = progress.segmentCount.coerceAtLeast(1)
-                    val statusDetail = when (progress.phase) {
-                        DanmakuLiveProgressPhase.FetchingSegment -> context.getString(
-                            R.string.download_detail_fetching_danmaku_segment,
-                            progress.segmentIndex.coerceIn(1, segmentCount),
-                            segmentCount,
+                    val statusMessage = when (progress.phase) {
+                        DanmakuLiveProgressPhase.FetchingSegment -> DownloadMessage(
+                            DownloadMessageCode.DetailFetchingDanmakuSegment,
+                            countArguments = listOf(progress.segmentIndex.coerceIn(1, segmentCount), segmentCount),
                         )
 
                         DanmakuLiveProgressPhase.Converting ->
-                            context.getString(R.string.download_detail_converting_danmaku)
+                            DownloadMessage(DownloadMessageCode.DetailConvertingDanmaku)
                     }
                     updateExtraTask(
                         id = id,
                         status = DownloadStatus.Running,
                         progress = progress.progress.coerceIn(0, 99),
-                        statusDetail = statusDetail,
+                        statusDetail = statusMessage.resolve(context),
+                        statusMessage = statusMessage,
                         progressIndeterminate =
                             progress.phase == DanmakuLiveProgressPhase.Converting,
                     )
@@ -883,7 +895,7 @@ class DownloadRepository(
                 id = id,
                 status = DownloadStatus.Running,
                 progress = 99,
-                statusDetail = context.getString(R.string.download_detail_saving_file),
+                statusDetail = strings.get(R.string.download_detail_saving_file),
             )
         ) {
             return
@@ -899,7 +911,7 @@ class DownloadRepository(
                 id = id,
                 status = DownloadStatus.Failed,
                 progress = 0,
-                errorMessage = context.getString(R.string.download_failure_save),
+                errorMessage = strings.get(R.string.download_failure_save),
             )
             return
         }
@@ -994,19 +1006,19 @@ class DownloadRepository(
         return true
     }
 
-    private fun extraTaskErrorMessage(taskTitle: String, err: Throwable?): String {
+    private fun extraTaskErrorMessage(taskTitle: String, err: Throwable?): DownloadMessage {
         val detail = when (err) {
             null -> null
             is BiliHttpException -> {
                 val base = err.message?.takeIf { it.isNotBlank() }
-                    ?: context.getString(R.string.parse_error_failed)
+                    ?: strings.get(R.string.parse_error_failed)
                 "$base (${err.code})"
             }
 
             else -> err.message
         }?.takeIf { it.isNotBlank() }
-            ?: context.getString(R.string.download_reason_unknown)
-        return context.getString(R.string.download_failure_extra, taskTitle, detail)
+            ?: strings.get(R.string.download_reason_unknown)
+        return DownloadMessage(DownloadMessageCode.FailureExtra, textArguments = listOf(taskTitle, detail))
     }
 
     fun pause(id: Long) {
@@ -1087,7 +1099,7 @@ class DownloadRepository(
                     id = id,
                     status = DownloadStatus.Failed,
                     progress = target.progress,
-                    errorMessage = context.getString(R.string.download_failure_retry_data_missing),
+                    errorMessage = strings.get(R.string.download_failure_retry_data_missing),
                 )
                 return
             }
@@ -1158,7 +1170,7 @@ class DownloadRepository(
                     id = id,
                     status = DownloadStatus.Failed,
                     progress = target.progress,
-                    errorMessage = context.getString(R.string.download_failure_retry_data_missing),
+                    errorMessage = strings.get(R.string.download_failure_retry_data_missing),
                 )
                 return
             }
@@ -1434,7 +1446,7 @@ class DownloadRepository(
                     }
                 } else {
                     downloadStates[id]
-                } ?: error(context.getString(R.string.download_failure_resume_data_missing))
+                } ?: error(strings.get(R.string.download_failure_resume_data_missing))
                 runResumableDownload(id, state)
             } catch (err: CancellationException) {
                 // user pause/cancel
@@ -1543,7 +1555,7 @@ class DownloadRepository(
                     speedBytesPerSec = 0,
                     etaSeconds = null,
                     userPaused = false,
-                    errorMessage = context.getString(R.string.download_failure_save),
+                    errorMessage = strings.get(R.string.download_failure_save),
                     statusDetail = null,
                 ),
             )
@@ -1569,10 +1581,10 @@ class DownloadRepository(
         runCatching { outputFile.delete() }
         val statusDetail = when (conversionTarget) {
             MediaConversionTarget.MP3 ->
-                context.getString(R.string.download_detail_converting_audio)
+                strings.get(R.string.download_detail_converting_audio)
             MediaConversionTarget.MP4 ->
-                context.getString(R.string.download_detail_converting_video)
-            null -> context.getString(R.string.download_detail_preparing_media)
+                strings.get(R.string.download_detail_converting_video)
+            null -> strings.get(R.string.download_detail_preparing_media)
         }
         tasks[item.id]?.let { current ->
             updateTask(
@@ -1605,10 +1617,10 @@ class DownloadRepository(
             runCatching { outputFile.delete() }
             val message = when (conversionTarget) {
                 MediaConversionTarget.MP3 ->
-                    context.getString(R.string.download_failure_convert_audio)
+                    strings.get(R.string.download_failure_convert_audio)
                 MediaConversionTarget.MP4 ->
-                    context.getString(R.string.download_failure_convert_video)
-                null -> context.getString(R.string.download_failure_prepare_media)
+                    strings.get(R.string.download_failure_convert_video)
+                null -> strings.get(R.string.download_failure_prepare_media)
             }
             throw IllegalStateException(message, err)
         }
@@ -1636,7 +1648,7 @@ class DownloadRepository(
                     etaSeconds = null,
                     userPaused = false,
                     errorMessage = err.message?.takeIf { it.isNotBlank() }
-                        ?: context.getString(R.string.download_failure_download_unknown),
+                        ?: strings.get(R.string.download_failure_download_unknown),
                     statusDetail = null,
                 )
             },
@@ -2040,9 +2052,9 @@ class DownloadRepository(
         val normalized = label?.trim().orEmpty()
         if (normalized.isBlank()) return null
         return when (normalized) {
-            context.getString(R.string.parse_codec_avc) -> VideoCodec.Avc
-            context.getString(R.string.parse_codec_hevc) -> VideoCodec.Hevc
-            context.getString(R.string.parse_codec_av1) -> VideoCodec.Av1
+            strings.get(R.string.parse_codec_avc) -> VideoCodec.Avc
+            strings.get(R.string.parse_codec_hevc) -> VideoCodec.Hevc
+            strings.get(R.string.parse_codec_av1) -> VideoCodec.Av1
             else -> null
         }
     }
@@ -2053,34 +2065,34 @@ class DownloadRepository(
 
     private fun mapResolutionLabel(id: Int, height: Int?): String {
         return when (id) {
-            127 -> context.getString(R.string.parse_resolution_8k)
-            126 -> context.getString(R.string.parse_resolution_dolby)
-            125 -> context.getString(R.string.parse_resolution_hdr)
-            120 -> context.getString(R.string.parse_resolution_4k)
-            116 -> context.getString(R.string.parse_resolution_1080_60)
-            112 -> context.getString(R.string.parse_resolution_1080_high)
-            80 -> context.getString(R.string.parse_resolution_1080)
-            64 -> context.getString(R.string.parse_resolution_720)
-            32 -> context.getString(R.string.parse_resolution_480)
-            16 -> context.getString(R.string.parse_resolution_360)
-            6 -> context.getString(R.string.parse_resolution_240)
+            127 -> strings.get(R.string.parse_resolution_8k)
+            126 -> strings.get(R.string.parse_resolution_dolby)
+            125 -> strings.get(R.string.parse_resolution_hdr)
+            120 -> strings.get(R.string.parse_resolution_4k)
+            116 -> strings.get(R.string.parse_resolution_1080_60)
+            112 -> strings.get(R.string.parse_resolution_1080_high)
+            80 -> strings.get(R.string.parse_resolution_1080)
+            64 -> strings.get(R.string.parse_resolution_720)
+            32 -> strings.get(R.string.parse_resolution_480)
+            16 -> strings.get(R.string.parse_resolution_360)
+            6 -> strings.get(R.string.parse_resolution_240)
             else -> {
                 val resolvedHeight = height ?: 0
                 when {
-                    resolvedHeight >= 4320 -> context.getString(R.string.parse_resolution_8k)
-                    resolvedHeight >= 2160 -> context.getString(R.string.parse_resolution_4k)
-                    resolvedHeight >= 1080 -> context.getString(R.string.parse_resolution_1080)
-                    resolvedHeight >= 720 -> context.getString(R.string.parse_resolution_720)
-                    resolvedHeight >= 480 -> context.getString(R.string.parse_resolution_480)
-                    resolvedHeight >= 360 -> context.getString(R.string.parse_resolution_360)
-                    else -> context.getString(R.string.parse_resolution_other)
+                    resolvedHeight >= 4320 -> strings.get(R.string.parse_resolution_8k)
+                    resolvedHeight >= 2160 -> strings.get(R.string.parse_resolution_4k)
+                    resolvedHeight >= 1080 -> strings.get(R.string.parse_resolution_1080)
+                    resolvedHeight >= 720 -> strings.get(R.string.parse_resolution_720)
+                    resolvedHeight >= 480 -> strings.get(R.string.parse_resolution_480)
+                    resolvedHeight >= 360 -> strings.get(R.string.parse_resolution_360)
+                    else -> strings.get(R.string.parse_resolution_other)
                 }
             }
         }
     }
 
     private fun mapAudioLabel(id: Int): String {
-        return context.getString(AudioQualities.labelRes(id))
+        return strings.get(AudioQualities.labelRes(id))
     }
 
     private fun buildRequest(
@@ -2185,7 +2197,7 @@ class DownloadRepository(
                     task = task,
                     force = true,
                     errorMessage = err.message?.takeIf { it.isNotBlank() }
-                        ?: context.getString(R.string.download_failure_download_unknown),
+                        ?: strings.get(R.string.download_failure_download_unknown),
                 )
                 releaseManagedTaskSlot(slot)
             } finally {
@@ -2258,7 +2270,7 @@ class DownloadRepository(
                     task,
                     true,
                     err.message?.takeIf { it.isNotBlank() }
-                        ?: context.getString(R.string.download_failure_download_unknown),
+                        ?: strings.get(R.string.download_failure_download_unknown),
                 )
                 releaseManagedTaskSlot(slot)
             }
@@ -2710,7 +2722,7 @@ class DownloadRepository(
     }
 
     private fun addTask(item: DownloadItem) {
-        val normalizedItem = DownloadProgressRules.normalizeTask(item)
+        val normalizedItem = normalizeTask(item)
         synchronized(lock) {
             tasks[normalizedItem.id] = normalizedItem
             val list = groupTaskIds.getOrPut(normalizedItem.groupId) { mutableListOf() }
@@ -2720,8 +2732,13 @@ class DownloadRepository(
         schedulePersist()
     }
 
+    private fun normalizeTask(item: DownloadItem): DownloadItem = messageCatalog.capture(
+        DownloadProgressRules.normalizeTask(item),
+        previous = tasks[item.id],
+    )
+
     private fun updateTask(item: DownloadItem) {
-        val normalizedItem = DownloadProgressRules.normalizeTask(item)
+        val normalizedItem = normalizeTask(item)
         val shouldPersist = synchronized(lock) {
             val previous = tasks[normalizedItem.id]
             tasks[normalizedItem.id] = normalizedItem
@@ -2745,7 +2762,7 @@ class DownloadRepository(
             val current = tasks[id] ?: return@synchronized
             if (!predicate(current)) return@synchronized
             beforeUpdate(current)
-            val next = DownloadProgressRules.normalizeTask(transform(current))
+            val next = normalizeTask(transform(current))
             tasks[id] = next
             updated = true
             shouldPersist = shouldPersistTaskChange(current, next)
@@ -2759,7 +2776,7 @@ class DownloadRepository(
     }
 
     private fun replaceTask(oldId: Long, newItem: DownloadItem) {
-        val normalizedItem = DownloadProgressRules.normalizeTask(newItem)
+        val normalizedItem = normalizeTask(newItem)
         val shouldPersist = synchronized(lock) {
             tasks.remove(oldId)
             tasks[normalizedItem.id] = normalizedItem
@@ -2791,6 +2808,8 @@ class DownloadRepository(
         if (old.outputMissing != new.outputMissing) return true
         if (old.progressIndeterminate != new.progressIndeterminate) return true
         if (old.statusDetail != new.statusDetail) return true
+        if (old.statusMessage != new.statusMessage || old.failureMessage != new.failureMessage) return true
+        if (old.embeddingMessages != new.embeddingMessages) return true
         if (old.totalBytes != new.totalBytes && new.totalBytes > 0) return true
         if (old.outputBytes != new.outputBytes) return true
         return false
@@ -3105,7 +3124,7 @@ class DownloadRepository(
                     userPaused = restoredLifecycle.userPaused,
                     errorMessage = when {
                         restoredLifecycle.interrupted ->
-                            context.getString(R.string.download_error_unsafe_exit)
+                            strings.get(R.string.download_error_unsafe_exit)
                         restoredLifecycle.status == DownloadStatus.Paused -> null
                         else -> task.errorMessage
                     },
@@ -3147,7 +3166,7 @@ class DownloadRepository(
             deletingGroupIds.clear()
             deletingTaskIds.clear()
             tasks.putAll(restoredTasks.mapValues { (_, item) ->
-                DownloadProgressRules.normalizeTask(item)
+                normalizeTask(item)
             })
         }
         downloadStates.clear()
@@ -3224,7 +3243,7 @@ class DownloadRepository(
             userPaused = restoredLifecycle.userPaused,
             errorMessage = when {
                 restoredLifecycle.interrupted ->
-                    context.getString(R.string.download_error_unsafe_exit)
+                    strings.get(R.string.download_error_unsafe_exit)
                 restoredLifecycle.status == DownloadStatus.Paused -> null
                 else -> item.errorMessage
             },
@@ -3314,7 +3333,7 @@ class DownloadRepository(
                 userPaused = restoredLifecycle.userPaused,
                 errorMessage = when {
                     restoredLifecycle.interrupted ->
-                        context.getString(R.string.download_error_unsafe_exit)
+                        strings.get(R.string.download_error_unsafe_exit)
                     restoredLifecycle.status == DownloadStatus.Paused -> null
                     else -> item.errorMessage
                 },
@@ -3371,7 +3390,7 @@ class DownloadRepository(
             userPaused = restoredLifecycle.userPaused,
             errorMessage = when {
                 restoredLifecycle.interrupted ->
-                    context.getString(R.string.download_error_unsafe_exit)
+                    strings.get(R.string.download_error_unsafe_exit)
                 restoredLifecycle.status == DownloadStatus.Paused -> null
                 else -> item.errorMessage
             },
@@ -3528,7 +3547,7 @@ class DownloadRepository(
                                 status = DownloadStatus.Failed,
                                 speedBytesPerSec = 0,
                                 etaSeconds = null,
-                                errorMessage = context.getString(R.string.download_failure_merge),
+                                errorMessage = strings.get(R.string.download_failure_merge),
                             ),
                         )
                     }
@@ -3560,7 +3579,7 @@ class DownloadRepository(
                                 speedBytesPerSec = 0,
                                 etaSeconds = null,
                                 errorMessage = err.message?.takeIf { it.isNotBlank() }
-                                    ?: context.getString(R.string.download_failure_merge),
+                                    ?: strings.get(R.string.download_failure_merge),
                             ),
                         )
                     }
@@ -3651,9 +3670,9 @@ class DownloadRepository(
                 throw err
             } catch (err: Throwable) {
                 val message = if (task.conversionTarget == MediaConversionTarget.MP4) {
-                    context.getString(R.string.download_failure_convert_video)
+                    strings.get(R.string.download_failure_convert_video)
                 } else {
-                    context.getString(R.string.download_failure_merge)
+                    strings.get(R.string.download_failure_merge)
                 }
                 throw IllegalStateException(message, err)
             }
@@ -3740,33 +3759,35 @@ class DownloadRepository(
             else -> R.string.download_detail_embed_lyrics
         }
         updateTaskIf(item.id, { it.status == DownloadStatus.Running || it.status == DownloadStatus.Merging }) {
-            it.copy(statusDetail = context.getString(detail), embedWarning = null)
+            it.copy(statusDetail = strings.get(detail), embedWarning = null)
         }
-        val result = EmbeddedContentWriter(httpClient, extrasRepository)
+        val result = EmbeddedContentWriter(httpClient, extrasRepository, strings)
             .write(tempFile, item, metadata, settings.metadata)
-        val warning = result.issues.map { issue ->
-            context.getString(when (issue) {
-                EmbeddedContentIssue.Cover -> R.string.download_metadata_cover_failed
-                EmbeddedContentIssue.LyricsUnavailable -> R.string.download_embed_lyrics_unavailable
-                EmbeddedContentIssue.LyricsFailed -> R.string.download_embed_lyrics_failed
-                EmbeddedContentIssue.SubtitlesUnavailable -> R.string.download_embed_subtitles_unavailable
-                EmbeddedContentIssue.SubtitlesFailed -> R.string.download_embed_subtitles_failed
-                EmbeddedContentIssue.SubtitlesPartiallyFailed -> R.string.download_embed_subtitles_partial
-                EmbeddedContentIssue.SubtitlesUnsupportedContainer -> R.string.download_embed_subtitles_container
-                EmbeddedContentIssue.WriteFailed -> R.string.download_embed_write_failed
-                EmbeddedContentIssue.UnsupportedFormat -> R.string.download_embed_unsupported
+        val warningMessages = result.issues.map { issue ->
+            DownloadMessage(when (issue) {
+                EmbeddedContentIssue.Cover -> DownloadMessageCode.MetadataCoverFailed
+                EmbeddedContentIssue.LyricsUnavailable -> DownloadMessageCode.EmbedLyricsUnavailable
+                EmbeddedContentIssue.LyricsFailed -> DownloadMessageCode.EmbedLyricsFailed
+                EmbeddedContentIssue.SubtitlesUnavailable -> DownloadMessageCode.EmbedSubtitlesUnavailable
+                EmbeddedContentIssue.SubtitlesFailed -> DownloadMessageCode.EmbedSubtitlesFailed
+                EmbeddedContentIssue.SubtitlesPartiallyFailed -> DownloadMessageCode.EmbedSubtitlesPartial
+                EmbeddedContentIssue.SubtitlesUnsupportedContainer -> DownloadMessageCode.EmbedSubtitlesContainer
+                EmbeddedContentIssue.WriteFailed -> DownloadMessageCode.EmbedWriteFailed
+                EmbeddedContentIssue.UnsupportedFormat -> DownloadMessageCode.EmbedUnsupported
             })
         }.toMutableList().apply {
             if (result.incompleteSubtitleTitles.isNotEmpty()) {
-                add(context.getString(
-                    R.string.download_embed_missing_languages,
-                    result.incompleteSubtitleTitles.distinct().joinToString("、"),
+                add(DownloadMessage(
+                    DownloadMessageCode.EmbedMissingLanguages,
+                    textArguments = result.incompleteSubtitleTitles.distinct(),
                 ))
             }
-        }.joinToString("；").takeIf(String::isNotBlank)
+        }
+        val warning = warningMessages.joinToString("；") { it.resolve(context) }.takeIf(String::isNotBlank)
         updateTaskIf(item.id, { it.status == DownloadStatus.Running || it.status == DownloadStatus.Merging }) {
             it.copy(
                 embedWarning = warning,
+                embeddingMessages = warningMessages,
                 embeddedSubtitleTitles = result.subtitleTitles,
                 embeddedLyricsSource = result.lyricsSource,
             )
@@ -4590,7 +4611,7 @@ class DownloadRepository(
             }
         }
         val updatedRows = resolver.update(uri, update, null, null)
-        check(updatedRows > 0) { "保存的文件已不可用" }
+        check(updatedRows > 0) { strings.get(R.string.download_saved_file_unavailable) }
         Log.d(
             TAG,
             "[output-create] finalize pending->0, uri=$uri, displayName=$finalDisplayName, updatedRows=$updatedRows",

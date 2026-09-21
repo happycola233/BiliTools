@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="parse_subtitle_file_option">Сохранить файл субтитров</string>
+    <string name="subtitle_source_language">Язык субтитров</string>
+    <string name="subtitle_source_lyrics_language">Язык текста</string>
+    <string name="subtitle_source_embed_title">Встроенный язык субтитров</string>
+    <string name="subtitle_source_file_title">Язык файла субтитров</string>
+    <string name="subtitle_source_ai_description">AI-субтитры</string>
+    <string name="subtitle_source_select">Выбор языка</string>
+    <string name="subtitle_source_select_all">Выбрать все</string>
+    <string name="subtitle_source_all_count">Все субтитры · Языки: %1$d</string>
+    <string name="subtitle_source_selected_count">Выбрано языков: %1$d</string>
+    <string name="subtitle_source_cancel">Отмена</string>
+    <string name="subtitle_source_done">Готово</string>
+    <string name="subtitle_source_coverage">Доступно: %1$d / %2$d</string>
+    <string name="subtitle_source_coverage_pending">Подтверждено: %1$d / %2$d</string>
+    <string name="subtitle_source_unconfirmed">Доступность еще не подтверждена</string>
+    <string name="subtitle_source_unavailable">Недоступно для этого товара</string>
+    <string name="subtitle_source_loading">Загрузка субтитров…</string>
+    <string name="subtitle_source_loading_batch">Загрузка субтитров: %1$d / %2$d</string>
+    <string name="subtitle_source_failure">Не удалось загрузить субтитры.</string>
+    <string name="subtitle_source_partial_failure">Элементы с ошибками субтитров: %1$d</string>
+    <string name="subtitle_source_retry">Попробуй еще раз</string>
+    <string name="subtitle_source_empty">Для этого видео субтитры недоступны.</string>
+    <string name="subtitle_source_empty_batch">Для этих элементов субтитры недоступны.</string>
+    <string name="subtitle_source_login">Войдите в систему, чтобы получить доступ к видеосубтитрам.</string>
+    <string name="subtitle_source_login_lyrics">Войдите в систему, чтобы выбрать язык текстов песен, или отключите встроенные тексты песен.</string>
+    <string name="subtitle_source_choose_lyrics">Выберите дорожку субтитров для использования в качестве текста песни.</string>
+    <string name="subtitle_source_no_lyrics">Субтитры отсутствуют. Отключите встроенные тексты песен перед загрузкой.</string>
+    <string name="subtitle_source_choose_subtitles">Пожалуйста, выберите хотя бы один субтитр.</string>
+    <string name="subtitle_source_missing_selection">Выбранный язык субтитров отсутствует в некоторых элементах.</string>
+</resources>

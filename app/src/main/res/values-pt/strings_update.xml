@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_dialog_download">Baixar atualização</string>
+    <string name="update_dialog_ignore_once">Ignorar esta atualização</string>
+    <string name="update_dialog_download_started">A atualização está sendo baixada em segundo plano</string>
+    <string name="update_dialog_download_running">Uma atualização já está sendo baixada em segundo plano</string>
+    <string name="update_dialog_download_failed">Falha ao iniciar o download da atualização: %1$s</string>
+    <string name="update_dialog_apk_missing">Nenhum pacote de atualização está disponível para este dispositivo.</string>
+    <string name="update_dialog_ignore_saved">Os lembretes de atualização para %1$s agora estão ocultos</string>
+    <string name="update_install_file_missing">O pacote de atualização está faltando ou foi excluído</string>
+    <string name="update_install_launch_failed">Não é possível abrir o instalador</string>
+    <string name="update_notification_channel_progress_name">Downloads de atualização de aplicativos</string>
+    <string name="update_notification_channel_progress_desc">Progresso dos downloads de atualização de aplicativos</string>
+    <string name="update_notification_channel_result_name">Instalação de atualização de aplicativo</string>
+    <string name="update_notification_channel_result_desc">Resultados de download de atualização de aplicativo</string>
+    <string name="update_notification_progress_title">Baixando atualização %1$s</string>
+    <string name="update_notification_progress_content_known">%1$d%% %2$s / %3$s</string>
+    <string name="update_notification_progress_content_unknown">Baixado %1$s</string>
+    <string name="update_notification_ready_title">Atualização pronta para instalação</string>
+    <string name="update_notification_ready_content">Toque para instalar %1$s</string>
+    <string name="update_notification_action_install">Instalar</string>
+    <string name="update_notification_failed_title">Falha no download da atualização: %1$s</string>
+    <string name="update_notification_failed_content">%1$s</string>
+    <string name="update_notification_action_open_release">Abrir página de lançamento</string>
+</resources>

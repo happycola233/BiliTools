@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_channel_download_progress_desc">ดาวน์โหลดความคืบหน้าและการควบคุม</string>
+    <string name="notification_channel_download_result_name">ดาวน์โหลดผลลัพธ์</string>
+    <string name="notification_channel_download_result_desc">แสดงสถานะการดาวน์โหลดเสร็จสิ้น</string>
+    <string name="notification_title_downloading_default">กำลังดาวน์โหลด</string>
+    <string name="notification_title_downloading_multiple">กำลังดาวน์โหลด: %1$d</string>
+    <string name="notification_title_paused_multiple">งานที่หยุดชั่วคราว: %1$d</string>
+    <string name="notification_status_downloading">กำลังดาวน์โหลด</string>
+    <string name="notification_status_preparing">กำลังเตรียมการดาวน์โหลด</string>
+    <string name="notification_status_merging">กำลังประมวลผล</string>
+    <string name="notification_status_paused">หยุดชั่วคราว</string>
+    <string name="notification_content_progress_percent">%1$d%%</string>
+    <string name="notification_content_progress_bytes">%1$d%% %2$s / %3$s</string>
+    <string name="notification_content_paused_count">หยุดชั่วคราว: %1$d</string>
+    <string name="notification_short_downloading">กำลังดาวน์โหลด</string>
+    <string name="notification_short_preparing">กำลังเตรียมพร้อม</string>
+    <string name="notification_short_merging">กำลังประมวลผล</string>
+    <string name="notification_short_paused">หยุดชั่วคราว</string>
+    <string name="notification_short_progress">%1$d%%</string>
+    <string name="notification_summary_all_completed">ดาวน์โหลดเสร็จสมบูรณ์</string>
+    <string name="notification_summary_finished">การดาวน์โหลดเสร็จสิ้น</string>
+    <string name="notification_summary_content">เสร็จสมบูรณ์: %1$d · ล้มเหลว: %2$d · ยกเลิก: %3$d</string>
+    <string name="notification_permission_denied_tip">การอนุญาตการแจ้งเตือนถูกปฏิเสธ การดาวน์โหลดจะดำเนินต่อไป แต่ความคืบหน้าจะไม่ปรากฏในการแจ้งเตือน</string>
+</resources>

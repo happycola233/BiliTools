@@ -1,5 +1,8 @@
 package com.happycola233.bilitools.update
 
+import com.happycola233.bilitools.core.StringProvider
+import com.happycola233.bilitools.core.formatByteCount
+import com.happycola233.bilitools.core.localizedContext
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -12,11 +15,11 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.notification.notifyIfAllowed
-import java.util.Locale
 
 internal class UpdateNotificationManager(
     private val context: Context,
 ) {
+    private val strings = StringProvider(context)
     private val manager: NotificationManagerCompat = NotificationManagerCompat.from(context)
 
     fun ensureChannels() {
@@ -25,19 +28,19 @@ internal class UpdateNotificationManager(
 
         val progressChannel = NotificationChannel(
             CHANNEL_PROGRESS_ID,
-            context.getString(R.string.update_notification_channel_progress_name),
+            strings.get(R.string.update_notification_channel_progress_name),
             NotificationManager.IMPORTANCE_LOW,
         ).apply {
-            description = context.getString(R.string.update_notification_channel_progress_desc)
+            description = strings.get(R.string.update_notification_channel_progress_desc)
             setShowBadge(false)
         }
 
         val resultChannel = NotificationChannel(
             CHANNEL_RESULT_ID,
-            context.getString(R.string.update_notification_channel_result_name),
+            strings.get(R.string.update_notification_channel_result_name),
             NotificationManager.IMPORTANCE_DEFAULT,
         ).apply {
-            description = context.getString(R.string.update_notification_channel_result_desc)
+            description = strings.get(R.string.update_notification_channel_result_desc)
             setShowBadge(false)
         }
 
@@ -56,14 +59,14 @@ internal class UpdateNotificationManager(
             0
         }
         val contentText = if (totalBytes > 0L) {
-            context.getString(
+            strings.get(
                 R.string.update_notification_progress_content_known,
                 progress,
                 formatBytes(downloadedBytes),
                 formatBytes(totalBytes),
             )
         } else {
-            context.getString(
+            strings.get(
                 R.string.update_notification_progress_content_unknown,
                 formatBytes(downloadedBytes),
             )
@@ -72,7 +75,7 @@ internal class UpdateNotificationManager(
         return NotificationCompat.Builder(context, CHANNEL_PROGRESS_ID)
             .setSmallIcon(R.drawable.ic_update_24)
             .setContentTitle(
-                context.getString(R.string.update_notification_progress_title, versionLabel),
+                strings.get(R.string.update_notification_progress_title, versionLabel),
             )
             .setContentText(contentText)
             .setOnlyAlertOnce(true)
@@ -102,16 +105,16 @@ internal class UpdateNotificationManager(
 
         val notification = NotificationCompat.Builder(context, CHANNEL_RESULT_ID)
             .setSmallIcon(R.drawable.ic_update_24)
-            .setContentTitle(context.getString(R.string.update_notification_ready_title))
+            .setContentTitle(strings.get(R.string.update_notification_ready_title))
             .setContentText(
-                context.getString(R.string.update_notification_ready_content, versionLabel),
+                strings.get(R.string.update_notification_ready_content, versionLabel),
             )
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .addAction(
                 R.drawable.ic_download_for_offline_24,
-                context.getString(R.string.update_notification_action_install),
+                strings.get(R.string.update_notification_action_install),
                 pendingIntent,
             )
             .build()
@@ -134,13 +137,13 @@ internal class UpdateNotificationManager(
 
         val notification = NotificationCompat.Builder(context, CHANNEL_RESULT_ID)
             .setSmallIcon(R.drawable.ic_update_24)
-            .setContentTitle(context.getString(R.string.update_notification_failed_title, versionLabel))
+            .setContentTitle(strings.get(R.string.update_notification_failed_title, versionLabel))
             .setContentText(
-                context.getString(R.string.update_notification_failed_content, errorMessage),
+                strings.get(R.string.update_notification_failed_content, errorMessage),
             )
             .setStyle(
                 NotificationCompat.BigTextStyle().bigText(
-                    context.getString(R.string.update_notification_failed_content, errorMessage),
+                    strings.get(R.string.update_notification_failed_content, errorMessage),
                 ),
             )
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -148,7 +151,7 @@ internal class UpdateNotificationManager(
             .setContentIntent(pendingIntent)
             .addAction(
                 R.drawable.ic_github_invertocat_black,
-                context.getString(R.string.update_notification_action_open_release),
+                strings.get(R.string.update_notification_action_open_release),
                 pendingIntent,
             )
             .build()
@@ -156,17 +159,7 @@ internal class UpdateNotificationManager(
         manager.notifyIfAllowed(context, NOTIFICATION_ID_RESULT, notification)
     }
 
-    private fun formatBytes(bytes: Long): String {
-        if (bytes <= 0L) return "0 B"
-        val units = arrayOf("B", "KB", "MB", "GB", "TB")
-        var value = bytes.toDouble()
-        var unitIndex = 0
-        while (value >= 1024.0 && unitIndex < units.lastIndex) {
-            value /= 1024.0
-            unitIndex += 1
-        }
-        return String.format(Locale.US, "%.1f %s", value, units[unitIndex])
-    }
+    private fun formatBytes(bytes: Long): String = context.localizedContext().formatByteCount(bytes)
 
     companion object {
         const val NOTIFICATION_ID_PROGRESS = 1201

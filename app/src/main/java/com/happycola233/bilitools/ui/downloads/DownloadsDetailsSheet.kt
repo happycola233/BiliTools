@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,6 +30,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import com.happycola233.bilitools.core.localized
+import com.happycola233.bilitools.core.localizedStatusDetail
+import com.happycola233.bilitools.core.localizedErrorMessage
+import com.happycola233.bilitools.core.localizedEmbedWarning
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.model.DownloadGroup
 import com.happycola233.bilitools.data.model.DownloadItem
@@ -86,9 +89,9 @@ internal fun DownloadsDetailsSheet(group: DownloadGroup, onDismiss: () -> Unit) 
         savedTasks.isEmpty() -> stringResource(R.string.downloads_no_saved_files)
         knownSizes.isEmpty() -> stringResource(R.string.downloads_size_unknown)
         knownSizes.size < savedTasks.size -> stringResource(
-            R.string.downloads_size_known, formatDownloadBytes(knownSizes.sum()),
+            R.string.downloads_size_known, context.formatDownloadBytes(knownSizes.sum()),
         )
-        else -> formatDownloadBytes(knownSizes.sum())
+        else -> context.formatDownloadBytes(knownSizes.sum())
     }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -139,13 +142,13 @@ internal fun DownloadsDetailsSheet(group: DownloadGroup, onDismiss: () -> Unit) 
             }
             item(key = "source") {
                 DetailsSectionTitle(stringResource(R.string.downloads_details_source))
-                group.subtitle?.takeIf { it.isNotBlank() && it != group.title }?.let { DetailValue("分集 / 分 P", it, fullWidthValue = true) }
-                metadata?.title?.takeIf { it != group.title && it != group.subtitle }?.let { DetailValue("标题", it, fullWidthValue = true) }
-                metadata?.uploader?.let { DetailValue("UP 主", it) }
-                metadata?.artist?.takeIf { it != metadata.uploader }?.let { DetailValue("作者", it) }
-                metadata?.album?.let { DetailValue(if (metadata.albumIsCollection) "合集" else "专辑 / 作品", it) }
+                group.subtitle?.takeIf { it.isNotBlank() && it != group.title }?.let { DetailValue(stringResource(R.string.runtime_episode_part), it, fullWidthValue = true) }
+                metadata?.title?.takeIf { it != group.title && it != group.subtitle }?.let { DetailValue(stringResource(R.string.runtime_title), it, fullWidthValue = true) }
+                metadata?.uploader?.let { DetailValue(stringResource(R.string.runtime_uploader), it) }
+                metadata?.artist?.takeIf { it != metadata.uploader }?.let { DetailValue(stringResource(R.string.runtime_author), it) }
+                metadata?.album?.let { DetailValue(if (metadata.albumIsCollection) stringResource(R.string.runtime_collection) else stringResource(R.string.runtime_album), it) }
                 metadata?.trackNumber?.let { number ->
-                    DetailValue("分集序号", metadata.trackTotal?.let { "$number / $it" } ?: number.toString())
+                    DetailValue(stringResource(R.string.runtime_track_number), metadata.trackTotal?.let { "$number / $it" } ?: number.toString())
                 }
                 metadata?.durationSeconds?.let { seconds ->
                     val duration = if (seconds >= 3600) {
@@ -153,17 +156,17 @@ internal fun DownloadsDetailsSheet(group: DownloadGroup, onDismiss: () -> Unit) 
                     } else {
                         String.format(locale, "%d:%02d", seconds / 60, seconds % 60)
                     }
-                    DetailValue("时长", duration)
+                    DetailValue(stringResource(R.string.runtime_duration), duration)
                 }
-                metadata?.publishedDate?.let { DetailValue("发布时间", it) }
-                group.bvid?.let { DetailValue("内容编号", it) }
-                DetailValue("创建时间", formatDownloadCreatedAt(context, group.createdAt))
-                group.sourceUrl()?.let { DetailValue("来源链接", it, fullWidthValue = true) }
-                metadata?.tags?.takeIf(List<String>::isNotEmpty)?.let { DetailValue("标签", it.joinToString(" · "), fullWidthValue = true) }
+                metadata?.publishedDate?.let { DetailValue(stringResource(R.string.runtime_published_at), it) }
+                group.bvid?.let { DetailValue(stringResource(R.string.runtime_content_id), it) }
+                DetailValue(stringResource(R.string.runtime_created_at), formatDownloadCreatedAt(context, group.createdAt))
+                group.sourceUrl()?.let { DetailValue(stringResource(R.string.runtime_source_url), it, fullWidthValue = true) }
+                metadata?.tags?.takeIf(List<String>::isNotEmpty)?.let { DetailValue(stringResource(R.string.runtime_tags), it.joinToString(" · "), fullWidthValue = true) }
             }
             item(key = "directory") {
                 DetailsSectionTitle(stringResource(R.string.downloads_details_storage))
-                group.relativePath.takeIf(String::isNotBlank)?.let { DetailValue("下载目录", it.trimEnd('/'), fullWidthValue = true) }
+                group.relativePath.takeIf(String::isNotBlank)?.let { DetailValue(stringResource(R.string.runtime_download_directory), it.trimEnd('/'), fullWidthValue = true) }
             }
             itemsIndexed(group.tasks, key = { _, task -> "file:${task.id}" }) { index, task ->
                 if (index > 0) DetailsDivider()
@@ -171,7 +174,7 @@ internal fun DownloadsDetailsSheet(group: DownloadGroup, onDismiss: () -> Unit) 
             }
             metadata?.comment?.takeIf(String::isNotBlank)?.let { description ->
                 item(key = "description") {
-                    DetailsSectionTitle("简介")
+                    DetailsSectionTitle(stringResource(R.string.runtime_description))
                     DetailValue("", description)
                 }
             }
@@ -182,11 +185,12 @@ internal fun DownloadsDetailsSheet(group: DownloadGroup, onDismiss: () -> Unit) 
 @Composable
 private fun DownloadFileDetails(item: DownloadItem, directory: String, output: DownloadOutputDetails?) {
     val context = LocalContext.current
+    val mediaParams = item.mediaParams?.localized(context)
     val status = when (item.status) {
         DownloadStatus.Pending -> stringResource(R.string.download_status_pending)
         DownloadStatus.Running -> stringResource(R.string.download_status_running, item.progress)
         DownloadStatus.Paused -> stringResource(R.string.download_status_paused, item.progress)
-        DownloadStatus.Merging -> item.statusDetail ?: stringResource(R.string.download_detail_merging)
+        DownloadStatus.Merging -> item.localizedStatusDetail(context) ?: stringResource(R.string.download_detail_merging)
         DownloadStatus.Success -> stringResource(if (item.outputMissing) R.string.download_status_missing else R.string.download_status_success)
         DownloadStatus.Failed -> stringResource(R.string.download_status_failed)
         DownloadStatus.Unavailable -> stringResource(R.string.download_status_unavailable)
@@ -200,28 +204,28 @@ private fun DownloadFileDetails(item: DownloadItem, directory: String, output: D
             color = if (item.status == DownloadStatus.Failed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
         )
-        DetailValue("文件名", item.fileName, fullWidthValue = true)
+        DetailValue(stringResource(R.string.runtime_filename), item.fileName, fullWidthValue = true)
         val size = output?.sizeBytes ?: item.outputBytes.takeIf { item.status == DownloadStatus.Success }
         if (size != null) {
-            DetailValue("文件大小", formatDownloadBytes(size))
+            DetailValue(stringResource(R.string.runtime_file_size), context.formatDownloadBytes(size))
         } else {
-            buildDownloadSizeText(context, item)?.let { DetailValue("下载大小", it) }
+            buildDownloadSizeText(context, item)?.let { DetailValue(stringResource(R.string.runtime_download_size), it) }
         }
-        item.mediaParams?.resolution?.let { DetailValue("清晰度", it) }
-        item.mediaParams?.codec?.let { DetailValue("视频编码", it) }
-        item.mediaParams?.audioBitrate?.let { DetailValue("音频规格", it) }
+        mediaParams?.resolution?.let { DetailValue(stringResource(R.string.runtime_quality), it) }
+        mediaParams?.codec?.let { DetailValue(stringResource(R.string.runtime_video_codec), it) }
+        mediaParams?.audioBitrate?.let { DetailValue(stringResource(R.string.runtime_audio_spec), it) }
         item.fileName.substringAfterLast('.', "").takeIf(String::isNotBlank)?.let {
-            DetailValue("文件格式", it.uppercase(Locale.ROOT))
+            DetailValue(stringResource(R.string.runtime_file_format), it.uppercase(Locale.ROOT))
         }
         val path = output?.path ?: directory.takeIf(String::isNotBlank)?.let { "${it.trimEnd('/')}/${item.fileName}" }
-        path?.let { DetailValue(if (output?.path != null) "保存位置" else "目标位置", it, fullWidthValue = true) }
-        if (item.status == DownloadStatus.Failed) DetailValue("失败原因", resolveFailureReason(item.errorMessage), fullWidthValue = true)
-        item.statusDetail?.takeIf { item.status == DownloadStatus.Unavailable }?.let { DetailValue("说明", it, fullWidthValue = true) }
+        path?.let { DetailValue(if (output?.path != null) stringResource(R.string.runtime_saved_location) else stringResource(R.string.runtime_target_location), it, fullWidthValue = true) }
+        if (item.status == DownloadStatus.Failed) DetailValue(stringResource(R.string.runtime_failure_reason), resolveFailureReason(item.localizedErrorMessage(context)), fullWidthValue = true)
+        item.localizedStatusDetail(context)?.takeIf { item.status == DownloadStatus.Unavailable }?.let { DetailValue(stringResource(R.string.runtime_explanation), it, fullWidthValue = true) }
         item.embeddedSubtitleTitles.takeIf { it.isNotEmpty() }?.let {
-            DetailValue("内嵌字幕", it.joinToString("、"), fullWidthValue = true)
+            DetailValue(stringResource(R.string.runtime_embedded_subtitles), it.joinToString(stringResource(R.string.runtime_list_separator)), fullWidthValue = true)
         }
-        item.embeddedLyricsSource?.let { DetailValue("内嵌歌词", it, fullWidthValue = true) }
-        item.embedWarning?.let { DetailValue("未完成项", it, fullWidthValue = true) }
+        item.embeddedLyricsSource?.let { DetailValue(stringResource(R.string.runtime_embedded_lyrics), it, fullWidthValue = true) }
+        item.localizedEmbedWarning(context)?.let { DetailValue(stringResource(R.string.runtime_incomplete_items), it, fullWidthValue = true) }
     }
 }
 
@@ -276,9 +280,9 @@ private fun DetailValue(label: String, value: String, fullWidthValue: Boolean = 
                 label,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.width(80.dp),
+                modifier = Modifier.weight(0.4f),
             )
-            Text(value, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f).then(copyModifier))
+            Text(value, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(0.6f).then(copyModifier))
         }
     }
 }

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_language_title">Ngôn ngữ</string>
+    <string name="settings_language_system">Theo hệ thống</string>
+    <string name="settings_live_activity_unavailable">Thông báo cập nhật trực tiếp không được hỗ trợ trên phiên bản Android này.</string>
+    <string name="settings_update_summary_format">%1$s (%2$s)</string>
+</resources>

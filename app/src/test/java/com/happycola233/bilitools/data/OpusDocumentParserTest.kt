@@ -79,7 +79,7 @@ class OpusDocumentParserTest {
         """.trimIndent()
 
         assertEquals("正文标题候选", parseOpusDocumentResponse(bodyTitleResponse, "11").title)
-        assertEquals("图文_12", parseOpusDocumentResponse(emptyResponse, "12").title)
+        assertEquals("opus_12", parseOpusDocumentResponse(emptyResponse, "12").title)
     }
 
     @Test
@@ -94,7 +94,7 @@ class OpusDocumentParserTest {
 
         val document = parseOpusDocumentResponse(response, "13")
 
-        assertEquals("图文_13", document.title)
+        assertEquals("opus_13", document.title)
         assertEquals("", document.summary)
         assertEquals(listOf("https://i0.hdslb.com/image.jpg"), document.images.map { it.url })
     }

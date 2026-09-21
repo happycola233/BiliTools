@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="parse_subtitle_file_option">Altyazı dosyasını kaydet</string>
+    <string name="subtitle_source_language">Altyazı dili</string>
+    <string name="subtitle_source_lyrics_language">Şarkı sözü dili</string>
+    <string name="subtitle_source_embed_title">Gömülü altyazı dili</string>
+    <string name="subtitle_source_file_title">Altyazı dosya dili</string>
+    <string name="subtitle_source_ai_description">AI altyazıları</string>
+    <string name="subtitle_source_select">Dil seç</string>
+    <string name="subtitle_source_select_all">Tümünü seç</string>
+    <string name="subtitle_source_all_count">Tüm altyazılar · Dil sayısı: %1$d</string>
+    <string name="subtitle_source_selected_count">Seçilen dil sayısı: %1$d</string>
+    <string name="subtitle_source_cancel">İptal</string>
+    <string name="subtitle_source_done">Bitti</string>
+    <string name="subtitle_source_coverage">Kullanılabilir: %1$d / %2$d</string>
+    <string name="subtitle_source_coverage_pending">Doğrulandı: %1$d / %2$d</string>
+    <string name="subtitle_source_unconfirmed">Kullanılabilirlik henüz onaylanmadı</string>
+    <string name="subtitle_source_unavailable">Bu öğe için mevcut değil</string>
+    <string name="subtitle_source_loading">Altyazılar yükleniyor…</string>
+    <string name="subtitle_source_loading_batch">Altyazılar yükleniyor: %1$d / %2$d</string>
+    <string name="subtitle_source_failure">Altyazı yükleme başarısız oldu.</string>
+    <string name="subtitle_source_partial_failure">Altyazısı yüklenemeyen öğeler: %1$d</string>
+    <string name="subtitle_source_retry">Tekrar deneyin</string>
+    <string name="subtitle_source_empty">Bu video için altyazı mevcut değil.</string>
+    <string name="subtitle_source_empty_batch">Bu öğeler için altyazı mevcut değildir.</string>
+    <string name="subtitle_source_login">Video altyazılarına erişmek için oturum açın.</string>
+    <string name="subtitle_source_login_lyrics">Şarkı sözü dilini seçmek veya gömülü şarkı sözlerini kapatmak için oturum açın.</string>
+    <string name="subtitle_source_choose_lyrics">Şarkı sözü olarak kullanmak için bir altyazı parçası seçin.</string>
+    <string name="subtitle_source_no_lyrics">Altyazı mevcut değil. İndirmeden önce gömülü şarkı sözlerini kapatın.</string>
+    <string name="subtitle_source_choose_subtitles">Lütfen en az bir altyazı seçin.</string>
+    <string name="subtitle_source_missing_selection">Seçilen altyazı dili bazı öğelerde eksik.</string>
+</resources>

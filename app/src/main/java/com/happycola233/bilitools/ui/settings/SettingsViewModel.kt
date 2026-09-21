@@ -19,6 +19,7 @@ import com.happycola233.bilitools.data.TopLevelFolderMode
 sealed class SettingsDestination : NavKey {
     data object Main : SettingsDestination()
     data object General : SettingsDestination()
+    data object Language : SettingsDestination()
     data object DefaultDownloadQuality : SettingsDestination()
     data object DownloadPreferenceMemory : SettingsDestination()
     data object Download : SettingsDestination()
@@ -42,6 +43,7 @@ class SettingsViewModel(
         // 允许在二级页面之上继续下钻的三级页面
         val parent = backStack.lastOrNull()
         val isThirdLevel = when (destination) {
+            SettingsDestination.Language -> parent == SettingsDestination.General
             SettingsDestination.Metadata,
             SettingsDestination.DefaultDownloadQuality,
             SettingsDestination.DownloadPreferenceMemory,

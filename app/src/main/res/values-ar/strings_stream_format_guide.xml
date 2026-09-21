@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="stream_format_guide_title">حول DASH / MP4 / FLV</string>
+    <string name="stream_format_guide_subtitle">اختيار تنسيق الدفق</string>
+    <string name="stream_format_guide_intro">استخدم Bilibili ثلاثة تنسيقات دفق. تم تقديم DASH في عام 2018 ويظل التنسيق الرئيسي. يتم الآن استخدام MP4 وFLV في حالات محدودة فقط.</string>
+    <string name="stream_format_guide_dash_status">موصى به</string>
+    <string name="stream_format_guide_dash_notice">يوفر تنسيق البث الحالي لـ Bilibili أفضل جودة صوت وفيديو وأسرع التنزيلات.</string>
+    <string name="stream_format_guide_dash_default">احتفظ بهذا التنسيق لمعظم التنزيلات. إذا لم تكن متأكدًا، فاترك تنسيق البث دون تغيير.</string>
+    <string name="stream_format_guide_dash_body">يتم تسليم الصوت والفيديو بشكل منفصل في المقاطع. لا يحتوي دفق الفيديو على صوت، ولا يحتوي دفق الصوت على صورة.</string>
+    <string name="stream_format_guide_dash_merge">لإنشاء ملف واحد يحتوي على كل من الصوت والفيديو، يجب دمج التدفقات باستخدام FFmpeg. حدد نوع إخراج الصوت والفيديو للقيام بذلك.</string>
+    <string name="stream_format_guide_mp4_status">اختر بعناية</string>
+    <string name="stream_format_guide_mp4_notice">لا تختر هذا فقط لأنك تريد ملف MP4. عادةً ما تكون التنزيلات أبطأ وأقل جودة من DASH.</string>
+    <string name="stream_format_guide_mp4_body">يقدم هذا التنسيق ملفات MP4 مع الصوت المضمن بالفعل، لذا فإن الدمج غير ضروري.</string>
+    <string name="stream_format_guide_mp4_exception">نادرًا ما يتم استخدام هذا التنسيق الآن، باستثناء معاينات العروض والأفلام والدورات المدفوعة. غالبًا ما تكون هذه المعاينات متاحة فقط كـ MP4 بجودة صورة وصوت محدودة.</string>
+    <string name="stream_format_guide_flv_status">متقاعد في الغالب</string>
+    <string name="stream_format_guide_flv_notice">لقد تم إيقاف تنسيق FLV المجزأ المستخدم في السنوات السابقة بالكامل تقريبًا.</string>
+    <string name="stream_format_guide_flv_body">يتم الاحتفاظ بهذا الخيار للتوافق والأرشفة. قد تظل بعض المحتويات القديمة قابلة للتنزيل، ولكن لا يُنصح باستخدام FLV للاستخدام اليومي.</string>
+    <string name="stream_format_guide_footer">احتفظ بالتنسيق الافتراضي DASH إلا إذا كنت بحاجة إلى تنسيق آخر.</string>
+</resources>

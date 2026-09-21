@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="stream_format_guide_title">Sobre DASH / MP4 / FLV</string>
+    <string name="stream_format_guide_subtitle">Escolhendo um formato de fluxo</string>
+    <string name="stream_format_guide_intro">Bilibili utilizou três formatos de streaming. DASH foi introduzido em 2018 e continua sendo o formato principal. MP4 e FLV agora são usados ​​apenas em casos limitados.</string>
+    <string name="stream_format_guide_dash_status">Recomendado</string>
+    <string name="stream_format_guide_dash_notice">O formato de streaming atual de Bilibili oferece a melhor qualidade de áudio e vídeo e os downloads mais rápidos.</string>
+    <string name="stream_format_guide_dash_default">Mantenha este formato para a maioria dos downloads. Se não tiver certeza, deixe o formato do Stream inalterado.</string>
+    <string name="stream_format_guide_dash_body">Áudio e vídeo são entregues separadamente em segmentos. O fluxo de vídeo não tem som e o fluxo de áudio não tem imagem.</string>
+    <string name="stream_format_guide_dash_merge">Para criar um único arquivo com áudio e vídeo, os fluxos devem ser mesclados usando FFmpeg. Selecione o tipo de saída de áudio e vídeo para fazer isso.</string>
+    <string name="stream_format_guide_mp4_status">Escolha com cuidado</string>
+    <string name="stream_format_guide_mp4_notice">Não escolha isto só porque deseja um arquivo MP4. Os downloads geralmente são mais lentos e de qualidade inferior a DASH.</string>
+    <string name="stream_format_guide_mp4_body">Este formato entrega arquivos MP4 com áudio já incluído, portanto a fusão é desnecessária.</string>
+    <string name="stream_format_guide_mp4_exception">Este formato raramente é usado atualmente, exceto para prévias de programas, filmes e cursos pagos. Muitas vezes, essas visualizações estão disponíveis apenas como MP4 com qualidade de imagem e som limitada.</string>
+    <string name="stream_format_guide_flv_status">Principalmente aposentado</string>
+    <string name="stream_format_guide_flv_notice">O formato FLV segmentado usado em anos anteriores foi quase totalmente retirado.</string>
+    <string name="stream_format_guide_flv_body">Esta opção é mantida para compatibilidade e arquivamento. Alguns conteúdos mais antigos ainda podem ser baixados, mas FLV não é recomendado para uso diário.</string>
+    <string name="stream_format_guide_footer">Mantenha o formato padrão DASH, a menos que você precise de outro formato.</string>
+</resources>

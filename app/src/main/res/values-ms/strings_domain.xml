@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="media_kind_anime">Anime</string>
+    <string name="media_kind_movie">Filem</string>
+    <string name="media_kind_documentary">Dokumentari</string>
+    <string name="media_kind_chinese_animation">Animasi Cina</string>
+    <string name="media_kind_series">Siri TV</string>
+    <string name="media_kind_variety">Rancangan pelbagai</string>
+    <string name="media_copyright_licensed">Berlesen</string>
+    <string name="media_copyright_exclusive">Eksklusif</string>
+    <string name="media_price_bcoin">%1$s B-syiling</string>
+    <string name="media_access_available">Tersedia</string>
+    <string name="media_access_purchase">Pembelian diperlukan</string>
+    <string name="media_access_unavailable">Tidak tersedia buat masa ini</string>
+    <string name="download_saved_file_unavailable">Fail yang disimpan tidak lagi tersedia</string>
+    <string name="export_author">Pengarang: %1$s</string>
+    <string name="export_published_at">Diterbitkan: %1$s</string>
+    <string name="export_statistics">Statistik: %1$s</string>
+    <string name="export_source">Sumber: %1$s</string>
+    <string name="export_original">Catatan asal</string>
+    <string name="export_image">Imej %1$d</string>
+    <string name="export_views">Pandangan: %1$d</string>
+    <string name="export_likes">Suka: %1$d</string>
+    <string name="export_coins">Syiling: %1$d</string>
+    <string name="export_favorites">Kegemaran: %1$d</string>
+    <string name="export_replies">Ulasan: %1$d</string>
+    <string name="export_shares">Perkongsian: %1$d</string>
+    <string name="metadata_uploader">Pencipta: %1$s</string>
+    <string name="metadata_published_at">Diterbitkan pada Bilibili: %1$s</string>
+    <string name="metadata_tags">Teg: %1$s</string>
+    <string name="metadata_lyrics_source">Sumber lirik: %1$s</string>
+    <string name="lyrics_source_original">Lirik audio asal</string>
+    <string name="lyrics_source_subtitles">%1$s (ditranskripsi daripada sari kata)</string>
+    <string name="update_error_empty_response">Pelayan kemas kini mengembalikan kandungan kosong</string>
+    <string name="update_error_invalid_response">Tidak dapat membaca maklumat kemas kini</string>
+    <string name="update_error_no_route">Tidak dapat menyambung ke pelayan kemas kini buat sementara waktu, sila cuba sebentar lagi.</string>
+</resources>

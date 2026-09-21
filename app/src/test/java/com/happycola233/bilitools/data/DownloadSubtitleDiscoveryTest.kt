@@ -47,7 +47,7 @@ class DownloadSubtitleDiscoveryTest {
             spec,
         )
         assertEquals(subtitles, plan.map { it.subtitle })
-        assertEquals(listOf("中文（简体）", "英语 · AI 字幕", "中文 · AI 字幕"), plan.map { it.subtitle.displayName })
+        assertEquals(listOf("中文（简体）", "英语 · AI", "中文 · AI"), plan.map { it.subtitle.displayName })
         assertEquals(listOf(listOf("zh-Hans"), listOf("en"), listOf("ai-zh")), plan.map { it.retrySpec.subtitleSelection.languages })
     }
 
@@ -57,7 +57,7 @@ class DownloadSubtitleDiscoveryTest {
         )
         assertEquals(listOf("en", "zh-Hans", "ai-zh"), plan.map { it.subtitle.lan })
         assertEquals(listOf(true, false, false), plan.map { it.available })
-        assertEquals("中文 · AI 字幕", plan.last().subtitle.displayName)
+        assertEquals("中文 · AI", plan.last().subtitle.displayName)
         plan.forEach { task ->
             assertEquals(listOf(task.subtitle.lan), task.retrySpec.subtitleSelection.languages)
             assertEquals(spec.mimeType, task.retrySpec.mimeType)
@@ -73,7 +73,7 @@ class DownloadSubtitleDiscoveryTest {
         val noUrl = english.copy(name = "英语（美国）", url = "", isAi = true)
         val plan = planSubtitleDiscovery(listOf(noUrl), spec.copy(subtitleSelection = SubtitleTrackEmbedding(listOf("en"))))
         assertFalse(plan.single().available)
-        assertEquals("英语（美国） · AI 字幕", plan.single().subtitle.displayName)
+        assertEquals("英语（美国） · AI", plan.single().subtitle.displayName)
     }
 
     @Test fun duplicateRequestedOrReturnedLanguagesNeverProduceDuplicateFiles() {

@@ -2,6 +2,7 @@ package com.happycola233.bilitools.ui.settings
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Bundle
 import android.provider.DocumentsContract
@@ -14,11 +15,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.compose.ui.res.stringResource
 import com.happycola233.bilitools.R
+import com.happycola233.bilitools.core.AppLanguage
 import com.happycola233.bilitools.core.appContainer
 import com.happycola233.bilitools.data.UpdateCheckResult
 import com.happycola233.bilitools.notification.isLiveUpdateSupported
@@ -35,6 +37,7 @@ class SettingsActivity : AppCompatActivity() {
         AppViewModelFactory(applicationContext.appContainer)
     }
     private val liveUpdateSupported = MutableStateFlow(false)
+    private val selectedLanguage = MutableStateFlow(AppLanguage.System)
 
     private val openFolderLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree(),
@@ -59,6 +62,7 @@ class SettingsActivity : AppCompatActivity() {
         enableBiliEdgeToEdge()
         applySettingsThemeOverlays()
         super.onCreate(savedInstanceState)
+        selectedLanguage.value = AppLanguage.current()
         viewModel.refreshIssueReportState()
         liveUpdateSupported.value = applicationContext.isLiveUpdateSupported()
 
@@ -72,21 +76,39 @@ class SettingsActivity : AppCompatActivity() {
             val settings by viewModel.settings.collectAsState()
             val issueReportState by viewModel.issueReportState.collectAsState()
             val isLiveUpdateSupported by liveUpdateSupported.collectAsState()
+            val currentLanguage by selectedLanguage.collectAsState()
             val updateRepository = remember { applicationContext.appContainer.updateRepository }
             val scope = rememberCoroutineScope()
             val versionName = remember { normalizeVersionLabel(updateRepository.currentVersionName()) }
             val versionCode = remember { currentVersionCode() }
-            var checkUpdateSummary by rememberSaveable {
-                mutableStateOf(
-                    buildCheckUpdateSummary(
-                        currentVersion = versionName,
-                        statusText = getString(R.string.settings_check_update_desc),
-                    )
-                )
+            // 设置页切换语言时保留窗口和操作状态，展示文案始终由当前资源重新生成。
+            var updateCheckResult by remember { mutableStateOf<UpdateCheckResult?>(null) }
+            var checkingUpdate by remember { mutableStateOf(false) }
+            var exportingIssueReport by remember { mutableStateOf(false) }
+            var clearingIssueReport by remember { mutableStateOf(false) }
+            val checkedVersion = when (val result = updateCheckResult) {
+                is UpdateCheckResult.UpdateAvailable -> normalizeVersionLabel(result.currentVersion)
+                is UpdateCheckResult.UpToDate -> normalizeVersionLabel(result.currentVersion)
+                else -> versionName
             }
-            var checkingUpdate by rememberSaveable { mutableStateOf(false) }
-            var exportingIssueReport by rememberSaveable { mutableStateOf(false) }
-            var clearingIssueReport by rememberSaveable { mutableStateOf(false) }
+            val updateStatus = if (checkingUpdate) {
+                stringResource(R.string.settings_check_update_desc_checking)
+            } else {
+                when (val result = updateCheckResult) {
+                    is UpdateCheckResult.UpdateAvailable -> stringResource(
+                        R.string.settings_check_update_desc_available,
+                        result.release.tagName,
+                    )
+                    is UpdateCheckResult.UpToDate -> stringResource(R.string.settings_check_update_desc_latest)
+                    is UpdateCheckResult.Failed -> stringResource(R.string.settings_check_update_desc_failed)
+                    null -> stringResource(R.string.settings_check_update_desc)
+                }
+            }
+            val checkUpdateSummary = stringResource(
+                R.string.settings_update_summary_format,
+                stringResource(R.string.settings_about_version, checkedVersion),
+                updateStatus,
+            )
 
             BiliToolsSettingsContent(
                 settings = settings,
@@ -101,23 +123,20 @@ class SettingsActivity : AppCompatActivity() {
                 onExit = ::finish,
                 onNavigate = viewModel::navigateTo,
                 onNavigateBack = viewModel::popDestination,
+                selectedLanguage = currentLanguage,
+                onLanguageChange = { language ->
+                    // 所选语言与系统相同时配置不会改变，仍需立即更新选中标记。
+                    selectedLanguage.value = language
+                    AppLanguage.select(language)
+                },
                 onCheckUpdate = {
                     if (!checkingUpdate) {
                         checkingUpdate = true
-                        checkUpdateSummary = buildCheckUpdateSummary(
-                            currentVersion = versionName,
-                            statusText = getString(R.string.settings_check_update_desc_checking),
-                        )
                         scope.launch {
-                            when (val result = updateRepository.checkForUpdate()) {
+                            val result = updateRepository.checkForUpdate()
+                            updateCheckResult = result
+                            when (result) {
                                 is UpdateCheckResult.UpdateAvailable -> {
-                                    checkUpdateSummary = buildCheckUpdateSummary(
-                                        currentVersion = normalizeVersionLabel(result.currentVersion),
-                                        statusText = getString(
-                                            R.string.settings_check_update_desc_available,
-                                            result.release.tagName,
-                                        ),
-                                    )
                                     UpdateDialog.show(
                                         activity = this@SettingsActivity,
                                         release = result.release,
@@ -126,10 +145,6 @@ class SettingsActivity : AppCompatActivity() {
                                 }
 
                                 is UpdateCheckResult.UpToDate -> {
-                                    checkUpdateSummary = buildCheckUpdateSummary(
-                                        currentVersion = normalizeVersionLabel(result.currentVersion),
-                                        statusText = getString(R.string.settings_check_update_desc_latest),
-                                    )
                                     Toast.makeText(
                                         this@SettingsActivity,
                                         getString(R.string.settings_check_update_toast_latest),
@@ -138,10 +153,6 @@ class SettingsActivity : AppCompatActivity() {
                                 }
 
                                 is UpdateCheckResult.Failed -> {
-                                    checkUpdateSummary = buildCheckUpdateSummary(
-                                        currentVersion = normalizeVersionLabel(result.currentVersion),
-                                        statusText = getString(R.string.settings_check_update_desc_failed),
-                                    )
                                     Toast.makeText(
                                         this@SettingsActivity,
                                         getString(
@@ -246,8 +257,17 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        // 由 AppCompat 更新资源、Compose 接收配置变化；不拆除窗口和现有组合，避免闪屏。
+        super.onConfigurationChanged(newConfig)
+        // 旧版 Android 的 AppCompat 只分发资源配置，保留窗口时还需同步其布局方向。
+        window.decorView.layoutDirection = newConfig.layoutDirection
+        selectedLanguage.value = AppLanguage.current()
+    }
+
     override fun onResume() {
         super.onResume()
+        selectedLanguage.value = AppLanguage.current()
         viewModel.refreshIssueReportState()
         liveUpdateSupported.value = applicationContext.isLiveUpdateSupported()
     }
@@ -282,15 +302,6 @@ class SettingsActivity : AppCompatActivity() {
         return runCatching {
             DocumentsContract.buildTreeDocumentUri(EXTERNAL_STORAGE_PROVIDER, treeId)
         }.getOrNull()
-    }
-
-    private fun buildCheckUpdateSummary(currentVersion: String, statusText: String): String {
-        return buildString {
-            append(getString(R.string.settings_about_version, currentVersion))
-            append("（")
-            append(statusText)
-            append('）')
-        }
     }
 
     private fun shareIssueReport(uri: Uri) {

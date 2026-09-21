@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="stream_format_guide_title">Giới thiệu về DASH / MP4 / FLV</string>
+    <string name="stream_format_guide_subtitle">Chọn định dạng luồng</string>
+    <string name="stream_format_guide_intro">Bilibili đã sử dụng ba định dạng phát trực tuyến. DASH đã được giới thiệu vào năm 2018 và vẫn là định dạng chính. MP4 và FLV hiện chỉ được sử dụng trong một số trường hợp hạn chế.</string>
+    <string name="stream_format_guide_dash_status">Khuyến nghị</string>
+    <string name="stream_format_guide_dash_notice">Bilibili Định dạng phát trực tuyến hiện tại của cung cấp chất lượng âm thanh và video tốt nhất cũng như tốc độ tải xuống nhanh nhất.</string>
+    <string name="stream_format_guide_dash_default">Giữ định dạng này cho hầu hết các lượt tải xuống. Nếu bạn không chắc chắn, hãy giữ nguyên định dạng Luồng.</string>
+    <string name="stream_format_guide_dash_body">Âm thanh và video được phân phối riêng biệt theo từng phân đoạn. Luồng video không có âm thanh và luồng âm thanh không có hình ảnh.</string>
+    <string name="stream_format_guide_dash_merge">Để tạo một tệp có cả âm thanh và video, các luồng phải được hợp nhất bằng cách sử dụng FFmpeg. Chọn loại đầu ra Âm thanh và video để thực hiện việc này.</string>
+    <string name="stream_format_guide_mp4_status">Hãy lựa chọn cẩn thận</string>
+    <string name="stream_format_guide_mp4_notice">Đừng chọn mục này chỉ vì bạn muốn có tệp MP4. Tải xuống thường chậm hơn và chất lượng thấp hơn DASH.</string>
+    <string name="stream_format_guide_mp4_body">Định dạng này cung cấp MP4 tệp có âm thanh đã được bao gồm nên việc hợp nhất là không cần thiết.</string>
+    <string name="stream_format_guide_mp4_exception">Định dạng này hiện nay hiếm khi được sử dụng, ngoại trừ các bản xem trước của các chương trình, phim và khóa học trả phí. Những bản xem trước như vậy thường chỉ có sẵn dưới dạng MP4 với chất lượng hình ảnh và âm thanh hạn chế.</string>
+    <string name="stream_format_guide_flv_status">Phần lớn đã nghỉ hưu</string>
+    <string name="stream_format_guide_flv_notice">Định dạng FLV được phân đoạn được sử dụng trong những năm trước gần như đã bị loại bỏ hoàn toàn.</string>
+    <string name="stream_format_guide_flv_body">Tùy chọn này được giữ lại để tương thích và lưu trữ. Một số nội dung cũ hơn vẫn có thể tải xuống được nhưng FLV không được khuyến nghị sử dụng hàng ngày.</string>
+    <string name="stream_format_guide_footer">Giữ định dạng DASH mặc định trừ khi bạn cần định dạng khác.</string>
+</resources>

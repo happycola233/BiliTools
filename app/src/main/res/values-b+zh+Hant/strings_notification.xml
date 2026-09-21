@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_channel_download_progress_desc">顯示下載進度與操作控制</string>
+    <string name="notification_channel_download_result_name">下載結果</string>
+    <string name="notification_channel_download_result_desc">顯示下載任務完成情況</string>
+    <string name="notification_title_downloading_default">正在下載</string>
+    <string name="notification_title_downloading_multiple">%1$d 個任務下載中</string>
+    <string name="notification_title_paused_multiple">%1$d 個任務已暫停</string>
+    <string name="notification_status_downloading">下載中</string>
+    <string name="notification_status_preparing">準備下載</string>
+    <string name="notification_status_merging">處理中</string>
+    <string name="notification_status_paused">已暫停</string>
+    <string name="notification_content_progress_percent">%1$d%%</string>
+    <string name="notification_content_progress_bytes">%1$d%% %2$s/%3$s</string>
+    <string name="notification_content_paused_count">已暫停 %1$d 個</string>
+    <string name="notification_short_downloading">下載中</string>
+    <string name="notification_short_preparing">準備中</string>
+    <string name="notification_short_merging">處理中</string>
+    <string name="notification_short_paused">已暫停</string>
+    <string name="notification_short_progress">%1$d%%</string>
+    <string name="notification_summary_all_completed">下載完成</string>
+    <string name="notification_summary_finished">下載已結束</string>
+    <string name="notification_summary_content">成功 %1$d，失敗 %2$d，取消 %3$d</string>
+    <string name="notification_permission_denied_tip">通知許可權被拒絕，下載仍會繼續，但不會在通知欄顯示進度。</string>
+</resources>

@@ -301,9 +301,9 @@ class ExtrasRepository(
         val minutes = (duration.toMinutes() % 60)
         val secs = (duration.seconds % 60)
         return if (hours > 0) {
-            String.format("%d:%02d:%02d", hours, minutes, secs)
+            String.format(Locale.ROOT, "%d:%02d:%02d", hours, minutes, secs)
         } else {
-            String.format("%02d:%02d", minutes, secs)
+            String.format(Locale.ROOT, "%02d:%02d", minutes, secs)
         }
     }
 

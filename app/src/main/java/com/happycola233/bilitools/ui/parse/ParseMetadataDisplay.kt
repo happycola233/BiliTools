@@ -1,9 +1,15 @@
 package com.happycola233.bilitools.ui.parse
 
+import android.content.Context
+import android.icu.text.CompactDecimalFormat
+import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.model.MediaContributor
 import com.happycola233.bilitools.data.model.MediaCopyrightType
 import com.happycola233.bilitools.data.model.MediaInfo
 import com.happycola233.bilitools.data.model.MediaItem
+import com.happycola233.bilitools.data.model.MediaCategory
+import com.happycola233.bilitools.data.model.MediaAccess
+import com.happycola233.bilitools.data.model.MediaContentKind
 import com.happycola233.bilitools.data.model.MediaMetadata
 import com.happycola233.bilitools.data.model.MediaRareAttribute
 import com.happycola233.bilitools.data.model.MediaResolution
@@ -12,6 +18,7 @@ import com.happycola233.bilitools.data.model.MediaType
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.util.Locale
 import kotlin.math.absoluteValue
 
@@ -59,653 +66,686 @@ internal data class ParseMetadataRow(
     val note: String? = null,
 )
 
-/**
- * 卡片正文和元信息必须指向同一主体，因此主体选择由结果卡解析函数传入。
- * 这里只整理当前解析或既有预览补拉已经取得的字段，不会为了详情再请求接口。
- */
 internal fun buildParseMetadataDisplay(
+    context: Context,
     info: MediaInfo,
     subjectItem: MediaItem?,
     collectionOverview: Boolean,
-): ParseMetadataDisplay {
-    if (collectionOverview) return buildCollectionOverviewMetadata(info)
-    if (subjectItem == null) return buildContainerMetadata(info)
+): ParseMetadataDisplay = ParseMetadataFormatter(context).build(info, subjectItem, collectionOverview)
 
-    val metadata = subjectItem.metadata
-    val publicId = subjectItem.publicContentId()
-    val publicIdText = when {
-        subjectItem.type == MediaType.Opus && subjectItem.cvid == null && publicId != null ->
-            "动态 $publicId"
-        else -> publicId
-    }
-    val quantity = subjectQuantity(subjectItem, metadata)
-    val characteristic = subjectCharacteristic(subjectItem.type, metadata)
-    val videoStat = subjectItem.stat ?: info.nfo.stat.takeIf {
-        subjectItem.type == MediaType.Video && metadata.videoParts.isNotEmpty()
-    }
+/** 每次从当前界面的配置取文案，避免语言切换后继续显示缓存的旧语言。 */
+private class ParseMetadataFormatter(private val context: Context) {
+    private val locale = context.resources.configuration.locales[0]
+    private fun text(id: Int, vararg args: Any): String = context.getString(id, *args)
 
-    val contentSections = buildList {
-        when (subjectItem.type) {
-            MediaType.Video -> addVideoSections(subjectItem, metadata, videoStat)
-            MediaType.Bangumi -> addBangumiSections(subjectItem, metadata)
-            MediaType.Lesson -> addLessonSections(subjectItem, metadata)
-            MediaType.Music -> addMusicSections(subjectItem, metadata)
-            MediaType.Opus -> addOpusSections(subjectItem, metadata)
-            else -> Unit
+    /**
+     * 卡片正文和元信息必须指向同一主体，因此主体选择由结果卡解析函数传入。
+     * 这里只整理当前解析或既有预览补拉已经取得的字段，不会为了详情再请求接口。
+     */
+    fun build(
+        info: MediaInfo,
+        subjectItem: MediaItem?,
+        collectionOverview: Boolean,
+    ): ParseMetadataDisplay {
+        if (collectionOverview) return buildCollectionOverviewMetadata(info)
+        if (subjectItem == null) return buildContainerMetadata(info)
+
+        val metadata = subjectItem.metadata
+        val publicId = subjectItem.publicContentId()
+        val publicIdText = when {
+            subjectItem.type == MediaType.Opus && subjectItem.cvid == null && publicId != null ->
+                text(R.string.runtime_dynamic_id, publicId)
+            else -> publicId
         }
-        if (metadata.invalid) {
-            valueSection("状态", rowsOf("内容状态" to "已失效"))?.let(::add)
+        val quantity = subjectQuantity(subjectItem, metadata)
+        val characteristic = subjectCharacteristic(subjectItem.type, metadata)
+        val videoStat = subjectItem.stat ?: info.nfo.stat.takeIf {
+            subjectItem.type == MediaType.Video && metadata.videoParts.isNotEmpty()
         }
-    }
-    val sections = buildList {
-        addAll(contentSections)
-        // 容器归属不是当前内容本身的详情；只有存在内容字段时才作为补充来源展示。
-        if (contentSections.isNotEmpty()) {
-            buildOriginSection(info, subjectItem)?.let(::add)
-        }
-    }.filterNot { section ->
-        when (section) {
-            is ParseMetadataSection.Values -> section.rows.isEmpty()
-            is ParseMetadataSection.Groups -> section.groups.isEmpty()
-            is ParseMetadataSection.Contributors -> section.members.isEmpty()
-        }
-    }
 
-    return ParseMetadataDisplay(
-        subjectKey = subjectKey(subjectItem),
-        publicIdText = publicIdText,
-        publicIdCopyValue = publicId,
-        publicIdCopyName = publicIdCopyName(subjectItem),
-        summarySlots = listOfNotNull(publicIdText, quantity, characteristic).take(3),
-        sections = sections,
-    )
-}
-
-private fun buildCollectionOverviewMetadata(info: MediaInfo): ParseMetadataDisplay {
-    val metadata = info.metadata
-    val count = metadata.itemCount ?: info.list.size.takeIf { it > 0 }
-    return ParseMetadataDisplay(
-        subjectKey = "collection:${metadata.collectionId ?: info.id}",
-        publicIdText = "合集",
-        publicIdCopyValue = null,
-        publicIdCopyName = null,
-        summarySlots = listOfNotNull("合集", count?.let { "$it 条" }),
-        sections = listOfNotNull(
-            valueSection(
-                "标识",
-                rowsOf("合集编号" to metadata.collectionId?.toString()),
-            ),
-            valueSection(
-                "内容",
-                rowsOf(
-                    "条目数量" to count?.let { "$it 条" },
-                    "创建时间" to formatEpochSeconds(metadata.createdAt),
-                ),
-            ),
-        ),
-    )
-}
-
-private fun buildContainerMetadata(info: MediaInfo): ParseMetadataDisplay {
-    val metadata = info.metadata
-    val publicId = when (info.type) {
-        MediaType.MusicList -> normalizedPrefixedId(info.id, "am")
-        MediaType.OpusList -> normalizedPrefixedId(info.id, "rl")
-        MediaType.Bangumi -> normalizedPrefixedId(info.id, "ss")
-        MediaType.Lesson -> normalizedPrefixedId(info.id, "ss")
-        else -> null
-    }
-    val quantity = metadata.itemCount?.let { count ->
-        when (info.type) {
-            MediaType.MusicList -> "$count 首"
-            MediaType.OpusList -> "$count 篇"
-            else -> "$count 条"
-        }
-    }
-    val quantityName = when (info.type) {
-        MediaType.MusicList -> "歌曲数量"
-        MediaType.OpusList -> "文章数量"
-        else -> "条目数量"
-    }
-    return ParseMetadataDisplay(
-        subjectKey = "container:${info.type}:${info.id}",
-        publicIdText = publicId,
-        publicIdCopyValue = publicId,
-        publicIdCopyName = publicId?.let(::publicIdCopyName),
-        summarySlots = listOfNotNull(publicId, quantity),
-        sections = listOfNotNull(
-            valueSection(
-                "标识与内容",
-                rowsOf(
-                    publicIdLabel(publicId) to publicId,
-                    "创建时间" to formatEpochSeconds(metadata.createdAt),
-                    quantityName to quantity,
-                    "标签" to metadata.tags.joinToString("、").takeIf(String::isNotBlank),
-                ),
-            ),
-        ),
-    )
-}
-
-private fun MutableList<ParseMetadataSection>.addVideoSections(
-    item: MediaItem,
-    metadata: MediaMetadata,
-    stat: MediaStat?,
-) {
-    val isMultiPart = (metadata.partCount ?: metadata.videoParts.size) > 1
-    val singlePart = metadata.videoParts.singleOrNull()
-    valueSection(
-        "标识",
-        rowsOf(
-            "BV" to item.bvid,
-            "AV" to item.aid?.let { "AV$it" },
-            "cid" to if (isMultiPart) {
-                null
-            } else {
-                (item.cid ?: singlePart?.cid)?.toString()
-            },
-        ),
-    )?.let(::add)
-
-    val copyrightType = when (metadata.copyrightType) {
-        MediaCopyrightType.Original -> "自制"
-        MediaCopyrightType.Repost -> "转载"
-        null -> null
-    }
-    val copyright = when {
-        copyrightType != null && metadata.noReprint -> "$copyrightType（禁止转载）"
-        copyrightType != null -> copyrightType
-        metadata.noReprint -> "禁止转载"
-        else -> null
-    }
-    valueSection(
-        "属性",
-        rowsOf(
-            "类型" to copyright,
-            "特殊属性" to metadata.rareAttributes.toAttributeLabels().joinToString("、")
-                .takeIf(String::isNotBlank),
-            "视频状态" to metadata.videoState.toVideoStateLabel(),
-            "警告" to metadata.warning,
-            "撞车跳转" to metadata.collisionBvid,
-        ),
-    )?.let(::add)
-
-    valueSection(
-        "时间与分区",
-        rowsOf(
-            "总时长" to formatDuration(metadata.totalDuration ?: item.duration),
-            "分区（旧）" to metadata.legacyCategory,
-            "分区（新）" to metadata.modernCategory,
-            "分辨率" to if (isMultiPart) {
-                null
-            } else {
-                formatResolution(metadata.resolution ?: singlePart?.resolution)
-            },
-            "发布时间" to formatEpochSeconds(
-                metadata.publishedAt ?: item.pubTime.takeIf { it > 0L },
-            ),
-        ) + listOfNotNull(submittedAtRow(metadata.submittedAt)),
-    )?.let(::add)
-
-    val honorRows = buildList {
-        metadata.honors.forEach { honor ->
-            honor.description.trim().takeIf(String::isNotBlank)?.let {
-                add(ParseMetadataRow("荣誉", it))
+        val contentSections = buildList {
+            when (subjectItem.type) {
+                MediaType.Video -> addVideoSections(subjectItem, metadata, videoStat)
+                MediaType.Bangumi -> addBangumiSections(subjectItem, metadata)
+                MediaType.Lesson -> addLessonSections(subjectItem, metadata)
+                MediaType.Music -> addMusicSections(subjectItem, metadata)
+                MediaType.Opus -> addOpusSections(subjectItem, metadata)
+                else -> Unit
+            }
+            if (metadata.invalid) {
+                valueSection(text(R.string.runtime_status), rowsOf(text(R.string.runtime_content_status) to text(R.string.runtime_invalid)))?.let(::add)
             }
         }
-        metadata.currentRank?.takeIf { it > 0 }?.let {
-            add(ParseMetadataRow("当前排名", "第 $it 名"))
-        }
-        val honorAlreadyContainsHistoricalRank = metadata.honors.any { it.type == 3 }
-        if (!honorAlreadyContainsHistoricalRank) {
-            metadata.historicalRank?.takeIf { it > 0 }?.let {
-                add(ParseMetadataRow("历史最高排名", "第 $it 名"))
+        val sections = buildList {
+            addAll(contentSections)
+            // 容器归属不是当前内容本身的详情；只有存在内容字段时才作为补充来源展示。
+            if (contentSections.isNotEmpty()) {
+                buildOriginSection(info, subjectItem)?.let(::add)
+            }
+        }.filterNot { section ->
+            when (section) {
+                is ParseMetadataSection.Values -> section.rows.isEmpty()
+                is ParseMetadataSection.Groups -> section.groups.isEmpty()
+                is ParseMetadataSection.Contributors -> section.members.isEmpty()
             }
         }
-        metadata.evaluation?.trim()?.takeIf(String::isNotBlank)?.let {
-            add(ParseMetadataRow("评分", it))
+
+        return ParseMetadataDisplay(
+            subjectKey = subjectKey(subjectItem),
+            publicIdText = publicIdText,
+            publicIdCopyValue = publicId,
+            publicIdCopyName = publicIdCopyName(subjectItem),
+            summarySlots = listOfNotNull(publicIdText, quantity, characteristic).take(3),
+            sections = sections,
+        )
+    }
+
+    private fun buildCollectionOverviewMetadata(info: MediaInfo): ParseMetadataDisplay {
+        val metadata = info.metadata
+        val count = metadata.itemCount ?: info.list.size.takeIf { it > 0 }
+        return ParseMetadataDisplay(
+            subjectKey = "collection:${metadata.collectionId ?: info.id}",
+            publicIdText = text(R.string.runtime_collection),
+            publicIdCopyValue = null,
+            publicIdCopyName = null,
+            summarySlots = listOfNotNull(text(R.string.runtime_collection), count?.let { text(R.string.runtime_count_items, it) }),
+            sections = listOfNotNull(
+                valueSection(
+                    text(R.string.runtime_identifiers),
+                    rowsOf(text(R.string.runtime_collection_id) to metadata.collectionId?.toString()),
+                ),
+                valueSection(
+                    text(R.string.runtime_content),
+                    rowsOf(
+                        text(R.string.runtime_item_count) to count?.let { text(R.string.runtime_count_items, it) },
+                        text(R.string.runtime_created_at) to formatEpochSeconds(metadata.createdAt),
+                    ),
+                ),
+            ),
+        )
+    }
+
+    private fun buildContainerMetadata(info: MediaInfo): ParseMetadataDisplay {
+        val metadata = info.metadata
+        val publicId = when (info.type) {
+            MediaType.MusicList -> normalizedPrefixedId(info.id, "am")
+            MediaType.OpusList -> normalizedPrefixedId(info.id, "rl")
+            MediaType.Bangumi -> normalizedPrefixedId(info.id, "ss")
+            MediaType.Lesson -> normalizedPrefixedId(info.id, "ss")
+            else -> null
+        }
+        val quantity = metadata.itemCount?.let { count ->
+            when (info.type) {
+                MediaType.MusicList -> text(R.string.runtime_count_songs, count)
+                MediaType.OpusList -> text(R.string.runtime_count_articles, count)
+                else -> text(R.string.runtime_count_items, count)
+            }
+        }
+        val quantityName = when (info.type) {
+            MediaType.MusicList -> text(R.string.runtime_song_count)
+            MediaType.OpusList -> text(R.string.runtime_article_count)
+            else -> text(R.string.runtime_item_count)
+        }
+        return ParseMetadataDisplay(
+            subjectKey = "container:${info.type}:${info.id}",
+            publicIdText = publicId,
+            publicIdCopyValue = publicId,
+            publicIdCopyName = publicId?.let(::publicIdCopyName),
+            summarySlots = listOfNotNull(publicId, quantity),
+            sections = listOfNotNull(
+                valueSection(
+                    text(R.string.runtime_identifiers_content),
+                    rowsOf(
+                        publicIdLabel(publicId) to publicId,
+                        text(R.string.runtime_created_at) to formatEpochSeconds(metadata.createdAt),
+                        quantityName to quantity,
+                        text(R.string.runtime_tags) to metadata.tags.joinToString(text(R.string.runtime_list_separator)).takeIf(String::isNotBlank),
+                    ),
+                ),
+            ),
+        )
+    }
+
+    private fun MutableList<ParseMetadataSection>.addVideoSections(
+        item: MediaItem,
+        metadata: MediaMetadata,
+        stat: MediaStat?,
+    ) {
+        val isMultiPart = (metadata.partCount ?: metadata.videoParts.size) > 1
+        val singlePart = metadata.videoParts.singleOrNull()
+        valueSection(
+            text(R.string.runtime_identifiers),
+            rowsOf(
+                "BV" to item.bvid,
+                "AV" to item.aid?.let { "AV$it" },
+                "cid" to if (isMultiPart) {
+                    null
+                } else {
+                    (item.cid ?: singlePart?.cid)?.toString()
+                },
+            ),
+        )?.let(::add)
+
+        val copyrightType = when (metadata.copyrightType) {
+            MediaCopyrightType.Original -> text(R.string.runtime_original)
+            MediaCopyrightType.Repost -> text(R.string.runtime_repost)
+            null -> null
+        }
+        val copyright = when {
+            copyrightType != null && metadata.noReprint -> text(R.string.runtime_copyright_no_reprint, copyrightType)
+            copyrightType != null -> copyrightType
+            metadata.noReprint -> text(R.string.runtime_no_reprint)
+            else -> null
+        }
+        valueSection(
+            text(R.string.runtime_attributes),
+            rowsOf(
+                text(R.string.runtime_type) to copyright,
+                text(R.string.runtime_special_attributes) to metadata.rareAttributes.toAttributeLabels().joinToString(text(R.string.runtime_list_separator))
+                    .takeIf(String::isNotBlank),
+                text(R.string.runtime_video_status) to metadata.videoState.toVideoStateLabel(),
+                text(R.string.runtime_warning) to metadata.warning,
+                text(R.string.runtime_redirect_video) to metadata.collisionBvid,
+            ),
+        )?.let(::add)
+
+        valueSection(
+            text(R.string.runtime_time_categories),
+            rowsOf(
+                text(R.string.runtime_total_duration) to formatMetadataDuration(metadata.totalDuration ?: item.duration, locale),
+                text(R.string.runtime_legacy_category) to metadata.legacyCategory?.displayName(),
+                text(R.string.runtime_modern_category) to metadata.modernCategory?.displayName(),
+                text(R.string.runtime_resolution) to if (isMultiPart) {
+                    null
+                } else {
+                    formatResolution(metadata.resolution ?: singlePart?.resolution)
+                },
+                text(R.string.runtime_published_at) to formatEpochSeconds(
+                    metadata.publishedAt ?: item.pubTime.takeIf { it > 0L },
+                ),
+            ) + listOfNotNull(submittedAtRow(metadata.submittedAt)),
+        )?.let(::add)
+
+        val honorRows = buildList {
+            metadata.honors.forEach { honor ->
+                honor.description.trim().takeIf(String::isNotBlank)?.let {
+                    add(ParseMetadataRow(text(R.string.runtime_honors), it))
+                }
+            }
+            metadata.currentRank?.takeIf { it > 0 }?.let {
+                add(ParseMetadataRow(text(R.string.runtime_current_rank), text(R.string.runtime_rank_position, it)))
+            }
+            val honorAlreadyContainsHistoricalRank = metadata.honors.any { it.type == 3 }
+            if (!honorAlreadyContainsHistoricalRank) {
+                metadata.historicalRank?.takeIf { it > 0 }?.let {
+                    add(ParseMetadataRow(text(R.string.runtime_highest_rank), text(R.string.runtime_rank_position, it)))
+                }
+            }
+            metadata.evaluation?.trim()?.takeIf(String::isNotBlank)?.let {
+                add(ParseMetadataRow(text(R.string.runtime_rating), it))
+            }
+        }
+        valueSection(text(R.string.runtime_honors_rank), honorRows)?.let(::add)
+
+        valueSection(text(R.string.runtime_statistics), stat.toDetailRows())?.let(::add)
+
+        valueSection(
+            text(R.string.runtime_content),
+            rowsOf(
+                text(R.string.runtime_dynamic_text) to metadata.dynamicText,
+                text(R.string.runtime_tags) to metadata.tags.joinToString(text(R.string.runtime_list_separator)).takeIf(String::isNotBlank),
+            ),
+        )?.let(::add)
+
+        val partGroups = metadata.videoParts.takeIf { isMultiPart }.orEmpty().map { part ->
+            ParseMetadataGroup(
+                title = "P${part.page}",
+                subtitle = part.title?.trim()?.takeIf(String::isNotBlank),
+                previewUrl = part.firstFrameUrl,
+                rows = rowsOf(
+                    text(R.string.runtime_duration) to formatMetadataDuration(part.duration, locale),
+                    text(R.string.runtime_resolution) to formatResolution(part.resolution),
+                    "cid" to part.cid?.toString(),
+                ) + listOfNotNull(submittedAtRow(part.submittedAt)),
+            )
+        }.filter { it.rows.isNotEmpty() || it.subtitle != null }
+        if (partGroups.isNotEmpty()) {
+            add(ParseMetadataSection.Groups(text(R.string.runtime_parts), partGroups))
+        }
+
+        if (metadata.contributors.isNotEmpty()) {
+            add(ParseMetadataSection.Contributors(text(R.string.runtime_contributors), metadata.contributors))
         }
     }
-    valueSection("荣誉与排名", honorRows)?.let(::add)
 
-    valueSection("播放数据", stat.toDetailRows())?.let(::add)
-
-    valueSection(
-        "内容",
-        rowsOf(
-            "同步动态" to metadata.dynamicText,
-            "标签" to metadata.tags.joinToString("、").takeIf(String::isNotBlank),
-        ),
-    )?.let(::add)
-
-    val partGroups = metadata.videoParts.takeIf { isMultiPart }.orEmpty().map { part ->
-        ParseMetadataGroup(
-            title = "P${part.page}",
-            subtitle = part.title?.trim()?.takeIf(String::isNotBlank),
-            previewUrl = part.firstFrameUrl,
-            rows = rowsOf(
-                "时长" to formatDuration(part.duration),
-                "分辨率" to formatResolution(part.resolution),
-                "cid" to part.cid?.toString(),
-            ) + listOfNotNull(submittedAtRow(part.submittedAt)),
-        )
-    }.filter { it.rows.isNotEmpty() || it.subtitle != null }
-    if (partGroups.isNotEmpty()) {
-        add(ParseMetadataSection.Groups("分 P", partGroups))
+    private fun MutableList<ParseMetadataSection>.addBangumiSections(
+        item: MediaItem,
+        metadata: MediaMetadata,
+    ) {
+        valueSection(
+            text(R.string.runtime_identifiers),
+            rowsOf(
+                "ep" to item.epid?.let { "ep$it" },
+                "ss" to item.ssid?.let { "ss$it" },
+                "md" to (item.mdid?.let { "md$it" } ?: metadata.mediaId?.let { "md$it" }),
+                "BV" to item.bvid,
+                "AV" to item.aid?.let { "AV$it" },
+                "cid" to item.cid?.toString(),
+            ),
+        )?.let(::add)
+        valueSection(
+            text(R.string.runtime_attributes),
+            rowsOf(
+                text(R.string.runtime_access) to metadata.badges.distinct().joinToString(text(R.string.runtime_list_separator)).takeIf(String::isNotBlank),
+                text(R.string.runtime_copyright) to metadata.copyrightCode?.let { code ->
+                    when (code.lowercase(Locale.ROOT)) {
+                        "bilibili" -> text(R.string.media_copyright_licensed)
+                        "dujia" -> text(R.string.media_copyright_exclusive)
+                        else -> code
+                    }
+                },
+                text(R.string.runtime_release_status) to metadata.isCompleted?.let { if (it) text(R.string.runtime_completed) else text(R.string.runtime_ongoing) },
+                text(R.string.runtime_release_notes) to metadata.updateText,
+            ),
+        )?.let(::add)
+        valueSection(
+            text(R.string.runtime_time_classification),
+            rowsOf(
+                text(R.string.runtime_duration) to formatMetadataDuration(metadata.totalDuration ?: item.duration, locale),
+                text(R.string.runtime_published_at) to formatEpochSeconds(
+                    metadata.publishedAt ?: item.pubTime.takeIf { it > 0L },
+                ),
+                text(R.string.runtime_resolution) to formatResolution(metadata.resolution),
+                text(R.string.runtime_series_type) to metadata.contentKind?.displayName(),
+                text(R.string.runtime_region) to metadata.area,
+                text(R.string.runtime_rating) to metadata.rating?.let(::formatRating),
+                text(R.string.runtime_tags) to metadata.tags.joinToString(text(R.string.runtime_list_separator)).takeIf(String::isNotBlank),
+            ),
+        )?.let(::add)
+        valueSection(
+            text(R.string.runtime_production),
+            rowsOf(
+                text(R.string.runtime_parent_content) to item.sectionTitle,
+                text(R.string.runtime_cast) to metadata.actors,
+                text(R.string.runtime_staff) to metadata.productionStaff,
+            ),
+        )?.let(::add)
     }
 
-    if (metadata.contributors.isNotEmpty()) {
-        add(ParseMetadataSection.Contributors("合作成员", metadata.contributors))
+    private fun MutableList<ParseMetadataSection>.addLessonSections(
+        item: MediaItem,
+        metadata: MediaMetadata,
+    ) {
+        valueSection(
+            text(R.string.runtime_identifiers),
+            rowsOf(
+                text(R.string.runtime_lesson_ep) to item.epid?.let { "ep$it" },
+                text(R.string.runtime_lesson_ss) to item.ssid?.let { "ss$it" },
+                "aid" to item.aid?.toString(),
+                "cid" to item.cid?.toString(),
+            ),
+        )?.let(::add)
+        valueSection(
+            text(R.string.runtime_attributes),
+            rowsOf(
+                text(R.string.runtime_access) to metadata.access?.displayName(),
+                text(R.string.runtime_price_description) to metadata.payment?.description,
+                text(R.string.runtime_price) to metadata.payment?.priceBCoins?.let { text(R.string.media_price_bcoin, it) },
+            ),
+        )?.let(::add)
+        valueSection(
+            text(R.string.runtime_time),
+            rowsOf(
+                text(R.string.runtime_duration) to formatMetadataDuration(metadata.totalDuration ?: item.duration, locale),
+                text(R.string.runtime_published_at) to formatEpochSeconds(
+                    metadata.publishedAt ?: item.pubTime.takeIf { it > 0L },
+                ),
+                text(R.string.runtime_release_status) to metadata.updateText,
+            ),
+        )?.let(::add)
     }
-}
 
-private fun MutableList<ParseMetadataSection>.addBangumiSections(
-    item: MediaItem,
-    metadata: MediaMetadata,
-) {
-    valueSection(
-        "标识",
-        rowsOf(
-            "ep" to item.epid?.let { "ep$it" },
-            "ss" to item.ssid?.let { "ss$it" },
-            "md" to (item.mdid?.let { "md$it" } ?: metadata.mediaId?.let { "md$it" }),
-            "BV" to item.bvid,
-            "AV" to item.aid?.let { "AV$it" },
-            "cid" to item.cid?.toString(),
-        ),
-    )?.let(::add)
-    valueSection(
-        "属性",
-        rowsOf(
-            "观看权限" to metadata.badges.distinct().joinToString("、").takeIf(String::isNotBlank),
-            "版权" to metadata.copyrightLabel,
-            "更新状态" to metadata.isCompleted?.let { if (it) "已完结" else "连载中" },
-            "更新说明" to metadata.updateText,
-        ),
-    )?.let(::add)
-    valueSection(
-        "时间与分类",
-        rowsOf(
-            "时长" to formatDuration(metadata.totalDuration ?: item.duration),
-            "发布时间" to formatEpochSeconds(
-                metadata.publishedAt ?: item.pubTime.takeIf { it > 0L },
+    private fun MutableList<ParseMetadataSection>.addMusicSections(
+        item: MediaItem,
+        metadata: MediaMetadata,
+    ) {
+        valueSection(
+            text(R.string.runtime_identifiers),
+            rowsOf(
+                "au" to item.sid?.let { "au$it" },
+                text(R.string.runtime_related_video) to item.bvid,
+                text(R.string.runtime_related_av) to item.aid?.takeIf { it > 0L }?.let { "AV$it" },
+                text(R.string.runtime_related_cid) to item.cid?.takeIf { it > 0L }?.toString(),
+                text(R.string.runtime_playlist) to item.amid?.let { "am$it" },
             ),
-            "分辨率" to formatResolution(metadata.resolution),
-            "剧集类型" to metadata.contentKind,
-            "地区" to metadata.area,
-            "评分" to metadata.rating?.let(::formatRating),
-            "标签" to metadata.tags.joinToString("、").takeIf(String::isNotBlank),
-        ),
-    )?.let(::add)
-    valueSection(
-        "制作",
-        rowsOf(
-            "所属内容" to item.sectionTitle,
-            "声优" to metadata.actors,
-            "制作人员" to metadata.productionStaff,
-        ),
-    )?.let(::add)
-}
-
-private fun MutableList<ParseMetadataSection>.addLessonSections(
-    item: MediaItem,
-    metadata: MediaMetadata,
-) {
-    valueSection(
-        "标识",
-        rowsOf(
-            "课程 ep" to item.epid?.let { "ep$it" },
-            "课程 ss" to item.ssid?.let { "ss$it" },
-            "aid" to item.aid?.toString(),
-            "cid" to item.cid?.toString(),
-        ),
-    )?.let(::add)
-    valueSection(
-        "属性",
-        rowsOf(
-            "观看权限" to metadata.accessLabel,
-            "价格说明" to metadata.payment?.description,
-            "价格" to metadata.payment?.price,
-        ),
-    )?.let(::add)
-    valueSection(
-        "时间",
-        rowsOf(
-            "时长" to formatDuration(metadata.totalDuration ?: item.duration),
-            "发布时间" to formatEpochSeconds(
-                metadata.publishedAt ?: item.pubTime.takeIf { it > 0L },
+        )?.let(::add)
+        valueSection(
+            text(R.string.runtime_author),
+            rowsOf(text(R.string.runtime_artist_author) to (metadata.artist ?: item.artist)),
+        )?.let(::add)
+        valueSection(
+            text(R.string.runtime_time_tags),
+            rowsOf(
+                text(R.string.runtime_duration) to formatMetadataDuration(metadata.totalDuration ?: item.duration, locale),
+                text(R.string.runtime_published_at) to formatEpochSeconds(
+                    metadata.publishedAt ?: item.pubTime.takeIf { it > 0L },
+                ),
+                text(R.string.runtime_tags) to metadata.tags.joinToString(text(R.string.runtime_list_separator)).takeIf(String::isNotBlank),
             ),
-            "更新状态" to metadata.updateText,
-        ),
-    )?.let(::add)
-}
-
-private fun MutableList<ParseMetadataSection>.addMusicSections(
-    item: MediaItem,
-    metadata: MediaMetadata,
-) {
-    valueSection(
-        "标识",
-        rowsOf(
-            "au" to item.sid?.let { "au$it" },
-            "关联稿件" to item.bvid,
-            "关联 AV" to item.aid?.takeIf { it > 0L }?.let { "AV$it" },
-            "关联 cid" to item.cid?.takeIf { it > 0L }?.toString(),
-            "所在歌单" to item.amid?.let { "am$it" },
-        ),
-    )?.let(::add)
-    valueSection(
-        "作者",
-        rowsOf("演唱 / 作者" to (metadata.artist ?: item.artist)),
-    )?.let(::add)
-    valueSection(
-        "时间与标签",
-        rowsOf(
-            "时长" to formatDuration(metadata.totalDuration ?: item.duration),
-            "发布时间" to formatEpochSeconds(
-                metadata.publishedAt ?: item.pubTime.takeIf { it > 0L },
-            ),
-            "标签" to metadata.tags.joinToString("、").takeIf(String::isNotBlank),
-        ),
-    )?.let(::add)
-}
-
-private fun MutableList<ParseMetadataSection>.addOpusSections(
-    item: MediaItem,
-    metadata: MediaMetadata,
-) {
-    valueSection(
-        "标识",
-        rowsOf(
-            "cv" to item.cvid?.let { "cv$it" },
-            "图文动态号" to item.opid,
-            "所在文集" to item.rlid?.let { "rl$it" },
-        ),
-    )?.let(::add)
-    valueSection(
-        "内容",
-        rowsOf(
-            "发布时间" to formatEpochSeconds(
-                metadata.publishedAt ?: item.pubTime.takeIf { it > 0L },
-            ),
-            "标签" to metadata.tags.joinToString("、").takeIf(String::isNotBlank),
-            "图片数量" to metadata.imageCount?.let { "$it 张" },
-        ),
-    )?.let(::add)
-}
-
-private fun buildOriginSection(info: MediaInfo, item: MediaItem): ParseMetadataSection.Values? {
-    val rows = when (info.type) {
-        MediaType.Favorite -> rowsOf(
-            "所在收藏夹" to item.fid?.let { fid ->
-                listOfNotNull(info.nfo.showTitle?.trim()?.takeIf(String::isNotBlank), "fid$fid")
-                    .joinToString(" · ")
-            },
-            "收藏夹创建时间" to formatEpochSeconds(info.metadata.createdAt),
-            "收藏夹内容数量" to info.metadata.itemCount?.let { "$it 条" },
-        )
-        MediaType.WatchLater -> rowsOf(
-            "内容来源" to "稍后再看",
-            "列表内容数量" to info.metadata.itemCount?.let { "$it 条" },
-        )
-        MediaType.UserVideo,
-        MediaType.UserOpus,
-        MediaType.UserAudio,
-        -> rowsOf(
-            "来自空间" to item.sourceMid?.let { mid ->
-                listOfNotNull(info.nfo.upper?.name?.trim()?.takeIf(String::isNotBlank), "mid$mid")
-                    .joinToString(" · ")
-            },
-            "列表创建时间" to formatEpochSeconds(info.metadata.createdAt),
-            "列表内容数量" to info.metadata.itemCount?.let { "$it 条" },
-        )
-        MediaType.Video -> rowsOf(
-            "所属合集" to item.metadata.collectionId?.let { collectionId ->
-                listOfNotNull(
-                    info.nfo.showTitle?.trim()?.takeIf(String::isNotBlank),
-                    collectionId.toString(),
-                ).joinToString(" · ")
-            },
-            "合集分区" to item.sectionTitle,
-            "合集条目数量" to info.metadata.itemCount?.let { "$it 条" },
-        )
-        MediaType.Bangumi -> rowsOf(
-            "正片集数" to info.metadata.itemCount?.let { "$it 集" },
-        )
-        MediaType.Lesson -> rowsOf(
-            "课程课时数" to info.metadata.itemCount?.let { "$it 节" },
-        )
-        MediaType.MusicList -> rowsOf(
-            "歌单创建时间" to formatEpochSeconds(info.metadata.createdAt),
-            "歌曲数量" to info.metadata.itemCount?.let { "$it 首" },
-        )
-        MediaType.OpusList -> rowsOf(
-            "文集创建时间" to formatEpochSeconds(info.metadata.createdAt),
-            "文章数量" to info.metadata.itemCount?.let { "$it 篇" },
-        )
-        else -> emptyList()
+        )?.let(::add)
     }
-    return valueSection("来源", rows)
-}
 
-private fun subjectQuantity(item: MediaItem, metadata: MediaMetadata): String? {
-    return when (item.type) {
-        MediaType.Video -> {
-            val duration = formatDuration(metadata.totalDuration ?: item.duration)
-            val partCount = metadata.partCount
-                ?: metadata.videoParts.size.takeIf { it > 1 }
-            partCount?.takeIf { it > 1 }?.let {
-                listOfNotNull("${it}P", duration).joinToString(" · ")
-            } ?: duration
+    private fun MutableList<ParseMetadataSection>.addOpusSections(
+        item: MediaItem,
+        metadata: MediaMetadata,
+    ) {
+        valueSection(
+            text(R.string.runtime_identifiers),
+            rowsOf(
+                "cv" to item.cvid?.let { "cv$it" },
+                text(R.string.runtime_opus_id) to item.opid,
+                text(R.string.runtime_article_collection) to item.rlid?.let { "rl$it" },
+            ),
+        )?.let(::add)
+        valueSection(
+            text(R.string.runtime_content),
+            rowsOf(
+                text(R.string.runtime_published_at) to formatEpochSeconds(
+                    metadata.publishedAt ?: item.pubTime.takeIf { it > 0L },
+                ),
+                text(R.string.runtime_tags) to metadata.tags.joinToString(text(R.string.runtime_list_separator)).takeIf(String::isNotBlank),
+                text(R.string.runtime_image_count) to metadata.imageCount?.let { text(R.string.runtime_count_images, it) },
+            ),
+        )?.let(::add)
+    }
+
+    private fun buildOriginSection(info: MediaInfo, item: MediaItem): ParseMetadataSection.Values? {
+        val rows = when (info.type) {
+            MediaType.Favorite -> rowsOf(
+                text(R.string.runtime_favorite_folder) to item.fid?.let { fid ->
+                    listOfNotNull(info.nfo.showTitle?.trim()?.takeIf(String::isNotBlank), "fid$fid")
+                        .joinToString(" · ")
+                },
+                text(R.string.runtime_favorite_created_at) to formatEpochSeconds(info.metadata.createdAt),
+                text(R.string.runtime_favorite_count) to info.metadata.itemCount?.let { text(R.string.runtime_count_items, it) },
+            )
+            MediaType.WatchLater -> rowsOf(
+                text(R.string.runtime_content_source) to text(R.string.runtime_watch_later),
+                text(R.string.runtime_list_count) to info.metadata.itemCount?.let { text(R.string.runtime_count_items, it) },
+            )
+            MediaType.UserVideo,
+            MediaType.UserOpus,
+            MediaType.UserAudio,
+            -> rowsOf(
+                text(R.string.runtime_uploader_space) to item.sourceMid?.let { mid ->
+                    listOfNotNull(info.nfo.upper?.name?.trim()?.takeIf(String::isNotBlank), "mid$mid")
+                        .joinToString(" · ")
+                },
+                text(R.string.runtime_list_created_at) to formatEpochSeconds(info.metadata.createdAt),
+                text(R.string.runtime_list_count) to info.metadata.itemCount?.let { text(R.string.runtime_count_items, it) },
+            )
+            MediaType.Video -> rowsOf(
+                text(R.string.runtime_parent_collection) to item.metadata.collectionId?.let { collectionId ->
+                    listOfNotNull(
+                        info.nfo.showTitle?.trim()?.takeIf(String::isNotBlank),
+                        collectionId.toString(),
+                    ).joinToString(" · ")
+                },
+                text(R.string.runtime_collection_category) to item.sectionTitle,
+                text(R.string.runtime_collection_count) to info.metadata.itemCount?.let { text(R.string.runtime_count_items, it) },
+            )
+            MediaType.Bangumi -> rowsOf(
+                text(R.string.runtime_episode_count) to info.metadata.itemCount?.let { text(R.string.runtime_count_episodes, it) },
+            )
+            MediaType.Lesson -> rowsOf(
+                text(R.string.runtime_lesson_count) to info.metadata.itemCount?.let { text(R.string.runtime_count_lessons, it) },
+            )
+            MediaType.MusicList -> rowsOf(
+                text(R.string.runtime_playlist_created_at) to formatEpochSeconds(info.metadata.createdAt),
+                text(R.string.runtime_song_count) to info.metadata.itemCount?.let { text(R.string.runtime_count_songs, it) },
+            )
+            MediaType.OpusList -> rowsOf(
+                text(R.string.runtime_article_collection_created_at) to formatEpochSeconds(info.metadata.createdAt),
+                text(R.string.runtime_article_count) to info.metadata.itemCount?.let { text(R.string.runtime_count_articles, it) },
+            )
+            else -> emptyList()
         }
+        return valueSection(text(R.string.runtime_source), rows)
+    }
+
+    private fun subjectQuantity(item: MediaItem, metadata: MediaMetadata): String? {
+        return when (item.type) {
+            MediaType.Video -> {
+                val duration = formatMetadataDuration(metadata.totalDuration ?: item.duration, locale)
+                val partCount = metadata.partCount
+                    ?: metadata.videoParts.size.takeIf { it > 1 }
+                partCount?.takeIf { it > 1 }?.let {
+                    listOfNotNull("${it}P", duration).joinToString(" · ")
+                } ?: duration
+            }
+            MediaType.Bangumi,
+            MediaType.Lesson,
+            MediaType.Music,
+            -> formatMetadataDuration(metadata.totalDuration ?: item.duration, locale)
+            MediaType.Opus -> metadata.imageCount?.takeIf { it > 0 }?.let { text(R.string.runtime_count_images, it) }
+            else -> null
+        }
+    }
+
+    private fun subjectCharacteristic(type: MediaType, metadata: MediaMetadata): String? {
+        metadata.rareAttributes.firstSummaryLabel()?.let { return it }
+        return when (type) {
+            // 摘要只放新版分区；旧分区留在详情，避免同一行出现两套分类。
+            MediaType.Video -> metadata.modernCategory?.displayName()
+            MediaType.Bangumi -> metadata.contentKind?.displayName() ?: metadata.area
+            MediaType.Lesson -> metadata.access?.takeUnless { it == MediaAccess.Available }?.displayName()
+                ?: metadata.updateText
+            MediaType.Music,
+            MediaType.Opus,
+            -> metadata.tags.firstOrNull()
+            else -> null
+        }?.trim()?.takeIf(String::isNotBlank)
+    }
+
+
+    private fun MediaCategory.displayName(): String =
+        if (offline) text(R.string.runtime_category_offline, name) else name
+
+    private fun MediaContentKind.displayName(): String = text(when (this) {
+        MediaContentKind.Anime -> R.string.media_kind_anime
+        MediaContentKind.Movie -> R.string.media_kind_movie
+        MediaContentKind.Documentary -> R.string.media_kind_documentary
+        MediaContentKind.ChineseAnimation -> R.string.media_kind_chinese_animation
+        MediaContentKind.Series -> R.string.media_kind_series
+        MediaContentKind.Variety -> R.string.media_kind_variety
+    })
+
+    private fun MediaAccess.displayName(): String = text(when (this) {
+        MediaAccess.Available -> R.string.media_access_available
+        MediaAccess.PurchaseRequired -> R.string.media_access_purchase
+        MediaAccess.Unavailable -> R.string.media_access_unavailable
+    })
+
+    private fun Set<MediaRareAttribute>.firstSummaryLabel(): String? {
+        val priority = listOf(
+            MediaRareAttribute.Interactive,
+            MediaRareAttribute.Panorama,
+            MediaRareAttribute.ChargeExclusive,
+            MediaRareAttribute.VipOnly,
+            MediaRareAttribute.LimitedFree,
+            MediaRareAttribute.PurchaseRequired,
+            MediaRareAttribute.Cooperation,
+            MediaRareAttribute.DynamicVideo,
+        )
+        return priority.firstOrNull(::contains)?.label()
+    }
+
+    private fun Set<MediaRareAttribute>.toAttributeLabels(): List<String> {
+        return MediaRareAttribute.entries.filter(::contains).map { it.label() }
+    }
+
+    private fun MediaRareAttribute.label(): String = when (this) {
+        MediaRareAttribute.Cooperation -> text(R.string.runtime_cooperation)
+        MediaRareAttribute.Interactive -> text(R.string.runtime_interactive)
+        MediaRareAttribute.Panorama -> text(R.string.runtime_panorama)
+        MediaRareAttribute.ChargeExclusive -> text(R.string.runtime_supporter_only)
+        MediaRareAttribute.VipOnly -> text(R.string.runtime_premium)
+        MediaRareAttribute.LimitedFree -> text(R.string.runtime_limited_free)
+        MediaRareAttribute.PurchaseRequired -> text(R.string.runtime_purchase_required)
+        MediaRareAttribute.DynamicVideo -> text(R.string.runtime_dynamic_video)
+    }
+
+    private fun Int?.toVideoStateLabel(): String? = when (this) {
+        null, 0 -> null
+        1 -> text(R.string.runtime_approved_limited)
+        -1 -> text(R.string.runtime_pending_review)
+        -2 -> text(R.string.runtime_rejected)
+        -3 -> text(R.string.runtime_locked_police)
+        -4 -> text(R.string.runtime_locked)
+        -5 -> text(R.string.runtime_locked_admin)
+        -6 -> text(R.string.runtime_repair_review)
+        -7 -> text(R.string.runtime_review_suspended)
+        -8 -> text(R.string.runtime_replacement_review)
+        -9 -> text(R.string.runtime_transcode_pending)
+        -10 -> text(R.string.runtime_review_delayed)
+        -11 -> text(R.string.runtime_source_repair)
+        -12 -> text(R.string.runtime_dump_failed)
+        -13 -> text(R.string.runtime_comments_review)
+        -14 -> text(R.string.runtime_temporary_trash)
+        -15 -> text(R.string.runtime_distributing)
+        -16 -> text(R.string.runtime_transcode_failed)
+        -20 -> text(R.string.runtime_not_submitted)
+        -30 -> text(R.string.runtime_submitted)
+        -40 -> text(R.string.runtime_scheduled)
+        -50 -> text(R.string.runtime_private)
+        -100 -> text(R.string.runtime_deleted)
+        else -> text(R.string.runtime_not_public)
+    }
+
+    private fun MediaStat?.toDetailRows(): List<ParseMetadataRow> {
+        val value = this ?: return emptyList()
+        return rowsOf(
+            text(R.string.runtime_plays) to value.play?.takeIf { it > 0L }?.let { java.text.NumberFormat.getIntegerInstance(locale).format(it) },
+            text(R.string.runtime_danmaku) to value.danmaku?.takeIf { it > 0L }?.let { java.text.NumberFormat.getIntegerInstance(locale).format(it) },
+            text(R.string.runtime_comments) to value.reply?.takeIf { it > 0L }?.let { java.text.NumberFormat.getIntegerInstance(locale).format(it) },
+            text(R.string.runtime_likes) to value.like?.takeIf { it > 0L }?.let { java.text.NumberFormat.getIntegerInstance(locale).format(it) },
+            text(R.string.runtime_coins) to value.coin?.takeIf { it > 0L }?.let { java.text.NumberFormat.getIntegerInstance(locale).format(it) },
+            text(R.string.runtime_favorites) to value.favorite?.takeIf { it > 0L }?.let { java.text.NumberFormat.getIntegerInstance(locale).format(it) },
+            text(R.string.runtime_shares) to value.share?.takeIf { it > 0L }?.let { java.text.NumberFormat.getIntegerInstance(locale).format(it) },
+        )
+    }
+
+
+    private fun formatEpochSeconds(epochSeconds: Long?): String? {
+        val timestamp = epochSeconds?.takeIf { it > 0L } ?: return null
+        return DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
+            .withLocale(locale)
+            .withZone(ZoneId.systemDefault())
+            .format(Instant.ofEpochSecond(timestamp))
+    }
+
+    /**
+     * view 接口 `ctime` 的展示行。API 文档把 ctime 描述为「用户投稿时间」，但实测并不可靠
+     * （常与 pubdate 完全一致、老稿件会落在 2017 年，官方页面也只展示 pubdate，详见
+     * [MediaMetadata.submittedAt]），因此写成「投稿/过审时间」而非确切的「投稿时间」，并附上可能不准确的提示。
+     */
+    private fun submittedAtRow(epochSeconds: Long?): ParseMetadataRow? {
+        val value = formatEpochSeconds(epochSeconds) ?: return null
+        return ParseMetadataRow(name = text(R.string.runtime_submitted_at), value = value, note = text(R.string.runtime_time_uncertain))
+    }
+
+    private fun formatResolution(resolution: MediaResolution?): String? {
+        val value = resolution ?: return null
+        val swapDimensions = value.rotate == 1 || value.rotate.absoluteValue % 180 == 90
+        val width = if (swapDimensions) value.height else value.width
+        val height = if (swapDimensions) value.width else value.height
+        return "$width×$height"
+    }
+
+
+    private fun formatRating(rating: Double): String {
+        return if (rating % 1.0 == 0.0) {
+            java.text.NumberFormat.getIntegerInstance(locale).format(rating.toInt())
+        } else {
+            String.format(locale, "%.1f", rating)
+        }
+    }
+
+    private fun rowsOf(vararg pairs: Pair<String, String?>): List<ParseMetadataRow> {
+        return pairs.mapNotNull { (name, rawValue) ->
+            val value = rawValue?.trim()?.takeIf(String::isNotBlank) ?: return@mapNotNull null
+            ParseMetadataRow(name, value)
+        }
+    }
+
+    private fun valueSection(
+        title: String,
+        rows: List<ParseMetadataRow>,
+    ): ParseMetadataSection.Values? = if (rows.isEmpty()) {
+        null
+    } else {
+        ParseMetadataSection.Values(title, rows)
+    }
+
+    private fun normalizedPrefixedId(rawId: String, prefix: String): String? {
+        val digits = rawId.filter(Char::isDigit)
+        return digits.takeIf(String::isNotBlank)?.let { "$prefix$it" }
+    }
+
+    private fun publicIdLabel(publicId: String?): String = when {
+        publicId?.startsWith("am") == true -> "am"
+        publicId?.startsWith("rl") == true -> "rl"
+        publicId?.startsWith("ss") == true -> "ss"
+        publicId?.startsWith("ep") == true -> "ep"
+        else -> text(R.string.runtime_content_id)
+    }
+
+    private fun publicIdCopyName(item: MediaItem): String? = when (item.type) {
+        MediaType.Video -> item.bvid?.let { text(R.string.runtime_bv_id) }
         MediaType.Bangumi,
         MediaType.Lesson,
-        MediaType.Music,
-        -> formatDuration(metadata.totalDuration ?: item.duration)
-        MediaType.Opus -> metadata.imageCount?.takeIf { it > 0 }?.let { "$it 张" }
+        -> when {
+            item.epid != null -> text(R.string.runtime_ep_id)
+            item.ssid != null -> text(R.string.runtime_ss_id)
+            else -> null
+        }
+        MediaType.Music -> item.sid?.let { text(R.string.runtime_au_id) }
+        MediaType.Opus -> when {
+            item.cvid != null -> text(R.string.runtime_cv_id)
+            !item.opid.isNullOrBlank() -> text(R.string.runtime_opus_id)
+            else -> null
+        }
         else -> null
+    }
+
+    private fun publicIdCopyName(publicId: String): String = when {
+        publicId.startsWith("am", ignoreCase = true) -> text(R.string.runtime_am_id)
+        publicId.startsWith("rl", ignoreCase = true) -> text(R.string.runtime_rl_id)
+        publicId.startsWith("ep", ignoreCase = true) -> text(R.string.runtime_ep_id)
+        publicId.startsWith("ss", ignoreCase = true) -> text(R.string.runtime_ss_id)
+        publicId.startsWith("au", ignoreCase = true) -> text(R.string.runtime_au_id)
+        publicId.startsWith("cv", ignoreCase = true) -> text(R.string.runtime_cv_id)
+        publicId.startsWith("BV", ignoreCase = true) -> text(R.string.runtime_bv_id)
+        else -> text(R.string.runtime_content_id)
+    }
+
+    private fun subjectKey(item: MediaItem): String {
+        return item.publicContentId()
+            ?: "${item.type}:${item.url}:${item.index}"
     }
 }
 
-private fun subjectCharacteristic(type: MediaType, metadata: MediaMetadata): String? {
-    metadata.rareAttributes.firstSummaryLabel()?.let { return it }
-    return when (type) {
-        // 摘要只放新版分区；旧分区留在详情，避免同一行出现两套分类。
-        MediaType.Video -> metadata.modernCategory
-        MediaType.Bangumi -> metadata.contentKind ?: metadata.area
-        MediaType.Lesson -> metadata.accessLabel?.takeUnless { it == "可观看" }
-            ?: metadata.updateText
-        MediaType.Music,
-        MediaType.Opus,
-        -> metadata.tags.firstOrNull()
-        else -> null
-    }?.trim()?.takeIf(String::isNotBlank)
-}
-
-private fun Set<MediaRareAttribute>.firstSummaryLabel(): String? {
-    val priority = listOf(
-        MediaRareAttribute.Interactive,
-        MediaRareAttribute.Panorama,
-        MediaRareAttribute.ChargeExclusive,
-        MediaRareAttribute.VipOnly,
-        MediaRareAttribute.LimitedFree,
-        MediaRareAttribute.PurchaseRequired,
-        MediaRareAttribute.Cooperation,
-        MediaRareAttribute.DynamicVideo,
-    )
-    return priority.firstOrNull(::contains)?.label()
-}
-
-private fun Set<MediaRareAttribute>.toAttributeLabels(): List<String> {
-    return MediaRareAttribute.entries.filter(::contains).map(MediaRareAttribute::label)
-}
-
-private fun MediaRareAttribute.label(): String = when (this) {
-    MediaRareAttribute.Cooperation -> "合作"
-    MediaRareAttribute.Interactive -> "互动"
-    MediaRareAttribute.Panorama -> "全景"
-    MediaRareAttribute.ChargeExclusive -> "充电专属"
-    MediaRareAttribute.VipOnly -> "大会员"
-    MediaRareAttribute.LimitedFree -> "限免"
-    MediaRareAttribute.PurchaseRequired -> "需购买"
-    MediaRareAttribute.DynamicVideo -> "动态视频"
-}
-
-private fun Int?.toVideoStateLabel(): String? = when (this) {
-    null, 0 -> null
-    1 -> "橙色通过"
-    -1 -> "待审"
-    -2 -> "已打回"
-    -3 -> "已被网警锁定"
-    -4 -> "已锁定"
-    -5 -> "已被管理员锁定"
-    -6 -> "修复待审"
-    -7 -> "暂缓审核"
-    -8 -> "补档待审"
-    -9 -> "等待转码"
-    -10 -> "延迟审核"
-    -11 -> "视频源待修复"
-    -12 -> "转储失败"
-    -13 -> "评论权限待审"
-    -14 -> "临时回收站"
-    -15 -> "分发中"
-    -16 -> "转码失败"
-    -20 -> "尚未提交"
-    -30 -> "已提交"
-    -40 -> "定时发布"
-    -50 -> "仅自己可见"
-    -100 -> "已删除"
-    else -> "暂不可公开浏览"
-}
-
-private fun MediaStat?.toDetailRows(): List<ParseMetadataRow> {
-    val value = this ?: return emptyList()
-    return rowsOf(
-        "播放" to value.play?.takeIf { it > 0L }?.toString(),
-        "弹幕" to value.danmaku?.takeIf { it > 0L }?.toString(),
-        "评论" to value.reply?.takeIf { it > 0L }?.toString(),
-        "点赞" to value.like?.takeIf { it > 0L }?.toString(),
-        "投币" to value.coin?.takeIf { it > 0L }?.toString(),
-        "收藏" to value.favorite?.takeIf { it > 0L }?.toString(),
-        "分享" to value.share?.takeIf { it > 0L }?.toString(),
-    )
-}
-
-internal fun formatMetadataDuration(seconds: Int?): String? = formatDuration(seconds)
-
-private fun formatDuration(seconds: Int?): String? {
+internal fun formatMetadataDuration(seconds: Int?, locale: Locale = Locale.getDefault()): String? {
     val total = seconds?.takeIf { it > 0 } ?: return null
     val hours = total / 3600
     val minutes = total % 3600 / 60
     val remainingSeconds = total % 60
     return if (hours > 0) {
-        "%d:%02d:%02d".format(Locale.ROOT, hours, minutes, remainingSeconds)
+        "%d:%02d:%02d".format(locale, hours, minutes, remainingSeconds)
     } else {
-        "%d:%02d".format(Locale.ROOT, minutes, remainingSeconds)
+        "%d:%02d".format(locale, minutes, remainingSeconds)
     }
 }
 
-private fun formatEpochSeconds(epochSeconds: Long?): String? {
-    val timestamp = epochSeconds?.takeIf { it > 0L } ?: return null
-    return METADATA_TIME_FORMATTER.format(Instant.ofEpochSecond(timestamp))
-}
-
-/**
- * view 接口 `ctime` 的展示行。API 文档把 ctime 描述为「用户投稿时间」，但实测并不可靠
- * （常与 pubdate 完全一致、老稿件会落在 2017 年，官方页面也只展示 pubdate，详见
- * [MediaMetadata.submittedAt]），因此写成「投稿/过审时间」而非确切的「投稿时间」，并附上可能不准确的提示。
- */
-private fun submittedAtRow(epochSeconds: Long?): ParseMetadataRow? {
-    val value = formatEpochSeconds(epochSeconds) ?: return null
-    return ParseMetadataRow(name = "投稿/过审时间", value = value, note = "可能不准确")
-}
-
-private fun formatResolution(resolution: MediaResolution?): String? {
-    val value = resolution ?: return null
-    val swapDimensions = value.rotate == 1 || value.rotate.absoluteValue % 180 == 90
-    val width = if (swapDimensions) value.height else value.width
-    val height = if (swapDimensions) value.width else value.height
-    return "$width×$height"
-}
-
-internal fun formatMediaStatValue(value: Long): String = when {
-    value >= 100_000_000L -> String.format(Locale.CHINA, "%.1f亿", value / 100_000_000.0)
-    value >= 10_000L -> String.format(Locale.CHINA, "%.1f万", value / 10_000.0)
-    else -> value.toString()
-}
-
-private fun formatRating(rating: Double): String {
-    return if (rating % 1.0 == 0.0) {
-        rating.toInt().toString()
-    } else {
-        String.format(Locale.CHINA, "%.1f", rating)
-    }
-}
-
-private fun rowsOf(vararg pairs: Pair<String, String?>): List<ParseMetadataRow> {
-    return pairs.mapNotNull { (name, rawValue) ->
-        val value = rawValue?.trim()?.takeIf(String::isNotBlank) ?: return@mapNotNull null
-        ParseMetadataRow(name, value)
-    }
-}
-
-private fun valueSection(
-    title: String,
-    rows: List<ParseMetadataRow>,
-): ParseMetadataSection.Values? = if (rows.isEmpty()) {
-    null
-} else {
-    ParseMetadataSection.Values(title, rows)
-}
-
-private fun normalizedPrefixedId(rawId: String, prefix: String): String? {
-    val digits = rawId.filter(Char::isDigit)
-    return digits.takeIf(String::isNotBlank)?.let { "$prefix$it" }
-}
-
-private fun publicIdLabel(publicId: String?): String = when {
-    publicId?.startsWith("am") == true -> "am"
-    publicId?.startsWith("rl") == true -> "rl"
-    publicId?.startsWith("ss") == true -> "ss"
-    publicId?.startsWith("ep") == true -> "ep"
-    else -> "内容编号"
-}
-
-private fun publicIdCopyName(item: MediaItem): String? = when (item.type) {
-    MediaType.Video -> item.bvid?.let { "BV 号" }
-    MediaType.Bangumi,
-    MediaType.Lesson,
-    -> when {
-        item.epid != null -> "ep 号"
-        item.ssid != null -> "ss 号"
-        else -> null
-    }
-    MediaType.Music -> item.sid?.let { "au 号" }
-    MediaType.Opus -> when {
-        item.cvid != null -> "cv 号"
-        !item.opid.isNullOrBlank() -> "图文动态号"
-        else -> null
-    }
-    else -> null
-}
-
-private fun publicIdCopyName(publicId: String): String = when {
-    publicId.startsWith("am", ignoreCase = true) -> "am 号"
-    publicId.startsWith("rl", ignoreCase = true) -> "rl 号"
-    publicId.startsWith("ep", ignoreCase = true) -> "ep 号"
-    publicId.startsWith("ss", ignoreCase = true) -> "ss 号"
-    publicId.startsWith("au", ignoreCase = true) -> "au 号"
-    publicId.startsWith("cv", ignoreCase = true) -> "cv 号"
-    publicId.startsWith("BV", ignoreCase = true) -> "BV 号"
-    else -> "内容编号"
-}
-
-private fun subjectKey(item: MediaItem): String {
-    return item.publicContentId()
-        ?: "${item.type}:${item.url}:${item.index}"
-}
-
-private val METADATA_TIME_FORMATTER = DateTimeFormatter.ofPattern(
-    "yyyy-MM-dd HH:mm:ss",
-    Locale.CHINA,
-).withZone(ZoneId.of("Asia/Shanghai"))
+internal fun formatMediaStatValue(value: Long, locale: Locale = Locale.getDefault()): String =
+    CompactDecimalFormat.getInstance(locale, CompactDecimalFormat.CompactStyle.SHORT).format(value)

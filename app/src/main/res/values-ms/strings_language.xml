@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_language_title">Bahasa</string>
+    <string name="settings_language_system">Ikut sistem</string>
+    <string name="settings_live_activity_unavailable">Pemberitahuan Kemas Kini Langsung tidak disokong pada versi Android ini.</string>
+    <string name="settings_update_summary_format">%1$s (%2$s)</string>
+</resources>

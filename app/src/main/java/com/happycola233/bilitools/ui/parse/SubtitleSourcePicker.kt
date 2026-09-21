@@ -83,7 +83,7 @@ internal fun SubtitleSourcePicker(
         languages.isEmpty() -> stringResource(R.string.subtitle_source_select)
         singleSelection -> choices.firstOrNull { it.lan == selectedLanguage }?.displayName.orEmpty()
         selection == SubtitleLanguageSelection.All -> stringResource(R.string.subtitle_source_all_count, languages.size)
-        languages.size <= 2 -> choices.filter { it.lan in languages }.joinToString("、") { it.displayName }
+        languages.size <= 2 -> choices.filter { it.lan in languages }.joinToString(stringResource(R.string.runtime_list_separator)) { it.displayName }
         else -> stringResource(R.string.subtitle_source_selected_count, languages.size)
     }
     val haptics = rememberAppHaptics()

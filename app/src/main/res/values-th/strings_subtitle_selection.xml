@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="parse_subtitle_file_option">บันทึกไฟล์คำบรรยาย</string>
+    <string name="subtitle_source_language">ภาษาคำบรรยาย</string>
+    <string name="subtitle_source_lyrics_language">ภาษาเนื้อเพลง</string>
+    <string name="subtitle_source_embed_title">ภาษาคำบรรยายที่ฝังอยู่</string>
+    <string name="subtitle_source_file_title">ภาษาของไฟล์คำบรรยาย</string>
+    <string name="subtitle_source_ai_description">คำบรรยาย AI</string>
+    <string name="subtitle_source_select">เลือกภาษา</string>
+    <string name="subtitle_source_select_all">เลือกทั้งหมด</string>
+    <string name="subtitle_source_all_count">คำบรรยายทั้งหมด · จำนวนภาษา: %1$d</string>
+    <string name="subtitle_source_selected_count">ภาษาที่เลือก: %1$d</string>
+    <string name="subtitle_source_cancel">ยกเลิก</string>
+    <string name="subtitle_source_done">เสร็จแล้ว</string>
+    <string name="subtitle_source_coverage">พร้อมใช้งาน: %1$d / %2$d</string>
+    <string name="subtitle_source_coverage_pending">ยืนยันแล้ว: %1$d / %2$d</string>
+    <string name="subtitle_source_unconfirmed">ยังไม่ได้รับการยืนยันความพร้อมใช้งาน</string>
+    <string name="subtitle_source_unavailable">ไม่พร้อมใช้งานสำหรับรายการนี้</string>
+    <string name="subtitle_source_loading">กำลังโหลดคำบรรยาย...</string>
+    <string name="subtitle_source_loading_batch">กำลังโหลดคำบรรยาย: %1$d / %2$d</string>
+    <string name="subtitle_source_failure">การโหลดคำบรรยายล้มเหลว</string>
+    <string name="subtitle_source_partial_failure">รายการที่โหลดคำบรรยายไม่สำเร็จ: %1$d</string>
+    <string name="subtitle_source_retry">ลองอีกครั้ง</string>
+    <string name="subtitle_source_empty">ไม่มีคำบรรยายสำหรับวิดีโอนี้</string>
+    <string name="subtitle_source_empty_batch">ไม่มีคำบรรยายสำหรับรายการเหล่านี้</string>
+    <string name="subtitle_source_login">เข้าสู่ระบบเพื่อเข้าถึงคำบรรยายวิดีโอ</string>
+    <string name="subtitle_source_login_lyrics">เข้าสู่ระบบเพื่อเลือกภาษาของเนื้อเพลง หรือปิดเนื้อเพลงที่ฝังไว้</string>
+    <string name="subtitle_source_choose_lyrics">เลือกแทร็กคำบรรยายเพื่อใช้เป็นเนื้อเพลง</string>
+    <string name="subtitle_source_no_lyrics">ไม่มีคำบรรยาย ปิดเนื้อเพลงที่ฝังไว้ก่อนที่จะดาวน์โหลด</string>
+    <string name="subtitle_source_choose_subtitles">โปรดเลือกคำบรรยายอย่างน้อยหนึ่งรายการ</string>
+    <string name="subtitle_source_missing_selection">ภาษาคำบรรยายที่เลือกหายไปจากบางรายการ</string>
+</resources>

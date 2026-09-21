@@ -9,6 +9,9 @@ import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import com.happycola233.bilitools.core.formatByteCount
+import com.happycola233.bilitools.core.formatEstimatedTime
+import com.happycola233.bilitools.core.localizedContext
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.DownloadNotificationState
 import com.happycola233.bilitools.data.DownloadOutcomeSummary
@@ -16,12 +19,13 @@ import com.happycola233.bilitools.data.model.DownloadStatus
 import com.happycola233.bilitools.notification.applyPromotedOngoing
 import com.happycola233.bilitools.notification.notifyIfAllowed
 import com.happycola233.bilitools.ui.MainActivity
-import java.util.Locale
 
 internal class DownloadNotificationManager(
-    private val context: Context,
+    private val baseContext: Context,
 ) {
-    private val manager: NotificationManagerCompat = NotificationManagerCompat.from(context)
+    private val context: Context
+        get() = baseContext.localizedContext()
+    private val manager: NotificationManagerCompat = NotificationManagerCompat.from(baseContext)
 
     fun ensureChannels() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -91,7 +95,7 @@ internal class DownloadNotificationManager(
             null
         }
         val etaText = state.etaSeconds?.let { seconds ->
-            context.getString(R.string.download_eta_format, formatEtaSpaced(seconds))
+            context.getString(R.string.download_eta_format, context.formatEstimatedTime(seconds))
         }
 
         val content = listOfNotNull(progressText, speedText, etaText).joinToString(" | ")
@@ -260,41 +264,9 @@ internal class DownloadNotificationManager(
         )
     }
 
-    private fun formatBytes(bytes: Long): String {
-        if (bytes <= 0L) return "0 B"
-        val units = arrayOf("B", "KB", "MB", "GB", "TB")
-        var value = bytes.toDouble()
-        var index = 0
-        while (value >= 1024.0 && index < units.lastIndex) {
-            value /= 1024.0
-            index++
-        }
-        return String.format(Locale.US, "%.1f %s", value, units[index])
-    }
+    private fun formatBytes(bytes: Long): String = context.formatByteCount(bytes)
 
-    private fun formatEtaSpaced(totalSeconds: Long): String {
-        val seconds = totalSeconds.coerceAtLeast(0L)
-        val hours = seconds / 3600
-        val minutes = (seconds % 3600) / 60
-        val remain = seconds % 60
-        return when {
-            hours > 0L -> String.format(Locale.US, "%d 小时 %02d 分", hours, minutes)
-            minutes > 0L -> String.format(Locale.US, "%d 分 %02d 秒", minutes, remain)
-            else -> String.format(Locale.US, "%d 秒", remain)
-        }
-    }
 
-    private fun formatEta(totalSeconds: Long): String {
-        val seconds = totalSeconds.coerceAtLeast(0L)
-        val hours = seconds / 3600
-        val minutes = (seconds % 3600) / 60
-        val remain = seconds % 60
-        return when {
-            hours > 0L -> String.format(Locale.US, "%d小时%02d分", hours, minutes)
-            minutes > 0L -> String.format(Locale.US, "%d分%02d秒", minutes, remain)
-            else -> String.format(Locale.US, "%d秒", remain)
-        }
-    }
 
     companion object {
         const val NOTIFICATION_ID_PROGRESS: Int = 1101

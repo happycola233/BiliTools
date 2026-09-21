@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_dialog_download">Güncellemeyi indir</string>
+    <string name="update_dialog_ignore_once">Bu güncellemeyi yoksay</string>
+    <string name="update_dialog_download_started">Güncelleme arka planda indiriliyor</string>
+    <string name="update_dialog_download_running">Arka planda bir güncelleme zaten indiriliyor</string>
+    <string name="update_dialog_download_failed">Güncelleme indirme işlemi başlatılamadı: %1$s</string>
+    <string name="update_dialog_apk_missing">Bu cihaz için güncelleme paketi mevcut değil.</string>
+    <string name="update_dialog_ignore_saved">%1$s için güncelleme hatırlatıcıları artık gizlendi</string>
+    <string name="update_install_file_missing">Güncelleme paketi eksik veya silinmiş</string>
+    <string name="update_install_launch_failed">Yükleyici açılamıyor</string>
+    <string name="update_notification_channel_progress_name">Uygulama güncelleme indirmeleri</string>
+    <string name="update_notification_channel_progress_desc">Uygulama güncelleme indirme işlemlerinin ilerlemesi</string>
+    <string name="update_notification_channel_result_name">Uygulama güncelleme kurulumu</string>
+    <string name="update_notification_channel_result_desc">Uygulama güncelleme indirme sonuçları</string>
+    <string name="update_notification_progress_title">%1$s güncellemesi indiriliyor</string>
+    <string name="update_notification_progress_content_known">%1$d%% %2$s / %3$s</string>
+    <string name="update_notification_progress_content_unknown">İndirildi %1$s</string>
+    <string name="update_notification_ready_title">Güncelleme kurulmaya hazır</string>
+    <string name="update_notification_ready_content">%1$s yüklemek için dokunun</string>
+    <string name="update_notification_action_install">Kurulum</string>
+    <string name="update_notification_failed_title">Güncelleme indirme işlemi başarısız oldu: %1$s</string>
+    <string name="update_notification_failed_content">%1$s</string>
+    <string name="update_notification_action_open_release">Sürüm sayfasını aç</string>
+</resources>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="parse_formats_unavailable">%1$s bu içerik için mevcut değil.</string>
+    <string name="parse_formats_unavailable_batch">%1$s seçilen bazı öğeler için mevcut değil.</string>
+    <string name="parse_formats_no_common">Seçilen öğelerin ortak akış formatı yok. Bunları ayrı ayrı indirin.</string>
+</resources>

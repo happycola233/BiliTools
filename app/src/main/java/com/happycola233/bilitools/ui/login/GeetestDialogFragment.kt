@@ -27,7 +27,6 @@ import com.happycola233.bilitools.core.BiliHttpClient
 import com.happycola233.bilitools.data.CaptchaResult
 import com.happycola233.bilitools.databinding.DialogGeetestBinding
 import org.json.JSONObject
-import java.util.Locale
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 
@@ -223,19 +222,25 @@ class GeetestDialogFragment : DialogFragment() {
     }
 
     private fun buildHtml(gt: String, challenge: String): String {
-        val localeLanguage = Locale.getDefault().language.lowercase(Locale.US)
-        val geetestLanguage = if (localeLanguage.startsWith("zh")) "zh-cn" else localeLanguage
+        val locale = resources.configuration.locales[0]
+        // GeeTest v3 使用自己的语言标签，中文脚本和葡萄牙语需映射到其文档定义的值。
+        val geetestLanguage = when (locale.language) {
+            "zh" -> if (locale.script == "Hant" || locale.country in setOf("TW", "HK", "MO")) "zh-tw" else "zh-cn"
+            "pt" -> "pt-pt"
+            "in" -> "id"
+            else -> locale.language
+        }
         val gtJson = JSONObject.quote(gt)
         val challengeJson = JSONObject.quote(challenge)
         val languageJson = JSONObject.quote(geetestLanguage)
         return """
             <!DOCTYPE html>
-            <html lang="zh">
+            <html lang="${locale.toLanguageTag()}" dir="${if (locale.language == "ar") "rtl" else "ltr"}">
             <head>
               <meta charset="utf-8" />
               <meta name="viewport" content="width=device-width, initial-scale=1.0" />
               <script src="https://static.geetest.com/static/js/gt.0.4.9.js"
-                onerror="CaptchaBridge.onError('Geetest load failed')"></script>
+                onerror="CaptchaBridge.onError(null)"></script>
               <style>
                 :root { --captcha-panel-scale: 1; }
                 html, body {
@@ -362,7 +367,7 @@ class GeetestDialogFragment : DialogFragment() {
 
                 function initCaptcha() {
                   if (typeof initGeetest !== "function") {
-                    CaptchaBridge.onError("Geetest init failed");
+                    CaptchaBridge.onError(null);
                     return;
                   }
                   initGeetest({
@@ -375,7 +380,7 @@ class GeetestDialogFragment : DialogFragment() {
                     lang: $languageJson,
                     https: true,
                     onError: function (message) {
-                      CaptchaBridge.onError(message || "Geetest init failed");
+                      CaptchaBridge.onError(message || null);
                     }
                   }, function (captchaObj) {
                     captchaObj.onReady(function () {
@@ -409,7 +414,10 @@ class GeetestDialogFragment : DialogFragment() {
 
     private fun finishWithError(message: String?) {
         dispatchTerminalEvent {
-            listener?.onCaptchaError(message)
+            // 保留第三方错误原文；本地加载失败统一由原生资源提供当前语言的提示。
+            listener?.onCaptchaError(
+                message?.takeIf { it.isNotBlank() } ?: getString(R.string.login_error_captcha_failed),
+            )
             dismiss()
         }
     }

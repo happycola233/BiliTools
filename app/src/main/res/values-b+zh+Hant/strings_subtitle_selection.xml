@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="parse_subtitle_file_option">儲存字幕檔案</string>
+    <string name="subtitle_source_language">字幕語言</string>
+    <string name="subtitle_source_lyrics_language">歌詞語言</string>
+    <string name="subtitle_source_embed_title">內嵌字幕語言</string>
+    <string name="subtitle_source_file_title">字幕檔案語言</string>
+    <string name="subtitle_source_ai_description">AI 字幕</string>
+    <string name="subtitle_source_select">選擇語言</string>
+    <string name="subtitle_source_select_all">全選</string>
+    <string name="subtitle_source_all_count">全部字幕 · %1$d 種</string>
+    <string name="subtitle_source_selected_count">已選 %1$d 種字幕</string>
+    <string name="subtitle_source_cancel">取消</string>
+    <string name="subtitle_source_done">完成</string>
+    <string name="subtitle_source_coverage">%1$d / %2$d 個條目可用</string>
+    <string name="subtitle_source_coverage_pending">已確認 %1$d / %2$d 個條目可用</string>
+    <string name="subtitle_source_unconfirmed">尚未確認是否可用</string>
+    <string name="subtitle_source_unavailable">當前條目不可用</string>
+    <string name="subtitle_source_loading">正在讀取字幕…</string>
+    <string name="subtitle_source_loading_batch">正在讀取字幕：%1$d / %2$d</string>
+    <string name="subtitle_source_failure">字幕載入失敗。</string>
+    <string name="subtitle_source_partial_failure">%1$d 個條目的字幕載入失敗。</string>
+    <string name="subtitle_source_retry">重試</string>
+    <string name="subtitle_source_empty">當前影片暫無可用字幕。</string>
+    <string name="subtitle_source_empty_batch">這些條目暫無可用字幕。</string>
+    <string name="subtitle_source_login">登入後可獲取影片字幕。</string>
+    <string name="subtitle_source_login_lyrics">登入後選擇歌詞語言，或關閉內嵌歌詞。</string>
+    <string name="subtitle_source_choose_lyrics">請選擇一種字幕作為歌詞。</string>
+    <string name="subtitle_source_no_lyrics">暫無可用字幕，請關閉內嵌歌詞後下載。</string>
+    <string name="subtitle_source_choose_subtitles">請至少選擇一種字幕。</string>
+    <string name="subtitle_source_missing_selection">部分條目沒有所選字幕。</string>
+</resources>

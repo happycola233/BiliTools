@@ -54,6 +54,10 @@ fun ParseRoute(
     val context = LocalContext.current
     val resources = LocalResources.current
     val state by viewModel.state.collectAsState()
+    val languageTag = resources.configuration.locales[0].toLanguageTag()
+    LaunchedEffect(viewModel, languageTag) {
+        viewModel.refreshPresentationLanguage(languageTag)
+    }
     val settingsRepository = remember(context) {
         context.applicationContext.appContainer.settingsRepository
     }
@@ -333,15 +337,15 @@ private fun Context.copyResultContent(target: ParseResultCopyTarget, content: St
     )
 }
 
-private fun copiedIdentifierName(content: String): String = when {
-    content.startsWith("BV", ignoreCase = true) -> "BV 号"
-    content.startsWith("ep", ignoreCase = true) -> "ep 号"
-    content.startsWith("ss", ignoreCase = true) -> "ss 号"
-    content.startsWith("au", ignoreCase = true) -> "au 号"
-    content.startsWith("cv", ignoreCase = true) -> "cv 号"
-    content.startsWith("am", ignoreCase = true) -> "am 号"
-    content.startsWith("rl", ignoreCase = true) -> "rl 号"
-    else -> "图文动态号"
+private fun Context.copiedIdentifierName(content: String): String = when {
+    content.startsWith("BV", ignoreCase = true) -> getString(R.string.runtime_bv_id)
+    content.startsWith("ep", ignoreCase = true) -> getString(R.string.runtime_ep_id)
+    content.startsWith("ss", ignoreCase = true) -> getString(R.string.runtime_ss_id)
+    content.startsWith("au", ignoreCase = true) -> getString(R.string.runtime_au_id)
+    content.startsWith("cv", ignoreCase = true) -> getString(R.string.runtime_cv_id)
+    content.startsWith("am", ignoreCase = true) -> getString(R.string.runtime_am_id)
+    content.startsWith("rl", ignoreCase = true) -> getString(R.string.runtime_rl_id)
+    else -> getString(R.string.runtime_opus_id)
 }
 
 private fun Context.openUpperSpace(mid: Long) {

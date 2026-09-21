@@ -1,11 +1,19 @@
 package com.happycola233.bilitools.data
 
+import com.happycola233.bilitools.core.StringProvider
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
+import org.robolectric.annotation.Config
 import com.happycola233.bilitools.core.tagValues
 import com.happycola233.bilitools.data.model.*
 import org.junit.Assert.*
 import org.junit.Test
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35], qualifiers = "zh-rCN")
 class EmbeddedMetadataBuilderTest {
+    private val strings = StringProvider(RuntimeEnvironment.getApplication())
     private val uploader = MediaUpper("投稿人", 1)
     private fun item(type: MediaType = MediaType.Video) = MediaItem(
         title = "当前内容", coverUrl = "https://example.com/current.jpg", description = "当前简介",
@@ -106,7 +114,7 @@ class EmbeddedMetadataBuilderTest {
     @Test fun publicationAndArbitraryTagsKeepTheirOriginalMeaning() {
         val entry = item().copy(metadata = MediaMetadata(tags = listOf("知识", "年度推荐")))
         val result = buildEmbeddedMetadata(info(entry), entry)
-        val values = result.tagValues(DownloadMetadataSettings())
+        val values = result.tagValues(DownloadMetadataSettings(), strings)
         assertFalse(values.containsKey("genre"))
         assertFalse(values.containsKey("date"))
         assertTrue(values.getValue("comment").contains("B站发布时间："))
@@ -123,12 +131,12 @@ class EmbeddedMetadataBuilderTest {
     @Test fun disablingAttributionOptionsKeepsExplicitAuthorAndWorkMetadata() {
         val settings = DownloadMetadataSettings(useUploaderAsArtist = false, useCollectionAsAlbum = false)
         val video = item().copy(metadata = MediaMetadata(collectionTitle = "合集"))
-        val videoTags = buildEmbeddedMetadata(info(video), video).tagValues(settings)
+        val videoTags = buildEmbeddedMetadata(info(video), video).tagValues(settings, strings)
         assertFalse(videoTags.containsKey("artist"))
         assertFalse(videoTags.containsKey("album"))
         val music = item(MediaType.Music).copy(artist = "实际作者")
-        assertEquals("实际作者", buildEmbeddedMetadata(info(music), music).tagValues(settings)["artist"])
+        assertEquals("实际作者", buildEmbeddedMetadata(info(music), music).tagValues(settings, strings)["artist"])
         val part = video.copy(page = 2, pageCount = 3, workTitle = "多 P 作品")
-        assertEquals("多 P 作品", buildEmbeddedMetadata(info(part), part).tagValues(settings)["album"])
+        assertEquals("多 P 作品", buildEmbeddedMetadata(info(part), part).tagValues(settings, strings)["album"])
     }
 }

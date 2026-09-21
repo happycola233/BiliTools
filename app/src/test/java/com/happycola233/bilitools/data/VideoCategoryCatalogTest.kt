@@ -1,23 +1,24 @@
 package com.happycola233.bilitools.data
 
+import com.happycola233.bilitools.data.model.MediaCategory
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class VideoCategoryCatalogTest {
     @Test
     fun resolvesLegacyAndModernParentChildNamesWhenViewOmitsTname() {
-        assertEquals("音乐 > MV", VideoCategoryCatalog.legacyLabel(193, null))
-        assertEquals("音乐 > MV", VideoCategoryCatalog.modernLabel(2017, null))
-        assertEquals("鬼畜 > 人力VOCALOID", VideoCategoryCatalog.modernLabel(2061, null))
+        assertEquals(MediaCategory("音乐 > MV"), VideoCategoryCatalog.legacyCategory(193, null))
+        assertEquals(MediaCategory("音乐 > MV"), VideoCategoryCatalog.modernCategory(2017, null))
+        assertEquals(MediaCategory("鬼畜 > 人力VOCALOID"), VideoCategoryCatalog.modernCategory(2061, null))
     }
 
     @Test
     fun marksOfflineLegacyCategories() {
-        assertEquals("知识 > 演讲·公开课（已下线）", VideoCategoryCatalog.legacyLabel(39, null))
+        assertEquals(MediaCategory("知识 > 演讲·公开课", offline = true), VideoCategoryCatalog.legacyCategory(39, null))
     }
 
     @Test
     fun prefersNameReturnedByApiWhileKeepingResolvedParent() {
-        assertEquals("音乐 > 接口名称", VideoCategoryCatalog.modernLabel(2017, "接口名称"))
+        assertEquals(MediaCategory("音乐 > 接口名称"), VideoCategoryCatalog.modernCategory(2017, "接口名称"))
     }
 }

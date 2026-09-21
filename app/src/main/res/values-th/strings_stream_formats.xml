@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="parse_formats_unavailable">%1$s ไม่พร้อมใช้งานสำหรับเนื้อหานี้</string>
+    <string name="parse_formats_unavailable_batch">%1$s ไม่พร้อมใช้งานสำหรับบางรายการที่เลือก</string>
+    <string name="parse_formats_no_common">รายการที่เลือกไม่มีรูปแบบสตรีมเหมือนกัน ดาวน์โหลดแยกกัน</string>
+</resources>

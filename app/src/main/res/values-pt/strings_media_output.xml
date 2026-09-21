@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_detail_preparing_media">Preparando arquivos de mídia</string>
+    <string name="download_failure_prepare_media">Não foi possível preparar arquivos de mídia</string>
+    <string name="download_embed_missing_languages">Faltam legendas: %1$s</string>
+    <string name="parse_subtitle_selection_required">Escolha um idioma de legenda ou letra, ou desative a opção correspondente para continuar.</string>
+    <string name="parse_dolby_mp3_notice">A conversão MP3 está ativada. Dolby Atmos não será preservado.</string>
+</resources>

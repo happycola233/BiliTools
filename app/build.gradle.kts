@@ -230,6 +230,7 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
+            isPseudoLocalesEnabled = true
         }
 
         release {
@@ -243,6 +244,18 @@ android {
     buildFeatures {
         viewBinding = true
         compose = true
+    }
+    androidResources {
+        // 排除依赖库额外提供的语言，否则系统可能命中法语等库资源后让应用文案回退中文。
+        localeFilters += listOf(
+            "zh", "b+zh+Hans", "b+zh+Hant", "en", "ja", "es", "pt", "ar", "ru", "tr", "th", "ms", "vi", "in",
+        )
+    }
+    bundle {
+        language {
+            // 应用内可随时离线切换语言，App Bundle 也必须随包提供所有翻译。
+            enableSplit = false
+        }
     }
     testOptions {
         unitTests.isIncludeAndroidResources = true
