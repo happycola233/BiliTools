@@ -3,14 +3,13 @@
 // app/src/commonMain/kotlin/com/kyant/backdrop/catalog/components/LiquidBottomTab.kt
 // 改动：Capsule 形状换成 CircleShape；强调色与底色改为参数由主题注入；
 // 选中层染色改用 saveLayer + ColorFilter 实现（等价于原 graphicsLayer colorFilter）；
-// 选中状态改为主壳单向驱动，并增加不妨碍气泡拖动的可靠 Tab 点击命中层。
+// 选中状态由主壳单向驱动，整块底板统一处理按压、拖动与松手确认。
 package com.happycola233.bilitools.ui.liquidtabs
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseOut
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -23,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -56,7 +56,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastCoerceIn
 import androidx.compose.ui.util.fastRoundToInt
 import androidx.compose.ui.util.lerp
-import androidx.compose.material3.MaterialTheme
 import com.happycola233.bilitools.ui.theme.usesDarkSurfaces
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
@@ -71,6 +70,7 @@ import com.kyant.backdrop.shadow.InnerShadow
 import com.kyant.backdrop.shadow.Shadow
 import kotlin.math.abs
 import kotlin.math.sign
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -116,7 +116,7 @@ internal fun LiquidBottomTabs(
         }
 
         val offsetAnimation = remember { Animatable(0f) }
-        val panelOffset by remember(density) {
+        val panelOffset by remember(density, constraints.maxWidth) {
             derivedStateOf {
                 val fraction = (offsetAnimation.value / constraints.maxWidth).fastCoerceIn(-1f, 1f)
                 with(density) {
@@ -131,12 +131,11 @@ internal fun LiquidBottomTabs(
         // 状态与协程不能以 lambda 身份作 remember key，否则会订阅到已废弃的状态对象。
         val currentSelectedTabIndex by rememberUpdatedState(selectedTabIndex)
         val currentOnTabSelected by rememberUpdatedState(onTabSelected)
-        // tabWidth 会随底栏宽度设置变化，作为 key 重建动画对象以刷新闭包内捕获的值
-        val dampedDragAnimation = remember(animationScope, tabWidth, isLtr) {
+        val dampedDragAnimation = remember(animationScope, tabsCount) {
             DampedDragAnimation(
                 animationScope = animationScope,
                 // 初始化只读取一次当前页，不让整块玻璃绘制层订阅 Tab 状态；后续同步由
-                // 下方 snapshotFlow 负责，切页只重组独立的小型命中层与页面宿主。
+                // 下方 snapshotFlow 负责，切页不重组整块玻璃绘制层。
                 initialValue = Snapshot.withoutReadObservation {
                     currentSelectedTabIndex().toFloat()
                 },
@@ -144,27 +143,6 @@ internal fun LiquidBottomTabs(
                 visibilityThreshold = 0.001f,
                 initialScale = 1f,
                 pressedScale = 78f / 56f,
-                onDragStarted = {},
-                onDragStopped = {
-                    val targetIndex = targetValue.fastRoundToInt().fastCoerceIn(0, tabsCount - 1)
-                    animateToValue(targetIndex.toFloat())
-                    currentOnTabSelected(targetIndex)
-                    animationScope.launch {
-                        offsetAnimation.animateTo(
-                            0f,
-                            spring(1f, 300f, 0.5f),
-                        )
-                    }
-                },
-                onDrag = { _, dragAmount ->
-                    updateValue(
-                        (targetValue + dragAmount.x / tabWidth * if (isLtr) 1f else -1f)
-                            .fastCoerceIn(0f, (tabsCount - 1).toFloat()),
-                    )
-                    animationScope.launch {
-                        offsetAnimation.snapTo(offsetAnimation.value + dragAmount.x)
-                    }
-                },
             )
         }
         // 选中页只有一个事实来源：主壳状态。底栏只订阅并驱动气泡，不再把动画索引
@@ -178,10 +156,10 @@ internal fun LiquidBottomTabs(
                 }
         }
 
-        val interactiveHighlight = remember(dampedDragAnimation) {
+        val interactiveHighlight = remember(dampedDragAnimation, tabWidth, isLtr) {
             InteractiveHighlight(
                 animationScope = animationScope,
-                position = { size, _ ->
+                position = { size ->
                     Offset(
                         if (isLtr) (dampedDragAnimation.value + 0.5f) * tabWidth + panelOffset
                         else size.width - (dampedDragAnimation.value + 0.5f) * tabWidth + panelOffset,
@@ -289,8 +267,6 @@ internal fun LiquidBottomTabs(
                         if (isLtr) dampedDragAnimation.value * tabWidth + panelOffset
                         else size.width - (dampedDragAnimation.value + 1f) * tabWidth + panelOffset
                 }
-                .then(interactiveHighlight.gestureModifier)
-                .then(dampedDragAnimation.modifier)
                 .drawBackdrop(
                     backdrop = rememberCombinedBackdrop(backdrop, tabsBackdrop),
                     shape = { CircleShape },
@@ -338,53 +314,56 @@ internal fun LiquidBottomTabs(
                 .fillMaxWidth(1f / tabsCount),
         )
 
-        ReliableLiquidTabHitTargets(
-            selectedTabIndex = currentSelectedTabIndex,
-            tabsCount = tabsCount,
-            onTabSelected = currentOnTabSelected,
-        )
-    }
-}
-
-/**
- * 把非选中项的点击命中层放到可拖动气泡之上，避免气泡的全宽布局节点在变换后仍抢到
- * 其他 Tab 的手势。选中项刻意不挂 pointerInput，触摸会继续命中下方气泡并保留拖动能力。
- * 状态读取隔离在这个很小的重组范围内，选中项变化不会重组整块玻璃绘制层。
- */
-@Composable
-private fun ReliableLiquidTabHitTargets(
-    selectedTabIndex: () -> Int,
-    tabsCount: Int,
-    onTabSelected: (Int) -> Unit,
-) {
-    val selectedIndex = selectedTabIndex().fastCoerceIn(0, tabsCount - 1)
-    val currentOnTabSelected by rememberUpdatedState(onTabSelected)
-
-    Row(
-        modifier = Modifier
-            .height(64.dp)
-            .fillMaxWidth()
-            .padding(4.dp),
-    ) {
-        repeat(tabsCount) { index ->
-            val hitTargetModifier = if (index == selectedIndex) {
-                Modifier
-            } else {
-                Modifier.pointerInput(index) {
-                    detectTapGestures {
-                        // 先更新唯一的页面状态；上方 snapshotFlow 会据此驱动气泡，避免
-                        // 点击路径和外部 intent 各启动一轮互相竞争的动画。
-                        currentOnTabSelected(index)
+        // 命中层固定在底板坐标系，不能跟着气泡平移/缩放，否则动画本身也会变成手指位移。
+        // 下层 clickable 继续提供键盘与无障碍操作，普通触摸全部由这里仲裁。
+        Box(
+            Modifier
+                .height(64.dp)
+                .fillMaxWidth()
+                .pointerInput(dampedDragAnimation, interactiveHighlight, tabWidth, isLtr) {
+                    var pressedTabIndex = 0
+                    fun finishGesture(targetIndex: Int) {
+                        dampedDragAnimation.finishGesture(targetIndex.toFloat())
+                        interactiveHighlight.release()
+                        animationScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                            offsetAnimation.animateTo(0f, spring(1f, 300f, 0.5f))
+                        }
                     }
-                }
-            }
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .weight(1f)
-                    .then(hitTargetModifier),
-            )
-        }
+                    detectLiquidTabGestures(
+                        onPress = { position ->
+                            pressedTabIndex = liquidTabIndexAt(
+                                x = position.x,
+                                tabWidth = tabWidth,
+                                horizontalPadding = 4.dp.toPx(),
+                                tabsCount = tabsCount,
+                                isLtr = isLtr,
+                            )
+                            animationScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                                offsetAnimation.stop()
+                            }
+                            dampedDragAnimation.pressAt(pressedTabIndex.toFloat())
+                            interactiveHighlight.press()
+                        },
+                        onDrag = { deltaX ->
+                            dampedDragAnimation.dragBy(deltaX / tabWidth * if (isLtr) 1f else -1f)
+                            animationScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                                offsetAnimation.snapTo(offsetAnimation.value + deltaX)
+                            }
+                        },
+                        onRelease = { dragged ->
+                            val targetIndex = if (dragged) {
+                                dampedDragAnimation.targetValue.fastRoundToInt()
+                                    .fastCoerceIn(0, tabsCount - 1)
+                            } else {
+                                pressedTabIndex
+                            }
+                            finishGesture(targetIndex)
+                            currentOnTabSelected(targetIndex)
+                        },
+                        onCancel = { finishGesture(currentSelectedTabIndex()) },
+                    )
+                },
+        )
     }
 }
 
