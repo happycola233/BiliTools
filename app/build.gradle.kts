@@ -332,6 +332,7 @@ dependencies {
     implementation(libs.jaudiotagger)
     implementation(libs.ffmpeg.kit.main.android16kb)
     testImplementation(libs.junit)
+    testImplementation(libs.okhttp.mockwebserver)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.compose.ui.test.junit4)

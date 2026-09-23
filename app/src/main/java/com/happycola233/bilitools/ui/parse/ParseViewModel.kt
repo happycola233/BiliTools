@@ -1609,6 +1609,7 @@ class ParseViewModel(
                                             mediaParams,
                                             embeddedMetadata = embeddedMetadata,
                                             embedding = embedding,
+                                            backupUrls = selectedAudio.backupUrls,
                                         )
                                     }
                                     OutputType.VideoOnly -> {
@@ -1639,6 +1640,7 @@ class ParseViewModel(
                                             mediaParams,
                                             embeddedMetadata = embeddedMetadata,
                                             embedding = embedding,
+                                            backupUrls = selectedVideo.backupUrls,
                                         )
                                     }
                                     OutputType.AudioVideo -> {
@@ -1670,6 +1672,8 @@ class ParseViewModel(
                                                 mediaParams,
                                                 embeddedMetadata = embeddedMetadata,
                                                 embedding = embedding,
+                                                videoBackupUrls = selectedVideo.backupUrls,
+                                                audioBackupUrls = selectedAudio.backupUrls,
                                             )
                                         } else {
                                             val mediaParams = buildMediaParams(selectedVideo, outputVideoCodec, selectedAudio)
@@ -1698,6 +1702,7 @@ class ParseViewModel(
                                                 mediaParams,
                                                 embeddedMetadata = embeddedMetadata,
                                                 embedding = embedding,
+                                                backupUrls = selectedVideo.backupUrls,
                                             )
                                         }
                                     }
