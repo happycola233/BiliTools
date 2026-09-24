@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.happycola233.bilitools.ui.theme.AppSurfaces
 import kotlin.math.roundToInt
@@ -33,7 +34,7 @@ internal val MainTopBarCollapsedHeight = 56.dp
 /** 顶栏完全展开时的高度，不含状态栏。 */
 internal val MainTopBarExpandedHeight = 96.dp
 
-/** 标题左边距；展开态与折叠态取值相同，折叠过程中标题不横向移动。 */
+/** 标题起始侧边距；展开态与折叠态取值相同，折叠过程中标题不横向移动。 */
 private val MainTopBarTitleStartPadding = 16.dp
 
 /** 展开态标题基线到顶栏底边的距离。 */
@@ -109,6 +110,10 @@ internal fun MainCollapsingTopBar(
         val height = (expandedHeightPx + state.heightOffset)
             .roundToInt()
             .coerceIn(collapsedHeightPx, expandedHeightPx)
+        val titleTransformOrigin = TransformOrigin(
+            pivotFractionX = if (layoutDirection == LayoutDirection.Rtl) 1f else 0f,
+            pivotFractionY = 0f,
+        )
 
         layout(constraints.maxWidth, height) {
             val fraction = state.collapsedFraction.coerceIn(0f, 1f)
@@ -117,11 +122,12 @@ internal fun MainCollapsingTopBar(
             val expandedY = height - expandedBaselineMarginPx - baseline
             val collapsedShift = baseline - collapsedTitleScale * titlePlaceable.height / 2f
             val scale = 1f + (collapsedTitleScale - 1f) * decelerate(fraction)
-            titlePlaceable.placeWithLayer(
+            titlePlaceable.placeRelativeWithLayer(
                 x = titleStartPaddingPx,
                 y = (expandedY + fraction * collapsedShift).roundToInt(),
             ) {
-                transformOrigin = TransformOrigin(0f, 0f)
+                // 定位与缩放都锚定起始侧，避免 RTL 标题折叠时偏离右边距。
+                transformOrigin = titleTransformOrigin
                 scaleX = scale
                 scaleY = scale
             }

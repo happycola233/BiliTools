@@ -1,15 +1,23 @@
 package com.happycola233.bilitools.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TopAppBarState
 import androidx.compose.material3.rememberTopAppBarState
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
 import androidx.core.graphics.Insets
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -42,6 +50,48 @@ class MainTopBarTest {
 
     @Test fun restoredCollapsedBarKeepsItsHeightInDarkTheme() =
         verifyFirstLayout(AppThemeMode.Dark, initiallyCollapsed = true)
+
+    @Test fun rtlTitleStaysAtStartWhileCollapsingInLightTheme() =
+        verifyTitleStartAlignment(AppThemeMode.Light, LayoutDirection.Rtl)
+
+    @Test fun rtlTitleStaysAtStartWhileCollapsingInDarkTheme() =
+        verifyTitleStartAlignment(AppThemeMode.Dark, LayoutDirection.Rtl)
+
+    @Test fun ltrTitleStaysAtStartWhileCollapsingInLightTheme() =
+        verifyTitleStartAlignment(AppThemeMode.Light, LayoutDirection.Ltr)
+
+    @Test fun ltrTitleStaysAtStartWhileCollapsingInDarkTheme() =
+        verifyTitleStartAlignment(AppThemeMode.Dark, LayoutDirection.Ltr)
+
+    private fun verifyTitleStartAlignment(mode: AppThemeMode, direction: LayoutDirection) {
+        val title = if (direction == LayoutDirection.Rtl) "حسابي" else "BiliTools"
+        var startPaddingPx = 0f
+        lateinit var barState: TopAppBarState
+        compose.setContent {
+            CompositionLocalProvider(LocalLayoutDirection provides direction) {
+                BiliToolsTheme(AppSettings(themeMode = mode)) {
+                    startPaddingPx = with(LocalDensity.current) { 16.dp.roundToPx().toFloat() }
+                    barState = rememberTopAppBarState()
+                    Box(Modifier.fillMaxWidth().testTag("top-bar-container")) {
+                        MainCollapsingTopBar(title = title, state = barState)
+                    }
+                }
+            }
+        }
+
+        // 检查变换后的实际边界，覆盖展开、折叠中、完全折叠及重新展开时的缩放锚点。
+        for (fraction in listOf(0f, 0.5f, 1f, 0f)) {
+            compose.runOnIdle { barState.heightOffset = barState.heightOffsetLimit * fraction }
+            val containerBounds = compose.onNodeWithTag("top-bar-container").fetchSemanticsNode().boundsInRoot
+            val titleBounds = compose.onNodeWithText(title).fetchSemanticsNode().boundsInRoot
+            val actualStartPadding = if (direction == LayoutDirection.Rtl) {
+                containerBounds.right - titleBounds.right
+            } else {
+                titleBounds.left - containerBounds.left
+            }
+            assertEquals("标题在折叠进度 $fraction 时应保持起始侧边距", startPaddingPx, actualStartPadding, 1f)
+        }
+    }
 
     private fun verifyFirstLayout(mode: AppThemeMode, initiallyCollapsed: Boolean = false) {
         val measuredHeights = mutableListOf<Int>()
