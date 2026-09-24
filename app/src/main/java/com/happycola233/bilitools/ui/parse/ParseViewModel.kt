@@ -1437,265 +1437,204 @@ class ParseViewModel(
             val enqueueResult = runCatching {
                 withContext(Dispatchers.IO) {
                     downloadRepository.ensureLoaded()
-                    val targets = buildDownloadTargets(snapshot, info, selectedIndices)
-                    var queuedGroups = 0
-                    var failedItems = 0
-                    var firstFailure: Throwable? = null
-                    val opusResults = resolveSelectedOpusDocuments(snapshot, targets)
-                    val preparedTargets = targets.zip(opusResults).mapNotNull { (rawItem, result) ->
-                        val error = result.exceptionOrNull()
-                        if (error != null) {
-                            failedItems += 1
-                            if (firstFailure == null) firstFailure = error
-                            AppLog.w(
-                                TAG,
-                                "[download] failed to resolve opus, title=${rawItem.title}",
-                                error,
-                            )
-                            return@mapNotNull null
-                        }
-                        val document = result.getOrNull()?.withItemFallback(rawItem, rawItem.resolvedUpper(info))
-                        PreparedDownloadTarget(
-                            item = document?.let { rawItem.withOpusDocument(it) } ?: rawItem,
-                            opusDocument = document,
-                        )
-                    }
-                    if (preparedTargets.isEmpty()) {
-                        return@withContext DownloadEnqueueResult(
-                            queuedGroups = 0,
-                            failedItems = failedItems,
-                        ) to firstFailure
-                    }
-                    val namingSession = createNamingSession(
-                        info = info,
-                        items = preparedTargets.map(PreparedDownloadTarget::item),
-                    )
-                    val metadataDetailsCache = mutableMapOf<String, MediaInfo>()
-                    val conversionSettings = settingsRepository.currentSettings()
-                    preparedTargets.forEachIndexed { batchIndex, preparedTarget ->
-                        val batchOrdinal = batchIndex + 1
-                        val opusDocument = preparedTarget.opusDocument
-                        val preparedItem = preparedTarget.item
-                        val item = runCatching { mediaRepository.resolveItemForPlay(preparedItem, preparedItem.type) }
-                            .getOrDefault(preparedItem)
-                        val playUrlResult = if (snapshot.outputType != null) {
-                            runCatching {
-                                mediaRepository.getPlayUrlInfo(item, item.type, snapshot.format)
+                    downloadRepository.withNotificationSubmission {
+                        val targets = buildDownloadTargets(snapshot, info, selectedIndices)
+                        var queuedGroups = 0
+                        var failedItems = 0
+                        var firstFailure: Throwable? = null
+                        val opusResults = resolveSelectedOpusDocuments(snapshot, targets)
+                        val preparedTargets = targets.zip(opusResults).mapNotNull { (rawItem, result) ->
+                            val error = result.exceptionOrNull()
+                            if (error != null) {
+                                failedItems += 1
+                                if (firstFailure == null) firstFailure = error
+                                AppLog.w(
+                                    TAG,
+                                    "[download] failed to resolve opus, title=${rawItem.title}",
+                                    error,
+                                )
+                                return@mapNotNull null
                             }
-                        } else {
-                            null
+                            val document = result.getOrNull()?.withItemFallback(rawItem, rawItem.resolvedUpper(info))
+                            PreparedDownloadTarget(
+                                item = document?.let { rawItem.withOpusDocument(it) } ?: rawItem,
+                                opusDocument = document,
+                            )
                         }
-                        val playUrlInfo = playUrlResult?.getOrNull()
-                        val groupLabel = resolveGroupLabel(info = info, item = item)
-
-                        val requestedGroupRelativePath = buildRequestedGroupRelativePath(
+                        if (preparedTargets.isEmpty()) {
+                            return@withNotificationSubmission DownloadEnqueueResult(
+                                queuedGroups = 0,
+                                failedItems = failedItems,
+                            ) to firstFailure
+                        }
+                        val namingSession = createNamingSession(
                             info = info,
-                            item = item,
-                            namingSession = namingSession,
-                            batchOrdinal = batchOrdinal,
+                            items = preparedTargets.map(PreparedDownloadTarget::item),
                         )
+                        val metadataDetailsCache = mutableMapOf<String, MediaInfo>()
+                        val conversionSettings = settingsRepository.currentSettings()
+                        preparedTargets.forEachIndexed { batchIndex, preparedTarget ->
+                            val batchOrdinal = batchIndex + 1
+                            val opusDocument = preparedTarget.opusDocument
+                            val preparedItem = preparedTarget.item
+                            val item = runCatching { mediaRepository.resolveItemForPlay(preparedItem, preparedItem.type) }
+                                .getOrDefault(preparedItem)
+                            val playUrlResult = if (snapshot.outputType != null) {
+                                runCatching {
+                                    mediaRepository.getPlayUrlInfo(item, item.type, snapshot.format)
+                                }
+                            } else {
+                                null
+                            }
+                            val playUrlInfo = playUrlResult?.getOrNull()
+                            val groupLabel = resolveGroupLabel(info = info, item = item)
 
-                        val metadataItem = if (snapshot.outputType != null && settingsRepository.shouldAddMetadata()) {
-                            try {
-                                mediaRepository.resolveItemForMetadata(item, metadataDetailsCache)
-                            } catch (error: CancellationException) {
-                                throw error
-                            } catch (error: Exception) {
-                                AppLog.w(TAG, "[metadata] detail unavailable for ${item.publicContentId()}", error)
+                            val requestedGroupRelativePath = buildRequestedGroupRelativePath(
+                                info = info,
+                                item = item,
+                                namingSession = namingSession,
+                                batchOrdinal = batchOrdinal,
+                            )
+
+                            val metadataItem = if (snapshot.outputType != null && settingsRepository.shouldAddMetadata()) {
+                                try {
+                                    mediaRepository.resolveItemForMetadata(item, metadataDetailsCache)
+                                } catch (error: CancellationException) {
+                                    throw error
+                                } catch (error: Exception) {
+                                    AppLog.w(TAG, "[metadata] detail unavailable for ${item.publicContentId()}", error)
+                                    item
+                                }
+                            } else {
                                 item
                             }
-                        } else {
-                            item
-                        }
-                        val embeddedMetadata = buildEmbeddedMetadata(
-                            info = info,
-                            item = metadataItem,
-                        )
-                        val groupId = downloadRepository.createGroup(
-                            groupLabel.title,
-                            groupLabel.subtitle,
-                            item.displayContentId(),
-                            item.coverUrl,
-                            relativePath = requestedGroupRelativePath,
-                            sourceMetadata = embeddedMetadata,
-                        )
+                            val embeddedMetadata = buildEmbeddedMetadata(
+                                info = info,
+                                item = metadataItem,
+                            )
+                            val groupId = downloadRepository.createGroup(
+                                groupLabel.title,
+                                groupLabel.subtitle,
+                                item.displayContentId(),
+                                item.coverUrl,
+                                relativePath = requestedGroupRelativePath,
+                                sourceMetadata = embeddedMetadata,
+                            )
 
-                        val outputType = snapshot.outputType
-                        if (outputType != null && playUrlInfo == null) {
-                            val streamError = playUrlResult?.exceptionOrNull()
-                            val message = streamError?.let(::mapError)
-                                ?: strings.get(R.string.parse_error_no_stream)
-                            AppLog.w(
-                                TAG,
-                                "[download] failed to resolve stream, type=${item.type}, title=${item.title}",
-                                streamError,
-                            )
-                            _state.update { it.copy(error = message) }
-                        }
-                        if (outputType != null && playUrlInfo != null) {
-                            val selectedVideo = selectVideoStream(
-                                playUrlInfo.video,
-                                snapshot.selectedResolutionId,
-                                snapshot.selectedCodec,
-                                snapshot.resolutionMode,
-                            )
-                            val selectedAudio = selectAudioStream(
-                                playUrlInfo.audio,
-                                snapshot.selectedAudioId,
-                                snapshot.audioBitrateMode,
-                            )
-                            val downloadTitle = when (outputType) {
-                                OutputType.AudioOnly -> strings.get(R.string.output_audio)
-                                OutputType.VideoOnly -> strings.get(R.string.output_video)
-                                OutputType.AudioVideo -> strings.get(R.string.output_audio_video)
+                            val outputType = snapshot.outputType
+                            if (outputType != null && playUrlInfo == null) {
+                                val streamError = playUrlResult?.exceptionOrNull()
+                                val message = streamError?.let(::mapError)
+                                    ?: strings.get(R.string.parse_error_no_stream)
+                                AppLog.w(
+                                    TAG,
+                                    "[download] failed to resolve stream, type=${item.type}, title=${item.title}",
+                                    streamError,
+                                )
+                                _state.update { it.copy(error = message) }
                             }
-                            val downloadTaskType = when (outputType) {
-                                OutputType.AudioOnly -> DownloadTaskType.Audio
-                                OutputType.VideoOnly -> DownloadTaskType.Video
-                                OutputType.AudioVideo -> DownloadTaskType.AudioVideo
-                            }
-                            val unavailableReason = when (outputType) {
-                                OutputType.AudioOnly -> if (selectedAudio == null) {
-                                    strings.get(R.string.download_unavailable_audio)
-                                } else {
-                                    null
+                            if (outputType != null && playUrlInfo != null) {
+                                val selectedVideo = selectVideoStream(
+                                    playUrlInfo.video,
+                                    snapshot.selectedResolutionId,
+                                    snapshot.selectedCodec,
+                                    snapshot.resolutionMode,
+                                )
+                                val selectedAudio = selectAudioStream(
+                                    playUrlInfo.audio,
+                                    snapshot.selectedAudioId,
+                                    snapshot.audioBitrateMode,
+                                )
+                                val downloadTitle = when (outputType) {
+                                    OutputType.AudioOnly -> strings.get(R.string.output_audio)
+                                    OutputType.VideoOnly -> strings.get(R.string.output_video)
+                                    OutputType.AudioVideo -> strings.get(R.string.output_audio_video)
                                 }
-                                OutputType.VideoOnly -> if (selectedVideo == null) {
-                                    strings.get(R.string.download_unavailable_video)
-                                } else {
-                                    null
+                                val downloadTaskType = when (outputType) {
+                                    OutputType.AudioOnly -> DownloadTaskType.Audio
+                                    OutputType.VideoOnly -> DownloadTaskType.Video
+                                    OutputType.AudioVideo -> DownloadTaskType.AudioVideo
                                 }
-                                OutputType.AudioVideo -> when {
-                                    selectedVideo == null -> strings.get(R.string.download_unavailable_video)
-                                    playUrlInfo.format == StreamFormat.Dash && selectedAudio == null ->
-                                        strings.get(R.string.download_unavailable_audio_video)
-                                    else -> null
-                                }
-                            }
-                            if (unavailableReason == null) {
-                                val outputVideoCodec = when (outputType) {
-                                    OutputType.AudioOnly -> null
-                                    OutputType.VideoOnly,
-                                    OutputType.AudioVideo,
-                                    -> selectedVideo?.codec ?: snapshot.selectedCodec
-                                }
-                                val embedding = snapshot.downloadEmbedding()
-                                when (outputType) {
-                                    OutputType.AudioOnly -> {
-                                        val mediaParams = buildMediaParams(null, null, selectedAudio)
-                                        val audioExtension = extensionForAudioStream(selectedAudio!!)
-                                        val audioNamingContext = buildNamingContext(
-                                            info = info,
-                                            item = item,
-                                            namingSession = namingSession,
-                                            batchIndex = batchOrdinal,
-                                            taskType = DownloadTaskType.Audio,
-                                            taskLabel = downloadTitle,
-                                            mediaParams = mediaParams,
-                                            formatLabel = mapOutputExtensionLabel(audioExtension),
-                                        )
-                                        val audioName = resolveTemplateFileName(
-                                            item = item,
-                                            namingSession = namingSession,
-                                            context = audioNamingContext,
-                                            extension = audioExtension,
-                                        )
-                                        downloadRepository.enqueue(
-                                            groupId,
-                                            DownloadTaskType.Audio,
-                                            downloadTitle,
-                                            audioName,
-                                            selectedAudio.url,
-                                            mediaParams,
-                                            embeddedMetadata = embeddedMetadata,
-                                            embedding = embedding,
-                                            backupUrls = selectedAudio.backupUrls,
-                                        )
+                                val unavailableReason = when (outputType) {
+                                    OutputType.AudioOnly -> if (selectedAudio == null) {
+                                        strings.get(R.string.download_unavailable_audio)
+                                    } else {
+                                        null
                                     }
-                                    OutputType.VideoOnly -> {
-                                        val mediaParams = buildMediaParams(selectedVideo, outputVideoCodec, null)
-                                        val videoExtension = extensionForVideoStream(selectedVideo!!)
-                                        val videoNamingContext = buildNamingContext(
-                                            info = info,
-                                            item = item,
-                                            namingSession = namingSession,
-                                            batchIndex = batchOrdinal,
-                                            taskType = DownloadTaskType.Video,
-                                            taskLabel = downloadTitle,
-                                            mediaParams = mediaParams,
-                                            formatLabel = mapOutputExtensionLabel(videoExtension),
-                                        )
-                                        val videoName = resolveTemplateFileName(
-                                            item = item,
-                                            namingSession = namingSession,
-                                            context = videoNamingContext,
-                                            extension = videoExtension,
-                                        )
-                                        downloadRepository.enqueue(
-                                            groupId,
-                                            DownloadTaskType.Video,
-                                            downloadTitle,
-                                            videoName,
-                                            selectedVideo.url,
-                                            mediaParams,
-                                            embeddedMetadata = embeddedMetadata,
-                                            embedding = embedding,
-                                            backupUrls = selectedVideo.backupUrls,
-                                        )
+                                    OutputType.VideoOnly -> if (selectedVideo == null) {
+                                        strings.get(R.string.download_unavailable_video)
+                                    } else {
+                                        null
                                     }
-                                    OutputType.AudioVideo -> {
-                                        if (playUrlInfo.format == StreamFormat.Dash && selectedAudio != null) {
-                                            val mediaParams = buildMediaParams(selectedVideo, outputVideoCodec, selectedAudio)
-                                            val mergedExtension = extensionForMergedOutput(selectedAudio)
-                                            val mergedNamingContext = buildNamingContext(
+                                    OutputType.AudioVideo -> when {
+                                        selectedVideo == null -> strings.get(R.string.download_unavailable_video)
+                                        playUrlInfo.format == StreamFormat.Dash && selectedAudio == null ->
+                                            strings.get(R.string.download_unavailable_audio_video)
+                                        else -> null
+                                    }
+                                }
+                                if (unavailableReason == null) {
+                                    val outputVideoCodec = when (outputType) {
+                                        OutputType.AudioOnly -> null
+                                        OutputType.VideoOnly,
+                                        OutputType.AudioVideo,
+                                        -> selectedVideo?.codec ?: snapshot.selectedCodec
+                                    }
+                                    val embedding = snapshot.downloadEmbedding()
+                                    when (outputType) {
+                                        OutputType.AudioOnly -> {
+                                            val mediaParams = buildMediaParams(null, null, selectedAudio)
+                                            val audioExtension = extensionForAudioStream(selectedAudio!!)
+                                            val audioNamingContext = buildNamingContext(
                                                 info = info,
                                                 item = item,
                                                 namingSession = namingSession,
                                                 batchIndex = batchOrdinal,
-                                                taskType = DownloadTaskType.AudioVideo,
+                                                taskType = DownloadTaskType.Audio,
                                                 taskLabel = downloadTitle,
                                                 mediaParams = mediaParams,
-                                                formatLabel = mapOutputExtensionLabel(mergedExtension),
+                                                formatLabel = mapOutputExtensionLabel(audioExtension),
                                             )
-                                            val outputName = resolveTemplateFileName(
+                                            val audioName = resolveTemplateFileName(
                                                 item = item,
                                                 namingSession = namingSession,
-                                                context = mergedNamingContext,
-                                                extension = mergedExtension,
+                                                context = audioNamingContext,
+                                                extension = audioExtension,
                                             )
-                                            downloadRepository.enqueueDashMerge(
+                                            downloadRepository.enqueue(
                                                 groupId,
+                                                DownloadTaskType.Audio,
                                                 downloadTitle,
-                                                outputName,
-                                                selectedVideo!!.url,
+                                                audioName,
                                                 selectedAudio.url,
                                                 mediaParams,
                                                 embeddedMetadata = embeddedMetadata,
                                                 embedding = embedding,
-                                                videoBackupUrls = selectedVideo.backupUrls,
-                                                audioBackupUrls = selectedAudio.backupUrls,
+                                                backupUrls = selectedAudio.backupUrls,
                                             )
-                                        } else {
-                                            val mediaParams = buildMediaParams(selectedVideo, outputVideoCodec, selectedAudio)
-                                            val mergedNamingContext = buildNamingContext(
+                                        }
+                                        OutputType.VideoOnly -> {
+                                            val mediaParams = buildMediaParams(selectedVideo, outputVideoCodec, null)
+                                            val videoExtension = extensionForVideoStream(selectedVideo!!)
+                                            val videoNamingContext = buildNamingContext(
                                                 info = info,
                                                 item = item,
                                                 namingSession = namingSession,
                                                 batchIndex = batchOrdinal,
-                                                taskType = DownloadTaskType.AudioVideo,
+                                                taskType = DownloadTaskType.Video,
                                                 taskLabel = downloadTitle,
                                                 mediaParams = mediaParams,
-                                                formatLabel = mapStreamFormatLabel(selectedVideo!!.format),
+                                                formatLabel = mapOutputExtensionLabel(videoExtension),
                                             )
                                             val videoName = resolveTemplateFileName(
                                                 item = item,
                                                 namingSession = namingSession,
-                                                context = mergedNamingContext,
-                                                extension = extensionForVideoStream(selectedVideo),
+                                                context = videoNamingContext,
+                                                extension = videoExtension,
                                             )
                                             downloadRepository.enqueue(
                                                 groupId,
-                                                DownloadTaskType.AudioVideo,
+                                                DownloadTaskType.Video,
                                                 downloadTitle,
                                                 videoName,
                                                 selectedVideo.url,
@@ -1705,41 +1644,104 @@ class ParseViewModel(
                                                 backupUrls = selectedVideo.backupUrls,
                                             )
                                         }
+                                        OutputType.AudioVideo -> {
+                                            if (playUrlInfo.format == StreamFormat.Dash && selectedAudio != null) {
+                                                val mediaParams = buildMediaParams(selectedVideo, outputVideoCodec, selectedAudio)
+                                                val mergedExtension = extensionForMergedOutput(selectedAudio)
+                                                val mergedNamingContext = buildNamingContext(
+                                                    info = info,
+                                                    item = item,
+                                                    namingSession = namingSession,
+                                                    batchIndex = batchOrdinal,
+                                                    taskType = DownloadTaskType.AudioVideo,
+                                                    taskLabel = downloadTitle,
+                                                    mediaParams = mediaParams,
+                                                    formatLabel = mapOutputExtensionLabel(mergedExtension),
+                                                )
+                                                val outputName = resolveTemplateFileName(
+                                                    item = item,
+                                                    namingSession = namingSession,
+                                                    context = mergedNamingContext,
+                                                    extension = mergedExtension,
+                                                )
+                                                downloadRepository.enqueueDashMerge(
+                                                    groupId,
+                                                    downloadTitle,
+                                                    outputName,
+                                                    selectedVideo!!.url,
+                                                    selectedAudio.url,
+                                                    mediaParams,
+                                                    embeddedMetadata = embeddedMetadata,
+                                                    embedding = embedding,
+                                                    videoBackupUrls = selectedVideo.backupUrls,
+                                                    audioBackupUrls = selectedAudio.backupUrls,
+                                                )
+                                            } else {
+                                                val mediaParams = buildMediaParams(selectedVideo, outputVideoCodec, selectedAudio)
+                                                val mergedNamingContext = buildNamingContext(
+                                                    info = info,
+                                                    item = item,
+                                                    namingSession = namingSession,
+                                                    batchIndex = batchOrdinal,
+                                                    taskType = DownloadTaskType.AudioVideo,
+                                                    taskLabel = downloadTitle,
+                                                    mediaParams = mediaParams,
+                                                    formatLabel = mapStreamFormatLabel(selectedVideo!!.format),
+                                                )
+                                                val videoName = resolveTemplateFileName(
+                                                    item = item,
+                                                    namingSession = namingSession,
+                                                    context = mergedNamingContext,
+                                                    extension = extensionForVideoStream(selectedVideo),
+                                                )
+                                                downloadRepository.enqueue(
+                                                    groupId,
+                                                    DownloadTaskType.AudioVideo,
+                                                    downloadTitle,
+                                                    videoName,
+                                                    selectedVideo.url,
+                                                    mediaParams,
+                                                    embeddedMetadata = embeddedMetadata,
+                                                    embedding = embedding,
+                                                    backupUrls = selectedVideo.backupUrls,
+                                                )
+                                            }
+                                        }
                                     }
+                                } else {
+                                    downloadRepository.addUnavailableTask(
+                                        groupId = groupId,
+                                        type = downloadTaskType,
+                                        taskTitle = downloadTitle,
+                                        reason = unavailableReason,
+                                    )
                                 }
-                            } else {
-                                downloadRepository.addUnavailableTask(
+                            }
+
+                            if (opusDocument != null) {
+                                enqueueOpusTasks(
+                                    snapshot = snapshot,
+                                    info = info,
+                                    item = item,
+                                    document = opusDocument,
+                                    namingSession = namingSession,
+                                    batchOrdinal = batchOrdinal,
                                     groupId = groupId,
-                                    type = downloadTaskType,
-                                    taskTitle = downloadTitle,
-                                    reason = unavailableReason,
                                 )
                             }
-                        }
 
-                        if (opusDocument != null) {
-                            enqueueOpusTasks(
+                            launchExtraTasksForItem(
                                 snapshot = snapshot,
                                 info = info,
                                 item = item,
-                                document = opusDocument,
                                 namingSession = namingSession,
                                 batchOrdinal = batchOrdinal,
                                 groupId = groupId,
                             )
+                            queuedGroups += 1
                         }
-
-                        launchExtraTasksForItem(
-                            snapshot = snapshot,
-                            info = info,
-                            item = item,
-                            namingSession = namingSession,
-                            batchOrdinal = batchOrdinal,
-                            groupId = groupId,
-                        )
-                        queuedGroups += 1
+                        DownloadEnqueueResult(queuedGroups = queuedGroups, failedItems = failedItems) to firstFailure
                     }
-                    DownloadEnqueueResult(queuedGroups = queuedGroups, failedItems = failedItems) to firstFailure
                 }
             }
             enqueueResult.fold(
@@ -3605,12 +3607,3 @@ class ParseViewModel(
         }
     }
 }
-
-
-
-
-
-
-
-
-

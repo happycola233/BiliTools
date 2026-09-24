@@ -3,6 +3,7 @@ package com.happycola233.bilitools
 import android.app.Application
 import android.app.Activity
 import android.content.Context
+import android.content.res.Configuration
 import android.os.Bundle
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
@@ -52,6 +53,12 @@ class BiliToolsApp : Application(), Application.ActivityLifecycleCallbacks, Sing
             }
             .build()
         DynamicColors.applyToActivitiesIfAvailable(this, options)
+        container.downloadNotifications.start()
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        container.downloadNotifications.refresh(refreshChannels = true)
     }
 
     override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
@@ -71,6 +78,8 @@ class BiliToolsApp : Application(), Application.ActivityLifecycleCallbacks, Sing
 
     override fun onActivityResumed(activity: Activity) {
         AppLog.d(TAG, "[lifecycle] activity resumed=${activity.localClassName}")
+        // 从系统设置返回时，重新评估通知权限和 Live Update 提升许可。
+        container.downloadNotifications.refresh()
     }
 
     override fun onActivityPaused(activity: Activity) {

@@ -46,7 +46,6 @@ import com.happycola233.bilitools.data.model.MediaType
 import com.happycola233.bilitools.data.model.StreamFormat
 import com.happycola233.bilitools.data.model.VideoCodec
 import com.happycola233.bilitools.data.model.VideoStream
-import com.happycola233.bilitools.download.DownloadForegroundService
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.coroutines.CancellationException
@@ -90,6 +89,7 @@ class DownloadRepository(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val _groups = MutableStateFlow<List<DownloadGroup>>(emptyList())
     val groups: StateFlow<List<DownloadGroup>> = _groups.asStateFlow()
+    private val notificationSession = DownloadNotificationSession()
     private val _notificationState = MutableStateFlow(DownloadNotificationState())
     val notificationState: StateFlow<DownloadNotificationState> = _notificationState.asStateFlow()
 
@@ -188,6 +188,59 @@ class DownloadRepository(
             if (loaded) return
             loadState()
             loaded = true
+        }
+    }
+
+    /** 提交期间仍可能创建字幕等子任务，不能在中间的空队列上提前报告完成。 */
+    suspend fun <T> withNotificationSubmission(block: suspend () -> T): T {
+        synchronized(lock) { notificationSession.beginSubmission() }
+        updateGroups()
+        return try {
+            block()
+        } finally {
+            synchronized(lock) { notificationSession.endSubmission() }
+            updateGroups()
+            schedulePersist()
+        }
+    }
+
+    internal fun markNotificationCompletionReported(state: DownloadNotificationState) {
+        synchronized(lock) {
+            // 发出结果时可能又有任务加入，不能把较新的结果一并标为已通知。
+            if (snapshotNotificationState() != state) return
+            notificationSession.markCompletionReported(state.sessionId)
+        }
+        updateGroups()
+        schedulePersist()
+    }
+
+    internal fun pauseNotificationTasks(taskIds: Set<Long>) {
+        synchronized(schedulingLock) {
+            taskIds.sortedBy { if (tasks[it]?.status == DownloadStatus.Pending) 0 else 1 }
+                .forEach(::pauseLocked)
+            persistStateImmediately()
+        }
+    }
+
+    internal fun resumeNotificationTasks(taskIds: Set<Long>) {
+        synchronized(schedulingLock) {
+            taskIds.forEach { id ->
+                if (tasks[id]?.status == DownloadStatus.Paused) resumeLocked(id)
+            }
+        }
+    }
+
+    internal fun pauseForForegroundTimeout() {
+        synchronized(schedulingLock) {
+            pauseAll()
+            // 正在生成的附加文件没有可续传进度；超时后取消执行，继续时从头生成。
+            tasks.values.filter { !isManagedTask(it) && it.status == DownloadStatus.Running }
+                .forEach { item ->
+                    extraJobs.remove(item.id)?.cancel()
+                    updateExtraTask(item.id, DownloadStatus.Paused, 0, userPaused = true)
+                    releaseExtraTaskSlot(item.id)
+                }
+            persistStateImmediately()
         }
     }
 
@@ -539,6 +592,7 @@ class DownloadRepository(
                     statusDetail = statusDetail,
                 ),
             )
+            notificationSession.record(created)
             tasks[created.id] = created
             groupTaskIds.getOrPut(groupId) { mutableListOf() }.add(created.id)
             created
@@ -584,6 +638,7 @@ class DownloadRepository(
                     userPaused = userPaused,
                 ),
             )
+            notificationSession.record(next, target)
             tasks[id] = next
             updated = true
             shouldPersist = shouldPersistTaskChange(target, next)
@@ -612,6 +667,7 @@ class DownloadRepository(
                     fileName = fileName,
                 ),
             )
+            notificationSession.record(next, target)
             tasks[id] = next
             updated = true
             shouldPersist = shouldPersistTaskChange(target, next)
@@ -1316,29 +1372,6 @@ class DownloadRepository(
         }
     }
 
-    fun summarizeTaskOutcomes(taskIds: Set<Long>): DownloadOutcomeSummary {
-        if (taskIds.isEmpty()) return DownloadOutcomeSummary()
-        val snapshot = synchronized(lock) {
-            taskIds.mapNotNull { id -> tasks[id] }
-        }
-        var successCount = 0
-        var failedCount = 0
-        var cancelledCount = 0
-        snapshot.forEach { item ->
-            when (item.status) {
-                DownloadStatus.Success -> successCount++
-                DownloadStatus.Failed -> failedCount++
-                DownloadStatus.Cancelled -> cancelledCount++
-                else -> Unit
-            }
-        }
-        return DownloadOutcomeSummary(
-            successCount = successCount,
-            failedCount = failedCount,
-            cancelledCount = cancelledCount,
-        )
-    }
-
     fun deleteTask(id: Long, deleteFile: Boolean) {
         val item = tasks[id] ?: return
         deleteTasks(listOf(item), deleteFile)
@@ -1437,7 +1470,6 @@ class DownloadRepository(
             releaseManagedTaskSlot(slot)
             return
         }
-        DownloadForegroundService.requestSync(context)
         downloadJobs.remove(id)?.cancel()
         val job = scope.launch(start = CoroutineStart.LAZY) {
             var retrying = false
@@ -1967,7 +1999,6 @@ class DownloadRepository(
             releaseManagedTaskSlot(slot)
             return
         }
-        DownloadForegroundService.requestSync(context)
         val coordinator = scope.launch(start = CoroutineStart.LAZY) {
             var retrying = false
             try {
@@ -2362,6 +2393,7 @@ class DownloadRepository(
             synchronized(lock) {
                 groupInfo.clear()
                 groupTaskIds.clear()
+                tasks.keys.forEach(notificationSession::remove)
                 tasks.clear()
                 deletingGroupIds.clear()
                 deletingTaskIds.clear()
@@ -2401,6 +2433,7 @@ class DownloadRepository(
                 }
             }
             taskIds.forEach { id ->
+                notificationSession.remove(id)
                 tasks.remove(id)
                 downloadJobs.remove(id)?.cancel()
                 extraJobs.remove(id)?.cancel()
@@ -2438,6 +2471,7 @@ class DownloadRepository(
                 items.forEach { cleanupTaskResources(it, deleteFile) }
                 synchronized(lock) {
                     items.forEach { item ->
+                        notificationSession.remove(item.id)
                         tasks.remove(item.id)
                         groupTaskIds[item.groupId]?.remove(item.id)
                     }
@@ -2543,6 +2577,7 @@ class DownloadRepository(
     private fun addTask(item: DownloadItem) {
         val normalizedItem = normalizeTask(item)
         synchronized(lock) {
+            notificationSession.record(normalizedItem)
             tasks[normalizedItem.id] = normalizedItem
             val list = groupTaskIds.getOrPut(normalizedItem.groupId) { mutableListOf() }
             list.add(normalizedItem.id)
@@ -2560,6 +2595,7 @@ class DownloadRepository(
         val normalizedItem = normalizeTask(item)
         val shouldPersist = synchronized(lock) {
             val previous = tasks[normalizedItem.id]
+            notificationSession.record(normalizedItem, previous)
             tasks[normalizedItem.id] = normalizedItem
             shouldPersistTaskChange(previous, normalizedItem)
         }
@@ -2582,6 +2618,7 @@ class DownloadRepository(
             if (!predicate(current)) return@synchronized
             beforeUpdate(current)
             val next = normalizeTask(transform(current))
+            notificationSession.record(next, current)
             tasks[id] = next
             updated = true
             shouldPersist = shouldPersistTaskChange(current, next)
@@ -2592,27 +2629,6 @@ class DownloadRepository(
             schedulePersist()
         }
         return true
-    }
-
-    private fun replaceTask(oldId: Long, newItem: DownloadItem) {
-        val normalizedItem = normalizeTask(newItem)
-        val shouldPersist = synchronized(lock) {
-            tasks.remove(oldId)
-            tasks[normalizedItem.id] = normalizedItem
-            val list = groupTaskIds[normalizedItem.groupId] ?: mutableListOf()
-            val idx = list.indexOf(oldId)
-            if (idx >= 0) {
-                list[idx] = normalizedItem.id
-            } else {
-                list.add(normalizedItem.id)
-            }
-            groupTaskIds[normalizedItem.groupId] = list
-            true
-        }
-        updateGroups()
-        if (shouldPersist) {
-            schedulePersist()
-        }
     }
 
     private fun shouldPersistTaskChange(old: DownloadItem?, new: DownloadItem): Boolean {
@@ -2634,7 +2650,8 @@ class DownloadRepository(
         return false
     }
 
-    private fun updateGroups() {
+    private fun updateGroups() = synchronized(lock) {
+        // 同一把锁内构建并发布快照，避免并行下载的旧快照晚到、覆盖新的完成状态。
         _groups.value = snapshotGroups()
         _notificationState.value = snapshotNotificationState()
     }
@@ -2662,92 +2679,14 @@ class DownloadRepository(
         }.sortedByDescending { it.createdAt }
     }
 
-    private fun snapshotNotificationState(): DownloadNotificationState {
-        return synchronized(lock) {
-            val managedTasks = tasks.values.filter { item -> isManagedTask(item) }
-            if (managedTasks.isEmpty()) {
-                return@synchronized DownloadNotificationState()
-            }
-
-            val activeStatuses = setOf(
-                DownloadStatus.Pending,
-                DownloadStatus.Running,
-                DownloadStatus.Paused,
-                DownloadStatus.Merging,
-            )
-            val foregroundStatuses = setOf(
-                DownloadStatus.Pending,
-                DownloadStatus.Running,
-                DownloadStatus.Merging,
-            )
-
-            val activeTasks = managedTasks.filter { item -> item.status in activeStatuses }
-            val foregroundTasks = activeTasks.filter { item -> item.status in foregroundStatuses }
-
-            val speedBytesPerSec = activeTasks.sumOf { item ->
-                if (item.status == DownloadStatus.Running) item.speedBytesPerSec else 0L
-            }
-
-            val sizeTasks = activeTasks.filter { item -> item.totalBytes > 0 }
-            val totalBytes = sizeTasks.sumOf { item -> item.totalBytes }
-            val downloadedBytes = sizeTasks.sumOf { item ->
-                item.downloadedBytes.coerceAtMost(item.totalBytes)
-            }
-
-            val rawProgress = if (totalBytes > 0L) {
-                ((downloadedBytes * 100) / totalBytes).toInt().coerceIn(0, 100)
-            } else if (activeTasks.isNotEmpty()) {
-                activeTasks.map { item ->
-                    DownloadProgressRules.normalizeTaskProgress(item.status, item.progress)
-                }.average().toInt()
+    private fun snapshotNotificationState(): DownloadNotificationState = synchronized(lock) {
+        notificationSession.snapshot(tasks) { item ->
+            val merged = mergeTasks[item.id]
+            if (merged != null) {
+                merged.video.totalBytes > 0 && merged.audio.totalBytes > 0
             } else {
-                0
+                item.totalBytes > 0 && !item.progressIndeterminate
             }
-            val progress = if (activeTasks.isNotEmpty()) {
-                DownloadProgressRules.normalizeAggregateProgress(
-                    progress = rawProgress,
-                    allTasksResolved = activeTasks.all { item -> item.status.isResolvedWithoutFailure },
-                )
-            } else {
-                0
-            }
-
-            val etaSeconds = if (speedBytesPerSec > 0L && totalBytes > downloadedBytes) {
-                (totalBytes - downloadedBytes) / speedBytesPerSec
-            } else {
-                null
-            }
-
-            val primaryTask = activeTasks
-                .sortedWith(
-                    compareBy<DownloadItem>(
-                        { item ->
-                            when (item.status) {
-                                DownloadStatus.Running -> 0
-                                DownloadStatus.Merging -> 1
-                                DownloadStatus.Pending -> 2
-                                DownloadStatus.Paused -> 3
-                                else -> 4
-                            }
-                        },
-                        { item -> -item.createdAt },
-                    ),
-                )
-                .firstOrNull()
-
-            DownloadNotificationState(
-                activeTaskIds = activeTasks.map { item -> item.id }.toSet(),
-                inProgressCount = foregroundTasks.size,
-                pausedCount = activeTasks.count { item -> item.status == DownloadStatus.Paused },
-                progress = progress,
-                downloadedBytes = downloadedBytes,
-                totalBytes = totalBytes,
-                speedBytesPerSec = speedBytesPerSec,
-                etaSeconds = etaSeconds,
-                primaryTitle = primaryTask?.title?.ifBlank { primaryTask.fileName },
-                primaryStatus = primaryTask?.status,
-                hasForegroundWork = activeTasks.isNotEmpty(),
-            )
         }
     }
 
@@ -2796,9 +2735,12 @@ class DownloadRepository(
     }
 
     private fun buildStoreSnapshot(): DownloadStore {
+        val (groupSnapshot, notificationSnapshot) = synchronized(lock) {
+            snapshotGroups() to notificationSession.saved()
+        }
         return DownloadStore(
             version = STORE_VERSION,
-            groups = snapshotGroups(),
+            groups = groupSnapshot,
             resumableStates = downloadStates.values.map { state ->
                 ResumableStateSnapshot(
                     id = state.id,
@@ -2839,6 +2781,7 @@ class DownloadRepository(
                     conversionTarget = task.conversionTarget,
                 )
             },
+            notificationSession = notificationSnapshot,
             extraTaskStates = extraTaskSpecs.map { (id, spec) ->
                 ExtraTaskSnapshot(id = id, spec = spec)
             },
@@ -2862,6 +2805,15 @@ class DownloadRepository(
         var minMergeId: Long? = null
         var minExtraId: Long? = null
         var restoredStateChanged = false
+
+        // 已删除的任务仍保留在本次通知结果中，重启后也不能复用这些 ID。
+        store.notificationSession.outcomes.forEach { outcome ->
+            when {
+                outcome.id > 0 -> maxDownloadId = maxOf(maxDownloadId, outcome.id)
+                outcome.id <= EXTRA_TASK_ID_START -> minExtraId = minOf(minExtraId ?: outcome.id, outcome.id)
+                else -> minMergeId = minOf(minMergeId ?: outcome.id, outcome.id)
+            }
+        }
 
         val usedFolderNames = mutableSetOf<String>()
         for (group in store.groups) {
@@ -2993,6 +2945,7 @@ class DownloadRepository(
             tasks.putAll(restoredTasks.mapValues { (_, item) ->
                 normalizeTask(item)
             })
+            notificationSession.restore(store.notificationSession, tasks)
         }
         downloadStates.clear()
         downloadStates.putAll(restoredStates)
@@ -3310,7 +3263,6 @@ class DownloadRepository(
         ) {
             return
         }
-        DownloadForegroundService.requestSync(context)
         task.isMerging = true
         updateMergedProgress(task, true, null)
         Log.d(
@@ -4745,6 +4697,7 @@ class DownloadRepository(
         val resumableStates: List<ResumableStateSnapshot> = emptyList(),
         val mergeStates: List<MergedTaskSnapshot> = emptyList(),
         val extraTaskStates: List<ExtraTaskSnapshot> = emptyList(),
+        val notificationSession: DownloadNotificationSessionSnapshot = DownloadNotificationSessionSnapshot(),
     )
 
     private data class ExtraTaskSnapshot(
@@ -4794,23 +4747,3 @@ class DownloadRepository(
         private const val EXTRA_TASK_ID_START = -1_000_000_000L
     }
 }
-
-data class DownloadNotificationState(
-    val activeTaskIds: Set<Long> = emptySet(),
-    val inProgressCount: Int = 0,
-    val pausedCount: Int = 0,
-    val progress: Int = 0,
-    val downloadedBytes: Long = 0,
-    val totalBytes: Long = 0,
-    val speedBytesPerSec: Long = 0,
-    val etaSeconds: Long? = null,
-    val primaryTitle: String? = null,
-    val primaryStatus: DownloadStatus? = null,
-    val hasForegroundWork: Boolean = false,
-)
-
-data class DownloadOutcomeSummary(
-    val successCount: Int = 0,
-    val failedCount: Int = 0,
-    val cancelledCount: Int = 0,
-)

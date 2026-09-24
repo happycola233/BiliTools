@@ -11,6 +11,7 @@ import com.happycola233.bilitools.data.MediaRepository
 import com.happycola233.bilitools.data.OpusRepository
 import com.happycola233.bilitools.data.UpdateRepository
 import com.happycola233.bilitools.data.VideoRepository
+import com.happycola233.bilitools.download.DownloadNotificationController
 import com.happycola233.bilitools.update.AppUpdateManager
 import com.happycola233.bilitools.update.GitHubRouteManager
 import com.happycola233.bilitools.update.UpdatePackageCleanupManager
@@ -44,6 +45,9 @@ class AppContainer(context: Context) {
         )
     }
     val exportRepository by lazy { ExportRepository(appContext, settingsRepository) }
+    internal val downloadNotifications by lazy {
+        DownloadNotificationController(appContext, downloadRepository, settingsRepository)
+    }
     val issueReportRepository by lazy {
         IssueReportRepository(
             context = appContext,

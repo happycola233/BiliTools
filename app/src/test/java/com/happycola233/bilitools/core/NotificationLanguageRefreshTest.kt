@@ -23,12 +23,14 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 import org.robolectric.shadows.ShadowLooper
 import org.robolectric.util.ReflectionHelpers
 import org.robolectric.util.ReflectionHelpers.ClassParameter
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [29, 32], qualifiers = "zh-rCN")
+@GraphicsMode(GraphicsMode.Mode.LEGACY)
 class NotificationLanguageRefreshTest {
     @Test
     fun pausedDownloadRefreshesWithoutANewProgressEvent() {
@@ -37,12 +39,12 @@ class NotificationLanguageRefreshTest {
         repository.ensureLoaded()
         val state = ReflectionHelpers.getField<MutableStateFlow<DownloadNotificationState>>(repository, "_notificationState")
         state.value = DownloadNotificationState(
-            activeTaskIds = setOf(1),
-            pausedCount = 1,
-            primaryStatus = DownloadStatus.Paused,
-            hasForegroundWork = true,
+            sessionId = 1,
+            taskIds = setOf(1),
+            pausedTaskIds = setOf(1),
+            singleStatus = DownloadStatus.Paused,
         )
-        val controller = Robolectric.buildService(DownloadForegroundService::class.java).create()
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
         val manager = app.getSystemService(NotificationManager::class.java)
         try {
             val oldTitle = progress(manager, DownloadNotificationManager.NOTIFICATION_ID_PROGRESS).extras.getString(Notification.EXTRA_TITLE)
@@ -56,7 +58,7 @@ class NotificationLanguageRefreshTest {
             assertEquals(expected.getString(R.string.downloads_title), manager.getNotificationChannel(translated.channelId).name.toString())
             assertEquals(1, state.value.pausedCount)
         } finally {
-            controller.destroy()
+            state.value = DownloadNotificationState()
             AppLanguage.select(AppLanguage.System)
         }
     }

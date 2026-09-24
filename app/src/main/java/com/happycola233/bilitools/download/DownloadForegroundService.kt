@@ -1,142 +1,76 @@
 package com.happycola233.bilitools.download
 
+import android.app.Notification
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.content.res.Configuration
 import android.content.pm.ServiceInfo
 import android.os.IBinder
-import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import com.happycola233.bilitools.core.appContainer
-import com.happycola233.bilitools.core.AppLanguage
-import com.happycola233.bilitools.data.DownloadNotificationState
-import com.happycola233.bilitools.data.DownloadRepository
-import com.happycola233.bilitools.data.SettingsRepository
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.drop
 
+/** 仅在下载或处理确实执行时提供前台服务，不持有下载结果的统计范围。 */
 class DownloadForegroundService : Service() {
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-
-    private lateinit var downloadRepository: DownloadRepository
-    private lateinit var settingsRepository: SettingsRepository
-    private lateinit var notificationManager: DownloadNotificationManager
-
-    private var isForegroundStarted = false
-    private var trackedTaskIds: Set<Long> = emptySet()
-    private var lastPublishedState: DownloadNotificationState = DownloadNotificationState()
-    private var lastPublishTimeMs: Long = 0L
-
-    override fun onCreate() {
-        super.onCreate()
-        downloadRepository = applicationContext.appContainer.downloadRepository
-        settingsRepository = applicationContext.appContainer.settingsRepository
-        downloadRepository.ensureLoaded()
-
-        notificationManager = DownloadNotificationManager(this)
-        notificationManager.ensureChannels()
-
-        serviceScope.launch {
-            downloadRepository.notificationState.collect { state ->
-                publishState(state, allowThrottle = true)
-            }
-        }
-        serviceScope.launch {
-            AppLanguage.changes.drop(1).collect { refreshNotificationLanguage() }
-        }
-    }
-
-    override fun onConfigurationChanged(newConfig: Configuration) {
-        super.onConfigurationChanged(newConfig)
-        refreshNotificationLanguage()
-    }
-
-    private fun refreshNotificationLanguage() {
-        notificationManager.ensureChannels()
-        if (isForegroundStarted) {
-            publishState(downloadRepository.notificationState.value, allowThrottle = false)
-        }
-    }
+    private val container get() = applicationContext.appContainer
+    private val notifications by lazy { DownloadNotificationManager(this) }
+    private var foregroundStarted = false
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
-            ACTION_PAUSE_ALL -> downloadRepository.pauseAll()
-            ACTION_RESUME_ALL -> downloadRepository.startAll()
+        val repository = container.downloadRepository
+        repository.ensureLoaded()
+        if (intent?.action == ACTION_RESUME) {
+            repository.resumeNotificationTasks(
+                intent.getLongArrayExtra(DownloadNotificationReceiver.EXTRA_TASK_IDS)?.toSet().orEmpty(),
+            )
         }
-        publishState(downloadRepository.notificationState.value, allowThrottle = false)
+        notifications.ensureChannels()
+        // 请求启动后任务可能已经结束；仍先履行 startForegroundService 的契约，再退出。
+        showForeground(notifications.buildProgressNotification(repository.notificationState.value, false))
+        container.downloadNotifications.attach(this)
         return START_NOT_STICKY
+    }
+
+    internal fun showForeground(notification: Notification) {
+        if (foregroundStarted) {
+            notifications.notifyProgress(notification)
+        } else {
+            startForeground(
+                DownloadNotificationManager.NOTIFICATION_ID_PROGRESS,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+            )
+            foregroundStarted = true
+        }
+    }
+
+    internal fun finishForeground() {
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        foregroundStarted = false
+        stopSelf()
+    }
+
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        container.downloadRepository.pauseForForegroundTimeout()
+        container.downloadNotifications.refresh()
+        stopSelf()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
-        serviceScope.cancel()
+        container.downloadNotifications.detach(this)
         super.onDestroy()
     }
 
-    private fun publishState(
-        state: DownloadNotificationState,
-        allowThrottle: Boolean,
-    ) {
-        val now = SystemClock.elapsedRealtime()
-        val stateChanged = state.hasForegroundWork != lastPublishedState.hasForegroundWork ||
-            state.inProgressCount != lastPublishedState.inProgressCount ||
-            state.pausedCount != lastPublishedState.pausedCount
-        if (allowThrottle && !stateChanged && now - lastPublishTimeMs < UPDATE_INTERVAL_MS) {
-            return
-        }
-
-        val previousTaskIds = trackedTaskIds
-        trackedTaskIds = state.activeTaskIds
-
-        if (state.hasForegroundWork) {
-            val notification = notificationManager.buildProgressNotification(
-                state = state,
-                liveActivityStyleEnabled = settingsRepository.shouldUseLiveActivityStyleNotification(),
-            )
-            if (!isForegroundStarted) {
-                startForeground(
-                    DownloadNotificationManager.NOTIFICATION_ID_PROGRESS,
-                    notification,
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
-                )
-                isForegroundStarted = true
-            } else {
-                notificationManager.notifyProgress(notification)
-            }
-        } else {
-            if (isForegroundStarted) {
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                isForegroundStarted = false
-            }
-            if (previousTaskIds.isNotEmpty()) {
-                val summary = downloadRepository.summarizeTaskOutcomes(previousTaskIds)
-                notificationManager.showCompletion(summary)
-            }
-            stopSelf()
-        }
-
-        lastPublishedState = state
-        lastPublishTimeMs = now
-    }
-
     companion object {
-        const val ACTION_SYNC = "com.happycola233.bilitools.download.action.SYNC"
-        const val ACTION_PAUSE_ALL = "com.happycola233.bilitools.download.action.PAUSE_ALL"
-        const val ACTION_RESUME_ALL = "com.happycola233.bilitools.download.action.RESUME_ALL"
+        private const val ACTION_SYNC = "com.happycola233.bilitools.download.action.SYNC"
+        const val ACTION_RESUME = "com.happycola233.bilitools.download.RESUME_NOTIFICATION_TASKS"
 
         fun requestSync(context: Context) {
-            val serviceIntent = Intent(context, DownloadForegroundService::class.java).apply {
-                action = ACTION_SYNC
-            }
-            ContextCompat.startForegroundService(context, serviceIntent)
+            ContextCompat.startForegroundService(
+                context,
+                Intent(context, DownloadForegroundService::class.java).setAction(ACTION_SYNC),
+            )
         }
-
-        private const val UPDATE_INTERVAL_MS = 500L
     }
 }

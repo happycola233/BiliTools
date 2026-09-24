@@ -103,6 +103,10 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <receiver
+            android:name=".download.DownloadNotificationReceiver"
+            android:exported="false" />
+
         <service
             android:name=".update.UpdateDownloadService"
             android:enabled="true"
