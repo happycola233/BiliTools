@@ -395,6 +395,10 @@ private fun DownloadsDeleteDialog(
     }
     val haptics = rememberAppHaptics()
     var deleteFileChecked by remember(state) { mutableStateOf(true) }
+    val onDeleteFileCheckedChange: (Boolean) -> Unit = { checked ->
+        haptics.toggle(checked)
+        deleteFileChecked = checked
+    }
     val title = when (state) {
         is DownloadsDialogState.DeleteTask -> stringResource(R.string.download_delete)
         is DownloadsDialogState.DeleteGroup -> stringResource(R.string.downloads_group_delete)
@@ -447,13 +451,13 @@ private fun DownloadsDeleteDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .clickable { deleteFileChecked = !deleteFileChecked }
+                            .clickable { onDeleteFileCheckedChange(!deleteFileChecked) }
                             .padding(vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Checkbox(
                             checked = deleteFileChecked,
-                            onCheckedChange = { checked -> deleteFileChecked = checked },
+                            onCheckedChange = onDeleteFileCheckedChange,
                             colors = AppAccents.checkboxColors(),
                         )
                         Text(
