@@ -115,6 +115,7 @@ import com.happycola233.bilitools.data.model.isResolvedWithoutFailure
 import com.happycola233.bilitools.ui.haptics.HapticThresholdGate
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import com.happycola233.bilitools.ui.theme.AppAccents
+import com.happycola233.bilitools.ui.theme.AppDestructiveColors
 import com.happycola233.bilitools.ui.theme.AppSurfaces
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -508,17 +509,25 @@ internal fun DownloadsGroupCard(
     val density = LocalDensity.current
     val haptics = rememberAppHaptics()
     val errorColor = MaterialTheme.colorScheme.error
-    val onErrorColor = MaterialTheme.colorScheme.onError
     val coverPlaceholderColor = AppSurfaces.insetContainerColor
     val scope = rememberCoroutineScope()
-    val swipeTargetPx = with(density) { 88.dp.toPx() }
-    val dismissThresholdPx = with(density) { 140.dp.toPx() }
-    val offsetX = remember(group.id) { Animatable(0f) }
+    val deleteActionWidth = 80.dp
+    val deleteActionGap = 8.dp
+    val swipeRevealOffsetPx = with(density) { (deleteActionWidth + deleteActionGap).toPx() }
+    val swipeDeleteThresholdPx = with(density) { 140.dp.toPx() }
+    // 开盖是停靠后的预备动作，与删除阈值分开；8dp 的回退缓冲避免轻微抖动反复开合。
+    val deleteIconOpenThresholdPx = swipeRevealOffsetPx + with(density) { 12.dp.toPx() }
+    val deleteIconCloseThresholdPx = swipeRevealOffsetPx + with(density) { 4.dp.toPx() }
+    val swipeOffsetX = remember(group.id) { Animatable(0f) }
     var dragOffsetX by remember(group.id) { mutableFloatStateOf(0f) }
     var dragging by remember(group.id) { mutableStateOf(false) }
+    var deleteIconOpen by remember(group.id) { mutableStateOf(false) }
     val interactionSource = remember(group.id) { MutableInteractionSource() }
-    val swipeSnapGate = remember(group.id) { HapticThresholdGate() }
-    val swipeDismissGate = remember(group.id) { HapticThresholdGate() }
+    val deleteThresholdGate = remember(group.id) { HapticThresholdGate() }
+    // 停靠后只向左延长背景：右边缘固定，与条目始终间隔 8dp，图标留在原来的 80dp 操作区。
+    val deleteContainerWidth = with(density) {
+        (-swipeOffsetX.value).toDp() - deleteActionGap
+    }.coerceAtLeast(deleteActionWidth)
     val groupContainerColor by animateColorAsState(
         targetValue = if (selected) {
             MaterialTheme.colorScheme.primaryContainer
@@ -613,16 +622,18 @@ internal fun DownloadsGroupCard(
         label = "downloadsGroupHeaderBottomPadding",
     )
 
-    LaunchedEffect(swiped, selectionMode, dragging, swipeTargetPx) {
+    LaunchedEffect(swiped, selectionMode, dragging, swipeRevealOffsetPx) {
         if (dragging) return@LaunchedEffect
+        // 删除确认期间回到停靠点仍保持开盖；弹窗关闭后，操作区收起时再统一复位。
+        if (!swiped || selectionMode) deleteIconOpen = false
         val target = when {
             selectionMode -> 0f
-            swiped -> -swipeTargetPx
+            swiped -> -swipeRevealOffsetPx
             else -> 0f
         }
         dragOffsetX = target
-        if (offsetX.value != target) {
-            offsetX.animateTo(target, tween(durationMillis = 200))
+        if (swipeOffsetX.value != target) {
+            swipeOffsetX.animateTo(target, tween(durationMillis = 200))
         }
     }
 
@@ -641,37 +652,38 @@ internal fun DownloadsGroupCard(
                         if (anyGroupSwiped && !swiped) {
                             onSwipedGroupChange(null)
                         }
-                        dragOffsetX = offsetX.value
-                        swipeSnapGate.reset(dragOffsetX <= -(swipeTargetPx / 2f))
-                        swipeDismissGate.reset(dragOffsetX <= -dismissThresholdPx)
+                        dragOffsetX = swipeOffsetX.value
+                        deleteThresholdGate.reset(dragOffsetX <= -swipeDeleteThresholdPx)
                         dragging = true
                     },
                     onHorizontalDrag = { change, dragAmount ->
                         change.consume()
-                        val target = (dragOffsetX + dragAmount).coerceAtMost(0f)
+                        val target = (dragOffsetX + dragAmount).coerceIn(-size.width.toFloat(), 0f)
                         dragOffsetX = target
+                        when {
+                            -target >= deleteIconOpenThresholdPx -> deleteIconOpen = true
+                            -target <= deleteIconCloseThresholdPx -> deleteIconOpen = false
+                        }
                         scope.launch {
-                            offsetX.snapTo(target)
+                            swipeOffsetX.snapTo(target)
                         }
-                        swipeSnapGate.update(target <= -(swipeTargetPx / 2f)) {
-                            haptics.thresholdActivate()
-                        }
-                        swipeDismissGate.update(target <= -dismissThresholdPx) {
-                            haptics.thresholdActivate()
+                        deleteThresholdGate.update(target <= -swipeDeleteThresholdPx) { readyToDelete ->
+                            if (readyToDelete) haptics.thresholdActivate() else haptics.thresholdDeactivate()
                         }
                     },
                     onDragEnd = {
                         dragging = false
                         val finalOffset = dragOffsetX
+                        deleteIconOpen = finalOffset <= -swipeDeleteThresholdPx
                         when {
-                            finalOffset <= -dismissThresholdPx -> {
-                                dragOffsetX = -swipeTargetPx
+                            finalOffset <= -swipeDeleteThresholdPx -> {
+                                dragOffsetX = -swipeRevealOffsetPx
                                 onSwipedGroupChange(group.id)
                                 onDelete()
                             }
 
-                            finalOffset <= -(swipeTargetPx / 2f) -> {
-                                dragOffsetX = -swipeTargetPx
+                            finalOffset <= -(swipeRevealOffsetPx / 2f) -> {
+                                dragOffsetX = -swipeRevealOffsetPx
                                 onSwipedGroupChange(group.id)
                             }
 
@@ -683,7 +695,8 @@ internal fun DownloadsGroupCard(
                     },
                     onDragCancel = {
                         dragging = false
-                        dragOffsetX = if (swiped) -swipeTargetPx else 0f
+                        deleteIconOpen = false
+                        dragOffsetX = if (swiped) -swipeRevealOffsetPx else 0f
                         onSwipedGroupChange(if (swiped) group.id else null)
                     },
                 )
@@ -692,29 +705,28 @@ internal fun DownloadsGroupCard(
         if (!selectionMode) {
             Box(
                 contentAlignment = Alignment.CenterEnd,
-                modifier = Modifier
-                    .matchParentSize()
-                    .padding(start = 16.dp),
+                modifier = Modifier.matchParentSize(),
             ) {
                 Surface(
-                    color = errorColor,
+                    color = AppDestructiveColors.container,
+                    contentColor = AppDestructiveColors.onContainer,
                     shape = RoundedCornerShape(20.dp),
                     onClick = {
                         haptics.tap()
                         onDelete()
                     },
                     modifier = Modifier
-                        .width(80.dp)
+                        .width(deleteContainerWidth)
                         .fillMaxHeight()
-                        .alpha(if (offsetX.value < 0f || swiped) 1f else 0f),
+                        .alpha(if (swipeOffsetX.value < 0f || swiped) 1f else 0f),
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_delete_24),
-                            contentDescription = stringResource(R.string.delete),
-                            tint = onErrorColor,
-                            modifier = Modifier.size(24.dp),
-                        )
+                    Box(contentAlignment = Alignment.CenterEnd) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.width(deleteActionWidth).fillMaxHeight(),
+                        ) {
+                            SwipeDeleteIcon(isOpen = deleteIconOpen, isDragging = dragging)
+                        }
                     }
                 }
             }
@@ -727,7 +739,7 @@ internal fun DownloadsGroupCard(
             shadowElevation = 0.dp,
             modifier = Modifier
                 .fillMaxWidth()
-                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                .offset { IntOffset(swipeOffsetX.value.roundToInt(), 0) }
                 .combinedClickable(
                     interactionSource = interactionSource,
                     indication = null,
@@ -1111,9 +1123,9 @@ private fun DownloadTaskRow(
                 modifier = Modifier.size(40.dp),
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_delete_24),
+                    painter = painterResource(R.drawable.ic_delete_outline_rounded_24),
                     contentDescription = stringResource(R.string.download_delete),
-                    tint = errorColor,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }

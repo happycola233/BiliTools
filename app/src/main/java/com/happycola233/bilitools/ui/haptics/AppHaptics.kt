@@ -33,8 +33,11 @@ enum class HapticEffect {
     /** 连续手势中跨过一个离散档位。务必配合 [HapticTicker] 节流。 */
     Tick,
 
-    /** 手势越过吸附阈值，如侧滑打开操作区。 */
+    /** 手势越过动作阈值，松手即可执行。 */
     ThresholdActivate,
+
+    /** 手势退回动作阈值内，取消松手执行。 */
+    ThresholdDeactivate,
 
     /** 操作被接受并产生了实际结果，如开始下载、删除确认。 */
     Confirm,
@@ -50,7 +53,7 @@ enum class HapticEffect {
         HapticFeedbackLevel.Off -> false
         HapticFeedbackLevel.Full -> true
         HapticFeedbackLevel.Light -> when (this) {
-            LongPress, ThresholdActivate, Confirm, Reject -> true
+            LongPress, ThresholdActivate, ThresholdDeactivate, Confirm, Reject -> true
             Tap, ToggleOn, ToggleOff, Select, Tick -> false
         }
     }
@@ -85,6 +88,12 @@ enum class HapticEffect {
 
             ThresholdActivate -> if (sdk >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE
+            } else {
+                HapticFeedbackConstants.CLOCK_TICK
+            }
+
+            ThresholdDeactivate -> if (sdk >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                HapticFeedbackConstants.GESTURE_THRESHOLD_DEACTIVATE
             } else {
                 HapticFeedbackConstants.CLOCK_TICK
             }
@@ -130,6 +139,8 @@ class AppHaptics internal constructor(
     fun tick() = perform(HapticEffect.Tick)
 
     fun thresholdActivate() = perform(HapticEffect.ThresholdActivate)
+
+    fun thresholdDeactivate() = perform(HapticEffect.ThresholdDeactivate)
 
     fun confirm() = perform(HapticEffect.Confirm)
 
@@ -184,28 +195,24 @@ class HapticTicker(private val minIntervalMillis: Long = DEFAULT_MIN_INTERVAL_MI
 }
 
 /**
- * 阈值反馈的状态机：只在「跨越」阈值的那一刻震一次，手指在阈值附近来回拖动不会反复触发。
+ * 双向阈值反馈：只在进入或退出动作区时通知，区内继续拖动不重复反馈。
+ * 同一手势可以多次进入、退出，让触感始终对应「松手执行 / 松手取消」的当前状态。
  */
 @Stable
 class HapticThresholdGate {
     private var wasPassed = false
-    private var activatedDuringGesture = false
 
-    fun update(passed: Boolean, onActivate: () -> Unit) {
-        val crossedThreshold = !wasPassed && passed
+    fun update(passed: Boolean, onThresholdChange: (Boolean) -> Unit) {
+        if (passed == wasPassed) return
         wasPassed = passed
-        if (!crossedThreshold || activatedDuringGesture) return
-        activatedDuringGesture = true
-        onActivate()
+        onThresholdChange(passed)
     }
 
     /**
-     * 开始新手势，并以上报的初始位置建立基准。若手势从阈值外开始，则视为本次手势已经激活，
-     * 避免用户从已展开状态向回拖动时，在第一次 MOVE 事件中产生伪造的「跨越」反馈。
+     * 开始新手势时以初始位置建立基准，不触发反馈，避免第一帧移动被误认为跨越阈值。
      */
     fun reset(passed: Boolean = false) {
         wasPassed = passed
-        activatedDuringGesture = passed
     }
 }
 

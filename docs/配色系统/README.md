@@ -116,6 +116,16 @@ Material Color Utilities 的官方实现只有 TypeScript、Java、Dart、C++ �
 | **浅色复选框选中态** | `primary` + 白色 | 深色方框、白色对勾 | — | 让方框与列表高亮边框同色 |
 | **模式相关强调色** | `primary` | T40（深） | T80（浅） | 正文链接、强调文字、强调图标、进度条、液态底栏选中项，以及需要更强轮廓对比的浅色控件填充 |
 
+### 删除操作的固定容器配色
+
+下载列表的侧滑删除背景使用 `AppDestructiveColors.container`，复用生成色板中的 `md_theme_dark_error`（`#FFB4AB`）。粉色背景上的图标使用 `onContainer`，对应 `md_theme_dark_onError`（`#690005`），避免白色轮廓在浅粉色上难以辨认。浅色、深色、纯黑以及动态取色均使用同一对容器颜色。
+
+子列表右侧的独立删除图标使用 `MaterialTheme.colorScheme.onSurfaceVariant`，与暂停、继续、重试等操作图标共用中性色，随明暗模式适配。固定容器配色不覆盖全局错误角色；失败提示、输入错误、确认弹窗等既有语义色继续随当前主题解析。界面通过语义层取容器颜色，不直接引用深色资源，也不重复硬编码色值。
+
+这两处图标采用 [Google Fonts Material Icons Round 的 `delete_outline`](https://fonts.google.com/icons?selected=Material+Icons+Round:delete_outline:&icon.set=Material+Icons&icon.style=Rounded)，以独立的 `ic_delete_outline_rounded_24.xml` 随包提供，保留官方 24px SVG 的原始路径；其他删除入口继续使用原有图标。
+
+该矢量资源将桶身与桶盖拆为具名路径，闭合轮廓保持不变。侧滑区域的 `SwipeDeleteIcon` 共用这份路径，由开合状态驱动弹簧动画，不再按拖动距离插值：越过第一停靠点（88dp）后再左滑 12dp 即触发，手指停住也会完成动作。桶盖弹开后回落至 40°，整体轻弹后稳定在 120%，同时平稳左移 2dp；开盖回弹比缩放更明显，平移不回弹。左移只在拖动期间保持，松手后独立回到按钮中央。回拖至 92dp 内、未触发删除的松手回位或取消手势时自然收拢；松手触发删除确认时，条目回到停靠点，图标仅向右补偿 1dp 以改善视觉居中，垂直位置不变，并保持开盖、放大，直至关闭弹窗、收起操作区后再复位。开合触发点之间的 8dp 缓冲避免抖动反复触发，动画中途反向保持连续。图标布局占位固定，子列表图标保持原始尺寸和闭合状态。开盖只是视觉预备动作，删除就绪及双向触感仍由 140dp 的第二阈值决定。
+
 ### 为什么要分离
 
 M3 的 `primary` 在浅色是 T40、深色是 T80，**同一个角色在两个模式里差了 40 档明度**。如果按钮底、选中胶囊这些「色块」用 `primary`：
