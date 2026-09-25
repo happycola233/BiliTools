@@ -29,8 +29,15 @@ fun DownloadItem.localizedStatusDetail(context: Context): String? =
 fun DownloadItem.localizedErrorMessage(context: Context): String? =
     failureMessage?.resolve(context) ?: errorMessage
 
-fun DownloadItem.localizedEmbedWarning(context: Context): String? =
-    embeddingMessages.takeIf { it.isNotEmpty() }?.joinToString(" · ") { it.resolve(context) } ?: embedWarning
+fun DownloadItem.localizedEmbedWarning(
+    context: Context,
+    excludedCodes: Set<DownloadMessageCode> = emptySet(),
+): String? = if (embeddingMessages.isNotEmpty()) {
+    embeddingMessages.filterNot { it.code in excludedCodes }
+        .joinToString(" · ") { it.resolve(context) }.takeIf(String::isNotBlank)
+} else {
+    embedWarning
+}
 
 fun DownloadMediaParams.localized(context: Context): DownloadMediaParams {
     val localized = context.localizedContext()

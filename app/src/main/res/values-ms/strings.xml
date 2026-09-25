@@ -287,7 +287,6 @@
     <string name="download_delete_with_file">Padam juga fail yang dimuat turun</string>
     <string name="download_delete_confirm_task">Padamkan muat turun ini?</string>
     <string name="download_delete_confirm_group">Padamkan kumpulan muat turun ini dan semua tugasnya?</string>
-    <string name="download_task_params">Pilihan: %1$s</string>
     <string name="download_time_unknown">Masa tidak diketahui</string>
     <string name="downloads_reparse">Huraikan lagi</string>
     <string name="downloads_view_details">Lihat butiran</string>

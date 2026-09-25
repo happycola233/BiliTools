@@ -88,24 +88,27 @@ internal fun SubtitleSourcePicker(
     }
     val haptics = rememberAppHaptics()
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        // clickable Surface 在形状内绘制涟漪，不能把 toggleable 放在 Surface 的裁剪之外。
-        Surface(
-            onClick = { haptics.select(); open = true },
-            enabled = enabled,
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.medium,
-            color = MaterialTheme.colorScheme.surfaceContainer,
-        ) {
-            Row(
-                modifier = Modifier.heightIn(min = 64.dp).padding(horizontal = 16.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
+        // 没有可选语言时只显示状态；保留暂时缺失的已选语言，供用户调整选择。
+        if (choices.isNotEmpty()) {
+            // clickable Surface 在形状内绘制涟漪，不能把 toggleable 放在 Surface 的裁剪之外。
+            Surface(
+                onClick = { haptics.select(); open = true },
+                enabled = enabled,
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.medium,
+                color = MaterialTheme.colorScheme.surfaceContainer,
             ) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(summary, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Row(
+                    modifier = Modifier.heightIn(min = 64.dp).padding(horizontal = 16.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(summary, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
+                    Icon(painterResource(R.drawable.ic_chevron_right_24), contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Icon(painterResource(R.drawable.ic_chevron_right_24), contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         SubtitleSelectionStatus(state, languages, singleSelection, onRetry, enabled,

@@ -6,7 +6,12 @@ import com.happycola233.bilitools.data.model.MediaItem
 /** 页边界保存实际返回的条目身份；详情补全可能改变 cid 等字段，列表身份仍保持初次入页时的值。 */
 data class ParseLoadedPage(val page: Int, val itemKeys: List<String>)
 
-data class ParseScrollRequest(val page: Int, val id: Int)
+data class ParseScrollRequest(
+    val page: Int,
+    val id: Int,
+    /** 新解析优先定位到选中的分 P 或剧集；翻页请求仍按页边界定位。 */
+    val itemIndex: Int? = null,
+)
 
 data class ParsePagination(
     val pages: List<ParseLoadedPage> = emptyList(),
@@ -91,7 +96,7 @@ internal fun ParseUiState.withNewList(
             pages = listOf(ParseLoadedPage(page, newItems.map { it.pageItemKey() })),
             hasMore = info.hasNextPage(page),
             generation = pagination.generation + 1,
-            scrollRequest = scrollRequest,
+            scrollRequest = scrollRequest.copy(itemIndex = defaultIndex.takeIf { newItems.isNotEmpty() }),
         ),
     )
 }

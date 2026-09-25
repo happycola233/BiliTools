@@ -287,7 +287,6 @@
     <string name="download_delete_with_file">Đồng thời xóa các tập tin đã tải xuống</string>
     <string name="download_delete_confirm_task">Xóa bản tải xuống này?</string>
     <string name="download_delete_confirm_group">Xóa nhóm tải xuống này và tất cả các tác vụ của nó?</string>
-    <string name="download_task_params">Tùy chọn: %1$s</string>
     <string name="download_time_unknown">Không rõ thời gian</string>
     <string name="downloads_reparse">Phân tích lại</string>
     <string name="downloads_view_details">Xem chi tiết</string>

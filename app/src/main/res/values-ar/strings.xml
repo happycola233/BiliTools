@@ -287,7 +287,6 @@
     <string name="download_delete_with_file">قم أيضًا بحذف الملفات التي تم تنزيلها</string>
     <string name="download_delete_confirm_task">هل تريد حذف هذا التنزيل؟</string>
     <string name="download_delete_confirm_group">هل تريد حذف مجموعة التنزيل هذه وجميع مهامها؟</string>
-    <string name="download_task_params">الخيارات: %1$s</string>
     <string name="download_time_unknown">الوقت غير معروف</string>
     <string name="downloads_reparse">التحليل مرة أخرى</string>
     <string name="downloads_view_details">عرض التفاصيل</string>

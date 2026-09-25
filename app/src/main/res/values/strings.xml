@@ -333,7 +333,6 @@
     <string name="download_delete_with_file">同时删除已下载的文件</string>
     <string name="download_delete_confirm_task">确定要删除该任务吗？</string>
     <string name="download_delete_confirm_group">确定要删除该任务组吗？此操作将删除组内所有任务。</string>
-    <string name="download_task_params">参数：%1$s</string>
     <string name="download_time_unknown">时间未知</string>
     <string name="downloads_reparse">重新解析</string>
     <string name="downloads_view_details">查看详细信息</string>

@@ -287,7 +287,6 @@
     <string name="download_delete_with_file">Exclua também os arquivos baixados</string>
     <string name="download_delete_confirm_task">Excluir este download?</string>
     <string name="download_delete_confirm_group">Excluir este grupo de download e todas as suas tarefas?</string>
-    <string name="download_task_params">Opções: %1$s</string>
     <string name="download_time_unknown">Tempo desconhecido</string>
     <string name="downloads_reparse">Analisar novamente</string>
     <string name="downloads_view_details">Ver detalhes</string>

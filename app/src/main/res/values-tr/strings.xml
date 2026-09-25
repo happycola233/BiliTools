@@ -287,7 +287,6 @@
     <string name="download_delete_with_file">İndirilen dosyaları da sil</string>
     <string name="download_delete_confirm_task">Bu indirme silinsin mi?</string>
     <string name="download_delete_confirm_group">Bu indirme grubu ve tüm görevleri silinsin mi?</string>
-    <string name="download_task_params">Seçenekler: %1$s</string>
     <string name="download_time_unknown">Zaman bilinmiyor</string>
     <string name="downloads_reparse">Tekrar ayrıştır</string>
     <string name="downloads_view_details">Ayrıntıları görüntüle</string>

@@ -671,7 +671,7 @@ class ParseViewModel(
                 val info = mediaRepository.getMediaInfo(
                     parsed.id,
                     resolvedType,
-                    com.happycola233.bilitools.data.model.MediaQueryOptions(target = parsed.target),
+                    MediaQueryOptions(target = parsed.target, videoPartNumber = parsed.videoPartNumber),
                 )
                 val defaultIndex =
                     info.list.indexOfFirst { it.isTarget }.takeIf { it >= 0 } ?: 0

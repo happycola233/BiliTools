@@ -115,6 +115,23 @@ class PaginationUiTest {
         compose.waitForIdle()
         compose.onNodeWithText("视频1").assertIsDisplayed()
         assertEquals(listOf(0), state.selectedItemIndices)
+
+        // 重新解析靠后的分 P 时，选中条目必须自动进入视口，而不是停留在列表开头。
+        val parts = mediaPage(1..12).let { page ->
+            page.copy(
+                type = MediaType.Video, paged = false,
+                list = page.list.mapIndexed { index, item ->
+                    item.copy(aid = 1, cid = 100L + index, page = index + 1, isTarget = index == 10)
+                },
+            )
+        }
+        compose.runOnIdle { state = state.withNewList(parts, 1, ParseScrollRequest(1, ++requestId)) }
+        compose.onNodeWithText("视频11").assertIsDisplayed()
+        assertEquals(listOf(10), state.selectedItemIndices)
+        capture("parse-part-${mode.name.lowercase()}-$lastId")
+        compose.onNode(hasScrollToIndexAction()).performScrollToIndex(0)
+        compose.onNodeWithText("视频1").assertIsDisplayed()
+        assertEquals(listOf(10), state.selectedItemIndices)
     }
 
     private fun verifyHistory(mode: AppThemeMode, lastId: Int = 36) {

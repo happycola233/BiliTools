@@ -287,7 +287,6 @@
     <string name="download_delete_with_file">ลบไฟล์ที่ดาวน์โหลดด้วย</string>
     <string name="download_delete_confirm_task">ลบการดาวน์โหลดนี้หรือไม่</string>
     <string name="download_delete_confirm_group">ลบกลุ่มดาวน์โหลดนี้และงานทั้งหมดในกลุ่มหรือไม่</string>
-    <string name="download_task_params">ตัวเลือก: %1$s</string>
     <string name="download_time_unknown">ไม่ทราบเวลา</string>
     <string name="downloads_reparse">แยกวิเคราะห์อีกครั้ง</string>
     <string name="downloads_view_details">ดูรายละเอียด</string>

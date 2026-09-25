@@ -287,7 +287,6 @@
     <string name="download_delete_with_file">ダウンロードしたファイルも削除します</string>
     <string name="download_delete_confirm_task">このダウンロードを削除しますか?</string>
     <string name="download_delete_confirm_group">このダウンロード グループとそのすべてのタスクを削除しますか?</string>
-    <string name="download_task_params">オプション: %1$s</string>
     <string name="download_time_unknown">時期不明</string>
     <string name="downloads_reparse">再度解析する</string>
     <string name="downloads_view_details">詳細を見る</string>

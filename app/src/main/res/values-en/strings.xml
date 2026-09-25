@@ -287,7 +287,6 @@
     <string name="download_delete_with_file">Also delete downloaded files</string>
     <string name="download_delete_confirm_task">Delete this download?</string>
     <string name="download_delete_confirm_group">Delete this download group and all its tasks?</string>
-    <string name="download_task_params">Options: %1$s</string>
     <string name="download_time_unknown">Time unknown</string>
     <string name="downloads_reparse">Parse again</string>
     <string name="downloads_view_details">View details</string>

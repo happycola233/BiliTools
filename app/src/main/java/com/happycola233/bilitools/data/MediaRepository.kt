@@ -74,7 +74,9 @@ class MediaRepository(
         if (!second.isNullOrBlank()) {
             val parsedSecond = MediaInputClassifier.parseDirectId(second)
             when (parsedSecond?.type) {
-                MediaType.Video,
+                MediaType.Video -> return parsedSecond.copy(
+                    videoPartNumber = url.queryParameter("p")?.toIntOrNull()?.takeIf { it > 0 },
+                )
                 MediaType.Music,
                 MediaType.MusicList,
                 MediaType.Opus,
@@ -387,6 +389,12 @@ class MediaRepository(
                     tabs = sectionOfTarget.episodes.map { MediaTab(it.id, it.title) },
                 )
             }
+        }
+
+        // 分 P 定位在最终列表上处理，普通投稿和合集内的多 P 投稿沿用同一规则。
+        if (!options.collection && options.videoPartNumber != null) {
+            val targetIndex = list.indexOfFirst { it.page == options.videoPartNumber }.coerceAtLeast(0)
+            list = list.mapIndexed { index, item -> item.copy(isTarget = index == targetIndex) }
         }
 
         val thumbs = buildList {

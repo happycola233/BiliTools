@@ -106,6 +106,7 @@ import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.model.DownloadGroup
 import com.happycola233.bilitools.data.model.DownloadItem
 import com.happycola233.bilitools.data.model.DownloadMediaParams
+import com.happycola233.bilitools.data.model.DownloadMessageCode
 import com.happycola233.bilitools.data.model.DownloadProgressRules
 import com.happycola233.bilitools.data.model.DownloadStatus
 import com.happycola233.bilitools.data.model.DownloadTaskType
@@ -1470,7 +1471,7 @@ private fun buildTaskDetailText(
         } else {
             listOfNotNull(
                 context.getString(R.string.download_status_success),
-                item.localizedEmbedWarning(context),
+                item.localizedEmbedWarning(context, excludedCodes = setOf(DownloadMessageCode.EmbedSubtitlesUnavailable)),
             ).joinToString(" · ")
         }
 
@@ -1481,9 +1482,7 @@ private fun buildTaskDetailText(
 }
 
 private fun buildTaskParamsText(context: Context, item: DownloadItem): String? =
-    buildMediaParams(context, item.mediaParams?.localized(context), item.fileName, item.taskType)?.let {
-        context.getString(R.string.download_task_params, it)
-    }
+    buildMediaParams(context, item.mediaParams?.localized(context), item.fileName, item.taskType)
 
 /** 字节单位与数值一起换行，避免窄屏只把 MB 挤到下一行。 */
 private fun String.keepSizeUnitsTogether(): String =

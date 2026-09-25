@@ -287,7 +287,6 @@
     <string name="download_delete_with_file">Eliminar también archivos descargados</string>
     <string name="download_delete_confirm_task">¿Eliminar esta descarga?</string>
     <string name="download_delete_confirm_group">¿Eliminar este grupo de descarga y todas sus tareas?</string>
-    <string name="download_task_params">Opciones: %1$s</string>
     <string name="download_time_unknown">Hora desconocida</string>
     <string name="downloads_reparse">Analizar de nuevo</string>
     <string name="downloads_view_details">Ver detalles</string>

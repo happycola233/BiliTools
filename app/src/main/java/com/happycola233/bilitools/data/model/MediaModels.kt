@@ -285,6 +285,8 @@ data class ParsedInput(
     val id: String,
     val type: MediaType? = null,
     val target: Long? = null,
+    /** 视频链接 p 参数指定的分 P 序号，从 1 开始。 */
+    val videoPartNumber: Int? = null,
 )
 
 data class MediaQueryOptions(
@@ -296,4 +298,6 @@ data class MediaQueryOptions(
     val includeOptionalVideoTags: Boolean = true,
     /** 直接解析 au 时获取标签和 UP 资料；列表预览只请求歌曲主体，避免两次旁路请求。 */
     val includeOptionalMusicExtras: Boolean = true,
+    /** 指定视频分 P，与列表分页的 page、合集分区的 target 分开。 */
+    val videoPartNumber: Int? = null,
 )

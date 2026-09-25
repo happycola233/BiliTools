@@ -129,6 +129,20 @@ class DownloadTextLocalizationTest {
         }
     }
 
+    @Test
+    fun summaryCanOmitUnavailableSubtitlesWithoutHidingEmbeddingFailures() {
+        val context = languageContext("zh-Hans")
+        val messages = listOf(
+            DownloadMessage(DownloadMessageCode.EmbedSubtitlesUnavailable),
+            DownloadMessage(DownloadMessageCode.EmbedWriteFailed),
+        )
+        val item = task().copy(embeddingMessages = messages, embedWarning = "旧字幕提示")
+        val excluded = setOf(DownloadMessageCode.EmbedSubtitlesUnavailable)
+        assertEquals(messages.last().resolve(context), item.localizedEmbedWarning(context, excluded))
+        assertEquals(messages.joinToString(" · ") { it.resolve(context) }, item.localizedEmbedWarning(context))
+        assertNull(item.copy(embeddingMessages = messages.take(1)).localizedEmbedWarning(context, excluded))
+    }
+
     private fun task() = DownloadItem(
         id = 1,
         groupId = 1,

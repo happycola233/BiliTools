@@ -43,6 +43,8 @@ import com.happycola233.bilitools.data.model.DownloadEmbeddedMetadata
 import com.happycola233.bilitools.data.model.DownloadGroup
 import com.happycola233.bilitools.data.model.DownloadItem
 import com.happycola233.bilitools.data.model.DownloadMediaParams
+import com.happycola233.bilitools.data.model.DownloadMessage
+import com.happycola233.bilitools.data.model.DownloadMessageCode
 import com.happycola233.bilitools.data.model.DownloadStatus
 import com.happycola233.bilitools.data.model.DownloadTaskType
 import com.happycola233.bilitools.ui.theme.AppSurfaces
@@ -71,7 +73,10 @@ class DownloadsGroupCardTest {
             publishedDate = "2026-09-01", originalUrl = sourceUrl,
         ),
         tasks = listOf(
-            task(1, DownloadTaskType.AudioVideo, "音视频", "mp4", 72),
+            task(1, DownloadTaskType.AudioVideo, "音视频", "mp4", 72).copy(
+                embedWarning = "没有可用字幕",
+                embeddingMessages = listOf(DownloadMessage(DownloadMessageCode.EmbedSubtitlesUnavailable)),
+            ),
             task(2, DownloadTaskType.Video, "视频", "mp4", 64),
             task(3, DownloadTaskType.Audio, "音频", "m4a", 8),
             task(4, DownloadTaskType.Subtitle, "中文字幕", "srt", 1),
@@ -158,6 +163,9 @@ class DownloadsGroupCardTest {
         for (size in listOf("72.0 MB", "64.0 MB", "8.0 MB")) {
             compose.onNodeWithText(size.replace(' ', '\u00A0'), substring = true).performScrollTo().assertIsDisplayed()
         }
+        compose.onNodeWithText("没有可用字幕", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("参数：", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("1080P 高清 / AVC (H.264) / 192K", substring = true).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("1.0 MB", substring = true).assertDoesNotExist()
         compose.onNodeWithText("2.0 MB").assertDoesNotExist()
         compose.runOnIdle { expanded = false; selectionMode = true }
@@ -236,6 +244,7 @@ class DownloadsGroupCardTest {
         compose.mainClock.autoAdvance = true
         compose.onNodeWithText("Download/BiliTools/夏日的光影").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Download/BiliTools/夏日的光影/夏日光影-音视频.mp4").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("没有可用字幕").performScrollTo().assertIsDisplayed()
         capture("details-file-${mode.name}", sheet)
         compose.onNodeWithText("Download/BiliTools/夏日的光影").performScrollTo()
             .performSemanticsAction(SemanticsActions.OnLongClick) { it() }

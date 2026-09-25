@@ -287,7 +287,6 @@
     <string name="download_delete_with_file">同時刪除已下載的檔案</string>
     <string name="download_delete_confirm_task">確定要刪除該任務嗎？</string>
     <string name="download_delete_confirm_group">確定要刪除該任務組嗎？此操作將刪除組內所有任務。</string>
-    <string name="download_task_params">引數：%1$s</string>
     <string name="download_time_unknown">時間未知</string>
     <string name="downloads_reparse">重新解析</string>
     <string name="downloads_view_details">檢視詳細資訊</string>

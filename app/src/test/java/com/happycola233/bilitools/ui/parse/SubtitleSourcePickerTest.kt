@@ -198,8 +198,16 @@ class SubtitleSourcePickerTest {
         }
         compose.onNodeWithText("登录后可获取视频字幕。").assertIsDisplayed()
         compose.onNodeWithText("这些条目暂无可用字幕。").assertDoesNotExist()
+        compose.onNodeWithText("选择语言").assertDoesNotExist()
+        compose.onNodeWithText("字幕语言").assertDoesNotExist()
         state = state.copy(isLoggedIn = true)
         compose.onNodeWithText("这些条目暂无可用字幕。").assertIsDisplayed()
+        compose.onNodeWithText("选择语言").assertDoesNotExist()
+        compose.onNodeWithText("字幕语言").assertDoesNotExist()
+        state = ready
+        compose.onNodeWithText("这些条目暂无可用字幕。").assertDoesNotExist()
+        open()
+        dialogText("中文（简体）").assertIsOn()
     }
 
     @Test fun missingPreviouslyChosenLyricsDoNotIncorrectlyRequireTurningTheFeatureOff() {

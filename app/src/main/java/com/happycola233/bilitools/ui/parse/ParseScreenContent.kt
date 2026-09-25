@@ -2395,7 +2395,7 @@ private fun PageSelectionList(
     LaunchedEffect(pagination.scrollRequest, pagination.pages, interactionEnabled, pagination.appending, pagination.appendError) {
         val request = pagination.scrollRequest ?: return@LaunchedEffect
         if (!interactionEnabled) return@LaunchedEffect
-        val index = pagination.firstIndexAtOrAfter(request.page)
+        val index = request.itemIndex ?: pagination.firstIndexAtOrAfter(request.page)
         if (index != null) {
             pageScroll.scrollToPage(listState, index)
         } else if (pagination.hasMore && pagination.appendError == null) {
