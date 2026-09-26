@@ -250,14 +250,29 @@
     <string name="downloads_multi_hint_has_file">&lt;b&gt;Hapus catatan&lt;/b&gt;&lt;br/&gt;Menyimpan file yang sudah selesai. Menghentikan unduhan aktif dan menghapus tugas serta file sementaranya.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Hapus file&lt;/b&gt;&lt;br/&gt;Menghapus tugas, catatan, dan file.</string>
     <string name="downloads_multi_done_clear">Rekor terhapus: %1$d</string>
     <string name="downloads_multi_done_delete">Tugas diproses: %1$d</string>
-    <string name="downloads_group_progress_compact">%1$d / %2$d · %3$d%%</string>
-    <string name="downloads_group_progress_failed">Beberapa pengunduhan gagal</string>
     <string name="downloads_group_progress_unavailable">Dilewati: %1$d</string>
-    <string name="downloads_group_toggle">Perluas detailnya</string>
     <string name="downloads_group_delete">Hapus grup ini</string>
+    <string name="downloads_group_resolved_summary">%1$d / %2$d selesai</string>
+    <string name="downloads_group_preparing">Menyiapkan</string>
+    <string name="downloads_group_paused">Dijeda</string>
+    <string name="downloads_group_waiting">Menunggu dilanjutkan</string>
+    <plurals name="downloads_group_failed_count">
+        <item quantity="other">%1$d gagal</item>
+    </plurals>
+    <plurals name="downloads_group_missing_count">
+        <item quantity="other">%1$d berkas hilang</item>
+    </plurals>
+    <string name="downloads_group_collapse">Ciutkan berkas</string>
+    <plurals name="downloads_group_task_count">
+        <item quantity="other">%1$d tugas</item>
+    </plurals>
+    <string name="downloads_group_view_tasks">Perluas tugas</string>
+    <string name="downloads_group_collapse_tasks">Ciutkan tugas</string>
+    <string name="downloads_group_view_files">Lihat berkas</string>
+    <string name="downloads_group_pause">Jeda grup</string>
+    <string name="downloads_group_resume">Lanjutkan grup</string>
+    <string name="downloads_group_retry">Coba lagi item yang gagal</string>
     <string name="downloads_group_cover_desc">Sampul video</string>
-    <string name="downloads_group_actions_summary_size">Item: %1$d · %2$s</string>
-    <string name="downloads_group_actions_summary_size_speed">Item: %1$d · %2$s · %3$s</string>
     <string name="downloads_section_downloading">Mengunduh</string>
     <string name="downloads_section_downloaded">Selesai</string>
     <string name="downloads_section_count">Item: %1$d</string>
@@ -289,7 +304,7 @@
     <string name="download_delete_confirm_group">Hapus grup unduhan ini dan semua tugasnya?</string>
     <string name="download_time_unknown">Waktu tidak diketahui</string>
     <string name="downloads_reparse">Parsing lagi</string>
-    <string name="downloads_view_details">Lihat detailnya</string>
+    <string name="downloads_view_details">Detail</string>
     <string name="downloads_details_title">Unduh detailnya</string>
     <string name="downloads_details_source">Informasi dasar</string>
     <string name="downloads_details_storage">File dan lokasi</string>

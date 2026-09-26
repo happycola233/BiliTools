@@ -250,14 +250,31 @@
     <string name="downloads_multi_hint_has_file">&lt;b&gt;Clear records&lt;/b&gt;&lt;br/&gt;Keeps completed files. Stops active downloads and removes their tasks and temporary files.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Delete files&lt;/b&gt;&lt;br/&gt;Removes tasks, records and files.</string>
     <string name="downloads_multi_done_clear">Records cleared: %1$d</string>
     <string name="downloads_multi_done_delete">Tasks processed: %1$d</string>
-    <string name="downloads_group_progress_compact">%1$d / %2$d · %3$d%%</string>
-    <string name="downloads_group_progress_failed">Some downloads failed</string>
     <string name="downloads_group_progress_unavailable">Skipped: %1$d</string>
-    <string name="downloads_group_toggle">Expand details</string>
     <string name="downloads_group_delete">Delete this group</string>
+    <string name="downloads_group_resolved_summary">%1$d / %2$d done</string>
+    <string name="downloads_group_preparing">Preparing</string>
+    <string name="downloads_group_paused">Paused</string>
+    <string name="downloads_group_waiting">Waiting to resume</string>
+    <plurals name="downloads_group_failed_count">
+        <item quantity="other">%1$d failed</item>
+    </plurals>
+    <plurals name="downloads_group_missing_count">
+        <item quantity="one">%1$d file missing</item>
+        <item quantity="other">%1$d files missing</item>
+    </plurals>
+    <string name="downloads_group_collapse">Collapse files</string>
+    <plurals name="downloads_group_task_count">
+        <item quantity="one">%1$d task</item>
+        <item quantity="other">%1$d tasks</item>
+    </plurals>
+    <string name="downloads_group_view_tasks">Expand tasks</string>
+    <string name="downloads_group_collapse_tasks">Collapse tasks</string>
+    <string name="downloads_group_view_files">View files</string>
+    <string name="downloads_group_pause">Pause group</string>
+    <string name="downloads_group_resume">Resume group</string>
+    <string name="downloads_group_retry">Retry failed items</string>
     <string name="downloads_group_cover_desc">Video cover</string>
-    <string name="downloads_group_actions_summary_size">Items: %1$d · %2$s</string>
-    <string name="downloads_group_actions_summary_size_speed">Items: %1$d · %2$s · %3$s</string>
     <string name="downloads_section_downloading">Downloading</string>
     <string name="downloads_section_downloaded">Completed</string>
     <string name="downloads_section_count">Items: %1$d</string>
@@ -289,7 +306,7 @@
     <string name="download_delete_confirm_group">Delete this download group and all its tasks?</string>
     <string name="download_time_unknown">Time unknown</string>
     <string name="downloads_reparse">Parse again</string>
-    <string name="downloads_view_details">View details</string>
+    <string name="downloads_view_details">Details</string>
     <string name="downloads_details_title">Download details</string>
     <string name="downloads_details_source">Basic information</string>
     <string name="downloads_details_storage">Files and location</string>

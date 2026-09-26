@@ -9,6 +9,8 @@ import javax.net.ssl.SSLHandshakeException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -250,6 +252,39 @@ class ResumableDownloaderTest {
         withTimeout(1500) { job.cancelAndJoin() }
         assertEquals(1, server.requestCount)
         // Windows 下打开的文件不能删除；确保取消返回时读取与写入资源均已释放。
+        assertTrue(target.tempFile.delete())
+    }
+
+    @Test fun stalledReadsStillPublishProgressAndNoReporterSurvivesCancellation() = runBlocking(Dispatchers.IO) {
+        val server = server().apply {
+            enqueue(MockResponse.Builder().body("data".repeat(32768))
+                .throttleBody(65_536, 6, TimeUnit.SECONDS).build())
+        }
+        val target = target(server.url("/video").toString())
+        val reports = Channel<DownloadTransferEstimate>(Channel.UNLIMITED)
+        val transferClient = client().newBuilder().readTimeout(15, TimeUnit.SECONDS).build().also(clients::add)
+        val job = launch {
+            ResumableDownloader(transferClient).download(target) { _, _, speed, eta ->
+                reports.trySend(DownloadTransferEstimate(speed, eta))
+            }
+        }
+        try {
+            withTimeout(4_000) {
+                var sample = reports.receive()
+                while (sample.speedBytesPerSec == 0L) sample = reports.receive()
+                assertNotNull(sample.etaSeconds)
+            }
+            withTimeout(4_000) {
+                var sample = reports.receive()
+                while (sample.speedBytesPerSec > 0L) sample = reports.receive()
+                assertNull("读取阻塞后不能继续保留旧的完成时间", sample.etaSeconds)
+            }
+        } finally {
+            withTimeout(1_500) { job.cancelAndJoin() }
+        }
+        while (reports.tryReceive().isSuccess) { /* 清空取消前已发布的报告。 */ }
+        delay(350)
+        assertTrue("取消后不能再发布旧速度", reports.tryReceive().isFailure)
         assertTrue(target.tempFile.delete())
     }
 

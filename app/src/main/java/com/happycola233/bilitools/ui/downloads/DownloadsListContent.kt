@@ -11,7 +11,6 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -20,18 +19,14 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -44,10 +39,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -62,16 +54,14 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -81,21 +71,17 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import coil3.compose.AsyncImage
-import coil3.request.ImageRequest
-import coil3.request.crossfade
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.happycola233.bilitools.core.formatEstimatedTime
 import com.happycola233.bilitools.core.localized
@@ -114,7 +100,6 @@ import com.happycola233.bilitools.data.model.isManagedTransfer
 import com.happycola233.bilitools.data.model.isResolvedWithoutFailure
 import com.happycola233.bilitools.ui.haptics.HapticThresholdGate
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
-import com.happycola233.bilitools.ui.theme.AppAccents
 import com.happycola233.bilitools.ui.theme.AppDestructiveColors
 import com.happycola233.bilitools.ui.theme.AppSurfaces
 import kotlinx.coroutines.delay
@@ -135,11 +120,6 @@ private enum class DownloadsProgressVisualState {
     WaveIndeterminate,
     FlatDeterminate,
 }
-
-private data class DownloadsGroupActionState(
-    val hasActiveDownloads: Boolean,
-    val hasUserPausedDownloads: Boolean,
-)
 
 private const val GROUP_FADE_IN_DURATION_MILLIS = 180
 private const val GROUP_FADE_OUT_DURATION_MILLIS = 140
@@ -262,6 +242,7 @@ internal fun DownloadsListContent(
     onTaskDelete: (DownloadItem) -> Unit,
     onTaskClick: (DownloadItem, Rect) -> Unit,
     modifier: Modifier = Modifier,
+    selectionMotion: DownloadsSelectionMotion = rememberDownloadsSelectionMotion(selectionMode),
 ) {
     val listState = rememberLazyListState()
     val sections = remember(groups, collapsedSections) {
@@ -276,6 +257,7 @@ internal fun DownloadsListContent(
     val groupPlacementSpec = rememberDownloadsGroupPlacementSpec(
         visibleExpandedGroupIds = visibleExpandedGroupIds,
         currentGroupIds = currentGroupIds,
+        selectionTransitionRunning = selectionMotion.isRunning,
     )
 
     LazyColumn(
@@ -322,6 +304,7 @@ internal fun DownloadsListContent(
                         DownloadsGroupCard(
                             group = group,
                             selectionMode = selectionMode,
+                            selectionMotion = selectionMotion,
                             selected = selectedGroupIds.contains(group.id),
                             expanded = expandedGroupIds.contains(group.id),
                             swiped = swipedGroupId == group.id,
@@ -350,6 +333,7 @@ internal fun DownloadsListContent(
                     DownloadsGroupCard(
                         group = group,
                         selectionMode = selectionMode,
+                        selectionMotion = selectionMotion,
                         selected = selectedGroupIds.contains(group.id),
                         expanded = expandedGroupIds.contains(group.id),
                         swiped = swipedGroupId == group.id,
@@ -382,6 +366,7 @@ internal fun DownloadsListContent(
 private fun rememberDownloadsGroupPlacementSpec(
     visibleExpandedGroupIds: Set<Long>,
     currentGroupIds: Set<Long>,
+    selectionTransitionRunning: Boolean,
 ): FiniteAnimationSpec<IntOffset>? {
     var suppressPlacementAnimation by remember { mutableStateOf(false) }
     val previousVisibleExpandedGroupIds = remember { arrayOf(visibleExpandedGroupIds.toSet()) }
@@ -406,8 +391,8 @@ private fun rememberDownloadsGroupPlacementSpec(
         suppressPlacementAnimation = false
     }
 
-    // During a group height animation, placement animation chases every layout frame and lags.
-    return if (hasVisibleGroupHeightChange || suppressPlacementAnimation) {
+    // 卡片尺寸和底部留白已随模式切换逐帧变化，列表不能再对这些位移追加一层追赶动画。
+    return if (selectionTransitionRunning || hasVisibleGroupHeightChange || suppressPlacementAnimation) {
         null
     } else {
         downloadsGroupPlacementSpec
@@ -504,11 +489,12 @@ internal fun DownloadsGroupCard(
     onTaskDelete: (DownloadItem) -> Unit,
     onTaskClick: (DownloadItem, Rect) -> Unit,
     modifier: Modifier = Modifier,
+    selectionMotion: DownloadsSelectionMotion = rememberDownloadsSelectionMotion(selectionMode),
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
     val haptics = rememberAppHaptics()
-    val errorColor = MaterialTheme.colorScheme.error
     val coverPlaceholderColor = AppSurfaces.insetContainerColor
     val scope = rememberCoroutineScope()
     val deleteActionWidth = 80.dp
@@ -524,7 +510,11 @@ internal fun DownloadsGroupCard(
     var deleteIconOpen by remember(group.id) { mutableStateOf(false) }
     val interactionSource = remember(group.id) { MutableInteractionSource() }
     val deleteThresholdGate = remember(group.id) { HapticThresholdGate() }
-    // 停靠后只向左延长背景：右边缘固定，与条目始终间隔 8dp，图标留在原来的 80dp 操作区。
+    val currentSwiped by rememberUpdatedState(swiped)
+    val currentAnyGroupSwiped by rememberUpdatedState(anyGroupSwiped)
+    val currentOnSwipedGroupChange by rememberUpdatedState(onSwipedGroupChange)
+    val currentOnDelete by rememberUpdatedState(onDelete)
+    // 停靠后向 start 延长背景，end 边缘固定；RTL 时整套操作区随布局镜像。
     val deleteContainerWidth = with(density) {
         (-swipeOffsetX.value).toDp() - deleteActionGap
     }.coerceAtLeast(deleteActionWidth)
@@ -534,7 +524,7 @@ internal fun DownloadsGroupCard(
         } else {
             AppSurfaces.cardContainerColor
         },
-        animationSpec = tween(durationMillis = 180),
+        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
         label = "downloadsGroupContainerColor",
     )
     val groupHeadlineColor by animateColorAsState(
@@ -543,7 +533,7 @@ internal fun DownloadsGroupCard(
         } else {
             MaterialTheme.colorScheme.onSurface
         },
-        animationSpec = tween(durationMillis = 180),
+        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
         label = "downloadsGroupHeadlineColor",
     )
     val groupSupportingColor by animateColorAsState(
@@ -552,26 +542,8 @@ internal fun DownloadsGroupCard(
         } else {
             MaterialTheme.colorScheme.onSurfaceVariant
         },
-        animationSpec = tween(durationMillis = 180),
+        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
         label = "downloadsGroupSupportingColor",
-    )
-    val groupAccentColor by animateColorAsState(
-        targetValue = if (selected) {
-            MaterialTheme.colorScheme.onPrimaryContainer
-        } else {
-            MaterialTheme.colorScheme.primary
-        },
-        animationSpec = tween(durationMillis = 180),
-        label = "downloadsGroupAccentColor",
-    )
-    val groupIconColor by animateColorAsState(
-        targetValue = if (selected) {
-            MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-        } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
-        },
-        animationSpec = tween(durationMillis = 180),
-        label = "downloadsGroupIconColor",
     )
     val groupDividerColor by animateColorAsState(
         targetValue = if (selected) {
@@ -579,7 +551,7 @@ internal fun DownloadsGroupCard(
         } else {
             MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
         },
-        animationSpec = tween(durationMillis = 180),
+        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
         label = "downloadsGroupDividerColor",
     )
 
@@ -589,38 +561,15 @@ internal fun DownloadsGroupCard(
             savedTasks.all { it.outputMissing } &&
             group.tasks.all { it.status.isResolvedWithoutFailure }
     }
-    val isCompletedGroup = remember(group.tasks) {
-        group.tasks.isNotEmpty() && group.tasks.all { it.status.isResolvedWithoutFailure }
-    }
-    val resolvedCount = remember(group.tasks) {
-        group.tasks.count { it.status.isResolvedWithoutFailure }
-    }
-    val unavailableCount = remember(group.tasks) {
-        group.tasks.count { it.status == DownloadStatus.Unavailable }
-    }
-    val groupProgress = remember(group.tasks) { calculateGroupProgress(group.tasks) }
-    val groupActionState = remember(group.tasks) { resolveDownloadsGroupActionState(group) }
-    val showActionButton = !selectionMode &&
-        (groupActionState.hasActiveDownloads || groupActionState.hasUserPausedDownloads)
-    val coverModel = remember(group.coverUrl, context) {
-        group.coverUrl?.trim()?.takeIf { it.isNotBlank() }?.let { coverUrl ->
-            ImageRequest.Builder(context)
-                .data(coverUrl)
-                .crossfade(true)
-                .build()
+    val presentation = remember(group.tasks) { resolveDownloadsGroupPresentation(group) }
+
+    LaunchedEffect(swiped, anyGroupSwiped) {
+        // 另一个组先停靠时释放本组拖动；旧手指之后的移动和松开不能抢回停靠状态。
+        if (dragging && anyGroupSwiped && !swiped) {
+            dragging = false
+            deleteIconOpen = false
         }
     }
-    val arrowRotation by animateFloatAsState(
-        targetValue = if (expanded && !selectionMode) 180f else 0f,
-        animationSpec = tween(durationMillis = GROUP_ARROW_DURATION_MILLIS),
-        label = "downloadsGroupArrow",
-    )
-    // 展开后头部与内嵌面板之间只留一道窄缝，收起时恢复卡片自身的对称内边距
-    val headerBottomPadding by animateDpAsState(
-        targetValue = if (expanded && !selectionMode) 6.dp else 16.dp,
-        animationSpec = tween(durationMillis = GROUP_EXPAND_DURATION_MILLIS, easing = FastOutSlowInEasing),
-        label = "downloadsGroupHeaderBottomPadding",
-    )
 
     LaunchedEffect(swiped, selectionMode, dragging, swipeRevealOffsetPx) {
         if (dragging) return@LaunchedEffect
@@ -641,65 +590,76 @@ internal fun DownloadsGroupCard(
         modifier = modifier
             .fillMaxWidth()
             .padding(
-                start = if (selectionMode) 10.dp else 16.dp,
-                end = if (selectionMode) 10.dp else 16.dp,
+                start = selectionMotion.cardInset,
+                end = selectionMotion.cardInset,
                 bottom = 8.dp,
             )
-            .pointerInput(group.id, selectionMode, swiped, anyGroupSwiped) {
+            .pointerInput(group.id, selectionMode, density.density, layoutDirection) {
                 if (selectionMode) return@pointerInput
-                detectHorizontalDragGestures(
-                    onDragStart = {
-                        if (anyGroupSwiped && !swiped) {
-                            onSwipedGroupChange(null)
-                        }
-                        dragOffsetX = swipeOffsetX.value
-                        deleteThresholdGate.reset(dragOffsetX <= -swipeDeleteThresholdPx)
-                        dragging = true
-                    },
-                    onHorizontalDrag = { change, dragAmount ->
-                        change.consume()
-                        val target = (dragOffsetX + dragAmount).coerceIn(-size.width.toFloat(), 0f)
-                        dragOffsetX = target
-                        when {
-                            -target >= deleteIconOpenThresholdPx -> deleteIconOpen = true
-                            -target <= deleteIconCloseThresholdPx -> deleteIconOpen = false
-                        }
-                        scope.launch {
-                            swipeOffsetX.snapTo(target)
-                        }
-                        deleteThresholdGate.update(target <= -swipeDeleteThresholdPx) { readyToDelete ->
-                            if (readyToDelete) haptics.thresholdActivate() else haptics.thresholdDeactivate()
-                        }
-                    },
-                    onDragEnd = {
-                        dragging = false
-                        val finalOffset = dragOffsetX
-                        deleteIconOpen = finalOffset <= -swipeDeleteThresholdPx
-                        when {
-                            finalOffset <= -swipeDeleteThresholdPx -> {
-                                dragOffsetX = -swipeRevealOffsetPx
-                                onSwipedGroupChange(group.id)
-                                onDelete()
+                // 共享停靠状态只更新回调读到的值，避免收起旧组时重启正在拖动的新组手势。
+                try {
+                    detectHorizontalDragGestures(
+                        onDragStart = {
+                            if (currentAnyGroupSwiped && !currentSwiped) {
+                                currentOnSwipedGroupChange(null)
                             }
+                            dragOffsetX = swipeOffsetX.value
+                            deleteThresholdGate.reset(dragOffsetX <= -swipeDeleteThresholdPx)
+                            dragging = true
+                        },
+                        onHorizontalDrag = drag@{ change, dragAmount ->
+                            change.consume()
+                            if (!dragging) return@drag
+                            // offset 使用逻辑方向，原始手势是物理方向；统一后阈值和停靠逻辑无需分叉。
+                            val logicalDelta = if (layoutDirection == LayoutDirection.Rtl) -dragAmount else dragAmount
+                            val target = (dragOffsetX + logicalDelta).coerceIn(-size.width.toFloat(), 0f)
+                            dragOffsetX = target
+                            when {
+                                -target >= deleteIconOpenThresholdPx -> deleteIconOpen = true
+                                -target <= deleteIconCloseThresholdPx -> deleteIconOpen = false
+                            }
+                            scope.launch {
+                                swipeOffsetX.snapTo(target)
+                            }
+                            deleteThresholdGate.update(target <= -swipeDeleteThresholdPx) { readyToDelete ->
+                                if (readyToDelete) haptics.thresholdActivate() else haptics.thresholdDeactivate()
+                            }
+                        },
+                        onDragEnd = end@{
+                            if (!dragging) return@end
+                            dragging = false
+                            val finalOffset = dragOffsetX
+                            deleteIconOpen = finalOffset <= -swipeDeleteThresholdPx
+                            when {
+                                finalOffset <= -swipeDeleteThresholdPx -> {
+                                    dragOffsetX = -swipeRevealOffsetPx
+                                    currentOnSwipedGroupChange(group.id)
+                                    currentOnDelete()
+                                }
 
-                            finalOffset <= -(swipeRevealOffsetPx / 2f) -> {
-                                dragOffsetX = -swipeRevealOffsetPx
-                                onSwipedGroupChange(group.id)
-                            }
+                                finalOffset <= -(swipeRevealOffsetPx / 2f) -> {
+                                    dragOffsetX = -swipeRevealOffsetPx
+                                    currentOnSwipedGroupChange(group.id)
+                                }
 
-                            else -> {
-                                dragOffsetX = 0f
-                                onSwipedGroupChange(null)
+                                else -> {
+                                    dragOffsetX = 0f
+                                    currentOnSwipedGroupChange(null)
+                                }
                             }
-                        }
-                    },
-                    onDragCancel = {
+                        },
+                        onDragCancel = {
+                            dragging = false
+                            deleteIconOpen = false
+                        },
+                    )
+                } finally {
+                    // pointerInput 被取消（如进入多选）时不保证调用 onDragCancel，仍需释放回弹。
+                    if (dragging) {
                         dragging = false
                         deleteIconOpen = false
-                        dragOffsetX = if (swiped) -swipeRevealOffsetPx else 0f
-                        onSwipedGroupChange(if (swiped) group.id else null)
-                    },
-                )
+                    }
+                }
             },
     ) {
         if (!selectionMode) {
@@ -767,126 +727,29 @@ internal fun DownloadsGroupCard(
                 ),
         ) {
             Column {
-                Row(
-                    verticalAlignment = Alignment.Top,
-                    modifier = Modifier.padding(
-                        start = if (selectionMode) 12.dp else 16.dp,
-                        end = if (selectionMode) 12.dp else 16.dp,
-                        top = 16.dp,
-                        bottom = headerBottomPadding,
-                    ),
-                ) {
-                    AnimatedVisibility(visible = selectionMode) {
-                        Checkbox(
-                            checked = selected,
-                            onCheckedChange = { next ->
-                                haptics.toggle(next)
-                                onToggleSelection()
-                            },
-                            colors = AppAccents.checkboxColors(),
-                            modifier = Modifier.padding(end = 6.dp).size(40.dp),
-                        )
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .size(
-                                width = if (selectionMode) 72.dp else 80.dp,
-                                height = if (selectionMode) 50.dp else 56.dp,
-                            )
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(coverPlaceholderColor),
-                    ) {
-                        AsyncImage(
-                            model = coverModel,
-                            contentDescription = stringResource(R.string.downloads_group_cover_desc),
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    }
-
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .align(Alignment.CenterVertically)
-                            .padding(
-                                start = if (selectionMode) 12.dp else 16.dp,
-                                end = if (selectionMode) 0.dp else 8.dp,
-                            ),
-                    ) {
-                        Text(
-                            text = group.title,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = groupHeadlineColor,
-                            maxLines = if (expanded && !selectionMode) Int.MAX_VALUE else 2,
-                            overflow = TextOverflow.Ellipsis,
-                            textDecoration = if (allMissing) TextDecoration.LineThrough else TextDecoration.None,
-                            modifier = Modifier
-                                .animateContentSize(
-                                    animationSpec = tween(
-                                        durationMillis = GROUP_EXPAND_DURATION_MILLIS,
-                                        easing = FastOutSlowInEasing,
-                                    ),
-                                    alignment = Alignment.TopStart,
-                                )
-                                .alpha(if (allMissing) 0.6f else 1f),
-                        )
-
-                        // 标题、时间和进度共用封面右侧这一列；时间允许换行，但不会流到封面下方。
-                        Text(
-                            text = formatDownloadCreatedAt(context, group.createdAt),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = groupSupportingColor,
-                            modifier = Modifier.padding(top = 6.dp),
-                        )
-
-                        if (!isCompletedGroup || unavailableCount > 0) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(top = 8.dp),
-                            ) {
-                                DownloadProgressIndicator(
-                                    visualState = resolveDownloadsGroupProgressVisualState(groupActionState),
-                                    progress = groupProgress,
-                                    animateStateChange = true,
-                                    animateProgress = true,
-                                    modifier = Modifier.weight(1f),
-                                )
-
-                                Text(
-                                    text = buildGroupProgressSummaryText(
-                                        context = context,
-                                        resolved = resolvedCount,
-                                        totalCount = group.tasks.size,
-                                        progress = groupProgress,
-                                        hasFailedTask = group.tasks.any { it.status == DownloadStatus.Failed },
-                                        unavailableCount = unavailableCount,
-                                        errorColor = errorColor,
-                                        unavailableColor = groupAccentColor,
-                                    ),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = groupHeadlineColor,
-                                    maxLines = 1,
-                                    modifier = Modifier.padding(start = 8.dp),
-                                )
-                            }
+                DownloadsGroupHeader(
+                    group = group,
+                    presentation = presentation,
+                    selectionMode = selectionMode,
+                    selectionMotion = selectionMotion,
+                    selected = selected,
+                    expanded = expanded,
+                    allMissing = allMissing,
+                    headlineColor = groupHeadlineColor,
+                    supportingColor = groupSupportingColor,
+                    coverPlaceholderColor = coverPlaceholderColor,
+                    onToggleSelection = onToggleSelection,
+                    onToggleExpanded = onToggleExpanded,
+                    onAction = {
+                        when (presentation.action) {
+                            DownloadsGroupAction.Pause -> onPauseGroup()
+                            DownloadsGroupAction.Resume -> onResumeGroup()
+                            DownloadsGroupAction.Retry -> group.tasks
+                                .filter { it.status == DownloadStatus.Failed }.forEach(onTaskRetry)
+                            DownloadsGroupAction.Expand -> onToggleExpanded()
                         }
-                    }
-
-                    AnimatedVisibility(
-                        visible = !selectionMode,
-                        modifier = Modifier.align(Alignment.CenterVertically),
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_expand_more_24),
-                            contentDescription = stringResource(R.string.downloads_group_toggle),
-                            tint = groupIconColor,
-                            modifier = Modifier
-                                .size(24.dp)
-                                .graphicsLayer { rotationZ = arrowRotation },
-                        )
-                    }
-                }
+                    },
+                )
 
                 AnimatedVisibility(
                     visible = expanded && !selectionMode,
@@ -920,57 +783,6 @@ internal fun DownloadsGroupCard(
                                 onShowDetails = onShowDetails,
                                 modifier = Modifier.padding(12.dp),
                             )
-                            if (showActionButton) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(start = 16.dp, top = 10.dp, end = 16.dp, bottom = 2.dp),
-                                ) {
-                                    Text(
-                                        text = buildGroupActionsSummaryText(context, group),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = groupHeadlineColor,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.weight(1f),
-                                    )
-
-                                    FilledTonalButton(
-                                        onClick = {
-                                            haptics.tap()
-                                            if (groupActionState.hasActiveDownloads) {
-                                                onPauseGroup()
-                                            } else {
-                                                onResumeGroup()
-                                            }
-                                        },
-                                        shapes = ButtonDefaults.shapes(),
-                                        modifier = Modifier.padding(start = 12.dp),
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(
-                                                if (groupActionState.hasActiveDownloads) {
-                                                    R.drawable.ic_pause_24
-                                                } else {
-                                                    R.drawable.ic_play_arrow_24
-                                                }
-                                            ),
-                                            contentDescription = null,
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(
-                                            if (groupActionState.hasActiveDownloads) {
-                                                stringResource(R.string.download_pause)
-                                            } else {
-                                                stringResource(R.string.download_resume)
-                                            },
-                                        )
-                                    }
-                                }
-                            }
-
                             group.tasks.forEachIndexed { index, task ->
                                 if (index > 0) {
                                     HorizontalDivider(
@@ -1015,6 +827,7 @@ private fun DownloadTaskRow(
     val isUnavailable = item.status == DownloadStatus.Unavailable
     val progress = DownloadProgressRules.normalizeTaskProgress(item.status, item.progress)
     val visualState = resolveDownloadsTaskProgressVisualState(item)
+    val transferEstimate = rememberDownloadTransferEstimate(listOf(item), item.speedBytesPerSec, item.etaSeconds)
     val actionType = when {
         item.status == DownloadStatus.Pending -> TaskAction.Pause
         managed && (item.status == DownloadStatus.Running ||
@@ -1069,7 +882,7 @@ private fun DownloadTaskRow(
                     )
                 } else {
                     Text(
-                        text = buildTaskDetailText(context, item),
+                        text = buildTaskDetailText(context, item, transferEstimate.speedBytesPerSec),
                         style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
                         color = if (item.status == DownloadStatus.Cancelled) {
                             errorColor
@@ -1355,112 +1168,32 @@ private fun buildSectionMetaLabelText(section: DownloadsSectionUi): String {
     if (section.type != DownloadSectionType.Downloading) {
         return countText
     }
+    val transferEstimate = rememberDownloadTransferEstimate(
+        tasks = section.groups.flatMap { it.tasks },
+        speedBytesPerSec = section.speedBytesPerSec,
+        etaSeconds = section.etaSeconds,
+    )
     val speedText = stringResource(
         R.string.download_speed_format,
-        context.formatDownloadBytes(section.speedBytesPerSec),
+        context.formatDownloadBytes(transferEstimate.speedBytesPerSec),
     )
-    val etaText = section.etaSeconds?.let { seconds ->
+    val etaText = transferEstimate.etaSeconds?.let { seconds ->
         stringResource(R.string.download_eta_format, LocalContext.current.formatEstimatedTime(seconds))
     }
     return listOfNotNull(countText, speedText, etaText).joinToString(" · ")
 }
 
-private fun buildGroupProgressSummaryText(
-    context: Context,
-    resolved: Int,
-    totalCount: Int,
-    progress: Int,
-    hasFailedTask: Boolean,
-    unavailableCount: Int,
-    errorColor: Color,
-    unavailableColor: Color,
-): AnnotatedString {
-    val baseText = context.getString(
-        R.string.downloads_group_progress_compact,
-        resolved,
-        totalCount,
-        progress,
-    )
-    if (!hasFailedTask && unavailableCount <= 0) {
-        return AnnotatedString(baseText)
-    }
-    return buildAnnotatedString {
-        append(baseText)
-        if (hasFailedTask) {
-            append(" · ")
-            pushStyle(SpanStyle(color = errorColor))
-            append(context.getString(R.string.downloads_group_progress_failed))
-            pop()
-        }
-        if (unavailableCount > 0) {
-            append(" · ")
-            pushStyle(SpanStyle(color = unavailableColor))
-            append(
-                context.getString(
-                    R.string.downloads_group_progress_unavailable,
-                    unavailableCount,
-                ),
-            )
-            pop()
-        }
-    }
-}
-
-private fun buildGroupActionsSummaryText(
-    context: Context,
-    group: DownloadGroup,
-): String {
-    val taskCount = group.tasks.size
-    val sizeTasks = group.tasks.filter { it.totalBytes > 0L }
-    val downloadedBytes = sizeTasks.sumOf { item ->
-        item.downloadedBytes.coerceAtMost(item.totalBytes)
-    }
-    val totalBytes = sizeTasks.sumOf { it.totalBytes }
-    val sizeSummary = if (totalBytes > 0L) {
-        context.getString(
-            R.string.download_size_progress,
-            context.formatDownloadBytes(downloadedBytes),
-            context.formatDownloadBytes(totalBytes),
-        )
-    } else {
-        val fallbackDownloaded = group.tasks.sumOf { it.downloadedBytes.coerceAtLeast(0L) }
-        context.getString(
-            R.string.download_size_downloaded,
-            context.formatDownloadBytes(fallbackDownloaded),
-        )
-    }
-    val totalSpeedBytesPerSec = group.tasks.sumOf { item ->
-        if (item.status == DownloadStatus.Running) item.speedBytesPerSec else 0L
-    }
-    return if (totalSpeedBytesPerSec > 0L) {
-        context.getString(
-            R.string.downloads_group_actions_summary_size_speed,
-            taskCount,
-            sizeSummary,
-            context.getString(
-                R.string.download_speed_format,
-                context.formatDownloadBytes(totalSpeedBytesPerSec),
-            ),
-        )
-    } else {
-        context.getString(
-            R.string.downloads_group_actions_summary_size,
-            taskCount,
-            sizeSummary,
-        )
-    }
-}
-
 private fun buildTaskDetailText(
     context: Context,
     item: DownloadItem,
+    speedBytesPerSec: Long,
 ): String {
     val progress = DownloadProgressRules.normalizeTaskProgress(item.status, item.progress)
     val baseText = when (item.status) {
         DownloadStatus.Running -> {
             val statusDetail = item.localizedStatusDetail(context)?.takeIf { it.isNotBlank() }
-            val speedText = if (item.speedBytesPerSec > 0L) {
-                context.getString(R.string.download_speed_format, context.formatDownloadBytes(item.speedBytesPerSec))
+            val speedText = if (speedBytesPerSec > 0L) {
+                context.getString(R.string.download_speed_format, context.formatDownloadBytes(speedBytesPerSec))
             } else {
                 ""
             }
@@ -1569,91 +1302,6 @@ private fun buildMediaParams(
         }
 
         else -> null
-    }
-}
-
-private fun calculateDownloadingEtaSeconds(groups: List<DownloadGroup>): Long? {
-    val activeTasks = groups.flatMap { it.tasks }
-        .filter { task ->
-            isManagedTask(task) && when (task.status) {
-                DownloadStatus.Pending,
-                DownloadStatus.Running,
-                DownloadStatus.Paused,
-                DownloadStatus.Merging -> true
-                else -> false
-            }
-        }
-    if (activeTasks.isEmpty()) return null
-
-    val speedBytesPerSec = activeTasks.sumOf { task ->
-        if (task.status == DownloadStatus.Running) task.speedBytesPerSec else 0L
-    }
-    if (speedBytesPerSec <= 0L) return null
-
-    val sizeTasks = activeTasks.filter { it.totalBytes > 0L }
-    if (sizeTasks.isEmpty()) return null
-
-    val totalBytes = sizeTasks.sumOf { it.totalBytes }
-    val downloadedBytes = sizeTasks.sumOf { task ->
-        task.downloadedBytes.coerceAtMost(task.totalBytes)
-    }
-    return if (totalBytes > downloadedBytes) {
-        (totalBytes - downloadedBytes) / speedBytesPerSec
-    } else {
-        null
-    }
-}
-
-private fun calculateGroupProgress(tasks: List<DownloadItem>): Int {
-    if (tasks.isEmpty()) return 0
-    val allResolved = tasks.all { it.status.isResolvedWithoutFailure }
-    if (allResolved) return 100
-    val sizeTasks = tasks.filter { it.totalBytes > 0L }
-    if (sizeTasks.isEmpty()) {
-        val average = tasks.sumOf { item ->
-            DownloadProgressRules.normalizeTaskProgress(item.status, item.progress)
-        } / tasks.size
-        return DownloadProgressRules.normalizeAggregateProgress(average, allResolved)
-    }
-    val total = sizeTasks.sumOf { it.totalBytes }
-    if (total <= 0L) return 0
-    val downloaded = sizeTasks.sumOf { item ->
-        item.downloadedBytes.coerceAtMost(item.totalBytes)
-    }
-    val progress = ((downloaded * 100) / total).toInt()
-    return DownloadProgressRules.normalizeAggregateProgress(progress, allResolved)
-}
-
-private fun resolveDownloadsGroupActionState(group: DownloadGroup): DownloadsGroupActionState {
-    var hasActiveDownloads = false
-    var hasUserPausedDownloads = false
-    group.tasks.forEach { item ->
-        when (item.status) {
-            DownloadStatus.Pending -> hasActiveDownloads = true
-            DownloadStatus.Running,
-            DownloadStatus.Merging -> if (isManagedTask(item)) {
-                hasActiveDownloads = true
-            }
-            DownloadStatus.Paused -> if (item.userPaused) {
-                hasUserPausedDownloads = true
-            }
-
-            else -> Unit
-        }
-    }
-    return DownloadsGroupActionState(
-        hasActiveDownloads = hasActiveDownloads,
-        hasUserPausedDownloads = hasUserPausedDownloads,
-    )
-}
-
-private fun resolveDownloadsGroupProgressVisualState(
-    actionState: DownloadsGroupActionState,
-): DownloadsProgressVisualState {
-    return if (actionState.hasActiveDownloads) {
-        DownloadsProgressVisualState.WaveDeterminate
-    } else {
-        DownloadsProgressVisualState.FlatDeterminate
     }
 }
 

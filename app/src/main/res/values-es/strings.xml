@@ -250,14 +250,32 @@
     <string name="downloads_multi_hint_has_file">&lt;b&gt;Borrar registros&lt;/b&gt;&lt;br/&gt;Mantiene archivos completos. Detiene las descargas activas y elimina sus tareas y archivos temporales.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Eliminar archivos&lt;/b&gt;&lt;br/&gt;Elimina tareas, registros y archivos.</string>
     <string name="downloads_multi_done_clear">Registros borrados: %1$d</string>
     <string name="downloads_multi_done_delete">Tareas procesadas: %1$d</string>
-    <string name="downloads_group_progress_compact">%1$d / %2$d · %3$d%%</string>
-    <string name="downloads_group_progress_failed">Algunas descargas fallaron</string>
     <string name="downloads_group_progress_unavailable">Omitido: %1$d</string>
-    <string name="downloads_group_toggle">Ampliar detalles</string>
     <string name="downloads_group_delete">Eliminar este grupo</string>
+    <string name="downloads_group_resolved_summary">Completado: %1$d / %2$d</string>
+    <string name="downloads_group_preparing">Preparando</string>
+    <string name="downloads_group_paused">En pausa</string>
+    <string name="downloads_group_waiting">Esperando reanudación</string>
+    <plurals name="downloads_group_failed_count">
+        <item quantity="one">%1$d fallido</item>
+        <item quantity="other">%1$d fallidos</item>
+    </plurals>
+    <plurals name="downloads_group_missing_count">
+        <item quantity="one">Falta %1$d archivo</item>
+        <item quantity="other">Faltan %1$d archivos</item>
+    </plurals>
+    <string name="downloads_group_collapse">Contraer archivos</string>
+    <plurals name="downloads_group_task_count">
+        <item quantity="one">%1$d tarea</item>
+        <item quantity="other">%1$d tareas</item>
+    </plurals>
+    <string name="downloads_group_view_tasks">Expandir tareas</string>
+    <string name="downloads_group_collapse_tasks">Contraer tareas</string>
+    <string name="downloads_group_view_files">Ver archivos</string>
+    <string name="downloads_group_pause">Pausar grupo</string>
+    <string name="downloads_group_resume">Reanudar grupo</string>
+    <string name="downloads_group_retry">Reintentar elementos fallidos</string>
     <string name="downloads_group_cover_desc">Vídeo de portada</string>
-    <string name="downloads_group_actions_summary_size">Elementos: %1$d · %2$s</string>
-    <string name="downloads_group_actions_summary_size_speed">Elementos: %1$d · %2$s · %3$s</string>
     <string name="downloads_section_downloading">Descargando</string>
     <string name="downloads_section_downloaded">Completado</string>
     <string name="downloads_section_count">Elementos: %1$d</string>
@@ -289,7 +307,7 @@
     <string name="download_delete_confirm_group">¿Eliminar este grupo de descarga y todas sus tareas?</string>
     <string name="download_time_unknown">Hora desconocida</string>
     <string name="downloads_reparse">Analizar de nuevo</string>
-    <string name="downloads_view_details">Ver detalles</string>
+    <string name="downloads_view_details">Detalles</string>
     <string name="downloads_details_title">Descargar detalles</string>
     <string name="downloads_details_source">Información básica</string>
     <string name="downloads_details_storage">Archivos y ubicación</string>

@@ -6,6 +6,8 @@ import android.icu.text.NumberFormat
 import android.icu.util.Measure
 import android.icu.util.MeasureUnit
 
+private val chineseNumberUnitBoundary = Regex("""(?<=\p{Nd})(?=\p{IsHan})|(?<=\p{IsHan})(?=\p{Nd})""")
+
 /** 使用 Android ICU 的数字系统，避免格式化结果随宿主 JVM 的 CLDR 版本变化。 */
 internal fun Context.formatByteCount(bytes: Long): String {
     val units = arrayOf("B", "KB", "MB", "GB", "TB")
@@ -34,6 +36,9 @@ internal fun Context.formatEstimatedTime(totalSeconds: Long): String {
         minutes > 0L -> arrayOf(Measure(minutes, MeasureUnit.MINUTE), Measure(remainingSeconds, MeasureUnit.SECOND))
         else -> arrayOf(Measure(remainingSeconds, MeasureUnit.SECOND))
     }
-    return MeasureFormat.getInstance(resources.configuration.locales[0], MeasureFormat.FormatWidth.SHORT)
+    val locale = resources.configuration.locales[0]
+    val formatted = MeasureFormat.getInstance(locale, MeasureFormat.FormatWidth.SHORT)
         .formatMeasures(*measures)
+    // ICU 中文短格式会连写数字与单位；统一补齐间距，保留平台的简繁体单位和数字格式。
+    return if (locale.language == "zh") formatted.replace(chineseNumberUnitBoundary, " ") else formatted
 }

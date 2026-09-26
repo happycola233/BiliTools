@@ -250,14 +250,29 @@
     <string name="downloads_multi_hint_has_file">&lt;b&gt;Xóa bản ghi&lt;/b&gt;&lt;br/&gt;Giữ các tệp đã hoàn thành. Dừng tải xuống đang hoạt động và xóa các tác vụ cũng như tệp tạm thời của chúng.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Xóa tệp&lt;/b&gt;&lt;br/&gt;Xóa tác vụ, bản ghi và tệp.</string>
     <string name="downloads_multi_done_clear">Đã xóa bản ghi: %1$d</string>
     <string name="downloads_multi_done_delete">Nhiệm vụ được xử lý: %1$d</string>
-    <string name="downloads_group_progress_compact">%1$d / %2$d · %3$d%%</string>
-    <string name="downloads_group_progress_failed">Một số lượt tải xuống không thành công</string>
     <string name="downloads_group_progress_unavailable">Đã bỏ qua: %1$d</string>
-    <string name="downloads_group_toggle">Mở rộng chi tiết</string>
     <string name="downloads_group_delete">Xóa nhóm này</string>
+    <string name="downloads_group_resolved_summary">Đã xong %1$d / %2$d</string>
+    <string name="downloads_group_preparing">Đang chuẩn bị</string>
+    <string name="downloads_group_paused">Đã tạm dừng</string>
+    <string name="downloads_group_waiting">Chờ tiếp tục</string>
+    <plurals name="downloads_group_failed_count">
+        <item quantity="other">%1$d mục thất bại</item>
+    </plurals>
+    <plurals name="downloads_group_missing_count">
+        <item quantity="other">Thiếu %1$d tệp</item>
+    </plurals>
+    <string name="downloads_group_collapse">Thu gọn tệp</string>
+    <plurals name="downloads_group_task_count">
+        <item quantity="other">%1$d tác vụ</item>
+    </plurals>
+    <string name="downloads_group_view_tasks">Mở rộng tác vụ</string>
+    <string name="downloads_group_collapse_tasks">Thu gọn tác vụ</string>
+    <string name="downloads_group_view_files">Xem tệp</string>
+    <string name="downloads_group_pause">Tạm dừng nhóm</string>
+    <string name="downloads_group_resume">Tiếp tục nhóm</string>
+    <string name="downloads_group_retry">Thử lại các mục thất bại</string>
     <string name="downloads_group_cover_desc">Bìa video</string>
-    <string name="downloads_group_actions_summary_size">Mục: %1$d · %2$s</string>
-    <string name="downloads_group_actions_summary_size_speed">Mục: %1$d · %2$s · %3$s</string>
     <string name="downloads_section_downloading">Đang tải xuống</string>
     <string name="downloads_section_downloaded">Đã hoàn thành</string>
     <string name="downloads_section_count">Mục: %1$d</string>
@@ -289,7 +304,7 @@
     <string name="download_delete_confirm_group">Xóa nhóm tải xuống này và tất cả các tác vụ của nó?</string>
     <string name="download_time_unknown">Không rõ thời gian</string>
     <string name="downloads_reparse">Phân tích lại</string>
-    <string name="downloads_view_details">Xem chi tiết</string>
+    <string name="downloads_view_details">Chi tiết</string>
     <string name="downloads_details_title">Chi tiết tải xuống</string>
     <string name="downloads_details_source">Thông tin cơ bản</string>
     <string name="downloads_details_storage">Tập tin và vị trí</string>

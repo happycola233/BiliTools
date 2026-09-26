@@ -59,6 +59,50 @@ class LocalizationResourcesTest {
         assertEquals(source, readStrings(File(resources, "values-b+zh+Hans")))
     }
 
+    @Test
+    fun quantityResourcesCoverEveryLanguageWithValidFormattingArguments() {
+        fun readPlurals(directory: File): Map<String, Map<String, String>> {
+            val result = linkedMapOf<String, Map<String, String>>()
+            directory.listFiles { file -> file.name.startsWith("strings") && file.extension == "xml" }
+                .orEmpty().forEach { file ->
+                    val nodes = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(file).getElementsByTagName("plurals")
+                    for (index in 0 until nodes.length) {
+                        val node = nodes.item(index) as Element
+                        val name = node.getAttribute("name")
+                        assertFalse("Duplicate quantity resource: $directory/$name", result.containsKey(name))
+                        val items = node.getElementsByTagName("item")
+                        val forms = linkedMapOf<String, String>()
+                        for (itemIndex in 0 until items.length) {
+                            val item = items.item(itemIndex) as Element
+                            val quantity = item.getAttribute("quantity")
+                            assertFalse("Duplicate quantity: $directory/$name/$quantity", forms.containsKey(quantity))
+                            forms[quantity] = item.textContent
+                        }
+                        result[name] = forms
+                    }
+                }
+            return result
+        }
+        val source = readPlurals(File(resources, "values"))
+        qualifiers.forEach { qualifier ->
+            val translated = readPlurals(File(resources, "values-$qualifier"))
+            assertEquals("Quantity coverage: $qualifier", source.keys, translated.keys)
+            translated.forEach { (name, forms) ->
+                assertTrue("Missing other form: $qualifier/$name", forms.containsKey("other"))
+                val expected = placeholder.findAll(source.getValue(name).getValue("other")).map { it.value }.toSet()
+                forms.forEach { (quantity, text) ->
+                    assertTrue("Empty quantity: $qualifier/$name/$quantity", text.isNotBlank())
+                    val actual = placeholder.findAll(text).map { it.value }.toSet()
+                    // 阿拉伯语单数、双数可以由名词自身表达数量，其余形式必须保留数字。
+                    if (qualifier == "ar" && quantity in setOf("zero", "one", "two")) {
+                        assertTrue("Invalid quantity arguments: $qualifier/$name/$quantity", expected.containsAll(actual))
+                    } else assertEquals("Quantity arguments: $qualifier/$name/$quantity", expected, actual)
+                }
+            }
+        }
+        assertEquals(source, readPlurals(File(resources, "values-b+zh+Hans")))
+    }
+
     private fun readStrings(directory: File): Map<String, TextResource> {
         assertTrue("Missing locale directory: $directory", directory.isDirectory)
         val result = linkedMapOf<String, TextResource>()

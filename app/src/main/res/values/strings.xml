@@ -296,14 +296,29 @@
 ]]></string>
     <string name="downloads_multi_done_clear">已清除 %1$d 项记录</string>
     <string name="downloads_multi_done_delete">已处理 %1$d 项任务</string>
-    <string name="downloads_group_progress_compact">%1$d/%2$d 项 · %3$d%%</string>
-    <string name="downloads_group_progress_failed">存在失败项</string>
     <string name="downloads_group_progress_unavailable">跳过 %1$d 项</string>
-    <string name="downloads_group_toggle">展开详情</string>
     <string name="downloads_group_delete">删除该组</string>
+    <string name="downloads_group_resolved_summary">%1$d / %2$d 项已完成</string>
+    <string name="downloads_group_preparing">正在准备</string>
+    <string name="downloads_group_paused">已暂停</string>
+    <string name="downloads_group_waiting">等待继续</string>
+    <plurals name="downloads_group_failed_count">
+        <item quantity="other">%1$d 项失败</item>
+    </plurals>
+    <plurals name="downloads_group_missing_count">
+        <item quantity="other">%1$d 个文件已丢失</item>
+    </plurals>
+    <string name="downloads_group_collapse">收起文件</string>
+    <plurals name="downloads_group_task_count">
+        <item quantity="other">%1$d 个任务</item>
+    </plurals>
+    <string name="downloads_group_view_tasks">展开任务</string>
+    <string name="downloads_group_collapse_tasks">收起任务</string>
+    <string name="downloads_group_view_files">查看文件</string>
+    <string name="downloads_group_pause">暂停该组</string>
+    <string name="downloads_group_resume">继续该组</string>
+    <string name="downloads_group_retry">重试失败项</string>
     <string name="downloads_group_cover_desc">视频封面</string>
-    <string name="downloads_group_actions_summary_size">共 %1$d 项 · %2$s</string>
-    <string name="downloads_group_actions_summary_size_speed">共 %1$d 项 · %2$s - %3$s</string>
     <string name="downloads_section_downloading">正在下载</string>
     <string name="downloads_section_downloaded">已完成</string>
     <string name="downloads_section_count">%1$d 项</string>
@@ -335,7 +350,7 @@
     <string name="download_delete_confirm_group">确定要删除该任务组吗？此操作将删除组内所有任务。</string>
     <string name="download_time_unknown">时间未知</string>
     <string name="downloads_reparse">重新解析</string>
-    <string name="downloads_view_details">查看详细信息</string>
+    <string name="downloads_view_details">详细信息</string>
     <string name="downloads_details_title">下载详情</string>
     <string name="downloads_details_source">基本信息</string>
     <string name="downloads_details_storage">文件与保存位置</string>

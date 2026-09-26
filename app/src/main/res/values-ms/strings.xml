@@ -250,14 +250,29 @@
     <string name="downloads_multi_hint_has_file">&lt;b&gt;Kosongkan rekod&lt;/b&gt;&lt;br/&gt;Menyimpan fail yang lengkap. Menghentikan muat turun aktif dan mengalih keluar tugas dan fail sementara mereka.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Padam fail&lt;/b&gt;&lt;br/&gt;Alih keluar tugas, rekod dan fail.</string>
     <string name="downloads_multi_done_clear">Rekod dibersihkan: %1$d</string>
     <string name="downloads_multi_done_delete">Tugasan diproses: %1$d</string>
-    <string name="downloads_group_progress_compact">%1$d / %2$d · %3$d%%</string>
-    <string name="downloads_group_progress_failed">Beberapa muat turun gagal</string>
     <string name="downloads_group_progress_unavailable">Dilangkau: %1$d</string>
-    <string name="downloads_group_toggle">Kembangkan butiran</string>
     <string name="downloads_group_delete">Padamkan kumpulan ini</string>
+    <string name="downloads_group_resolved_summary">%1$d / %2$d selesai</string>
+    <string name="downloads_group_preparing">Menyediakan</string>
+    <string name="downloads_group_paused">Dijeda</string>
+    <string name="downloads_group_waiting">Menunggu untuk disambung</string>
+    <plurals name="downloads_group_failed_count">
+        <item quantity="other">%1$d gagal</item>
+    </plurals>
+    <plurals name="downloads_group_missing_count">
+        <item quantity="other">%1$d fail hilang</item>
+    </plurals>
+    <string name="downloads_group_collapse">Runtuhkan fail</string>
+    <plurals name="downloads_group_task_count">
+        <item quantity="other">%1$d tugas</item>
+    </plurals>
+    <string name="downloads_group_view_tasks">Kembangkan tugas</string>
+    <string name="downloads_group_collapse_tasks">Runtuhkan tugas</string>
+    <string name="downloads_group_view_files">Lihat fail</string>
+    <string name="downloads_group_pause">Jeda kumpulan</string>
+    <string name="downloads_group_resume">Sambung kumpulan</string>
+    <string name="downloads_group_retry">Cuba semula item yang gagal</string>
     <string name="downloads_group_cover_desc">Muka depan video</string>
-    <string name="downloads_group_actions_summary_size">Item: %1$d · %2$s</string>
-    <string name="downloads_group_actions_summary_size_speed">Item: %1$d · %2$s · %3$s</string>
     <string name="downloads_section_downloading">Memuat turun</string>
     <string name="downloads_section_downloaded">Selesai</string>
     <string name="downloads_section_count">Item: %1$d</string>
@@ -289,7 +304,7 @@
     <string name="download_delete_confirm_group">Padamkan kumpulan muat turun ini dan semua tugasnya?</string>
     <string name="download_time_unknown">Masa tidak diketahui</string>
     <string name="downloads_reparse">Huraikan lagi</string>
-    <string name="downloads_view_details">Lihat butiran</string>
+    <string name="downloads_view_details">Butiran</string>
     <string name="downloads_details_title">Muat turun butiran</string>
     <string name="downloads_details_source">Maklumat asas</string>
     <string name="downloads_details_storage">Fail dan lokasi</string>

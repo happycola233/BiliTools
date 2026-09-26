@@ -2093,6 +2093,7 @@ class DownloadRepository(
                     refreshSource = refreshSource,
                     onFailure = { url, attempt, failure ->
                         logSourceFailure(task.id, if (part === task.video) "video" else "audio", part, url, attempt, failure)
+                        updateMergedProgress(task, true, null)
                     },
                 ) { _, _, _, _ ->
                     updateMergedProgress(task, false, null)
@@ -2307,8 +2308,12 @@ class DownloadRepository(
         val total = task.video.totalBytes + task.audio.totalBytes
         val downloaded = task.video.downloadedBytes + task.audio.downloadedBytes
         val speed = task.video.speedBytesPerSec + task.audio.speedBytesPerSec
-        val eta = if (speed > 0 && total > 0 && downloaded < total) {
-            (total - downloaded) / speed
+        val allPartsMeasurable = listOf(task.video, task.audio).all { part ->
+            part.completed || (part.totalBytes > 0 &&
+                (part.downloadedBytes >= part.totalBytes || part.speedBytesPerSec > 0))
+        }
+        val eta = if (allPartsMeasurable && speed > 0 && total > 0 && downloaded < total) {
+            ((total - downloaded + speed - 1) / speed).coerceAtLeast(1)
         } else {
             null
         }
@@ -4611,11 +4616,11 @@ class DownloadRepository(
         override var source: DownloadSource,
         val fileName: String,
         override val tempFile: File,
-        override var downloadedBytes: Long = 0,
-        override var totalBytes: Long = 0,
+        @Volatile override var downloadedBytes: Long = 0,
+        @Volatile override var totalBytes: Long = 0,
         override var etag: String? = null,
         override var lastModified: String? = null,
-        override var speedBytesPerSec: Long = 0,
+        @Volatile override var speedBytesPerSec: Long = 0,
         override var validatorUrl: String? = null,
         override val transferMutex: Mutex = Mutex(),
         val conversionTarget: MediaConversionTarget? = null,
@@ -4625,11 +4630,11 @@ class DownloadRepository(
         override var source: DownloadSource,
         val fileName: String,
         override val tempFile: File,
-        override var downloadedBytes: Long = 0,
-        override var totalBytes: Long = 0,
+        @Volatile override var downloadedBytes: Long = 0,
+        @Volatile override var totalBytes: Long = 0,
         override var etag: String? = null,
         override var lastModified: String? = null,
-        override var speedBytesPerSec: Long = 0,
+        @Volatile override var speedBytesPerSec: Long = 0,
         override var validatorUrl: String? = null,
         override val transferMutex: Mutex = Mutex(),
         var job: Job? = null,

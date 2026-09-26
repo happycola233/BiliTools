@@ -250,14 +250,29 @@
     <string name="downloads_multi_hint_has_file">\n&lt;b&gt;清除記錄&lt;/b&gt;\n&lt;br/&gt;已完成專案僅刪記錄\n&lt;br/&gt;進行中專案會停止並刪除任務及臨時檔案\n&lt;br/&gt;\n&lt;br/&gt;\n&lt;b&gt;刪除檔案&lt;/b&gt;\n&lt;br/&gt;刪除任務、記錄和檔案\n</string>
     <string name="downloads_multi_done_clear">已清除 %1$d 項記錄</string>
     <string name="downloads_multi_done_delete">已處理 %1$d 項任務</string>
-    <string name="downloads_group_progress_compact">%1$d/%2$d 項 · %3$d%%</string>
-    <string name="downloads_group_progress_failed">存在失敗項</string>
     <string name="downloads_group_progress_unavailable">跳過 %1$d 項</string>
-    <string name="downloads_group_toggle">展開詳情</string>
     <string name="downloads_group_delete">刪除該組</string>
+    <string name="downloads_group_resolved_summary">已完成 %1$d / %2$d 項</string>
+    <string name="downloads_group_preparing">正在準備</string>
+    <string name="downloads_group_paused">已暫停</string>
+    <string name="downloads_group_waiting">等待繼續</string>
+    <plurals name="downloads_group_failed_count">
+        <item quantity="other">%1$d 項失敗</item>
+    </plurals>
+    <plurals name="downloads_group_missing_count">
+        <item quantity="other">%1$d 個檔案已遺失</item>
+    </plurals>
+    <string name="downloads_group_collapse">收合檔案</string>
+    <plurals name="downloads_group_task_count">
+        <item quantity="other">%1$d 個任務</item>
+    </plurals>
+    <string name="downloads_group_view_tasks">展開任務</string>
+    <string name="downloads_group_collapse_tasks">收合任務</string>
+    <string name="downloads_group_view_files">查看檔案</string>
+    <string name="downloads_group_pause">暫停此群組</string>
+    <string name="downloads_group_resume">繼續此群組</string>
+    <string name="downloads_group_retry">重試失敗項目</string>
     <string name="downloads_group_cover_desc">影片封面</string>
-    <string name="downloads_group_actions_summary_size">共 %1$d 項 · %2$s</string>
-    <string name="downloads_group_actions_summary_size_speed">共 %1$d 項 · %2$s - %3$s</string>
     <string name="downloads_section_downloading">正在下載</string>
     <string name="downloads_section_downloaded">已完成</string>
     <string name="downloads_section_count">%1$d 項</string>
@@ -289,7 +304,7 @@
     <string name="download_delete_confirm_group">確定要刪除該任務組嗎？此操作將刪除組內所有任務。</string>
     <string name="download_time_unknown">時間未知</string>
     <string name="downloads_reparse">重新解析</string>
-    <string name="downloads_view_details">檢視詳細資訊</string>
+    <string name="downloads_view_details">詳細資訊</string>
     <string name="downloads_details_title">下載詳情</string>
     <string name="downloads_details_source">基本資訊</string>
     <string name="downloads_details_storage">檔案與儲存位置</string>

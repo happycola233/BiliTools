@@ -56,7 +56,7 @@ internal fun DownloadsGroupActions(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             modifier = buttonModifier.weight(1f),
         ) {
-            Icon(painterResource(R.drawable.ic_retry_24), null, Modifier.size(20.dp))
+            Icon(painterResource(R.drawable.ic_restart_alt_24), null, Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
             Text(stringResource(R.string.downloads_reparse), style = textStyle)
         }

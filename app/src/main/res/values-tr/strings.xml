@@ -250,14 +250,29 @@
     <string name="downloads_multi_hint_has_file">&lt;b&gt;Kayıtları temizle&lt;/b&gt;&lt;br/&gt;Tamamlanan dosyaları tutar. Etkin indirmeleri durdurur ve görevlerini ve geçici dosyalarını kaldırır.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Dosyaları sil&lt;/b&gt;&lt;br/&gt;Görevleri, kayıtları ve dosyaları kaldırır.</string>
     <string name="downloads_multi_done_clear">Kayıtlar temizlendi: %1$d</string>
     <string name="downloads_multi_done_delete">İşlenen görevler: %1$d</string>
-    <string name="downloads_group_progress_compact">%1$d / %2$d · %3$d%%</string>
-    <string name="downloads_group_progress_failed">Bazı indirmeler başarısız oldu</string>
     <string name="downloads_group_progress_unavailable">Atlandı: %1$d</string>
-    <string name="downloads_group_toggle">Ayrıntıları genişlet</string>
     <string name="downloads_group_delete">Bu grubu sil</string>
+    <string name="downloads_group_resolved_summary">%1$d / %2$d tamamlandı</string>
+    <string name="downloads_group_preparing">Hazırlanıyor</string>
+    <string name="downloads_group_paused">Duraklatıldı</string>
+    <string name="downloads_group_waiting">Devam etmeyi bekliyor</string>
+    <plurals name="downloads_group_failed_count">
+        <item quantity="other">%1$d başarısız</item>
+    </plurals>
+    <plurals name="downloads_group_missing_count">
+        <item quantity="other">%1$d dosya eksik</item>
+    </plurals>
+    <string name="downloads_group_collapse">Dosyaları daralt</string>
+    <plurals name="downloads_group_task_count">
+        <item quantity="other">%1$d görev</item>
+    </plurals>
+    <string name="downloads_group_view_tasks">Görevleri genişlet</string>
+    <string name="downloads_group_collapse_tasks">Görevleri daralt</string>
+    <string name="downloads_group_view_files">Dosyaları görüntüle</string>
+    <string name="downloads_group_pause">Grubu duraklat</string>
+    <string name="downloads_group_resume">Grubu sürdür</string>
+    <string name="downloads_group_retry">Başarısız öğeleri yeniden dene</string>
     <string name="downloads_group_cover_desc">Video kapağı</string>
-    <string name="downloads_group_actions_summary_size">Öğeler: %1$d · %2$s</string>
-    <string name="downloads_group_actions_summary_size_speed">Öğeler: %1$d · %2$s · %3$s</string>
     <string name="downloads_section_downloading">İndiriliyor</string>
     <string name="downloads_section_downloaded">Tamamlandı</string>
     <string name="downloads_section_count">Öğeler: %1$d</string>
@@ -289,7 +304,7 @@
     <string name="download_delete_confirm_group">Bu indirme grubu ve tüm görevleri silinsin mi?</string>
     <string name="download_time_unknown">Zaman bilinmiyor</string>
     <string name="downloads_reparse">Tekrar ayrıştır</string>
-    <string name="downloads_view_details">Ayrıntıları görüntüle</string>
+    <string name="downloads_view_details">Ayrıntılar</string>
     <string name="downloads_details_title">İndirme ayrıntıları</string>
     <string name="downloads_details_source">Temel bilgiler</string>
     <string name="downloads_details_storage">Dosyalar ve konum</string>

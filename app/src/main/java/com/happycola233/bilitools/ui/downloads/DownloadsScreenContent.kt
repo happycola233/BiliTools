@@ -8,7 +8,6 @@ import android.widget.TextView
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -182,6 +181,7 @@ fun DownloadsScreenContent(
 ) {
     val backdrop = rememberLayerBackdrop()
     val density = LocalDensity.current
+    val selectionMotion = rememberDownloadsSelectionMotion(selectionMode)
     // 页面全出血绘制，内容从主界面底栏后方滚过，列表与底部悬浮控件均需预留底栏净空
     val mainBarBottomInset = mainBottomBarBottomInset()
     val controlsBottomPadding = FloatingControlsDefaults.MainScreenBottomPadding + mainBarBottomInset
@@ -191,9 +191,10 @@ fun DownloadsScreenContent(
         with(density) {
             (FloatingControlsDefaults.DownloadsListBottomPadding + mainBarBottomInset).roundToPx()
         }
-    val extraBottomPaddingPx =
-        if (selectionMode) panelHeightPx + with(density) { 20.dp.roundToPx() } else 0
-    val targetListBottomPaddingDp = with(density) { (baseBottomPaddingPx + extraBottomPaddingPx).toDp() }
+    // 面板本身的高度变化已经有动画，列表留白直接跟随它与全页多选进度，不再嵌套另一条弹簧。
+    val listBottomPaddingDp = with(density) {
+        baseBottomPaddingPx.toDp() + (panelHeightPx.toDp() + 20.dp) * selectionMotion.progress
+    }
     val motionScheme = MaterialTheme.motionScheme
     val downloadsGlassStyle = DownloadsGlassStyle(
         cornerRadiusDp = glassCornerRadiusDp,
@@ -202,10 +203,6 @@ fun DownloadsScreenContent(
         refractionAmountFrac = glassRefractionAmountFrac,
         chromaticAberration = glassChromaticAberration,
         surfaceAlpha = glassSurfaceAlpha,
-    )
-    val listBottomPaddingDp by animateDpAsState(
-        targetValue = targetListBottomPaddingDp,
-        animationSpec = motionScheme.defaultSpatialSpec(),
     )
     var debugExpanded by remember { mutableStateOf(false) }
 
@@ -219,6 +216,7 @@ fun DownloadsScreenContent(
             DownloadsListContent(
                 groups = groups,
                 selectionMode = selectionMode,
+                selectionMotion = selectionMotion,
                 selectedGroupIds = selectedGroupIds,
                 expandedGroupIds = expandedGroupIds,
                 collapsedSections = collapsedSections,
@@ -250,8 +248,8 @@ fun DownloadsScreenContent(
             )
         }
 
-        AnimatedVisibility(
-            visible = selectionMode,
+        selectionMotion.transition.AnimatedVisibility(
+            visible = { it },
             modifier = Modifier.align(Alignment.BottomCenter),
             // 面板内容会自行执行高度动画。这里若再使用从底部展开的尺寸动画，首次快速全选时
             // 两层裁剪边界会短暂不同步，横向截断刚变高的内容。
@@ -287,20 +285,20 @@ fun DownloadsScreenContent(
             )
         }
 
-        AnimatedVisibility(
-            visible = !selectionMode,
+        selectionMotion.transition.AnimatedVisibility(
+            visible = { !it },
             modifier = Modifier.align(Alignment.BottomEnd),
             enter =
                 fadeIn(animationSpec = motionScheme.fastEffectsSpec()) +
                     scaleIn(
                         initialScale = 0.84f,
-                        animationSpec = motionScheme.defaultSpatialSpec(),
+                        animationSpec = motionScheme.fastSpatialSpec(),
                     ),
             exit =
                 fadeOut(animationSpec = motionScheme.fastEffectsSpec()) +
                     scaleOut(
                         targetScale = 0.84f,
-                        animationSpec = motionScheme.fastSpatialSpec(),
+                        animationSpec = motionScheme.defaultSpatialSpec(),
                     ),
         ) {
             DownloadsManageFab(

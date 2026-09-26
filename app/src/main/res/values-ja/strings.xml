@@ -250,14 +250,29 @@
     <string name="downloads_multi_hint_has_file">&lt;b&gt;レコードをクリアします。&lt;/b&gt;&lt;br/&gt;完了したファイルを保持します。アクティブなダウンロードを停止し、そのタスクと一時ファイルを削除します。&lt;br/&gt;&lt;br/&gt;&lt;b&gt;ファイルの削除&lt;/b&gt;&lt;br/&gt;タスク、レコード、およびファイルを削除します。</string>
     <string name="downloads_multi_done_clear">クリアされたレコード: %1$d</string>
     <string name="downloads_multi_done_delete">処理されたタスク: %1$d</string>
-    <string name="downloads_group_progress_compact">%1$d / %2$d · %3$d%%</string>
-    <string name="downloads_group_progress_failed">一部のダウンロードが失敗しました</string>
     <string name="downloads_group_progress_unavailable">スキップされました: %1$d</string>
-    <string name="downloads_group_toggle">詳細を展開する</string>
     <string name="downloads_group_delete">このグループを削除します</string>
+    <string name="downloads_group_resolved_summary">%1$d / %2$d 件完了</string>
+    <string name="downloads_group_preparing">準備中</string>
+    <string name="downloads_group_paused">一時停止中</string>
+    <string name="downloads_group_waiting">再開待ち</string>
+    <plurals name="downloads_group_failed_count">
+        <item quantity="other">%1$d 件失敗</item>
+    </plurals>
+    <plurals name="downloads_group_missing_count">
+        <item quantity="other">%1$d 個のファイルが見つかりません</item>
+    </plurals>
+    <string name="downloads_group_collapse">ファイルを折りたたむ</string>
+    <plurals name="downloads_group_task_count">
+        <item quantity="other">%1$d 件のタスク</item>
+    </plurals>
+    <string name="downloads_group_view_tasks">タスクを展開</string>
+    <string name="downloads_group_collapse_tasks">タスクを折りたたむ</string>
+    <string name="downloads_group_view_files">ファイルを表示</string>
+    <string name="downloads_group_pause">グループを一時停止</string>
+    <string name="downloads_group_resume">グループを再開</string>
+    <string name="downloads_group_retry">失敗した項目を再試行</string>
     <string name="downloads_group_cover_desc">ビデオカバー</string>
-    <string name="downloads_group_actions_summary_size">アイテム: %1$d · %2$s</string>
-    <string name="downloads_group_actions_summary_size_speed">アイテム: %1$d · %2$s · %3$s</string>
     <string name="downloads_section_downloading">ダウンロード</string>
     <string name="downloads_section_downloaded">完成</string>
     <string name="downloads_section_count">アイテム: %1$d</string>
@@ -289,7 +304,7 @@
     <string name="download_delete_confirm_group">このダウンロード グループとそのすべてのタスクを削除しますか?</string>
     <string name="download_time_unknown">時期不明</string>
     <string name="downloads_reparse">再度解析する</string>
-    <string name="downloads_view_details">詳細を見る</string>
+    <string name="downloads_view_details">詳細</string>
     <string name="downloads_details_title">ダウンロードの詳細</string>
     <string name="downloads_details_source">基本情報</string>
     <string name="downloads_details_storage">ファイルと場所</string>

@@ -6,12 +6,14 @@ import android.view.ViewGroup
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalViewConfiguration
@@ -23,6 +25,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.DpRect
 import com.happycola233.bilitools.data.AppSettings
 import com.happycola233.bilitools.data.AppThemeColor
@@ -75,6 +78,143 @@ class DownloadsGroupSwipeTest {
 
     @Test fun lightSwipeKeepsGapAndOnlyVibratesAcrossDeleteThreshold() = verifySwipe(AppThemeMode.Light)
     @Test fun darkSwipeKeepsGapAndOnlyVibratesAcrossDeleteThreshold() = verifySwipe(AppThemeMode.Dark)
+
+    @Test fun lightConcurrentSwipesReturnTheOtherGroupToRest() = verifyConcurrentSwipes(AppThemeMode.Light)
+    @Test fun darkConcurrentSwipesReturnTheOtherGroupToRest() = verifyConcurrentSwipes(AppThemeMode.Dark)
+
+    @Test fun rtlSwipeFollowsTheFingerAndRevealsDeleteAtTheStartEdge() {
+        compose.setContent {
+            density = LocalDensity.current.density
+            touchSlopPx = LocalViewConfiguration.current.touchSlop
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                BiliToolsTheme(AppSettings(themeMode = AppThemeMode.Dark)) {
+                    DownloadsGroupCard(
+                        group = group, selectionMode = false, selected = false, expanded = false,
+                        swiped = swiped, anyGroupSwiped = swiped,
+                        onSwipedGroupChange = { swiped = it == group.id },
+                        onToggleSelection = {}, onToggleExpanded = {}, onDelete = { deleteRequests++ },
+                        onPauseGroup = {}, onResumeGroup = {}, onReparse = {}, onShowDetails = {},
+                        onTaskPauseResume = {}, onTaskRetry = {}, onTaskDelete = {}, onTaskClick = { _, _ -> },
+                        modifier = Modifier.testTag("swipe-card"),
+                    )
+                }
+            }
+        }
+        fun cardLeft() = compose.onNodeWithText(group.title).getUnclippedBoundsInRoot().left.value
+        val closed = cardLeft()
+        fun drag(distance: Float) = card.performTouchInput {
+            down(Offset(120f * density, center.y))
+            moveBy(Offset(touchSlopPx + distance * density, 0f), delayMillis = 32)
+        }
+        // RTL 向左拖动不能让卡片向反方向移动。
+        card.performTouchInput { down(center); moveBy(Offset(-80f * density, 0f)); up() }
+        assertEquals(closed, cardLeft(), 0.5f)
+        drag(30f)
+        assertEquals(closed + 30f, cardLeft(), 0.5f)
+        card.performTouchInput { up() }
+        assertEquals(closed, cardLeft(), 0.5f)
+        drag(88f)
+        card.performTouchInput { up() }
+        assertEquals(closed + 88f, cardLeft(), 0.5f)
+        val actionBounds = deleteButton.getUnclippedBoundsInRoot()
+        assertEquals(closed, actionBounds.left.value, 0.5f)
+        assertEquals(8f, cardLeft() - actionBounds.right.value, 0.5f)
+        // 继续右拖跨过删除阈值，松开后仍回到同一停靠点。
+        drag(80f)
+        card.performTouchInput { up() }
+        compose.runOnIdle { assertEquals(1, deleteRequests) }
+        assertEquals(closed + 88f, cardLeft(), 0.5f)
+    }
+
+    @Test fun rtlConcurrentSwipesReturnTheOtherGroupToRest() = verifyConcurrentSwipes(AppThemeMode.Light, LayoutDirection.Rtl)
+
+    private fun verifyConcurrentSwipes(mode: AppThemeMode, direction: LayoutDirection = LayoutDirection.Ltr) {
+        val sign = if (direction == LayoutDirection.Rtl) -1f else 1f
+        val groups = listOf(group, group.copy(id = 2, title = "另一个下载组"))
+        var swipedGroupId by mutableStateOf<Long?>(null)
+        var selectionMode by mutableStateOf(false)
+        compose.setContent {
+            density = LocalDensity.current.density
+            touchSlopPx = LocalViewConfiguration.current.touchSlop
+            CompositionLocalProvider(LocalLayoutDirection provides direction) {
+                BiliToolsTheme(AppSettings(themeMode = mode, themeColor = AppThemeColor.Periwinkle)) {
+                    Column(Modifier.fillMaxSize().background(AppSurfaces.pageContainerColor).testTag("swipe-list")) {
+                        groups.forEach { item ->
+                            DownloadsGroupCard(
+                                group = item, selectionMode = selectionMode, selected = false, expanded = false,
+                                swiped = swipedGroupId == item.id, anyGroupSwiped = swipedGroupId != null,
+                                onSwipedGroupChange = { swipedGroupId = it },
+                                onToggleSelection = {}, onToggleExpanded = {}, onDelete = { deleteRequests++ },
+                                onPauseGroup = {}, onResumeGroup = {}, onReparse = {}, onShowDetails = {},
+                                onTaskPauseResume = {}, onTaskRetry = {}, onTaskDelete = {}, onTaskClick = { _, _ -> },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        val list = compose.onNodeWithTag("swipe-list")
+        fun bounds(index: Int) = compose.onNodeWithText(groups[index].title).getUnclippedBoundsInRoot()
+        fun edge(index: Int) = if (direction == LayoutDirection.Rtl) bounds(index).left.value else bounds(index).right.value
+        val closedEdge = edge(0)
+        fun position(index: Int) = bounds(index).let { Offset((if (direction == LayoutDirection.Rtl) 150f else 250f) * density, (it.top.value + it.bottom.value) / 2 * density) }
+        fun assertOffset(index: Int, offset: Float) {
+            assertEquals("下载组 ${index + 1} 应回到确定的停靠位置", offset, (closedEdge - edge(index)) * sign, 0.5f)
+        }
+
+        // 两个手指分别拖动两个组；任意一个先停靠，另一个尚未松手也应归位。
+        for ((interrupted, docked) in listOf(0 to 1, 1 to 0)) {
+            compose.runOnIdle { swipedGroupId = null }
+            compose.waitForIdle()
+            val partialOffset = if (interrupted == 0) 30f else 60f
+            val interruptedPosition = position(interrupted)
+            val dockedPosition = position(docked)
+            list.performTouchInput {
+                down(0, interruptedPosition)
+                moveBy(0, Offset(-sign * (touchSlopPx + partialOffset * density), 0f), delayMillis = 32)
+                down(1, dockedPosition)
+                moveBy(1, Offset(-sign * (touchSlopPx + 88f * density), 0f), delayMillis = 32)
+            }
+            assertOffset(interrupted, partialOffset)
+            list.performTouchInput { up(1) }
+            compose.runOnIdle { assertEquals(groups[docked].id, swipedGroupId) }
+            assertOffset(interrupted, 0f)
+            assertOffset(docked, 88f)
+            // 被打断的旧手势继续移动和松手，不得重新停靠、误删或清除新组的状态。
+            list.performTouchInput {
+                moveBy(0, Offset(-sign * 160f * density, 0f), delayMillis = 32)
+                up(0)
+            }
+            compose.runOnIdle { assertEquals(groups[docked].id, swipedGroupId); assertEquals(0, deleteRequests) }
+            assertOffset(interrupted, 0f)
+            assertOffset(docked, 88f)
+        }
+
+        // 上一个组已停靠时，下一次侧滑应一次完成，不能因为收起旧组而中断新手势。
+        val nextPosition = position(1)
+        list.performTouchInput {
+            down(nextPosition)
+            moveBy(Offset(-sign * (touchSlopPx + 30f * density), 0f), delayMillis = 32)
+        }
+        assertOffset(0, 0f)
+        assertOffset(1, 30f)
+        list.performTouchInput { moveBy(Offset(-sign * 58f * density, 0f), delayMillis = 32); up() }
+        compose.runOnIdle { assertEquals(groups[1].id, swipedGroupId) }
+        assertOffset(1, 88f)
+
+        // 多选会移除侧滑处理器；被取消的拖动也必须释放，退出多选后不能残留位移。
+        val selectionDragPosition = position(1)
+        list.performTouchInput {
+            down(selectionDragPosition)
+            moveBy(Offset(-sign * (touchSlopPx + 30f * density), 0f), delayMillis = 32)
+        }
+        compose.runOnIdle { selectionMode = true; swipedGroupId = null }
+        list.performTouchInput { cancel() }
+        compose.runOnIdle { selectionMode = false }
+        assertOffset(0, 0f)
+        assertOffset(1, 0f)
+        compose.runOnIdle { assertEquals(0, deleteRequests) }
+    }
 
     private fun verifySwipe(mode: AppThemeMode) {
         compose.setContent {

@@ -5,10 +5,12 @@ import java.io.EOFException
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -68,6 +70,8 @@ internal class ResumableDownloader(
                     // cancel() 也会令 OkHttp 抛 IOException；必须先检查取消，不能因此换源。
                     currentCoroutineContext().ensureActive()
                     target.speedBytesPerSec = 0
+                    // 下一节点的连接可能耗时，换源期间先清除上一段传输的估算。
+                    onProgress(target.downloadedBytes, target.totalBytes, 0, null)
                     lastFailure = failure
                     onFailure(url, attempt, failure)
                 }
@@ -166,28 +170,35 @@ internal class ResumableDownloader(
                             target.downloadedBytes = if (append) existing else 0
                             onStateChanged()
                             response.body.byteStream().use { input ->
-                                var lastUpdateTime = clockMillis()
-                                var lastUpdateBytes = target.downloadedBytes
+                                target.speedBytesPerSec = 0
                                 onProgress(target.downloadedBytes, total, 0, null)
-                                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                                while (true) {
-                                    ensureActive()
-                                    val read = network("body") { input.read(buffer) }
-                                    if (read < 0) break
-                                    // 磁盘写入失败必须原样终止，不能误认为 CDN 失败并反复重下。
-                                    output.write(buffer, 0, read)
-                                    target.downloadedBytes += read
-                                    val now = clockMillis()
-                                    if (now - lastUpdateTime >= PROGRESS_INTERVAL_MS) {
-                                        val speed = (target.downloadedBytes - lastUpdateBytes) * 1000 /
-                                            (now - lastUpdateTime)
-                                        target.speedBytesPerSec = speed
-                                        val eta = if (speed > 0 && total > target.downloadedBytes) {
-                                            (total - target.downloadedBytes) / speed
-                                        } else null
-                                        onProgress(target.downloadedBytes, total, speed, eta)
-                                        lastUpdateTime = now
-                                        lastUpdateBytes = target.downloadedBytes
+                                val transferredBytes = AtomicLong(target.downloadedBytes)
+                                val speedEstimator = DownloadSpeedEstimator(clockMillis(), target.downloadedBytes)
+                                coroutineScope {
+                                    // 独立于阻塞读取定时采样；没有新数据时也会衰减并清除过时的速度。
+                                    val progressReporter = launch {
+                                        while (true) {
+                                            delay(PROGRESS_INTERVAL_MS)
+                                            val downloaded = transferredBytes.get()
+                                            val estimate = speedEstimator.update(clockMillis(), downloaded, total)
+                                            target.speedBytesPerSec = estimate.speedBytesPerSec
+                                            onProgress(downloaded, total, estimate.speedBytesPerSec, estimate.etaSeconds)
+                                        }
+                                    }
+                                    try {
+                                        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                                        while (true) {
+                                            ensureActive()
+                                            val read = network("body") { input.read(buffer) }
+                                            if (read < 0) break
+                                            // 磁盘写入失败必须原样终止，不能误认为 CDN 失败并反复重下。
+                                            output.write(buffer, 0, read)
+                                            target.downloadedBytes += read
+                                            transferredBytes.set(target.downloadedBytes)
+                                        }
+                                    } finally {
+                                        // 此作用域等待报告协程退出，再发布完成/换源状态，避免旧样本晚到。
+                                        progressReporter.cancel()
                                     }
                                 }
                             }
@@ -244,7 +255,7 @@ internal class ResumableDownloader(
     }
 
     companion object {
-        private const val PROGRESS_INTERVAL_MS = 300L
+        private const val PROGRESS_INTERVAL_MS = 250L
         private val RETRYABLE_HTTP_CODES = setOf(403, 404, 408, 410, 416, 429)
     }
 }

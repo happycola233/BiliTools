@@ -34,6 +34,13 @@ class LocalizedFormattingTest {
 
     @Test
     fun estimatedTimeUsesLocalUnitsAndHandlesHourBoundary() {
+        val simplifiedChinese = context("zh-Hans-CN")
+        assertEquals("0 秒", simplifiedChinese.formatEstimatedTime(0))
+        assertEquals("59 秒", simplifiedChinese.formatEstimatedTime(59))
+        assertEquals("1 分钟 41 秒", simplifiedChinese.formatEstimatedTime(101))
+        assertEquals("1 小时 1 分钟", simplifiedChinese.formatEstimatedTime(3660))
+        assertEquals("1 分鐘 41 秒", context("zh-Hant-TW").formatEstimatedTime(101))
+        assertEquals("1 小時 1 分鐘", context("zh-Hant-TW").formatEstimatedTime(3660))
         val english = context("en")
         assertEquals("1 sec", english.formatEstimatedTime(1))
         assertEquals("1 min, 1 sec", english.formatEstimatedTime(61))

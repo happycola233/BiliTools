@@ -250,14 +250,35 @@
     <string name="downloads_multi_hint_has_file">&lt;b&gt;Очистить записи&lt;/b&gt;&lt;br/&gt;Сохраняет завершенные файлы. Останавливает активные загрузки и удаляет их задачи и временные файлы.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Удалить файлы&lt;/b&gt;&lt;br/&gt;Удаляет задачи, записи и файлы.</string>
     <string name="downloads_multi_done_clear">Записи очищены: %1$d</string>
     <string name="downloads_multi_done_delete">Обработано задач: %1$d</string>
-    <string name="downloads_group_progress_compact">%1$d / %2$d · %3$d%%</string>
-    <string name="downloads_group_progress_failed">Некоторые загрузки не удались</string>
     <string name="downloads_group_progress_unavailable">Пропущено: %1$d</string>
-    <string name="downloads_group_toggle">Развернуть детали</string>
     <string name="downloads_group_delete">Удалить эту группу</string>
+    <string name="downloads_group_resolved_summary">%1$d / %2$d готово</string>
+    <string name="downloads_group_preparing">Подготовка</string>
+    <string name="downloads_group_paused">Приостановлено</string>
+    <string name="downloads_group_waiting">Ожидание возобновления</string>
+    <plurals name="downloads_group_failed_count">
+        <item quantity="other">Ошибок: %1$d</item>
+    </plurals>
+    <plurals name="downloads_group_missing_count">
+        <item quantity="one">%1$d файл отсутствует</item>
+        <item quantity="few">%1$d файла отсутствуют</item>
+        <item quantity="many">%1$d файлов отсутствуют</item>
+        <item quantity="other">%1$d файла отсутствуют</item>
+    </plurals>
+    <string name="downloads_group_collapse">Свернуть файлы</string>
+    <plurals name="downloads_group_task_count">
+        <item quantity="one">%1$d задача</item>
+        <item quantity="few">%1$d задачи</item>
+        <item quantity="many">%1$d задач</item>
+        <item quantity="other">%1$d задачи</item>
+    </plurals>
+    <string name="downloads_group_view_tasks">Развернуть задачи</string>
+    <string name="downloads_group_collapse_tasks">Свернуть задачи</string>
+    <string name="downloads_group_view_files">Показать файлы</string>
+    <string name="downloads_group_pause">Приостановить группу</string>
+    <string name="downloads_group_resume">Возобновить группу</string>
+    <string name="downloads_group_retry">Повторить неудачные загрузки</string>
     <string name="downloads_group_cover_desc">Видео обложка</string>
-    <string name="downloads_group_actions_summary_size">Элементы: %1$d · %2$s</string>
-    <string name="downloads_group_actions_summary_size_speed">Элементы: %1$d · %2$s · %3$s</string>
     <string name="downloads_section_downloading">Загрузка</string>
     <string name="downloads_section_downloaded">Завершено</string>
     <string name="downloads_section_count">Предметы: %1$d</string>
@@ -289,7 +310,7 @@
     <string name="download_delete_confirm_group">Удалить эту группу загрузки и все ее задачи?</string>
     <string name="download_time_unknown">Время неизвестно</string>
     <string name="downloads_reparse">Еще раз разберите</string>
-    <string name="downloads_view_details">Посмотреть детали</string>
+    <string name="downloads_view_details">Подробности</string>
     <string name="downloads_details_title">Подробности о загрузке</string>
     <string name="downloads_details_source">Основная информация</string>
     <string name="downloads_details_storage">Файлы и расположение</string>

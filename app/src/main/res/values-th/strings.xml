@@ -250,14 +250,29 @@
     <string name="downloads_multi_hint_has_file">&lt;b&gt;ล้างบันทึก&lt;/b&gt;&lt;br/&gt;เก็บไฟล์ที่เสร็จสมบูรณ์ หยุดการดาวน์โหลดที่ใช้งานอยู่และลบงานและไฟล์ชั่วคราวออก&lt;br/&gt;&lt;br/&gt;&lt;b&gt;ลบไฟล์&lt;/b&gt;&lt;br/&gt;ลบงาน บันทึก และไฟล์</string>
     <string name="downloads_multi_done_clear">ล้างบันทึกแล้ว: %1$d</string>
     <string name="downloads_multi_done_delete">งานที่ประมวลผลแล้ว: %1$d</string>
-    <string name="downloads_group_progress_compact">%1$d / %2$d · %3$d%%</string>
-    <string name="downloads_group_progress_failed">การดาวน์โหลดบางรายการล้มเหลว</string>
     <string name="downloads_group_progress_unavailable">ข้าม: %1$d</string>
-    <string name="downloads_group_toggle">ขยายรายละเอียด</string>
     <string name="downloads_group_delete">ลบกลุ่มนี้</string>
+    <string name="downloads_group_resolved_summary">เสร็จ %1$d / %2$d</string>
+    <string name="downloads_group_preparing">กำลังเตรียม</string>
+    <string name="downloads_group_paused">หยุดชั่วคราว</string>
+    <string name="downloads_group_waiting">รอดำเนินการต่อ</string>
+    <plurals name="downloads_group_failed_count">
+        <item quantity="other">ล้มเหลว %1$d รายการ</item>
+    </plurals>
+    <plurals name="downloads_group_missing_count">
+        <item quantity="other">ไฟล์หายไป %1$d ไฟล์</item>
+    </plurals>
+    <string name="downloads_group_collapse">ยุบไฟล์</string>
+    <plurals name="downloads_group_task_count">
+        <item quantity="other">%1$d งาน</item>
+    </plurals>
+    <string name="downloads_group_view_tasks">ขยายงาน</string>
+    <string name="downloads_group_collapse_tasks">ยุบงาน</string>
+    <string name="downloads_group_view_files">ดูไฟล์</string>
+    <string name="downloads_group_pause">หยุดกลุ่มชั่วคราว</string>
+    <string name="downloads_group_resume">ดำเนินการกลุ่มต่อ</string>
+    <string name="downloads_group_retry">ลองรายการที่ล้มเหลวอีกครั้ง</string>
     <string name="downloads_group_cover_desc">ปกวิดีโอ</string>
-    <string name="downloads_group_actions_summary_size">รายการ: %1$d · %2$s</string>
-    <string name="downloads_group_actions_summary_size_speed">รายการ: %1$d · %2$s · %3$s</string>
     <string name="downloads_section_downloading">กำลังดาวน์โหลด</string>
     <string name="downloads_section_downloaded">เสร็จสมบูรณ์</string>
     <string name="downloads_section_count">รายการ: %1$d</string>
@@ -289,7 +304,7 @@
     <string name="download_delete_confirm_group">ลบกลุ่มดาวน์โหลดนี้และงานทั้งหมดในกลุ่มหรือไม่</string>
     <string name="download_time_unknown">ไม่ทราบเวลา</string>
     <string name="downloads_reparse">แยกวิเคราะห์อีกครั้ง</string>
-    <string name="downloads_view_details">ดูรายละเอียด</string>
+    <string name="downloads_view_details">รายละเอียด</string>
     <string name="downloads_details_title">ดาวน์โหลดรายละเอียด</string>
     <string name="downloads_details_source">ข้อมูลพื้นฐาน</string>
     <string name="downloads_details_storage">ไฟล์และตำแหน่ง</string>
