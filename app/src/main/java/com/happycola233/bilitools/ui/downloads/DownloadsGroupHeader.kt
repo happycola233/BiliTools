@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Checkbox
@@ -84,7 +85,6 @@ internal fun DownloadsGroupHeader(
     val density = LocalDensity.current
     val titleMeasurer = rememberTextMeasurer(cacheSize = 2)
     val titleStyle = MaterialTheme.typography.titleMedium
-    val motionScheme = MaterialTheme.motionScheme
     val haptics = rememberAppHaptics()
     val coverModel = remember(group.coverUrl, context) {
         group.coverUrl?.trim()?.takeIf { it.isNotBlank() }?.let {
@@ -108,7 +108,7 @@ internal fun DownloadsGroupHeader(
     val checkboxSize = 40.dp
     val checkboxEndSpacing = 6.dp
     // 底栏与封面共用起始位置，多选时为复选框整列留空。
-    val footerStartPadding = (checkboxSize + checkboxEndSpacing) * selectionMotion.progress
+    val footerStartPadding = (checkboxSize + checkboxEndSpacing) * selectionMotion.layoutProgress
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         // 用普通模式的可用宽度判断窄屏，避免动画经过断点时突然切换封面和文字间距。
         val compact = maxWidth - (16.dp - selectionMotion.cardInset) * 2 - 32.dp < 300.dp
@@ -135,7 +135,7 @@ internal fun DownloadsGroupHeader(
         val normalTitleHeight = measureTitleHeight(false)
         val selectionTitleHeight = measureTitleHeight(true)
         val titleHeight by selectionMotion.transition.animateFloat(
-            transitionSpec = { if (targetState) motionScheme.defaultSpatialSpec() else motionScheme.fastSpatialSpec() },
+            transitionSpec = { downloadsSelectionLayoutSpec(visibilityThreshold = 0.1f) },
             label = "groupTitleHeight-${group.id}",
         ) { if (it) selectionTitleHeight else normalTitleHeight }
         val targetTitleHeight = if (selectionMode) selectionTitleHeight else normalTitleHeight
@@ -146,14 +146,19 @@ internal fun DownloadsGroupHeader(
         }
         val collapsedBottomPadding = if (presentation.completed) 16.dp else 4.dp
         val bottomPadding = when {
-            expanded -> lerp(6.dp, collapsedBottomPadding, selectionMotion.progress)
+            expanded -> lerp(6.dp, collapsedBottomPadding, selectionMotion.layoutProgress)
             presentation.completed -> 16.dp
             else -> 4.dp
         }
         Column(Modifier.padding(horizontal = selectionMotion.headerInset).padding(top = 16.dp, bottom = bottomPadding)) {
             // 完成后恢复「标题 + 时间」，与封面、展开箭头共用中心线，不保留操作按钮的空位。
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                DownloadsGroupSelectionSlot(selectionMotion.progress, selectionMotion.selectionAlpha, selectionMode) {
+                DownloadsGroupSelectionSlot(
+                    layoutFraction = selectionMotion.layoutProgress,
+                    alpha = selectionMotion.selectionAlpha,
+                    scale = selectionMotion.selectionScale,
+                    interactive = selectionMode,
+                ) {
                     Checkbox(
                         checked = selected,
                         onCheckedChange = { if (selectionMode) { haptics.toggle(it); onToggleSelection() } },
@@ -167,8 +172,8 @@ internal fun DownloadsGroupHeader(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .size(
-                            lerp(normalCoverWidth, 72.dp, selectionMotion.progress),
-                            lerp(if (compact) 50.dp else 56.dp, 50.dp, selectionMotion.progress),
+                            lerp(normalCoverWidth, 72.dp, selectionMotion.layoutProgress),
+                            lerp(if (compact) 50.dp else 56.dp, 50.dp, selectionMotion.layoutProgress),
                         )
                         .clip(RoundedCornerShape(12.dp)).background(coverPlaceholderColor),
                 )
@@ -180,7 +185,9 @@ internal fun DownloadsGroupHeader(
                         maxLines = if (expanded && !selectionMode) Int.MAX_VALUE else 2,
                         overflow = TextOverflow.Ellipsis,
                         textDecoration = if (allMissing) TextDecoration.LineThrough else TextDecoration.None,
+                        // 动画只控制可见高度，不限制文字排版；否则第二行展开途中会被临时省略到第一行。
                         modifier = Modifier.fillMaxWidth().height(titleHeight.coerceIn(titleHeightRange).dp).clipToBounds()
+                            .wrapContentHeight(Alignment.Top, unbounded = true)
                             .alpha(if (allMissing) 0.6f else 1f),
                     )
                     Text(
@@ -192,7 +199,12 @@ internal fun DownloadsGroupHeader(
                         modifier = Modifier.padding(top = 6.dp),
                     )
                 }
-                DownloadsGroupSelectionSlot(selectionMotion.actionFraction, selectionMotion.actionAlpha, !selectionMode) {
+                DownloadsGroupSelectionSlot(
+                    layoutFraction = selectionMotion.actionFraction,
+                    alpha = selectionMotion.actionAlpha,
+                    scale = selectionMotion.actionScale,
+                    interactive = !selectionMode,
+                ) {
                     if (presentation.completed) {
                         DownloadsGroupExpandButton(expandAction, arrowRotation, supportingColor, Modifier.size(32.dp)) {
                             if (!selectionMode) { haptics.tap(); onToggleExpanded() }
@@ -224,7 +236,12 @@ internal fun DownloadsGroupHeader(
                     color = if (presentation.failedCount > 0 || presentation.missingCount > 0) MaterialTheme.colorScheme.error else supportingColor,
                     modifier = Modifier.weight(1f).padding(vertical = 8.dp),
                 )
-                DownloadsGroupSelectionSlot(selectionMotion.actionFraction, selectionMotion.actionAlpha, !selectionMode) {
+                DownloadsGroupSelectionSlot(
+                    layoutFraction = selectionMotion.actionFraction,
+                    alpha = selectionMotion.actionAlpha,
+                    scale = selectionMotion.actionScale,
+                    interactive = !selectionMode,
+                ) {
                     TextButton(
                         onClick = { if (!selectionMode) { haptics.tap(); onToggleExpanded() } },
                         contentPadding = PaddingValues(start = 8.dp, end = 0.dp),

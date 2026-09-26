@@ -208,12 +208,12 @@ class DownloadsGroupCardTest {
         compose.onNodeWithText("1.0 MB", substring = true).assertDoesNotExist()
         compose.onNodeWithText("2.0 MB").assertDoesNotExist()
         compose.onNodeWithText(group.title).performScrollTo()
-        verifySelectionMotion(group.title, compose.onNodeWithText(footer, useUnmergedTree = true), "收起文件", "expanded-completed-${themeMode.name}-$fontScale") {
+        verifySelectionMotion(group.title, timestamp, compose.onNodeWithText(footer, useUnmergedTree = true), "收起文件", "expanded-completed-${themeMode.name}-$fontScale") {
             selectionMode = it
         }
         compose.runOnIdle { expanded = false; selectionMode = false }
         compose.onNodeWithText(group.title).performScrollTo()
-        verifySelectionMotion(group.title, compose.onNodeWithText(footer, useUnmergedTree = true), "查看文件", "completed-${themeMode.name}-$fontScale") {
+        verifySelectionMotion(group.title, timestamp, compose.onNodeWithText(footer, useUnmergedTree = true), "查看文件", "completed-${themeMode.name}-$fontScale") {
             selectionMode = it
         }
         assertHeaderColumns()
@@ -300,7 +300,7 @@ class DownloadsGroupCardTest {
         compose.onNodeWithContentDescription("收起任务").performClick()
         compose.runOnIdle { assertFalse(expanded) }
         captureProgress("running")
-        verifySelectionMotion(cardGroup.title, compose.onNodeWithText("MB/s", substring = true, useUnmergedTree = true), "暂停该组", "running-${mode.name}-$fontScale") {
+        verifySelectionMotion(cardGroup.title, "4 / 5 项已完成", compose.onNodeWithText("MB/s", substring = true, useUnmergedTree = true), "暂停该组", "running-${mode.name}-$fontScale") {
             selection = it
         }
         val selectedCover = compose.onNodeWithContentDescription("视频封面", useUnmergedTree = true).getUnclippedBoundsInRoot()
@@ -366,6 +366,7 @@ class DownloadsGroupCardTest {
 
     private fun verifySelectionMotion(
         title: String,
+        supportingText: String,
         footer: SemanticsNodeInteraction,
         actionLabel: String,
         screenshotName: String,
@@ -380,26 +381,32 @@ class DownloadsGroupCardTest {
             compose.runOnIdle { setSelection(selected); Snapshot.sendApplyNotifications() }
         }
         val initialLeft = alignedCoverLeft()
-        fun titleHeight() = compose.onNodeWithText(title, useUnmergedTree = true).getUnclippedBoundsInRoot().let { (it.bottom - it.top).value }
-        val initialTitleHeight = titleHeight()
+        // 文字完整排版后，以其下方信息的位置验证动画占位，不能再用未裁剪的文字高度代替。
+        fun titleToSummaryDistance(): Float {
+            val titleTop = compose.onNodeWithText(title, useUnmergedTree = true).getUnclippedBoundsInRoot().top
+            val summaryTop = compose.onNodeWithText(supportingText, useUnmergedTree = true).getUnclippedBoundsInRoot().top
+            return (summaryTop - titleTop).value
+        }
+        val initialTitleToSummaryDistance = titleToSummaryDistance()
         compose.mainClock.autoAdvance = false
         compose.onNodeWithText(title).performSemanticsAction(SemanticsActions.OnLongClick) { it() }
         compose.runOnIdle { Snapshot.sendApplyNotifications() }
         val enteringPositions = mutableListOf<Float>()
-        val enteringTitleHeights = mutableListOf<Float>()
+        val enteringTitleToSummaryDistances = mutableListOf<Float>()
         repeat(16) { frame ->
             compose.mainClock.advanceTimeByFrame()
             enteringPositions.add(alignedCoverLeft())
-            enteringTitleHeights.add(titleHeight())
+            enteringTitleToSummaryDistances.add(titleToSummaryDistance())
             if (frame == 4) capture("selection-enter-$screenshotName", compose.onNodeWithText(title))
         }
         compose.mainClock.advanceTimeBy(1_000)
         val selectedLeft = alignedCoverLeft()
-        val selectedTitleHeight = titleHeight()
-        if (initialTitleHeight > selectedTitleHeight + 2f) {
+        val selectedTitleToSummaryDistance = titleToSummaryDistance()
+        if (initialTitleToSummaryDistance > selectedTitleToSummaryDistance + 2f) {
             assertTrue("展开标题或换行收缩应从原高度连续过渡，不能在进入第一帧就折叠",
-                enteringTitleHeights.first() > selectedTitleHeight + (initialTitleHeight - selectedTitleHeight) * 0.6f)
-            assertTrue("标题高度应连续变化", enteringTitleHeights.distinct().size > 3)
+                enteringTitleToSummaryDistances.first() > selectedTitleToSummaryDistance +
+                    (initialTitleToSummaryDistance - selectedTitleToSummaryDistance) * 0.6f)
+            assertTrue("标题下方信息应随占位连续移动", enteringTitleToSummaryDistances.distinct().size > 3)
         }
         assertTrue("进入多选为复选框让出空间", selectedLeft > initialLeft + 20f)
         assertTrue("底栏应连续移动，不能直接跳到最终位置", enteringPositions.distinct().size > 3)
@@ -416,8 +423,10 @@ class DownloadsGroupCardTest {
         compose.mainClock.advanceTimeBy(1_000)
         assertEquals("退出多选恢复原来的位置", initialLeft, alignedCoverLeft(), 1f)
         assertTrue("退出时也要连续移动", exitingPositions.distinct().size > 3)
-        assertTrue("退出归位应比进入更利落",
-            selectedLeft - exitingPositions[7] > enteringPositions[7] - initialLeft + 3f)
+        enteringPositions.zip(exitingPositions).forEachIndexed { frame, (entering, exiting) ->
+            assertEquals("进出多选的第 $frame 帧应有相同位移，保持一致速度",
+                entering - initialLeft, selectedLeft - exiting, 1f)
+        }
         compose.onNodeWithContentDescription(actionLabel).assertIsDisplayed()
 
         // 尚未完成就反向切换，必须从当前画面续接，不能重置起点。

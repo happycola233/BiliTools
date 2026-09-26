@@ -24,6 +24,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -88,7 +89,7 @@ class DownloadsSelectionMotionTest {
                             groups = groups, selectionMode = selection, selectionMotion = motion,
                             selectedGroupIds = if (selection) setOf(1L) else emptySet(), expandedGroupIds = emptySet(),
                             collapsedSections = emptySet(), swipedGroupId = null, contentTopPadding = 0.dp,
-                            listBottomPadding = 24.dp + 180.dp * motion.progress,
+                            listBottomPadding = 24.dp + 180.dp * motion.layoutProgress,
                             onToggleSection = {}, onToggleGroupExpanded = {}, onSwipedGroupChange = {},
                             onGroupSelectionToggle = { selection = true }, onGroupDelete = {}, onGroupPause = {}, onGroupResume = {},
                             onGroupReparse = {}, onGroupShowDetails = {}, onTaskPauseResume = {}, onTaskRetry = {}, onTaskDelete = {},
@@ -115,10 +116,15 @@ class DownloadsSelectionMotionTest {
                 assertEquals("所有卡片边距同步变化", cards.first().left.value, cards[index].left.value, 1f)
                 assertEquals("每张卡片的封面和底栏始终对齐", startEdge(covers[index].getUnclippedBoundsInRoot()),
                     startEdge(footers[index].getUnclippedBoundsInRoot()), 1f)
+                val titleLayouts = mutableListOf<TextLayoutResult>()
+                compose.onNodeWithText(groups[index].title, useUnmergedTree = true)
+                    .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(titleLayouts) }
+                assertFalse("标题换行时不能因动画高度不足而闪出单行省略号", titleLayouts.single().isLineEllipsized(0))
             }
         }
         fun capture(name: String) {
-            val file = File("../.tmp/downloads-ui/list-selection-$name-${mode.name}-$fontScale.png")
+            val titleVariant = if (wrapping) "wrapping" else "short"
+            val file = File("../.tmp/downloads-ui/list-selection-$name-$titleVariant-$direction-${mode.name}-$fontScale.png")
             file.parentFile!!.mkdirs()
             file.outputStream().use { compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it) }
         }
@@ -140,9 +146,9 @@ class DownloadsSelectionMotionTest {
             compose.mainClock.advanceTimeByFrame()
             verifyFrame()
             if (frame == 5) capture("exit")
-            if (frame == 11) {
-                assertTrue("退出后 200 毫秒内整组条目应基本归位",
-                    abs(bounds().last().top.value - initial.last().top.value) <= 3f)
+            if (frame == 21) {
+                val remainingOffset = abs(bounds().last().top.value - initial.last().top.value)
+                assertTrue("退出后 350 毫秒内整组条目应基本归位，剩余偏移 ${remainingOffset}dp", remainingOffset <= 3f)
             }
         }
         val endOfExit = bounds()

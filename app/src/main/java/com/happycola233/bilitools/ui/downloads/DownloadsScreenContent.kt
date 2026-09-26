@@ -193,7 +193,7 @@ fun DownloadsScreenContent(
         }
     // 面板本身的高度变化已经有动画，列表留白直接跟随它与全页多选进度，不再嵌套另一条弹簧。
     val listBottomPaddingDp = with(density) {
-        baseBottomPaddingPx.toDp() + (panelHeightPx.toDp() + 20.dp) * selectionMotion.progress
+        baseBottomPaddingPx.toDp() + (panelHeightPx.toDp() + 20.dp) * selectionMotion.layoutProgress
     }
     val motionScheme = MaterialTheme.motionScheme
     val downloadsGlassStyle = DownloadsGlassStyle(
@@ -256,14 +256,14 @@ fun DownloadsScreenContent(
             enter =
                 fadeIn(animationSpec = motionScheme.fastEffectsSpec()) +
                     slideInVertically(
-                        initialOffsetY = { it / 2 },
-                        animationSpec = motionScheme.defaultSpatialSpec(),
+                        initialOffsetY = { with(density) { 32.dp.roundToPx() } },
+                        animationSpec = downloadsSelectionControlsSpec(),
                     ),
             exit =
                 fadeOut(animationSpec = motionScheme.fastEffectsSpec()) +
                     slideOutVertically(
-                        targetOffsetY = { it / 2 },
-                        animationSpec = motionScheme.fastSpatialSpec(),
+                        targetOffsetY = { with(density) { 32.dp.roundToPx() } },
+                        animationSpec = downloadsSelectionControlsSpec(),
                     ),
         ) {
             DownloadsBatchPanel(
@@ -292,13 +292,13 @@ fun DownloadsScreenContent(
                 fadeIn(animationSpec = motionScheme.fastEffectsSpec()) +
                     scaleIn(
                         initialScale = 0.84f,
-                        animationSpec = motionScheme.fastSpatialSpec(),
+                        animationSpec = downloadsSelectionControlsSpec(),
                     ),
             exit =
                 fadeOut(animationSpec = motionScheme.fastEffectsSpec()) +
                     scaleOut(
                         targetScale = 0.84f,
-                        animationSpec = motionScheme.defaultSpatialSpec(),
+                        animationSpec = downloadsSelectionControlsSpec(),
                     ),
         ) {
             DownloadsManageFab(
