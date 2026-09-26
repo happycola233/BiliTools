@@ -14,6 +14,7 @@ import com.happycola233.bilitools.core.localizedContext
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.DownloadNotificationState
 import com.happycola233.bilitools.data.DownloadOutcomeSummary
+import com.happycola233.bilitools.data.LiveUpdateIcon
 import com.happycola233.bilitools.data.model.DownloadStatus
 import com.happycola233.bilitools.notification.applyPromotedOngoing
 import com.happycola233.bilitools.notification.notifyIfAllowed
@@ -55,7 +56,15 @@ internal class DownloadNotificationManager(
     fun buildProgressNotification(
         state: DownloadNotificationState,
         liveActivityStyleEnabled: Boolean = true,
+        liveUpdateIcon: LiveUpdateIcon = LiveUpdateIcon.BiliTools,
     ): Notification {
+        val useLiveUpdate = liveActivityStyleEnabled && state.hasForegroundWork
+        // 圆形白底供直接显示原色的胶囊使用；详情共用 smallIcon，部分系统会将整张图标单色化。
+        val smallIcon = if (useLiveUpdate && liveUpdateIcon == LiveUpdateIcon.BiliTools) {
+            R.drawable.ic_live_update_bilitools
+        } else {
+            R.drawable.ic_notification_download_24
+        }
         val statusText = buildStatusText(state)
         val title = when {
             state.isPreparing -> context.getString(R.string.notification_status_preparing)
@@ -83,7 +92,7 @@ internal class DownloadNotificationManager(
         }
         val content = listOfNotNull(detail, speed).joinToString(" · ")
         val builder = NotificationCompat.Builder(context, CHANNEL_PROGRESS_ID)
-            .setSmallIcon(R.drawable.ic_download_for_offline_24)
+            .setSmallIcon(smallIcon)
             .setContentTitle(title)
             .setContentText(content)
             .setStyle(NotificationCompat.BigTextStyle().bigText(content))
@@ -115,7 +124,7 @@ internal class DownloadNotificationManager(
                 resumePendingIntent(state.pausedTaskIds),
             )
         }
-        if (liveActivityStyleEnabled && state.hasForegroundWork) {
+        if (useLiveUpdate) {
             builder.applyPromotedOngoing(buildShortCriticalText(state))
         }
         return builder.build()
@@ -184,7 +193,7 @@ internal class DownloadNotificationManager(
         }
 
         val notification = NotificationCompat.Builder(context, CHANNEL_COMPLETION_ID)
-            .setSmallIcon(R.drawable.ic_download_for_offline_24)
+            .setSmallIcon(R.drawable.ic_notification_download_24)
             .setContentTitle(title)
             .setContentText(content)
             .setAutoCancel(true)

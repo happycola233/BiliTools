@@ -169,6 +169,7 @@ import com.happycola233.bilitools.data.DownloadPreferenceMemorySettings
 import com.happycola233.bilitools.data.DownloadQualityMode
 import com.happycola233.bilitools.data.HapticFeedbackLevel
 import com.happycola233.bilitools.data.IssueReportLogState
+import com.happycola233.bilitools.data.LiveUpdateIcon
 import com.happycola233.bilitools.data.SettingsRepository
 import com.happycola233.bilitools.data.TopLevelFolderMode
 import com.happycola233.bilitools.ui.AppAlertDialog
@@ -215,6 +216,7 @@ fun BiliToolsSettingsContent(
     onDynamicColorEnabledChange: (Boolean) -> Unit,
     onThemeColorChange: (AppThemeColor) -> Unit,
     onLiveActivityStyleNotificationChange: (Boolean) -> Unit,
+    onLiveUpdateIconChange: (LiveUpdateIcon) -> Unit,
     onDefaultDownloadQualityChange: (DefaultDownloadQualitySettings) -> Unit,
     onDownloadPreferenceMemoryChange: (DownloadPreferenceMemorySettings) -> Unit,
     onAddMetadataChange: (Boolean) -> Unit,
@@ -280,6 +282,7 @@ fun BiliToolsSettingsContent(
                         settings = settings,
                         liveUpdateSupported = liveUpdateSupported,
                         onLiveActivityStyleNotificationChange = onLiveActivityStyleNotificationChange,
+                        onLiveUpdateIconChange = onLiveUpdateIconChange,
                         onHapticFeedbackLevelChange = onHapticFeedbackLevelChange,
                         onLaunchSplashAnimationChange = onLaunchSplashAnimationChange,
                         selectedLanguage = selectedLanguage,
@@ -563,6 +566,7 @@ internal fun GeneralSettingsScreen(
     settings: AppSettings,
     liveUpdateSupported: Boolean,
     onLiveActivityStyleNotificationChange: (Boolean) -> Unit,
+    onLiveUpdateIconChange: (LiveUpdateIcon) -> Unit,
     onHapticFeedbackLevelChange: (HapticFeedbackLevel) -> Unit,
     onLaunchSplashAnimationChange: (Boolean) -> Unit,
     selectedLanguage: AppLanguage,
@@ -623,13 +627,19 @@ internal fun GeneralSettingsScreen(
             item {
                 ExpressiveSwitchListItem(
                     checked = liveUpdateChecked,
-                    iconRes = R.drawable.ic_dynamic_feed_24,
+                    iconRes = R.drawable.ic_app_badging_rounded_24,
                     title = stringResource(R.string.settings_live_activity_style_notification),
                     description = liveUpdateDescription,
                     enabled = liveUpdateSupported,
                     items = 4,
                     index = 3,
                     onCheckedChange = onLiveActivityStyleNotificationChange,
+                    bottomContent = {
+                        LiveUpdateIconPicker(
+                            icon = settings.liveUpdateIcon,
+                            onIconChange = onLiveUpdateIconChange,
+                        )
+                    },
                 )
             }
             item { Spacer(Modifier.height(12.dp)) }
@@ -692,6 +702,72 @@ internal fun LanguageSettingsScreen(
 private fun AppLanguage.settingsDisplayName(): String =
     if (this == AppLanguage.System) stringResource(R.string.settings_language_system)
     else displayName(LocalContext.current)
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun LiveUpdateIconPicker(
+    icon: LiveUpdateIcon,
+    onIconChange: (LiveUpdateIcon) -> Unit,
+) {
+    val label = stringResource(R.string.settings_live_update_icon)
+    Column(
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier
+            .background(SettingsExpressiveDefaults.listItemColors.containerColor)
+            .padding(start = 52.dp, end = 16.dp, bottom = 8.dp),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+            modifier = Modifier.selectableGroup().semantics { contentDescription = label },
+        ) {
+            LiveUpdateIcon.entries.forEachIndexed { optionIndex, option ->
+                ToggleButton(
+                    checked = option == icon,
+                    onCheckedChange = { if (option != icon) onIconChange(option) },
+                    shapes = connectedButtonShapes(optionIndex, LiveUpdateIcon.entries.lastIndex),
+                    colors = AppAccents.toggleButtonColors(),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                    modifier = Modifier.weight(1f).semantics {
+                        role = Role.RadioButton
+                        selected = option == icon
+                    },
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        if (option == LiveUpdateIcon.BiliTools) {
+                            Image(
+                                painter = painterResource(R.drawable.bilitools_app_icon),
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp).background(Color.White, CircleShape),
+                            )
+                        } else {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_notification_download_24),
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                        Text(
+                            text = stringResource(
+                                if (option == LiveUpdateIcon.BiliTools) R.string.settings_live_update_icon_bilitools
+                                else R.string.settings_live_update_icon_download,
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -3491,30 +3567,32 @@ internal fun ExpressiveSwitchListItem(
     index: Int,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    bottomContent: (@Composable () -> Unit)? = null,
 ) {
     val haptics = rememberAppHaptics()
-    ListItem(
-        // 默认对齐会在说明换行、行高增大后切到顶部；设置项始终以整行内容居中。
-        verticalAlignment = Alignment.CenterVertically,
-        leadingContent = { SettingsItemIcon(iconRes) },
-        content = { SettingsItemTitle(title) },
-        supportingContent = { Text(description) },
-        trailingContent = {
-            Switch(
-                checked = checked,
-                onCheckedChange = { next ->
-                    haptics.toggle(next)
-                    onCheckedChange(next)
-                },
-                enabled = enabled,
-                colors = AppAccents.switchColors(),
-            )
-        },
-        colors = SettingsExpressiveDefaults.listItemColors,
-        modifier = modifier
-            .graphicsLayer { alpha = if (enabled) 1f else 0.48f }
-            .clip(SettingsExpressiveShapes.groupShape(index, items)),
-    )
+    Column(modifier.clip(SettingsExpressiveShapes.groupShape(index, items))) {
+        ListItem(
+            // 默认对齐会在说明换行、行高增大后切到顶部；设置项始终以整行内容居中。
+            verticalAlignment = Alignment.CenterVertically,
+            leadingContent = { SettingsItemIcon(iconRes) },
+            content = { SettingsItemTitle(title) },
+            supportingContent = { Text(description) },
+            trailingContent = {
+                Switch(
+                    checked = checked,
+                    onCheckedChange = { next ->
+                        haptics.toggle(next)
+                        onCheckedChange(next)
+                    },
+                    enabled = enabled,
+                    colors = AppAccents.switchColors(),
+                )
+            },
+            colors = SettingsExpressiveDefaults.listItemColors,
+            modifier = Modifier.graphicsLayer { alpha = if (enabled) 1f else 0.48f },
+        )
+        bottomContent?.invoke()
+    }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)

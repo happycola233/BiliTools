@@ -7,6 +7,7 @@ import android.os.Looper
 import com.happycola233.bilitools.BiliToolsApp
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.DownloadNotificationState
+import com.happycola233.bilitools.data.LiveUpdateIcon
 import com.happycola233.bilitools.data.model.DownloadStatus
 import java.time.Duration
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,7 +20,10 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import org.robolectric.annotation.Implementation
+import org.robolectric.annotation.Implements
 import org.robolectric.shadows.ShadowLooper
+import org.robolectric.shadows.ShadowNotificationManager
 import org.robolectric.util.ReflectionHelpers
 
 @RunWith(RobolectricTestRunner::class)
@@ -100,6 +104,33 @@ class DownloadNotificationControllerTest {
         } finally {
             controller.destroy()
         }
+    }
+
+    @Test
+    @Config(sdk = [36], shadows = [PromotedNotificationManager::class])
+    fun changingTheIconRefreshesTheActiveLiveUpdateWithoutAnotherDownloadEvent() {
+        prepare()
+        val controller = Robolectric.buildService(DownloadForegroundService::class.java).create().startCommand(0, 1)
+        try {
+            assertEquals(R.drawable.ic_live_update_bilitools, progress().smallIcon.resId)
+            assertNull(progress().getLargeIcon())
+            app.container.settingsRepository.setLiveUpdateIcon(LiveUpdateIcon.Download)
+            shadowOf(Looper.getMainLooper()).idle()
+            assertEquals(R.drawable.ic_notification_download_24, progress().smallIcon.resId)
+            assertNull(progress().getLargeIcon())
+            app.container.settingsRepository.setLiveUpdateIcon(LiveUpdateIcon.BiliTools)
+            shadowOf(Looper.getMainLooper()).idle()
+            assertEquals(R.drawable.ic_live_update_bilitools, progress().smallIcon.resId)
+            assertNull(progress().getLargeIcon())
+        } finally {
+            controller.destroy()
+        }
+    }
+
+    @Implements(NotificationManager::class)
+    class PromotedNotificationManager : ShadowNotificationManager() {
+        @Implementation(minSdk = 36)
+        protected fun canPostPromotedNotifications(): Boolean = true
     }
 
     private fun progress(): Notification = manager.activeNotifications.single {

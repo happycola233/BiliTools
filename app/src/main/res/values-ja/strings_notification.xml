@@ -28,4 +28,6 @@
     <string name="notification_count_cancelled">キャンセル %1$d 件</string>
     <string name="notification_count_skipped">スキップ %1$d 件</string>
     <string name="notification_short_completed">%1$d/%2$d</string>
+    <string name="settings_live_update_icon">通知アイコン</string>
+    <string name="settings_live_update_icon_download">ダウンロード矢印</string>
 </resources>

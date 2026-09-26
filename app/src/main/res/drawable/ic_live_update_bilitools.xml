@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 超级岛使用原色图标，白色圆底属于图标本身，不能添加单色 tint。 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="oval">
+            <size android:width="24dp" android:height="24dp" />
+            <solid android:color="#FFFFFFFF" />
+        </shape>
+    </item>
+    <item>
+        <bitmap
+            android:src="@drawable/bilitools_app_icon"
+            android:gravity="fill" />
+    </item>
+</layer-list>

@@ -28,4 +28,6 @@
     <string name="notification_count_cancelled">Đã hủy: %1$d</string>
     <string name="notification_count_skipped">Đã bỏ qua: %1$d</string>
     <string name="notification_short_completed">%1$d/%2$d</string>
+    <string name="settings_live_update_icon">Biểu tượng thông báo</string>
+    <string name="settings_live_update_icon_download">Mũi tên tải xuống</string>
 </resources>

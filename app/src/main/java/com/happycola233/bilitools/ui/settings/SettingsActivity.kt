@@ -180,6 +180,7 @@ class SettingsActivity : AppCompatActivity() {
                     }
                 },
                 onLiveActivityStyleNotificationChange = viewModel::setLiveActivityStyleNotificationEnabled,
+                onLiveUpdateIconChange = viewModel::setLiveUpdateIcon,
                 onDefaultDownloadQualityChange = viewModel::setDefaultDownloadQuality,
                 onDownloadPreferenceMemoryChange = viewModel::setDownloadPreferenceMemory,
                 onAddMetadataChange = viewModel::setAddMetadata,

@@ -75,6 +75,7 @@ data class AppSettings(
     val liquidBarGlassChromaticAberration: Boolean = SettingsRepository.DEFAULT_LIQUID_BAR_GLASS_CHROMATIC_ABERRATION,
     val hapticFeedbackLevel: HapticFeedbackLevel = HapticFeedbackLevel.Full,
     val liveActivityStyleNotificationEnabled: Boolean = true,
+    val liveUpdateIcon: LiveUpdateIcon = LiveUpdateIcon.BiliTools,
     val downloadRootRelativePath: String = SettingsRepository.DEFAULT_DOWNLOAD_ROOT,
     val maxConcurrentDownloads: Int = SettingsRepository.DEFAULT_MAX_CONCURRENT_DOWNLOADS,
     val confirmCellularDownload: Boolean = true,
@@ -475,6 +476,13 @@ class SettingsRepository(context: Context) {
         _settings.value = current.copy(liveActivityStyleNotificationEnabled = enabled)
     }
 
+    fun setLiveUpdateIcon(icon: LiveUpdateIcon) {
+        val current = _settings.value
+        if (current.liveUpdateIcon == icon) return
+        prefs.edit().putString(KEY_LIVE_UPDATE_ICON, icon.value).apply()
+        _settings.value = current.copy(liveUpdateIcon = icon)
+    }
+
     fun setConfirmCellularDownload(enabled: Boolean) {
         val current = _settings.value
         if (current.confirmCellularDownload == enabled) return
@@ -777,6 +785,7 @@ class SettingsRepository(context: Context) {
                 KEY_LIVE_ACTIVITY_STYLE_NOTIFICATION_ENABLED,
                 true,
             ),
+            liveUpdateIcon = LiveUpdateIcon.fromValue(prefs.getString(KEY_LIVE_UPDATE_ICON, null)),
             downloadRootRelativePath = normalizeDownloadRoot(
                 prefs.getString(KEY_DOWNLOAD_ROOT_RELATIVE_PATH, DEFAULT_DOWNLOAD_ROOT),
             ),
@@ -1119,6 +1128,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_HAPTIC_FEEDBACK_LEVEL = "haptic_feedback_level"
         private const val KEY_LIVE_ACTIVITY_STYLE_NOTIFICATION_ENABLED =
             "live_activity_style_notification_enabled"
+        private const val KEY_LIVE_UPDATE_ICON = "live_update_icon"
         private const val KEY_DOWNLOAD_ROOT_RELATIVE_PATH = "download_root_relative_path"
         private const val KEY_MAX_CONCURRENT_DOWNLOADS = "max_concurrent_downloads"
         private const val KEY_CONFIRM_CELLULAR_DOWNLOAD = "confirm_cellular_download"

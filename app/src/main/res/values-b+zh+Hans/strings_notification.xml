@@ -30,4 +30,6 @@
     <string name="notification_count_cancelled">已取消 %1$d 项</string>
     <string name="notification_count_skipped">已跳过 %1$d 项</string>
     <string name="notification_short_completed">%1$d/%2$d</string>
+    <string name="settings_live_update_icon">通知图标</string>
+    <string name="settings_live_update_icon_download">下载箭头</string>
 </resources>

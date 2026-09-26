@@ -28,4 +28,6 @@
     <string name="notification_count_cancelled">ยกเลิกแล้ว %1$d รายการ</string>
     <string name="notification_count_skipped">ข้ามแล้ว %1$d รายการ</string>
     <string name="notification_short_completed">%1$d/%2$d</string>
+    <string name="settings_live_update_icon">ไอคอนการแจ้งเตือน</string>
+    <string name="settings_live_update_icon_download">ลูกศรดาวน์โหลด</string>
 </resources>

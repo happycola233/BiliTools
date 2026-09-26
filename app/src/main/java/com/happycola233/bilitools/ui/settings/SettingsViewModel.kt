@@ -13,6 +13,7 @@ import com.happycola233.bilitools.data.DownloadPreferenceMemorySettings
 import com.happycola233.bilitools.data.DefaultDownloadQualitySettings
 import com.happycola233.bilitools.data.HapticFeedbackLevel
 import com.happycola233.bilitools.data.IssueReportRepository
+import com.happycola233.bilitools.data.LiveUpdateIcon
 import com.happycola233.bilitools.data.SettingsRepository
 import com.happycola233.bilitools.data.TopLevelFolderMode
 
@@ -133,6 +134,10 @@ class SettingsViewModel(
 
     fun setLiveActivityStyleNotificationEnabled(enabled: Boolean) {
         settingsRepository.setLiveActivityStyleNotificationEnabled(enabled)
+    }
+
+    fun setLiveUpdateIcon(icon: LiveUpdateIcon) {
+        settingsRepository.setLiveUpdateIcon(icon)
     }
 
     fun setConfirmCellularDownload(enabled: Boolean) {

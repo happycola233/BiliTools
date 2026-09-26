@@ -4,6 +4,7 @@ import android.app.Notification
 import android.content.Context
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.DownloadNotificationState
+import com.happycola233.bilitools.data.LiveUpdateIcon
 import com.happycola233.bilitools.data.model.DownloadStatus
 import org.junit.Assert.*
 import org.junit.Test
@@ -50,6 +51,33 @@ class DownloadNotificationManagerTest {
         assertEquals(25, notification.extras.getInt(Notification.EXTRA_PROGRESS))
         assertFalse(notification.extras.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE))
         assertTrue(notification.extras.getString(Notification.EXTRA_TEXT)!!.contains("25%"))
+    }
+
+    @Test fun liveUpdateUsesTheSelectedIconAndOrdinaryNotificationsKeepTheMonochromeIcon() {
+        val notifications = DownloadNotificationManager(context)
+        val branded = notifications.buildProgressNotification(single())
+        assertEquals(
+            R.drawable.ic_live_update_bilitools,
+            branded.smallIcon.resId,
+        )
+        assertNull(branded.getLargeIcon())
+        val arrow = notifications.buildProgressNotification(single(), true, LiveUpdateIcon.Download)
+        assertEquals(
+            R.drawable.ic_notification_download_24,
+            arrow.smallIcon.resId,
+        )
+        assertNull(arrow.getLargeIcon())
+        val ordinary = notifications.buildProgressNotification(single(), false)
+        assertEquals(
+            R.drawable.ic_notification_download_24,
+            ordinary.smallIcon.resId,
+        )
+        assertNull(ordinary.getLargeIcon())
+        val paused = single().copy(runningCount = 0, singleStatus = DownloadStatus.Paused, pausedTaskIds = setOf(1))
+        assertEquals(
+            R.drawable.ic_notification_download_24,
+            notifications.buildProgressNotification(paused).smallIcon.resId,
+        )
     }
 
     @Test fun unknownSingleFileShowsDownloadedBytesWithoutInventingAPercentage() {

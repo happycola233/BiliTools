@@ -5,6 +5,7 @@ import android.os.SystemClock
 import com.happycola233.bilitools.core.AppLanguage
 import com.happycola233.bilitools.data.DownloadNotificationState
 import com.happycola233.bilitools.data.DownloadRepository
+import com.happycola233.bilitools.data.LiveUpdateIcon
 import com.happycola233.bilitools.data.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,14 +38,15 @@ internal class DownloadNotificationController(
         repository.ensureLoaded()
         notifications.ensureChannels()
         observer = scope.launch {
-            var previousAppearance: Pair<Boolean, Long>? = null
+            var previousAppearance: Triple<Boolean, LiveUpdateIcon, Long>? = null
             combine(
                 repository.notificationState,
-                settings.settings.map { it.liveActivityStyleNotificationEnabled }.distinctUntilChanged(),
+                settings.settings.map { it.liveActivityStyleNotificationEnabled to it.liveUpdateIcon }
+                    .distinctUntilChanged(),
                 AppLanguage.changes,
-            ) { state, liveUpdates, language -> Triple(state, liveUpdates, language) }
-                .collect { (state, liveUpdates, language) ->
-                    val appearance = liveUpdates to language
+            ) { state, notificationSettings, language -> Triple(state, notificationSettings, language) }
+                .collect { (state, notificationSettings, language) ->
+                    val appearance = Triple(notificationSettings.first, notificationSettings.second, language)
                     val appearanceChanged = appearance != previousAppearance
                     previousAppearance = appearance
                     if (appearanceChanged) notifications.ensureChannels()
@@ -104,6 +106,7 @@ internal class DownloadNotificationController(
                     state,
                     liveActivityStyleEnabled = settings.shouldUseLiveActivityStyleNotification() &&
                         dismissedSessionId != state.sessionId,
+                    liveUpdateIcon = settings.currentSettings().liveUpdateIcon,
                 )
                 val foregroundService = service
                 if (foregroundService != null) {
