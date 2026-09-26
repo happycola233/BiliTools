@@ -582,4 +582,7 @@
     <string name="update_dialog_notes_empty">該版本未提供更新說明。</string>
     <string name="update_dialog_open_release">前往釋出頁</string>
     <string name="update_dialog_open_release_failed">無法開啟發布頁</string>
+    <string name="downloads_details_close">關閉下載詳情</string>
+    <string name="downloads_details_expand_path">展開路徑</string>
+    <string name="downloads_details_collapse_path">收起路徑</string>
 </resources>

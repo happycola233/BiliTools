@@ -582,4 +582,7 @@
     <string name="update_dialog_notes_empty">ไม่มีบันทึกประจำรุ่นสำหรับเวอร์ชันนี้</string>
     <string name="update_dialog_open_release">ดูรุ่น</string>
     <string name="update_dialog_open_release_failed">ไม่สามารถเปิดหน้าเผยแพร่ได้</string>
+    <string name="downloads_details_close">ปิดรายละเอียดการดาวน์โหลด</string>
+    <string name="downloads_details_expand_path">ขยายเส้นทาง</string>
+    <string name="downloads_details_collapse_path">ย่อเส้นทาง</string>
 </resources>

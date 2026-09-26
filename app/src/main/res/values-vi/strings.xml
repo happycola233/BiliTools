@@ -582,4 +582,7 @@
     <string name="update_dialog_notes_empty">Không có ghi chú phát hành nào cho phiên bản này.</string>
     <string name="update_dialog_open_release">Xem bản phát hành</string>
     <string name="update_dialog_open_release_failed">Không thể mở trang phát hành</string>
+    <string name="downloads_details_close">Đóng chi tiết tải xuống</string>
+    <string name="downloads_details_expand_path">Mở rộng đường dẫn</string>
+    <string name="downloads_details_collapse_path">Thu gọn đường dẫn</string>
 </resources>

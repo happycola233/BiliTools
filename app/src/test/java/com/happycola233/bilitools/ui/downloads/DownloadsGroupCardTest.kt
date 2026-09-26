@@ -29,8 +29,11 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.geometry.Offset
@@ -40,6 +43,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.semantics.SemanticsActions
@@ -457,11 +461,6 @@ class DownloadsGroupCardTest {
         }
         compose.onNodeWithText("147.0 MB", substring = true).assertIsDisplayed()
         val sheet = compose.onNode(isDialog())
-        val sectionLeft = compose.onNodeWithText("基本信息").getUnclippedBoundsInRoot().left.value
-        assertEquals("详情字段与分区标题左对齐", sectionLeft,
-            compose.onNodeWithText("UP 主", useUnmergedTree = true).getUnclippedBoundsInRoot().left.value, 0.5f)
-        assertEquals("长字段与分区标题左对齐", sectionLeft,
-            compose.onNodeWithText(sourceUrl, useUnmergedTree = true).getUnclippedBoundsInRoot().left.value, 0.5f)
         capture("details-${mode.name}", sheet)
         val clipboard = RuntimeEnvironment.getApplication().getSystemService(ClipboardManager::class.java)
         compose.runOnIdle { clipboard.setPrimaryClip(ClipData.newPlainText("test", "原有剪贴板")) }
@@ -481,8 +480,15 @@ class DownloadsGroupCardTest {
             assertEquals("长按复制完整标题", group.title, clipboard.primaryClip!!.getItemAt(0).text.toString())
             clipboard.setPrimaryClip(ClipData.newPlainText("test", "原有剪贴板"))
         }
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("基本信息"))
+        val sectionLeft = compose.onNodeWithText("基本信息").getUnclippedBoundsInRoot().left.value
+        assertEquals("详情字段与分区标题左对齐", sectionLeft,
+            compose.onNodeWithText("UP 主", useUnmergedTree = true).getUnclippedBoundsInRoot().left.value, 0.5f)
+        assertEquals("长字段与分区标题左对齐", sectionLeft,
+            compose.onNodeWithText(sourceUrl, useUnmergedTree = true).getUnclippedBoundsInRoot().left.value, 0.5f)
         compose.onNodeWithText("10:25").performScrollTo().assertIsDisplayed()
         val sourceLabel = compose.onNodeWithText("来源链接")
+        sourceLabel.performScrollTo()
         sourceLabel.assert(SemanticsMatcher.keyNotDefined(SemanticsActions.OnLongClick))
         sourceLabel.performTouchInput { longClick() }
         compose.runOnIdle { assertEquals("字段名不触发复制", "原有剪贴板", clipboard.primaryClip!!.getItemAt(0).text.toString()) }
@@ -514,15 +520,18 @@ class DownloadsGroupCardTest {
         assertTrue("两列字段只给取值显示阴影", durationLabelBeforePress.sameAs(durationLabel.captureToImage().asAndroidBitmap()))
         duration.performTouchInput { cancel() }
         compose.mainClock.autoAdvance = true
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("下载目录"))
         compose.onNodeWithText("Download/BiliTools/夏日的光影").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Download/BiliTools/夏日的光影/夏日光影-音视频.mp4").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("没有可用字幕").performScrollTo().assertIsDisplayed()
-        capture("details-file-${mode.name}", sheet)
-        compose.onNodeWithText("Download/BiliTools/夏日的光影").performScrollTo()
+        compose.onNodeWithText("Download/BiliTools/夏日的光影")
             .performSemanticsAction(SemanticsActions.OnLongClick) { it() }
         compose.runOnIdle {
             assertEquals("Download/BiliTools/夏日的光影", clipboard.primaryClip!!.getItemAt(0).text.toString())
         }
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("夏日光影-音视频.mp4"))
+        compose.onAllNodesWithText("目标位置").onFirst().performScrollTo().performClick()
+        compose.onNodeWithText("Download/BiliTools/夏日的光影/夏日光影-音视频.mp4").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("没有可用字幕").performScrollTo().assertIsDisplayed()
+        capture("details-file-${mode.name}", sheet)
         compose.onNode(hasScrollToIndexAction()).performScrollToIndex(0)
         compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsActions.Dismiss))
             .performSemanticsAction(SemanticsActions.Dismiss) { it() }

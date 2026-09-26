@@ -585,4 +585,7 @@
     <string name="update_dialog_notes_empty">Nenhuma nota de lançamento está disponível para esta versão.</string>
     <string name="update_dialog_open_release">Ver liberação</string>
     <string name="update_dialog_open_release_failed">Não foi possível abrir a página de lançamento</string>
+    <string name="downloads_details_close">Fechar detalhes do download</string>
+    <string name="downloads_details_expand_path">Expandir caminho</string>
+    <string name="downloads_details_collapse_path">Recolher caminho</string>
 </resources>

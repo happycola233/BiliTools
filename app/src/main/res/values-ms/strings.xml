@@ -582,4 +582,7 @@
     <string name="update_dialog_notes_empty">Tiada nota keluaran tersedia untuk versi ini.</string>
     <string name="update_dialog_open_release">Lihat keluaran</string>
     <string name="update_dialog_open_release_failed">Tidak dapat membuka halaman keluaran</string>
+    <string name="downloads_details_close">Tutup butiran muat turun</string>
+    <string name="downloads_details_expand_path">Kembangkan laluan</string>
+    <string name="downloads_details_collapse_path">Runtuhkan laluan</string>
 </resources>

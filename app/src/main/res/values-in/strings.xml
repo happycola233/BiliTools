@@ -582,4 +582,7 @@
     <string name="update_dialog_notes_empty">Tidak ada catatan rilis yang tersedia untuk versi ini.</string>
     <string name="update_dialog_open_release">Lihat rilis</string>
     <string name="update_dialog_open_release_failed">Tidak dapat membuka halaman rilis</string>
+    <string name="downloads_details_close">Tutup detail unduhan</string>
+    <string name="downloads_details_expand_path">Perluas jalur</string>
+    <string name="downloads_details_collapse_path">Ciutkan jalur</string>
 </resources>

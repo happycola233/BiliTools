@@ -643,4 +643,7 @@
     <string name="update_dialog_notes_empty">该版本未提供更新说明。</string>
     <string name="update_dialog_open_release">前往发布页</string>
     <string name="update_dialog_open_release_failed">无法打开发布页</string>
+    <string name="downloads_details_close">关闭下载详情</string>
+    <string name="downloads_details_expand_path">展开路径</string>
+    <string name="downloads_details_collapse_path">收起路径</string>
 </resources>

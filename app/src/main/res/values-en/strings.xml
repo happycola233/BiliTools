@@ -257,6 +257,7 @@
     <string name="downloads_group_paused">Paused</string>
     <string name="downloads_group_waiting">Waiting to resume</string>
     <plurals name="downloads_group_failed_count">
+        <item quantity="one">%1$d failed</item>
         <item quantity="other">%1$d failed</item>
     </plurals>
     <plurals name="downloads_group_missing_count">
@@ -584,4 +585,7 @@
     <string name="update_dialog_notes_empty">No release notes are available for this version.</string>
     <string name="update_dialog_open_release">View release</string>
     <string name="update_dialog_open_release_failed">Could not open the release page</string>
+    <string name="downloads_details_close">Close download details</string>
+    <string name="downloads_details_expand_path">Expand path</string>
+    <string name="downloads_details_collapse_path">Collapse path</string>
 </resources>

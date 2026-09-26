@@ -597,4 +597,7 @@
     <string name="update_dialog_notes_empty">لا توجد ملاحظات إصدار متاحة لهذا الإصدار.</string>
     <string name="update_dialog_open_release">عرض الإصدار</string>
     <string name="update_dialog_open_release_failed">تعذر فتح صفحة الإصدار</string>
+    <string name="downloads_details_close">إغلاق تفاصيل التنزيل</string>
+    <string name="downloads_details_expand_path">توسيع المسار</string>
+    <string name="downloads_details_collapse_path">طي المسار</string>
 </resources>

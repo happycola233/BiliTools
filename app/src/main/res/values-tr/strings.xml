@@ -257,13 +257,16 @@
     <string name="downloads_group_paused">Duraklatıldı</string>
     <string name="downloads_group_waiting">Devam etmeyi bekliyor</string>
     <plurals name="downloads_group_failed_count">
+        <item quantity="one">%1$d başarısız</item>
         <item quantity="other">%1$d başarısız</item>
     </plurals>
     <plurals name="downloads_group_missing_count">
+        <item quantity="one">%1$d dosya eksik</item>
         <item quantity="other">%1$d dosya eksik</item>
     </plurals>
     <string name="downloads_group_collapse">Dosyaları daralt</string>
     <plurals name="downloads_group_task_count">
+        <item quantity="one">%1$d görev</item>
         <item quantity="other">%1$d görev</item>
     </plurals>
     <string name="downloads_group_view_tasks">Görevleri genişlet</string>
@@ -582,4 +585,7 @@
     <string name="update_dialog_notes_empty">Bu sürüm için sürüm notu mevcut değil.</string>
     <string name="update_dialog_open_release">Sürümü görüntüle</string>
     <string name="update_dialog_open_release_failed">Sürüm sayfası açılamadı</string>
+    <string name="downloads_details_close">İndirme ayrıntılarını kapat</string>
+    <string name="downloads_details_expand_path">Yolu genişlet</string>
+    <string name="downloads_details_collapse_path">Yolu daralt</string>
 </resources>

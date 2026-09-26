@@ -257,6 +257,9 @@
     <string name="downloads_group_paused">Приостановлено</string>
     <string name="downloads_group_waiting">Ожидание возобновления</string>
     <plurals name="downloads_group_failed_count">
+        <item quantity="one">Ошибок: %1$d</item>
+        <item quantity="few">Ошибок: %1$d</item>
+        <item quantity="many">Ошибок: %1$d</item>
         <item quantity="other">Ошибок: %1$d</item>
     </plurals>
     <plurals name="downloads_group_missing_count">
@@ -588,4 +591,7 @@
     <string name="update_dialog_notes_empty">Для этой версии нет примечаний к выпуску.</string>
     <string name="update_dialog_open_release">Посмотреть выпуск</string>
     <string name="update_dialog_open_release_failed">Не удалось открыть страницу релиза.</string>
+    <string name="downloads_details_close">Закрыть сведения о загрузке</string>
+    <string name="downloads_details_expand_path">Развернуть путь</string>
+    <string name="downloads_details_collapse_path">Свернуть путь</string>
 </resources>

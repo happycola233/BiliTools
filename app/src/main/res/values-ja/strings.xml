@@ -582,4 +582,7 @@
     <string name="update_dialog_notes_empty">このバージョンに関して利用可能なリリースノートは存在しない。</string>
     <string name="update_dialog_open_release">リリースを見る</string>
     <string name="update_dialog_open_release_failed">リリースページを開けませんでした</string>
+    <string name="downloads_details_close">ダウンロードの詳細を閉じる</string>
+    <string name="downloads_details_expand_path">パスを展開</string>
+    <string name="downloads_details_collapse_path">パスを折りたたむ</string>
 </resources>
