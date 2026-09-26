@@ -10,7 +10,7 @@
     <string name="settings_naming_top_level_folder_mode_enabled_desc">Öğelerini bir arada tutmak için her indirme grubu için daima bir klasör oluşturun.</string>
     <string name="settings_naming_top_level_folder_mode_disabled_desc">İçeren bir klasör oluşturmayın. Birden fazla öğeyi indirirken, doğrudan kendi klasörlerini oluşturun.</string>
     <string name="settings_naming_overwrite_existing">Mevcut dosyaların üzerine yaz</string>
-    <string name="settings_naming_overwrite_existing_desc">Aynı ada sahip dosya veya klasörlerin üzerine yazın. Kapalıyken, ad çakışmalarını önlemek için bir sayı ekleyin.</string>
+    <string name="settings_naming_overwrite_existing_desc">Aynı adlı dosyaları değiştirin ve mevcut klasörleri kullanın. Kapalıyken ad çakışmalarını önlemek için numara eklenir.</string>
     <string name="settings_naming_clean_separators">Ekstra ayırıcıları kaldırın</string>
     <string name="settings_naming_clean_separators_desc">Şablon değişkenleri boş olduğunda adların başındaki ve sonundaki fazladan boşlukları ve kısa çizgileri kaldırın.</string>
     <string name="settings_naming_single_page_number">Tek parçalı videoları numaralandırma</string>

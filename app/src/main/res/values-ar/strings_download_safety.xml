@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_delete_incomplete">تعذر حذف بعض الملفات. تم الاحتفاظ بالمهام المرتبطة بها. تحقق من مواقع الملفات أو أذونات الوصول.</string>
+    <string name="download_delete_shared_kept">تم مسح المهام المحددة والاحتفاظ بالملفات التي تستخدمها مهام أخرى.</string>
+    <string name="download_delete_finished">تم حذف المهام المحددة وملفاتها.</string>
+    <string name="download_clear_finished">تم مسح سجلات المهام المحددة.</string>
+    <string name="download_history_unavailable">تعذرت قراءة سجل التنزيلات. تم إيقاف التنزيل والحذف. تم الاحتفاظ بالسجلات والملفات الموجودة.</string>
+</resources>

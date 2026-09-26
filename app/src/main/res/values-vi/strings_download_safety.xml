@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_delete_incomplete">Không thể xóa một số tệp. Các tác vụ liên quan đã được giữ lại. Hãy kiểm tra vị trí tệp hoặc quyền truy cập.</string>
+    <string name="download_delete_shared_kept">Đã xóa các tác vụ đã chọn. Các tệp được tác vụ khác sử dụng đã được giữ lại.</string>
+    <string name="download_delete_finished">Đã xóa các tác vụ đã chọn và tệp của chúng.</string>
+    <string name="download_clear_finished">Đã xóa bản ghi các tác vụ đã chọn.</string>
+    <string name="download_history_unavailable">Không thể đọc lịch sử tải xuống. Đã dừng tải xuống và xóa. Các bản ghi và tệp hiện có được giữ lại.</string>
+</resources>

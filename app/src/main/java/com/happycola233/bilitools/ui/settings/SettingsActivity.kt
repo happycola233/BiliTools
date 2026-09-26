@@ -44,11 +44,7 @@ class SettingsActivity : AppCompatActivity() {
     ) { uri ->
         if (uri == null) return@registerForActivityResult
 
-        runCatching {
-            val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-            contentResolver.takePersistableUriPermission(uri, flags)
-        }
-
+        // 这里只选择 MediaStore 的保存位置，不申请整棵目录树的长期读写权限。
         val updated = viewModel.setDownloadRootFromTreeUri(uri)
         val messageRes = if (updated) {
             R.string.settings_download_location_updated

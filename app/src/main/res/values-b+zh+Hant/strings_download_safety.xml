@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_delete_incomplete">部分檔案無法刪除，相關任務已保留。請檢查檔案位置或存取權限。</string>
+    <string name="download_delete_shared_kept">已清除所選任務，仍被其他任務使用的檔案已保留。</string>
+    <string name="download_delete_finished">已刪除所選任務及其檔案。</string>
+    <string name="download_clear_finished">已清除所選任務記錄。</string>
+    <string name="download_history_unavailable">無法讀取下載記錄，已停止下載和刪除操作。原記錄與檔案已保留。</string>
+</resources>

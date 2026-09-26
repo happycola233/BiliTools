@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_delete_incomplete">Не удалось удалить некоторые файлы. Их задачи сохранены. Проверьте расположение файлов и разрешения доступа.</string>
+    <string name="download_delete_shared_kept">Выбранные задачи очищены. Файлы, используемые другими задачами, сохранены.</string>
+    <string name="download_delete_finished">Выбранные задачи и их файлы удалены.</string>
+    <string name="download_clear_finished">Записи выбранных задач очищены.</string>
+    <string name="download_history_unavailable">Не удалось прочитать историю загрузок. Загрузка и удаление остановлены. Существующие записи и файлы сохранены.</string>
+</resources>

@@ -10,7 +10,7 @@
     <string name="settings_naming_top_level_folder_mode_enabled_desc">Sentiasa cipta folder yang mengandungi untuk setiap kumpulan muat turun untuk menyimpan itemnya bersama-sama.</string>
     <string name="settings_naming_top_level_folder_mode_disabled_desc">Jangan cipta folder yang mengandungi. Apabila memuat turun beberapa item, buat folder individu mereka secara langsung.</string>
     <string name="settings_naming_overwrite_existing">Tulis ganti fail sedia ada</string>
-    <string name="settings_naming_overwrite_existing_desc">Tulis ganti fail atau folder dengan nama yang sama. Apabila dimatikan, tambahkan nombor untuk mengelakkan konflik nama.</string>
+    <string name="settings_naming_overwrite_existing_desc">Gantikan fail dengan nama yang sama dan gunakan semula folder sedia ada. Apabila dimatikan, tambah nombor untuk mengelakkan nama berulang.</string>
     <string name="settings_naming_clean_separators">Alih keluar pemisah tambahan</string>
     <string name="settings_naming_clean_separators_desc">Alih keluar ruang tambahan dan sempang dari permulaan dan akhir nama apabila pembolehubah templat kosong.</string>
     <string name="settings_naming_single_page_number">Bilangan video satu bahagian</string>

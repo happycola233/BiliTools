@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_delete_incomplete">Some files could not be deleted. Their tasks were kept. Check the file locations or access permissions.</string>
+    <string name="download_delete_shared_kept">Selected tasks cleared. Files used by other tasks were kept.</string>
+    <string name="download_delete_finished">Selected tasks and their files deleted.</string>
+    <string name="download_clear_finished">Selected task records cleared.</string>
+    <string name="download_history_unavailable">Download history could not be read. Downloads and deletions have been stopped. Existing records and files have been kept.</string>
+</resources>

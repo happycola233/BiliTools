@@ -1,13 +1,12 @@
 package com.happycola233.bilitools.core
 
 import com.arthenica.ffmpegkit.FFmpegKit
+import com.arthenica.ffmpegkit.FFmpegSession
 import com.arthenica.ffmpegkit.FFprobeKit
+import com.arthenica.ffmpegkit.MediaInformationSession
 import com.arthenica.ffmpegkit.ReturnCode
 import java.io.File
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.suspendCancellableCoroutine
 
 /** 要挂进视频容器的一条软字幕轨：SRT 文件、B 站语言代码与展示给播放器的轨道名称。 */
 internal data class EmbeddedSubtitleTrack(
@@ -241,49 +240,30 @@ object MediaProcessingEngine {
     }
 
     /** 输入来自下载服务器，实际编码在这里探测，不能由文件后缀或音质名称猜测。 */
-    private suspend fun firstAudioCodec(inputFile: File): String? = suspendCancellableCoroutine { continuation ->
-        val session = FFprobeKit.getMediaInformationAsync(inputFile.absolutePath) { completed ->
-            if (!continuation.isActive) return@getMediaInformationAsync
-            when {
-                ReturnCode.isCancel(completed.returnCode) ->
-                    continuation.cancel(CancellationException("Media inspection cancelled"))
-                !ReturnCode.isSuccess(completed.returnCode) || completed.mediaInformation == null ->
-                    continuation.resumeWithException(IllegalStateException("Media inspection failed"))
-                else -> continuation.resume(
-                    completed.mediaInformation.streams.firstOrNull { it.type == "audio" }?.codec,
-                )
-            }
+    private suspend fun firstAudioCodec(inputFile: File): String? {
+        val completed = awaitNativeOperation<MediaInformationSession> { finish ->
+            val session = FFprobeKit.getMediaInformationAsync(inputFile.absolutePath) { finish(it) }
+            val cancel: () -> Unit = { FFmpegKit.cancel(session.sessionId) }
+            cancel
         }
-        continuation.invokeOnCancellation { FFmpegKit.cancel(session.sessionId) }
+        if (ReturnCode.isCancel(completed.returnCode)) throw CancellationException("Media inspection cancelled")
+        check(ReturnCode.isSuccess(completed.returnCode) && completed.mediaInformation != null) {
+            "Media inspection failed"
+        }
+        return completed.mediaInformation.streams.firstOrNull { it.type == "audio" }?.codec
     }
 
     private suspend fun execute(arguments: List<String>, operationName: String) {
-        suspendCancellableCoroutine<Unit> { continuation ->
-            val session = FFmpegKit.executeWithArgumentsAsync(arguments.toTypedArray()) { completed ->
-                if (!continuation.isActive) return@executeWithArgumentsAsync
-                val returnCode = completed.returnCode
-                when {
-                    ReturnCode.isSuccess(returnCode) -> continuation.resume(Unit)
-                    ReturnCode.isCancel(returnCode) ->
-                        continuation.cancel(CancellationException("$operationName cancelled"))
-                    else -> {
-                        val details = returnCode?.toString().orEmpty()
-                        continuation.resumeWithException(
-                            IllegalStateException(
-                                if (details.isBlank()) {
-                                    "$operationName failed"
-                                } else {
-                                    "$operationName failed ($details)"
-                                },
-                            ),
-                        )
-                    }
-                }
-            }
-
-            continuation.invokeOnCancellation {
-                runCatching { FFmpegKit.cancel(session.sessionId) }
-            }
+        val completed = awaitNativeOperation<FFmpegSession> { finish ->
+            val session = FFmpegKit.executeWithArgumentsAsync(arguments.toTypedArray()) { finish(it) }
+            val cancel: () -> Unit = { FFmpegKit.cancel(session.sessionId) }
+            cancel
+        }
+        val returnCode = completed.returnCode
+        if (ReturnCode.isCancel(returnCode)) throw CancellationException("$operationName cancelled")
+        check(ReturnCode.isSuccess(returnCode)) {
+            val details = returnCode?.toString().orEmpty()
+            if (details.isBlank()) "$operationName failed" else "$operationName failed ($details)"
         }
     }
 }

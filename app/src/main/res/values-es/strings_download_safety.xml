@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_delete_incomplete">No se pudieron eliminar algunos archivos. Se conservaron sus tareas. Comprueba la ubicación de los archivos o los permisos de acceso.</string>
+    <string name="download_delete_shared_kept">Tareas seleccionadas borradas. Se conservaron los archivos usados por otras tareas.</string>
+    <string name="download_delete_finished">Tareas seleccionadas y sus archivos eliminados.</string>
+    <string name="download_clear_finished">Registros de las tareas seleccionadas borrados.</string>
+    <string name="download_history_unavailable">No se pudo leer el historial de descargas. Se han detenido las descargas y las eliminaciones. Se han conservado los registros y archivos existentes.</string>
+</resources>

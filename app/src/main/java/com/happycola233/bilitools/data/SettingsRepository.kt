@@ -211,6 +211,15 @@ class SettingsRepository(context: Context) {
     val settings: StateFlow<AppSettings> = _settings.asStateFlow()
 
     init {
+        // 旧版曾保存目录树权限，先记下合法历史位置，再释放不再使用的广泛文档权限。
+        val oldGrants = runCatching { appContext.contentResolver.persistedUriPermissions }.getOrDefault(emptyList())
+        val roots = knownDownloadRoots() + oldGrants.mapNotNull { extractDownloadRelativePathFromTreeUri(it.uri) }
+        val savedRoots = prefs.edit().putStringSet(KEY_DOWNLOAD_ROOT_HISTORY, roots.toSet()).commit()
+        if (savedRoots) oldGrants.forEach { grant ->
+            val flags = (if (grant.isReadPermission) android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION else 0) or
+                (if (grant.isWritePermission) android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION else 0)
+            runCatching { appContext.contentResolver.releasePersistableUriPermission(grant.uri, flags) }
+        }
         applyTheme(_settings.value.themeMode)
         scheduleDownloadGalleryVisibilitySync(_settings.value)
     }
@@ -222,6 +231,14 @@ class SettingsRepository(context: Context) {
     fun shouldConvertXmlDanmakuToAss(): Boolean = _settings.value.convertXmlDanmakuToAss
 
     fun downloadRootRelativePath(): String = _settings.value.downloadRootRelativePath
+
+    internal fun knownDownloadRoots(): Set<String> = (
+        prefs.getStringSet(KEY_DOWNLOAD_ROOT_HISTORY, emptySet()).orEmpty() +
+            downloadRootRelativePath() + DEFAULT_DOWNLOAD_ROOT
+        ).mapNotNull(DownloadPaths::normalize).toSet()
+
+    internal fun historicalRootFor(directory: String): String? =
+        knownDownloadRoots().filter { DownloadPaths.contains(it, directory) }.maxByOrNull { it.length }
 
     fun maxConcurrentDownloads(): Int = _settings.value.maxConcurrentDownloads
 
@@ -696,11 +713,15 @@ class SettingsRepository(context: Context) {
     }
 
     fun setDownloadRootRelativePath(relativePath: String) {
-        val normalized = normalizeDownloadRoot(relativePath)
+        val normalized = DownloadPaths.normalize(relativePath) ?: return
         val current = _settings.value
         if (current.downloadRootRelativePath == normalized) return
         val previousRoot = current.downloadRootRelativePath
-        prefs.edit().putString(KEY_DOWNLOAD_ROOT_RELATIVE_PATH, normalized).apply()
+        val saved = prefs.edit()
+            .putString(KEY_DOWNLOAD_ROOT_RELATIVE_PATH, normalized)
+            .putStringSet(KEY_DOWNLOAD_ROOT_HISTORY, knownDownloadRoots() + previousRoot + normalized)
+            .commit()
+        if (!saved) return
         val updated = current.copy(downloadRootRelativePath = normalized)
         _settings.value = updated
         scheduleDownloadGalleryVisibilitySync(
@@ -713,7 +734,7 @@ class SettingsRepository(context: Context) {
     fun setDownloadRootFromTreeUri(uri: Uri): Boolean {
         val relativePath = extractDownloadRelativePathFromTreeUri(uri) ?: return false
         setDownloadRootRelativePath(relativePath)
-        return true
+        return downloadRootRelativePath() == relativePath
     }
 
     private fun loadSettings(): AppSettings {
@@ -933,54 +954,14 @@ class SettingsRepository(context: Context) {
         }
     }
 
-    private fun normalizeDownloadRoot(rawPath: String?): String {
-        val cleaned = rawPath
-            ?.replace('\\', '/')
-            ?.trim()
-            ?.trim('/')
-            .orEmpty()
-        if (cleaned.isBlank()) return DEFAULT_DOWNLOAD_ROOT
-
-        val segments = cleaned.split('/').filter { it.isNotBlank() }
-        if (segments.isEmpty()) return DEFAULT_DOWNLOAD_ROOT
-        if (!segments.first().equals(Environment.DIRECTORY_DOWNLOADS, ignoreCase = true)) {
-            return DEFAULT_DOWNLOAD_ROOT
-        }
-        return buildString {
-            append(Environment.DIRECTORY_DOWNLOADS)
-            if (segments.size > 1) {
-                append('/')
-                append(segments.drop(1).joinToString("/"))
-            }
-        }
-    }
+    private fun normalizeDownloadRoot(rawPath: String?): String =
+        rawPath?.let(DownloadPaths::normalize) ?: DEFAULT_DOWNLOAD_ROOT
 
     private fun extractDownloadRelativePathFromTreeUri(uri: Uri): String? {
-        val treeId = runCatching { DocumentsContract.getTreeDocumentId(uri) }.getOrNull()
-            ?: return null
-        val volume = treeId.substringBefore(':', "")
-        if (!volume.equals("primary", ignoreCase = true)) return null
-
-        val path = treeId
-            .substringAfter(':', "")
-            .replace('\\', '/')
-            .trim()
-            .trim('/')
-        if (path.isBlank()) return null
-
-        val segments = path.split('/').filter { it.isNotBlank() }
-        if (segments.isEmpty()) return null
-        if (!segments.first().equals(Environment.DIRECTORY_DOWNLOADS, ignoreCase = true)) {
-            return null
-        }
-
-        return buildString {
-            append(Environment.DIRECTORY_DOWNLOADS)
-            if (segments.size > 1) {
-                append('/')
-                append(segments.drop(1).joinToString("/"))
-            }
-        }
+        if (uri.scheme != "content" || uri.authority != "com.android.externalstorage.documents") return null
+        val treeId = runCatching { DocumentsContract.getTreeDocumentId(uri) }.getOrNull() ?: return null
+        if (treeId.substringBefore(':') != "primary") return null
+        return DownloadPaths.normalize(treeId.substringAfter(':', ""))
     }
 
     private fun normalizeUpdateVersion(rawVersion: String?): String? {
@@ -1130,6 +1111,7 @@ class SettingsRepository(context: Context) {
             "live_activity_style_notification_enabled"
         private const val KEY_LIVE_UPDATE_ICON = "live_update_icon"
         private const val KEY_DOWNLOAD_ROOT_RELATIVE_PATH = "download_root_relative_path"
+        private const val KEY_DOWNLOAD_ROOT_HISTORY = "download_root_history"
         private const val KEY_MAX_CONCURRENT_DOWNLOADS = "max_concurrent_downloads"
         private const val KEY_CONFIRM_CELLULAR_DOWNLOAD = "confirm_cellular_download"
         private const val KEY_HIDE_DOWNLOADED_VIDEOS_IN_SYSTEM_ALBUM =

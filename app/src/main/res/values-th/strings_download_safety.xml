@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_delete_incomplete">ลบบางไฟล์ไม่ได้ จึงเก็บงานที่เกี่ยวข้องไว้ โปรดตรวจสอบตำแหน่งไฟล์หรือสิทธิ์การเข้าถึง</string>
+    <string name="download_delete_shared_kept">ล้างงานที่เลือกแล้ว โดยเก็บไฟล์ที่งานอื่นใช้อยู่ไว้</string>
+    <string name="download_delete_finished">ลบงานที่เลือกและไฟล์แล้ว</string>
+    <string name="download_clear_finished">ล้างประวัติงานที่เลือกแล้ว</string>
+    <string name="download_history_unavailable">ไม่สามารถอ่านประวัติการดาวน์โหลดได้ จึงหยุดการดาวน์โหลดและการลบ โดยเก็บบันทึกและไฟล์เดิมไว้แล้ว</string>
+</resources>

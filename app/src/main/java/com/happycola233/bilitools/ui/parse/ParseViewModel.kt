@@ -239,6 +239,7 @@ private data class DownloadGroupLabel(
 private data class NamingSession(
     val settings: DownloadNamingSettings,
     val downTimeEpochSeconds: Long,
+    val downloadRoot: String,
     val useTopLevelFolder: Boolean = false,
     val topLevelFolderName: String? = null,
 )
@@ -1519,6 +1520,7 @@ class ParseViewModel(
                                 item.coverUrl,
                                 relativePath = requestedGroupRelativePath,
                                 sourceMetadata = embeddedMetadata,
+                                downloadRoot = namingSession.downloadRoot,
                             )
 
                             val outputType = snapshot.outputType
@@ -2485,6 +2487,7 @@ class ParseViewModel(
         val session = NamingSession(
             settings = settingsRepository.currentNamingSettings(),
             downTimeEpochSeconds = System.currentTimeMillis() / 1000L,
+            downloadRoot = settingsRepository.downloadRootRelativePath(),
         )
         val itemFolderCount = items
             .mapIndexed { index, item -> resolveItemFolderName(info, item, session, index + 1) }
@@ -2524,7 +2527,7 @@ class ParseViewModel(
         batchOrdinal: Int,
     ): String {
         val segments = buildList {
-            add(settingsRepository.downloadRootRelativePath().replace('\\', '/').trim().trim('/'))
+            add(namingSession.downloadRoot)
             if (namingSession.useTopLevelFolder) {
                 namingSession.topLevelFolderName
                     ?.trim()

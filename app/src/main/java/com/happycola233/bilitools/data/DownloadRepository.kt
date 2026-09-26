@@ -5,15 +5,14 @@ import com.happycola233.bilitools.core.DownloadMessageCatalog
 import com.happycola233.bilitools.core.resolve
 import com.happycola233.bilitools.data.model.DownloadMessage
 import com.happycola233.bilitools.data.model.DownloadMessageCode
-import android.content.ContentValues
 import android.content.Context
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
 import android.os.Environment
-import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import android.provider.MediaStore
+import android.util.AtomicFile
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.AudioQualities
 import com.happycola233.bilitools.core.AppLog as Log
@@ -53,6 +52,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -86,9 +87,14 @@ class DownloadRepository(
     private val strings = StringProvider(context)
     private val messageCatalog = DownloadMessageCatalog(context)
     private val resolver = context.contentResolver
+    private val outputStorage = exportRepository.outputStorage
+    private val directoryCleanup = DownloadDirectoryCleanup()
+    private val deletionMutex = Mutex()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val _groups = MutableStateFlow<List<DownloadGroup>>(emptyList())
     val groups: StateFlow<List<DownloadGroup>> = _groups.asStateFlow()
+    private val _historyReadFailed = MutableStateFlow(false)
+    val historyReadFailed: StateFlow<Boolean> = _historyReadFailed.asStateFlow()
     private val notificationSession = DownloadNotificationSession()
     private val _notificationState = MutableStateFlow(DownloadNotificationState())
     val notificationState: StateFlow<DownloadNotificationState> = _notificationState.asStateFlow()
@@ -152,6 +158,8 @@ class DownloadRepository(
     private val downloadStates = ConcurrentHashMap<Long, ResumableState>()
     private val mergeTasks = ConcurrentHashMap<Long, MergedDownload>()
     private val mergeJobs = ConcurrentHashMap<Long, Job>()
+    // 暂停会从调度表移除任务，但取消不等于退出；保留执行引用直至 finally 完成。
+    private val activeTaskJobs = ConcurrentHashMap<Long, MutableSet<Job>>()
     private val managedTaskQueue = TaskConcurrencyQueue(
         settingsRepository.maxConcurrentDownloads(),
     )
@@ -182,12 +190,20 @@ class DownloadRepository(
         }
     }
 
-    fun ensureLoaded() {
-        if (loaded) return
-        synchronized(loadLock) {
-            if (loaded) return
-            loadState()
-            loaded = true
+    fun ensureLoaded(): Boolean {
+        if (loaded) return true
+        return synchronized(loadLock) {
+            if (loaded) return@synchronized true
+            try {
+                loadState()
+                loaded = true
+                _historyReadFailed.value = false
+                true
+            } catch (error: Exception) {
+                _historyReadFailed.value = true
+                Log.e(TAG, "Cannot read download history; preserve original state", error)
+                false
+            }
         }
     }
 
@@ -260,36 +276,13 @@ class DownloadRepository(
                     return@forEach
                 }
                 checkedSuccessCount++
-                var resolvedUri = item.localUri
-                var accessible = isLocalUriAccessible(
+                val resolvedUri = item.localUri
+                val accessible = isLocalUriAccessible(
                     item.localUri,
                     "refresh-task-${item.id}",
                 )
-                if (!accessible) {
-                    Log.w(
-                        TAG,
-                        "[output-check] inaccessible success item, try relocate, taskId=${item.id}, groupId=${item.groupId}, file=${item.fileName}, localUri=${item.localUri}, previousMissing=${item.outputMissing}",
-                    )
-                    val recoveredUri = findAccessibleDownload(item.fileName, item.groupId)
-                        ?: findAccessibleDownloadAnywhere(item.fileName)
-                    if (recoveredUri != null) {
-                        resolvedUri = recoveredUri
-                        accessible = true
-                        Log.i(
-                            TAG,
-                            "[output-check] relocated success item uri, taskId=${item.id}, file=${item.fileName}, oldUri=${item.localUri}, newUri=$recoveredUri",
-                        )
-                    } else {
-                        detectedMissingCount++
-                    }
-                } else {
-                    Log.d(
-                        TAG,
-                        "[output-check] accessible success item, taskId=${item.id}, groupId=${item.groupId}, file=${item.fileName}, localUri=${item.localUri}",
-                    )
-                }
-
                 val missing = !accessible
+                if (missing) detectedMissingCount++
                 val outputBytes = if (accessible && resolvedUri != null) {
                     readOutputSize(Uri.parse(resolvedUri)) ?: item.outputBytes
                 } else {
@@ -303,7 +296,9 @@ class DownloadRepository(
                         TAG,
                         "[output-check] item output state changed, taskId=${item.id}, file=${item.fileName}, oldMissing=${item.outputMissing}, newMissing=$missing, oldUri=${item.localUri}, newUri=$resolvedUri",
                     )
-                    updateTask(item.copy(localUri = resolvedUri, outputMissing = missing, outputBytes = outputBytes))
+                    updateTaskIf(item.id, predicate = { it.localUri == resolvedUri && it.status == DownloadStatus.Success }) {
+                        it.copy(outputMissing = missing, outputBytes = outputBytes)
+                    }
                 }
             }
             Log.d(
@@ -320,17 +315,20 @@ class DownloadRepository(
         coverUrl: String? = null,
         relativePath: String? = null,
         sourceMetadata: DownloadEmbeddedMetadata? = null,
+        downloadRoot: String = settingsRepository.downloadRootRelativePath(),
     ): Long {
+        check(ensureLoaded()) { strings.get(R.string.download_history_unavailable) }
+        val root = requireNotNull(DownloadPaths.normalize(downloadRoot))
         val id = groupIds.incrementAndGet()
         val resolvedRelativePath = relativePath?.takeIf { it.isNotBlank() }?.let(
-            ::resolveRequestedGroupRelativePath,
+            { resolveRequestedGroupRelativePath(it, root) },
         ) ?: run {
             val folderName = buildGroupFolderName(
                 title = title,
                 bvid = bvid,
                 existingNames = existingGroupFolderNames(),
             )
-            resolveRequestedGroupRelativePath(buildGroupRelativePath(folderName))
+            resolveRequestedGroupRelativePath("$root/$folderName", root)
         }
         synchronized(lock) {
             groupInfo[id] = GroupInfo(
@@ -341,6 +339,7 @@ class DownloadRepository(
                 System.currentTimeMillis(),
                 resolvedRelativePath,
                 sourceMetadata,
+                root,
             )
             groupTaskIds[id] = mutableListOf()
         }
@@ -349,23 +348,9 @@ class DownloadRepository(
         return id
     }
 
-    fun groupRelativePath(groupId: Long): String {
-        val info = groupInfo[groupId]
-        val stored = info?.relativePath?.takeIf { it.isNotBlank() }
-        if (stored != null) return stored
-        val folderName = buildGroupFolderName(
-            title = info?.title,
-            bvid = info?.bvid,
-            existingNames = existingGroupFolderNames(),
-        )
-        val relativePath = resolveRequestedGroupRelativePath(buildGroupRelativePath(folderName))
-        if (info != null) {
-            groupInfo[groupId] = info.copy(relativePath = relativePath)
-            updateGroups()
-            schedulePersist()
-        }
-        return relativePath
-    }
+    fun groupRelativePath(groupId: Long): String = requireNotNull(groupInfo[groupId]).relativePath
+
+    private fun groupDownloadRoot(groupId: Long): String? = groupInfo[groupId]?.downloadRootRelativePath
 
     fun enqueue(
         groupId: Long,
@@ -560,6 +545,10 @@ class DownloadRepository(
         parentTaskId: Long?,
     ): DownloadItem? {
         val item = synchronized(lock) {
+            if (groupId in deletingGroupIds || groupInfo[groupId] == null) {
+                if (parentTaskId != null) return@synchronized null
+                throw CancellationException("Download group was removed")
+            }
             if (parentTaskId != null) {
                 val parentTask = tasks[parentTaskId] ?: return@synchronized null
                 val parentActive = parentTask.groupId == groupId &&
@@ -620,9 +609,11 @@ class DownloadRepository(
         var shouldPersist = false
         synchronized(lock) {
             val target = tasks[id] ?: return@synchronized
+            if (id in deletingTaskIds) return@synchronized
             if (isManagedTask(target)) return@synchronized
             val next = normalizeTask(
                 target.copy(
+                    fileName = outputStorage.record(localUri)?.name ?: target.fileName,
                     status = status,
                     progress = progress,
                     downloadedBytes = downloadedBytes,
@@ -660,6 +651,7 @@ class DownloadRepository(
         var shouldPersist = false
         synchronized(lock) {
             val target = tasks[id] ?: return@synchronized
+            if (id in deletingTaskIds) return@synchronized
             if (isManagedTask(target)) return@synchronized
             val next = normalizeTask(
                 target.copy(
@@ -682,6 +674,7 @@ class DownloadRepository(
 
     private fun requestManagedTaskStart(id: Long) {
         synchronized(schedulingLock) {
+            if (isDeleting(id)) return
             val task = tasks[id] ?: return
             if (!isManagedTask(task) || task.status != DownloadStatus.Pending) return
             managedTaskQueue.enqueue(id)
@@ -697,7 +690,7 @@ class DownloadRepository(
                 managedTaskQueue.takeReady().forEach { slot ->
                     val id = slot.taskId
                     val task = tasks[id]
-                    if (task == null ||
+                    if (task == null || isDeleting(id) ||
                         !isManagedTask(task) ||
                         task.status != DownloadStatus.Pending
                     ) {
@@ -728,7 +721,7 @@ class DownloadRepository(
     private fun onManagedTaskSlotReleased(id: Long, released: Boolean) {
         if (!released) return
         val current = tasks[id]
-        if (current != null && isManagedTask(current) && current.status == DownloadStatus.Pending) {
+        if (current != null && !isDeleting(id) && isManagedTask(current) && current.status == DownloadStatus.Pending) {
             // 失败状态刚展示时用户可能立即重试；旧执行结束后要保留这次重新入队请求。
             managedTaskQueue.enqueue(id)
         }
@@ -737,6 +730,7 @@ class DownloadRepository(
 
     private fun requestExtraTaskStart(id: Long) {
         synchronized(schedulingLock) {
+            if (isDeleting(id)) return
             val task = tasks[id] ?: return
             if (isManagedTask(task) || task.status != DownloadStatus.Pending) return
             extraTaskQueue.enqueue(id)
@@ -753,7 +747,7 @@ class DownloadRepository(
                     val id = slot.taskId
                     val task = tasks[id]
                     val spec = extraTaskSpecs[id]
-                    if (task == null ||
+                    if (task == null || isDeleting(id) ||
                         isManagedTask(task) ||
                         task.status != DownloadStatus.Pending
                     ) {
@@ -793,7 +787,7 @@ class DownloadRepository(
     private fun onExtraTaskSlotReleased(id: Long, released: Boolean) {
         if (!released) return
         val current = tasks[id]
-        if (current != null && !isManagedTask(current) && current.status == DownloadStatus.Pending) {
+        if (current != null && !isDeleting(id) && !isManagedTask(current) && current.status == DownloadStatus.Pending) {
             extraTaskQueue.enqueue(id)
         }
         startReadyExtraTasks()
@@ -868,6 +862,7 @@ class DownloadRepository(
             }
         }
         extraJobs.put(task.id, job)?.cancel()
+        trackTaskJob(task.id, job)
         job.start()
     }
 
@@ -970,6 +965,8 @@ class DownloadRepository(
             mimeType = spec.mimeType,
             bytes = bytes,
             relativePath = groupRelativePath(current.groupId),
+            downloadRoot = groupDownloadRoot(current.groupId),
+            ownerKey = current.outputOwnerKey,
         )
         if (uri == null) {
             updateExtraTask(
@@ -1156,6 +1153,7 @@ class DownloadRepository(
     }
 
     private fun resumeLocked(id: Long) {
+        if (isDeleting(id)) return
         val target = tasks[id] ?: return
         if (target.status != DownloadStatus.Paused || !target.userPaused) return
         if (!isManagedTask(target)) {
@@ -1227,6 +1225,7 @@ class DownloadRepository(
     }
 
     private fun retryLocked(id: Long) {
+        if (isDeleting(id)) return
         val target = tasks[id] ?: return
         if (target.status != DownloadStatus.Failed) return
         if (!isManagedTask(target)) {
@@ -1372,78 +1371,14 @@ class DownloadRepository(
         }
     }
 
-    fun deleteTask(id: Long, deleteFile: Boolean) {
-        val item = tasks[id] ?: return
-        deleteTasks(listOf(item), deleteFile)
-    }
+    suspend fun deleteTask(id: Long, deleteFile: Boolean): DownloadDeletionResult =
+        deleteSelection(setOf(id), emptySet(), deleteFile)
 
-    fun deleteGroup(groupId: Long, deleteFile: Boolean) {
-        val (relativePath, items) = synchronized(lock) {
-            deletingGroupIds.add(groupId)
-            val path = groupInfo[groupId]?.relativePath
-            val groupItems = groupTaskIds[groupId].orEmpty().mapNotNull { tasks[it] }
-            path to groupItems
-        }
-        try {
-            if (items.isNotEmpty()) {
-                deleteTasks(items, deleteFile)
-            } else {
-                synchronized(lock) {
-                    groupInfo.remove(groupId)
-                    groupTaskIds.remove(groupId)
-                }
-                updateGroups()
-                schedulePersist()
-            }
+    suspend fun deleteGroup(groupId: Long, deleteFile: Boolean): DownloadDeletionResult =
+        deleteGroups(setOf(groupId), deleteFile)
 
-            if (deleteFile && !relativePath.isNullOrBlank()) {
-                deleteGroupFolder(relativePath)
-            }
-        } finally {
-            synchronized(lock) {
-                deletingGroupIds.remove(groupId)
-            }
-        }
-    }
-
-    private fun deleteGroupFolder(relativePath: String) {
-        runCatching {
-             val normalizedRelativePath = relativePath.replace('\\', '/').trim().trim('/')
-             if (normalizedRelativePath.isBlank()) return@runCatching
-             val dir = File(Environment.getExternalStorageDirectory(), normalizedRelativePath)
-             if (dir.exists() && !dir.deleteRecursively() && dir.exists()) {
-                 return@runCatching
-             }
-             cleanupEmptyManagedParentFolders(normalizedRelativePath)
-        }
-    }
-
-    private fun cleanupEmptyManagedParentFolders(relativePath: String) {
-        val normalizedTarget = normalizeRelativePath(relativePath)
-        val managedRoot = normalizeRelativePath(settingsRepository.downloadRootRelativePath())
-        if (normalizedTarget.isBlank() || managedRoot.isBlank()) return
-        if (!normalizedTarget.startsWith(managedRoot, ignoreCase = true)) return
-
-        var current = File(Environment.getExternalStorageDirectory(), relativePath)
-            .parentFile
-        val managedRootDir = File(
-            Environment.getExternalStorageDirectory(),
-            managedRoot.trimEnd('/'),
-        )
-
-        while (current != null &&
-            !current.path.equals(managedRootDir.path, ignoreCase = true)
-        ) {
-            val children = current.listFiles()
-            if (children == null || children.isNotEmpty()) {
-                return
-            }
-            if (!current.delete()) {
-                return
-            }
-            current = current.parentFile
-        }
-    }
+    suspend fun deleteGroups(groupIds: Collection<Long>, deleteFile: Boolean): DownloadDeletionResult =
+        deleteSelection(emptySet(), groupIds.toSet(), deleteFile)
 
     private fun startDownloadNow(id: Long, slot: TaskConcurrencyQueue.TaskSlot) {
         if (!managedTaskQueue.isCurrent(slot)) {
@@ -1505,6 +1440,7 @@ class DownloadRepository(
             }
         }
         downloadJobs.put(id, job)?.cancel()
+        trackTaskJob(id, job)
         job.start()
     }
 
@@ -1559,7 +1495,7 @@ class DownloadRepository(
             "[save-chain] start save managed download, taskId=$id, groupId=${startItem.groupId}, file=${startItem.fileName}, temp=${processedTemp.absolutePath}, tempExists=${processedTemp.exists()}, tempSize=${processedTemp.length()}, relativePath=$relativePath",
         )
         // 新下载只能认可本次保存的 URI；同名旧文件可能没有本次选择的字幕或歌词。
-        val uri = saveToDownloads(processedTemp, startItem.fileName, relativePath)
+        val uri = saveToDownloads(processedTemp, startItem.fileName, relativePath, groupDownloadRoot(startItem.groupId), startItem.outputOwnerKey)
         Log.d(
             TAG,
             "[save-chain] save resolved, taskId=$id, file=${startItem.fileName}, resolvedUri=$uri",
@@ -1582,6 +1518,7 @@ class DownloadRepository(
                     speedBytesPerSec = 0,
                     etaSeconds = null,
                     localUri = uri,
+                    fileName = outputStorage.record(uri)?.name ?: current.fileName,
                     userPaused = false,
                     errorMessage = null,
                     statusDetail = null,
@@ -2038,6 +1975,7 @@ class DownloadRepository(
             }
         }
         downloadJobs.put(task.id, coordinator)?.cancel()
+        trackTaskJob(task.id, coordinator)
         coordinator.start()
     }
 
@@ -2127,6 +2065,7 @@ class DownloadRepository(
             }
         }
         part.job = job
+        trackTaskJob(task.id, job)
         job.start()
     }
 
@@ -2360,176 +2299,165 @@ class DownloadRepository(
         }
     }
 
-    fun clearAllGroups() {
-        var downloadStateSnapshot = emptyList<ResumableState>()
-        var taskSnapshot = emptyList<DownloadItem>()
-        var mergeTaskSnapshot = emptyList<MergedDownload>()
-        synchronized(schedulingLock) {
-            synchronized(lock) {
-                deletingGroupIds.addAll(groupInfo.keys)
-                deletingTaskIds.addAll(tasks.keys)
-                taskSnapshot = tasks.values.toList()
-            }
-            val downloadJobSnapshot = downloadJobs.values.toList()
-            val mergeJobSnapshot = mergeJobs.values.toList()
-            val extraJobSnapshot = extraJobs.values.toList()
-            downloadJobs.clear()
-            mergeJobs.clear()
-            extraJobs.clear()
-            managedTaskQueue.clear()
-            extraTaskQueue.clear()
-            managedRetryTaskIds.clear()
-            extraTaskSpecs.clear()
-            downloadJobSnapshot.forEach { it.cancel() }
-            mergeJobSnapshot.forEach { it.cancel() }
-            extraJobSnapshot.forEach { it.cancel() }
+    suspend fun clearAllGroups(): DownloadDeletionResult =
+        deleteGroups(synchronized(lock) { groupInfo.keys.toList() }, deleteFile = false)
 
-            downloadStateSnapshot = downloadStates.values.toList()
-            downloadStates.clear()
-            mergeTaskSnapshot = mergeTasks.values.toList()
-            mergeTasks.clear()
-            mergeTaskSnapshot.forEach { task ->
-                task.video.job?.cancel()
-                task.audio.job?.cancel()
-                task.video.job = null
-                task.audio.job = null
-            }
-
-            synchronized(lock) {
-                groupInfo.clear()
-                groupTaskIds.clear()
-                tasks.keys.forEach(notificationSession::remove)
-                tasks.clear()
-                deletingGroupIds.clear()
-                deletingTaskIds.clear()
+    suspend fun clearCompletedGroups(): DownloadDeletionResult {
+        val ids = synchronized(lock) {
+            groupInfo.keys.filter { groupId ->
+                val items = groupTaskIds[groupId].orEmpty().mapNotNull { tasks[it] }
+                items.isNotEmpty() && items.all { it.status.isResolvedWithoutFailure }
             }
         }
-        downloadStateSnapshot.forEach { state ->
-            state.tempFile.delete()
-            tempFilesForCleanup(state.id, state.fileName).forEach { it.delete() }
-        }
-
-        taskSnapshot.forEach { item ->
-            tempFilesForCleanup(item.id, item.fileName).forEach { it.delete() }
-        }
-
-        mergeTaskSnapshot.forEach { task ->
-            task.video.tempFile.delete()
-            task.audio.tempFile.delete()
-        }
-        updateGroups()
-        schedulePersist()
-        startReadyManagedTasks()
-        startReadyExtraTasks()
+        return deleteGroups(ids, deleteFile = false)
     }
 
-    fun clearCompletedGroups() {
-        val completedGroups = mutableListOf<Long>()
-        val taskIds = mutableListOf<Long>()
-        synchronized(lock) {
-            groupInfo.forEach { (groupId, _) ->
-                val ids = groupTaskIds[groupId].orEmpty()
-                if (ids.isEmpty()) return@forEach
-                val groupTasks = ids.mapNotNull { tasks[it] }
-                if (groupTasks.isNotEmpty() &&
-                    groupTasks.all { it.status.isResolvedWithoutFailure }) {
-                    completedGroups.add(groupId)
-                    taskIds.addAll(ids)
-                }
-            }
-            taskIds.forEach { id ->
-                notificationSession.remove(id)
-                tasks.remove(id)
-                downloadJobs.remove(id)?.cancel()
-                extraJobs.remove(id)?.cancel()
-                managedTaskQueue.remove(id)
-                extraTaskQueue.remove(id)
-                managedRetryTaskIds.remove(id)
-                extraTaskSpecs.remove(id)
-                downloadStates.remove(id)?.tempFile?.delete()
-                mergeJobs.remove(id)?.cancel()
-                mergeTasks.remove(id)?.let {
-                    it.video.tempFile.delete()
-                    it.audio.tempFile.delete()
-                }
-            }
-            completedGroups.forEach { groupId ->
-                groupInfo.remove(groupId)
-                groupTaskIds.remove(groupId)
-            }
-        }
-        updateGroups()
-        schedulePersist()
-        startReadyManagedTasks()
-        startReadyExtraTasks()
-    }
-
-    private fun deleteTasks(items: List<DownloadItem>, deleteFile: Boolean) {
-        if (items.isEmpty()) return
-        val taskIds = items.mapTo(mutableSetOf()) { it.id }
-        val groupIds = items.map { it.groupId }.distinct()
-        synchronized(lock) {
-            deletingTaskIds.addAll(taskIds)
-        }
-        try {
-            synchronized(schedulingLock) {
-                items.forEach { cleanupTaskResources(it, deleteFile) }
+    private suspend fun deleteSelection(
+        requestedTaskIds: Set<Long>,
+        requestedGroupIds: Set<Long>,
+        deleteFile: Boolean,
+    ): DownloadDeletionResult = deletionMutex.withLock {
+        if (!ensureLoaded()) return@withLock DownloadDeletionResult(failedFiles = 1, deleteFiles = deleteFile)
+        // 一旦开始取消，清理必须完成；不把 UI 生命周期取消变成半删除状态。
+        withContext(Dispatchers.IO + NonCancellable) {
+            val jobSnapshot = mutableListOf<Job>()
+            val selected = synchronized(schedulingLock) {
                 synchronized(lock) {
+                    deletingGroupIds.addAll(requestedGroupIds)
+                    val ids = requestedTaskIds + requestedGroupIds.flatMap { groupTaskIds[it].orEmpty() }
+                    deletingTaskIds.addAll(ids)
+                    ids.mapNotNull { tasks[it] }
+                }.also { items ->
                     items.forEach { item ->
-                        notificationSession.remove(item.id)
-                        tasks.remove(item.id)
-                        groupTaskIds[item.groupId]?.remove(item.id)
+                        activeTaskJobs[item.id]?.let(jobSnapshot::addAll)
+                        managedTaskQueue.remove(item.id)
+                        extraTaskQueue.remove(item.id)
+                        listOf(downloadJobs.remove(item.id), extraJobs.remove(item.id), mergeJobs.remove(item.id))
+                            .filterNotNull().let(jobSnapshot::addAll)
+                        mergeTasks[item.id]?.let { merge ->
+                            listOfNotNull(merge.video.job, merge.audio.job).let(jobSnapshot::addAll)
+                        }
                     }
-                    groupIds.forEach { groupId ->
+                    jobSnapshot.forEach { it.cancel() }
+                }
+            }
+            var removed = 0
+            var blocked = 0
+            var failed = 0
+            var shared = 0
+            val removedDirectories = linkedMapOf<String, String>()
+            try {
+                // 不能持有 schedulingLock/lock 等待，工作协程的 finally 也需要这些锁。
+                jobSnapshot.joinAll()
+                val selectedIds = selected.mapTo(mutableSetOf()) { it.id }
+                val selectedOwners = selected.mapTo(mutableSetOf()) { it.outputOwnerKey }
+                val remaining = synchronized(lock) { tasks.values.filter { it.id !in selectedIds } }
+                val remainingUris = remaining.flatMap { item ->
+                    listOfNotNull(item.localUri) + outputStorage.outputsFor(item.outputOwnerKey).map { it.uri }
+                }
+                val outcomes = mutableMapOf<String, OutputDeleteResult>()
+                for (original in selected) {
+                    val item = tasks[original.id] ?: original
+                    val owned = outputStorage.outputsFor(item.outputOwnerKey)
+                    val candidates = buildSet {
+                        if (deleteFile) item.localUri?.let(::add)
+                        owned.filter { deleteFile || !it.complete }.forEach { add(it.uri) }
+                    }
+                    var retained = false
+                    for (uri in candidates) {
+                        if (remainingUris.any { outputStorage.sameFile(it, uri) }) {
+                            shared++
+                            continue
+                        }
+                        val outcome = outcomes[uri] ?: outputStorage.delete(uri, selectedOwners).also { outcomes[uri] = it }
+                        when (outcome) {
+                            OutputDeleteResult.Blocked -> { blocked++; retained = true }
+                            OutputDeleteResult.Failed -> { failed++; retained = true }
+                            else -> Unit
+                        }
+                    }
+                    if (!retained) cleanupTaskResources(item)
+                    synchronized(lock) {
+                        if (!retained) {
+                            if (deleteFile) groupInfo[item.groupId]?.let { info ->
+                                info.downloadRootRelativePath?.let { root -> removedDirectories[info.relativePath] = root }
+                            }
+                            notificationSession.remove(item.id)
+                            tasks.remove(item.id)
+                            groupTaskIds[item.groupId]?.remove(item.id)
+                            removed++
+                        } else {
+                            // 未完成删除的记录保留；停止中的任务不能继续显示正在运行。
+                            tasks[item.id]?.let { current ->
+                                val output = owned.lastOrNull { outputStorage.record(it.uri) != null }
+                                tasks[item.id] = current.copy(
+                                    localUri = current.localUri ?: output?.uri,
+                                    fileName = if (current.localUri == null) output?.name ?: current.fileName else current.fileName,
+                                    status = if (current.status.isResolvedWithoutFailure) current.status else DownloadStatus.Paused,
+                                    userPaused = !current.status.isResolvedWithoutFailure,
+                                    speedBytesPerSec = 0, etaSeconds = null,
+                                )
+                            }
+                        }
+                    }
+                }
+                synchronized(lock) {
+                    (requestedGroupIds + selected.map { it.groupId }).forEach { groupId ->
                         if (groupTaskIds[groupId].isNullOrEmpty()) {
                             groupTaskIds.remove(groupId)
                             groupInfo.remove(groupId)
                         }
                     }
                 }
+                persistStateImmediately()
+                val protectedDirectories = settingsRepository.knownDownloadRoots() + synchronized(lock) {
+                    groupInfo.values.flatMap { listOfNotNull(it.relativePath, it.downloadRootRelativePath) }
+                }
+                removedDirectories.entries.sortedByDescending { it.key.length }.forEach { (directory, root) ->
+                    directoryCleanup.removeEmptyParents(directory, root, protectedDirectories)
+                }
+            } finally {
+                synchronized(lock) {
+                    selected.forEach { item ->
+                        tasks[item.id]?.takeIf {
+                            it.status == DownloadStatus.Running || it.status == DownloadStatus.Pending ||
+                                it.status == DownloadStatus.Merging
+                        }?.let { current ->
+                            tasks[item.id] = current.copy(status = DownloadStatus.Paused, userPaused = true,
+                                speedBytesPerSec = 0, etaSeconds = null)
+                        }
+                    }
+                    deletingGroupIds.removeAll(requestedGroupIds)
+                    deletingTaskIds.removeAll(requestedTaskIds + selected.map { it.id })
+                }
+                updateGroups()
+                startReadyManagedTasks()
+                startReadyExtraTasks()
             }
-            updateGroups()
-            schedulePersist()
-            startReadyManagedTasks()
-            startReadyExtraTasks()
-        } finally {
-            synchronized(lock) {
-                deletingTaskIds.removeAll(taskIds)
-            }
+            DownloadDeletionResult(removed, blocked, failed, shared, deleteFile)
         }
     }
 
-    private fun cleanupTaskResources(item: DownloadItem, deleteFile: Boolean) {
-        downloadJobs.remove(item.id)?.cancel()
-        extraJobs.remove(item.id)?.cancel()
-        managedTaskQueue.remove(item.id)
-        extraTaskQueue.remove(item.id)
+    private fun adoptLegacyOutput(item: DownloadItem) {
+        val uri = item.localUri ?: return
+        val info = groupInfo[item.groupId] ?: return
+        val root = info.downloadRootRelativePath ?: return
+        runCatching {
+            outputStorage.adoptLegacy(uri, root, info.relativePath, item.fileName, item.outputOwnerKey)
+        }.onFailure { Log.w(TAG, "Cannot verify legacy output, taskId=${item.id}", it) }
+    }
+
+    private fun cleanupTaskResources(item: DownloadItem) {
         managedRetryTaskIds.remove(item.id)
         extraTaskSpecs.remove(item.id)
-        val downloadState = downloadStates.remove(item.id)
-        downloadState?.tempFile?.delete()
-        downloadState?.let { state ->
+        downloadStates.remove(item.id)?.let { state ->
+            state.tempFile.delete()
             tempFilesForCleanup(item.id, state.fileName).forEach { it.delete() }
         }
         tempFilesForCleanup(item.id, item.fileName).forEach { it.delete() }
-        mergeJobs.remove(item.id)?.cancel()
         mergeTasks.remove(item.id)?.let { merge ->
-            merge.video.job?.cancel()
-            merge.audio.job?.cancel()
-            merge.video.job = null
-            merge.audio.job = null
             merge.video.tempFile.delete()
             merge.audio.tempFile.delete()
-        }
-        if (deleteFile) {
-            deleteLocalUri(item.localUri)
-        }
-    }
-
-    private fun deleteLocalUri(uriString: String?) {
-        if (uriString.isNullOrBlank()) return
-        runCatching {
-            resolver.delete(Uri.parse(uriString), null, null)
         }
     }
 
@@ -2582,6 +2510,10 @@ class DownloadRepository(
     private fun addTask(item: DownloadItem) {
         val normalizedItem = normalizeTask(item)
         synchronized(lock) {
+            if (item.groupId in deletingGroupIds || groupInfo[item.groupId] == null) {
+                cleanupTaskResources(item)
+                throw CancellationException("Download group was removed")
+            }
             notificationSession.record(normalizedItem)
             tasks[normalizedItem.id] = normalizedItem
             val list = groupTaskIds.getOrPut(normalizedItem.groupId) { mutableListOf() }
@@ -2596,10 +2528,25 @@ class DownloadRepository(
         previous = tasks[item.id],
     )
 
+    private fun isDeleting(id: Long): Boolean = synchronized(lock) { id in deletingTaskIds }
+
+    private fun trackTaskJob(id: Long, job: Job) {
+        activeTaskJobs.compute(id) { _, jobs ->
+            (jobs ?: ConcurrentHashMap.newKeySet()).apply { add(job) }
+        }
+        job.invokeOnCompletion {
+            activeTaskJobs.computeIfPresent(id) { _, jobs ->
+                jobs.remove(job)
+                jobs.takeIf { it.isNotEmpty() }
+            }
+        }
+    }
+
     private fun updateTask(item: DownloadItem) {
         val normalizedItem = normalizeTask(item)
         val shouldPersist = synchronized(lock) {
-            val previous = tasks[normalizedItem.id]
+            val previous = tasks[normalizedItem.id] ?: return
+            if (normalizedItem.id in deletingTaskIds) return
             notificationSession.record(normalizedItem, previous)
             tasks[normalizedItem.id] = normalizedItem
             shouldPersistTaskChange(previous, normalizedItem)
@@ -2620,6 +2567,7 @@ class DownloadRepository(
         var shouldPersist = false
         synchronized(lock) {
             val current = tasks[id] ?: return@synchronized
+            if (id in deletingTaskIds) return@synchronized
             if (!predicate(current)) return@synchronized
             beforeUpdate(current)
             val next = normalizeTask(transform(current))
@@ -2679,6 +2627,7 @@ class DownloadRepository(
                     relativePath = info.relativePath,
                     tasks = taskList,
                     sourceMetadata = info.sourceMetadata,
+                    downloadRootRelativePath = info.downloadRootRelativePath,
                 )
             }
         }.sortedByDescending { it.createdAt }
@@ -2723,20 +2672,24 @@ class DownloadRepository(
     }
 
     private fun writeStoreSnapshot() {
+        check(!_historyReadFailed.value) { "Download history is unreadable" }
         val snapshot = buildStoreSnapshot()
-        runCatching {
-            storeFile.writeText(storeAdapter.toJson(snapshot), Charsets.UTF_8)
+        val atomic = AtomicFile(storeFile)
+        val stream = atomic.startWrite()
+        try {
+            stream.write(storeAdapter.toJson(snapshot).toByteArray(Charsets.UTF_8))
+            atomic.finishWrite(stream)
+        } catch (error: Exception) {
+            atomic.failWrite(stream)
+            throw error
         }
     }
 
     private fun readStore(): DownloadStore? {
-        if (!storeFile.exists()) return null
-        val json = runCatching { storeFile.readText(Charsets.UTF_8) }.getOrNull() ?: return null
-        val store = runCatching { storeAdapter.fromJson(json) }.getOrNull()
-        if (store == null) {
-            runCatching { storeFile.delete() }
-        }
-        return store
+        val atomic = AtomicFile(storeFile)
+        if (!storeFile.exists() && !File(storeFile.path + ".bak").exists()) return null
+        // 损坏时保留原始记录并停止加载，不能覆盖成空列表。
+        return atomic.openRead().bufferedReader().use { requireNotNull(storeAdapter.fromJson(it.readText())) }
     }
 
     private fun buildStoreSnapshot(): DownloadStore {
@@ -2809,7 +2762,7 @@ class DownloadRepository(
         var maxDownloadId = 0L
         var minMergeId: Long? = null
         var minExtraId: Long? = null
-        var restoredStateChanged = false
+        var restoredStateChanged = store.version != STORE_VERSION
 
         // 已删除的任务仍保留在本次通知结果中，重启后也不能复用这些 ID。
         store.notificationSession.outcomes.forEach { outcome ->
@@ -2846,9 +2799,18 @@ class DownloadRepository(
                 group.createdAt,
                 relativePath,
                 group.sourceMetadata,
+                group.downloadRootRelativePath?.takeIf { DownloadPaths.contains(it, relativePath) }
+                    ?: settingsRepository.historicalRootFor(relativePath)
+                    // 旧版没有根目录历史时，用原组目录作为更窄的边界，绝不扩大到整个 Download。
+                    ?: storedPath?.takeIf { store.version < 3 }?.let(DownloadPaths::normalize),
             )
             val ids = mutableListOf<Long>()
-            for (task in group.tasks) {
+            for (storedTask in group.tasks) {
+                // 迁移若在两份清单写入之间中断，重试仍使用相同归属，避免失去旧文件。
+                val task = if (store.version < 3) storedTask.copy(
+                    outputOwnerKey = "legacy:${group.id}:${group.createdAt}:${storedTask.id}:${storedTask.createdAt}",
+                ) else restoreOwnedOutput(storedTask)
+                if (task != storedTask) restoredStateChanged = true
                 when {
                     task.id > 0 -> maxDownloadId = maxOf(maxDownloadId, task.id)
                     task.id <= EXTRA_TASK_ID_START -> {
@@ -2965,11 +2927,23 @@ class DownloadRepository(
         mergeIds.set(if (minMergeId != null) minMergeId - 1L else -1L)
         extraTaskIds.set(if (minExtraId != null) minExtraId - 1L else EXTRA_TASK_ID_START)
 
+        if (store.version < 3) tasks.values.forEach(::adoptLegacyOutput)
         cleanupCompletedTempFiles(completedTempFiles)
         updateGroups()
         if (restoredStateChanged) {
             schedulePersist()
         }
+    }
+
+    private fun restoreOwnedOutput(item: DownloadItem): DownloadItem {
+        if (item.localUri != null || item.status == DownloadStatus.Cancelled) return item
+        val output = outputStorage.completedOutputFor(item.outputOwnerKey) ?: return item
+        return item.copy(
+            status = DownloadStatus.Success, progress = 100, progressIndeterminate = false,
+            localUri = output.uri, fileName = output.name, outputBytes = output.size, outputMissing = false,
+            userPaused = false, speedBytesPerSec = 0, etaSeconds = null, errorMessage = null,
+            failureMessage = null, statusDetail = null, statusMessage = null,
+        )
     }
 
     private fun restoreManagedTask(
@@ -3290,14 +3264,6 @@ class DownloadRepository(
                     )
                     return@launch
                 }
-                if (uri == null && target != null) {
-                    Log.w(
-                        TAG,
-                        "[merge-chain] performMerge returned null, fallback lookup, taskId=${task.id}, file=${target.fileName}, groupId=${target.groupId}",
-                    )
-                    uri = findAccessibleDownload(target.fileName, target.groupId)
-                        ?: findAccessibleDownloadAnywhere(target.fileName)
-                }
                 if (uri != null) {
                     task.completed = true
                     terminalExecution = true
@@ -3308,6 +3274,7 @@ class DownloadRepository(
                                 status = DownloadStatus.Success,
                                 progress = 100,
                                 localUri = uri,
+                                fileName = outputStorage.record(uri)?.name ?: target.fileName,
                                 outputBytes = readOutputSize(Uri.parse(uri)),
                                 speedBytesPerSec = 0,
                                 etaSeconds = null,
@@ -3408,16 +3375,14 @@ class DownloadRepository(
             }
         }
         mergeJobs.put(task.id, job)?.cancel()
+        trackTaskJob(task.id, job)
         job.start()
     }
 
     private suspend fun performMerge(task: MergedDownload): String? {
-        val groupId = tasks[task.id]?.groupId
-        val relativePath = if (groupId != null) {
-            groupRelativePath(groupId)
-        } else {
-            settingsRepository.downloadRootRelativePath()
-        }
+        val item = tasks[task.id] ?: return null
+        val groupId = item.groupId
+        val relativePath = groupRelativePath(groupId)
         val videoFile = task.video.tempFile
         val audioFile = task.audio.tempFile
         Log.d(
@@ -3481,7 +3446,7 @@ class DownloadRepository(
         }
 
         currentCoroutineContext().ensureActive()
-        val uri = saveToDownloads(outputTemp, task.outputName, relativePath)
+        val uri = saveToDownloads(outputTemp, task.outputName, relativePath, groupDownloadRoot(groupId), item.outputOwnerKey)
         if (uri == null) {
             Log.e(
                 TAG,
@@ -3583,95 +3548,16 @@ class DownloadRepository(
         tempFile: File,
         fileName: String,
         relativePath: String,
+        downloadRoot: String? = settingsRepository.historicalRootFor(relativePath),
+        ownerKey: String? = null,
     ): String? {
-        val expectedSize = tempFile.length().coerceAtLeast(0L)
-        val normalizedRelativePath = normalizeRelativePath(relativePath)
-        val overwriteExisting = settingsRepository.shouldOverwriteExistingNamingTargets()
-        Log.d(
-            TAG,
-            "[save-output] start, file=$fileName, relativePath=$relativePath, temp=${tempFile.absolutePath}, tempExists=${tempFile.exists()}, expectedSize=$expectedSize",
-        )
-        val output = createOutputFile(fileName, guessMimeType(fileName), relativePath) ?: run {
-            Log.e(
-                TAG,
-                "[save-output] createOutputFile returned null, file=$fileName, relativePath=$relativePath",
-            )
-            return null
-        }
-        val uri = output.uri
-        var copied = false
-        Log.d(
-            TAG,
-            "[save-output] output target prepared, uri=$uri, file=$fileName",
-        )
-        var savedUri = try {
-            output.pfd.use { pfd ->
-                FileInputStream(tempFile).use { input ->
-                    FileOutputStream(pfd.fileDescriptor).use { outputStream ->
-                        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                        while (true) {
-                            currentCoroutineContext().ensureActive()
-                            val read = input.read(buffer)
-                            if (read < 0) break
-                            outputStream.write(buffer, 0, read)
-                        }
-                    }
-                }
-                copied = true
-                Log.d(
-                    TAG,
-                    "[save-output] file copy done, uri=$uri, file=$fileName, expectedSize=$expectedSize, statSizeAfterCopy=${pfd.statSize}",
-                )
-            }
-            val finalizeErr = runCatching { finalizeOutputFile(uri) }.exceptionOrNull()
-            if (finalizeErr == null) {
-                resolveInsertedOutputUri(uri, expectedSize)
-            } else {
-                Log.w(
-                    TAG,
-                    "Finalize output failed but file copy succeeded, uri=$uri, file=$fileName, expectedSize=$expectedSize",
-                    finalizeErr,
-                )
-                recoverAfterFinalizeFailure(
-                    insertedUri = uri,
-                    fileName = fileName,
-                    expectedSize = expectedSize,
-                    finalizeErr = finalizeErr,
-                )
-            }
-        } catch (err: CancellationException) {
-            Log.i(
-                TAG,
-                "[save-output] cancelled, cleanup partial output, file=$fileName, uri=$uri, copied=$copied",
-            )
-            runCatching { resolver.delete(uri, null, null) }
-            throw err
-        } catch (err: Throwable) {
-            Log.w(
-                TAG,
-                "[save-output] exception during save, file=$fileName, uri=$uri, copied=$copied, expectedSize=$expectedSize, error=${err.message}",
-                err,
-            )
-            if (copied) resolveInsertedOutputUri(uri, expectedSize) else null
-        }
-        if (savedUri != null && overwriteExisting) {
-            // 新文件已完整写入并可见后才替换旧件，写入失败时两份原始数据都还在。
-            deleteConflictingDownloadsForTarget(fileName, normalizedRelativePath, uri.toString())
-            // MediaStore 可能为重名自动加序号；覆盖成功后恢复用户要求的文件名。
-            runCatching { finalizeOutputFile(uri, finalDisplayName = fileName) }.onFailure { error ->
-                Log.w(TAG, "Saved output could not be renamed to $fileName, uri=$uri", error)
-            }
-            savedUri = resolveInsertedOutputUri(uri, expectedSize)
-        }
-        if (savedUri != null) {
-            runCatching { tempFile.delete() }
-            Log.i(TAG, "[save-output] success, uri=$savedUri, file=$fileName, relativePath=$relativePath")
-        } else {
-            // 恢复只检查本次新建的 URI，绝不把可读的同名旧件当作这次下载的成果。
-            runCatching { resolver.delete(uri, null, null) }
-            Log.e(TAG, "[save-output] failed, preserved temp=${tempFile.absolutePath}, uri=$uri")
-        }
-        return savedUri
+        val root = downloadRoot ?: return null
+        val uri = outputStorage.save(
+            fileName, guessMimeType(fileName), relativePath, root,
+            settingsRepository.shouldOverwriteExistingNamingTargets(), tempFile.length(), ownerKey,
+        ) { FileInputStream(tempFile) }
+        if (uri != null) tempFile.delete()
+        return uri
     }
 
     /** 优先读取成品文件本身，避免 MediaStore 的大小尚未刷新时显示为 0。 */
@@ -3714,372 +3600,8 @@ class DownloadRepository(
         return size
     }
 
-    private fun normalizeRelativePath(relativePath: String): String {
-        val trimmed = relativePath.trim().trimEnd('/')
-        return if (trimmed.isBlank()) "" else "$trimmed/"
-    }
-
-    private fun isManagedDownloadRelativePath(relativePath: String): Boolean {
-        val normalizedTargetPath = normalizeRelativePath(relativePath)
-        if (normalizedTargetPath.isBlank()) return false
-        val managedRoot = normalizeRelativePath(settingsRepository.downloadRootRelativePath())
-        if (managedRoot.isBlank()) return false
-        return normalizedTargetPath.startsWith(managedRoot, ignoreCase = true)
-    }
-
-    private fun isSameRelativePath(candidatePath: String, normalizedTargetPath: String): Boolean {
-        if (normalizedTargetPath.isBlank()) return false
-        val normalizedCandidate = normalizeRelativePath(candidatePath)
-        return normalizedCandidate == normalizedTargetPath
-    }
-
-    private fun deleteConflictingDownloadsForTarget(
-        fileName: String,
-        relativePath: String,
-        excludeUri: String,
-    ): Int {
-        if (fileName.isBlank()) return 0
-        val normalizedTargetPath = normalizeRelativePath(relativePath)
-        if (normalizedTargetPath.isBlank()) return 0
-        if (!isManagedDownloadRelativePath(normalizedTargetPath)) {
-            Log.w(
-                TAG,
-                "[save-output] skip deleting conflicts outside managed download root, file=$fileName, relativePath=$normalizedTargetPath",
-            )
-            return 0
-        }
-        val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
-        val projection = arrayOf(
-            MediaStore.Downloads._ID,
-            MediaStore.Downloads.RELATIVE_PATH,
-            MediaStore.Downloads.IS_PENDING,
-        )
-        val selection = "${MediaStore.Downloads.DISPLAY_NAME}=?"
-        val selectionArgs = arrayOf(fileName)
-        var deletedCount = 0
-        resolver.query(collection, projection, selection, selectionArgs, null)?.use { cursor ->
-            val idIndex = cursor.getColumnIndex(MediaStore.Downloads._ID)
-            val pathIndex = cursor.getColumnIndex(MediaStore.Downloads.RELATIVE_PATH)
-            val pendingIndex = cursor.getColumnIndex(MediaStore.Downloads.IS_PENDING)
-            while (idIndex >= 0 && cursor.moveToNext()) {
-                val path = if (pathIndex >= 0) cursor.getString(pathIndex).orEmpty() else ""
-                if (!isSameRelativePath(path, normalizedTargetPath)) continue
-                val id = cursor.getLong(idIndex)
-                val uri = Uri.withAppendedPath(collection, id.toString()).toString()
-                if (uri == excludeUri) continue
-                val pending = if (pendingIndex >= 0) cursor.getInt(pendingIndex) else -1
-                // 其他仍在写入的任务不是已完成的同名旧件，不能在这里删掉。
-                if (pending == 1) continue
-                val rows = runCatching {
-                    resolver.delete(Uri.parse(uri), null, null)
-                }.onFailure { err ->
-                    Log.w(
-                        TAG,
-                        "[save-output] failed to delete conflicting row, file=$fileName, uri=$uri, path=$path, pending=$pending",
-                        err,
-                    )
-                }.getOrDefault(0)
-                if (rows > 0) {
-                    deletedCount += rows
-                    Log.w(
-                        TAG,
-                        "[save-output] deleted conflicting row, file=$fileName, uri=$uri, path=$path, pending=$pending, rows=$rows",
-                    )
-                }
-            }
-        }
-        return deletedCount
-    }
-
-    private fun queryIsPending(uri: Uri): Int? {
-        val result = runCatching {
-            resolver.query(
-                uri,
-                arrayOf(MediaStore.Downloads.IS_PENDING),
-                null,
-                null,
-                null,
-            )?.use { cursor ->
-                val pendingIndex = cursor.getColumnIndex(MediaStore.Downloads.IS_PENDING)
-                if (pendingIndex >= 0 && cursor.moveToFirst()) {
-                    cursor.getInt(pendingIndex)
-                } else {
-                    null
-                }
-            }
-        }
-        result.exceptionOrNull()?.let { err ->
-            Log.w(
-                TAG,
-                "[media-check] queryIsPending failed, uri=$uri",
-                err,
-            )
-        }
-        val pending = result.getOrNull()
-        Log.d(
-            TAG,
-            "[media-check] queryIsPending uri=$uri -> $pending",
-        )
-        return pending
-    }
-
-    private fun findAccessibleDownloadInRelativePath(
-        fileName: String,
-        relativePath: String,
-        excludeUri: String? = null,
-    ): String? {
-        if (fileName.isBlank()) return null
-        if (relativePath.isBlank()) return null
-        val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
-        val projection = arrayOf(
-            MediaStore.Downloads._ID,
-            MediaStore.Downloads.RELATIVE_PATH,
-            MediaStore.MediaColumns.SIZE,
-            MediaStore.Downloads.IS_PENDING,
-        )
-        val selection = "${MediaStore.Downloads.DISPLAY_NAME}=?"
-        val selectionArgs = arrayOf(fileName)
-        var scanned = 0
-        resolver.query(
-            collection,
-            projection,
-            selection,
-            selectionArgs,
-            "${MediaStore.MediaColumns.DATE_ADDED} DESC",
-        )?.use { cursor ->
-            val idIndex = cursor.getColumnIndex(MediaStore.Downloads._ID)
-            val pathIndex = cursor.getColumnIndex(MediaStore.Downloads.RELATIVE_PATH)
-            val sizeIndex = cursor.getColumnIndex(MediaStore.MediaColumns.SIZE)
-            val pendingIndex = cursor.getColumnIndex(MediaStore.Downloads.IS_PENDING)
-            while (idIndex >= 0 && cursor.moveToNext()) {
-                scanned++
-                val path = if (pathIndex >= 0) cursor.getString(pathIndex).orEmpty() else ""
-                if (!isSameRelativePath(path, relativePath)) continue
-                val pending = if (pendingIndex >= 0) cursor.getInt(pendingIndex) else -1
-                if (pending == 1) {
-                    Log.d(
-                        TAG,
-                        "[locate] path candidate skipped by pending=1, file=$fileName, relativePath=$relativePath, scanned=$scanned",
-                    )
-                    continue
-                }
-                val size = if (sizeIndex >= 0) cursor.getLong(sizeIndex) else -1L
-                if (size == 0L) {
-                    Log.d(
-                        TAG,
-                        "[locate] path candidate skipped by zero size, file=$fileName, relativePath=$relativePath, scanned=$scanned",
-                    )
-                    continue
-                }
-                val id = cursor.getLong(idIndex)
-                val uri = Uri.withAppendedPath(collection, id.toString()).toString()
-                if (excludeUri != null && uri == excludeUri) continue
-                val accessible = isLocalUriAccessible(uri, "findAccessibleDownloadInRelativePath")
-                Log.d(
-                    TAG,
-                    "[locate] path candidate, file=$fileName, relativePath=$relativePath, scanned=$scanned, size=$size, pending=$pending, uri=$uri, accessible=$accessible",
-                )
-                if (accessible) {
-                    Log.i(
-                        TAG,
-                        "[locate] path lookup hit, file=$fileName, relativePath=$relativePath, scanned=$scanned, uri=$uri",
-                    )
-                    return uri
-                }
-            }
-        }
-        Log.d(
-            TAG,
-            "[locate] path lookup miss, file=$fileName, relativePath=$relativePath, scanned=$scanned",
-        )
-        return null
-    }
-
-    private fun findAccessibleFileInFilesCollection(
-        fileName: String,
-        relativePath: String? = null,
-        excludeUri: String? = null,
-    ): String? {
-        if (fileName.isBlank()) return null
-        val filesCollection = MediaStore.Files.getContentUri("external")
-        val normalizedPath = relativePath?.let { normalizeRelativePath(it) }
-        val projection = arrayOf(
-            MediaStore.Files.FileColumns._ID,
-            MediaStore.MediaColumns.SIZE,
-            MediaStore.MediaColumns.RELATIVE_PATH,
-            MediaStore.MediaColumns.IS_PENDING,
-        )
-        val selection: String
-        val selectionArgs: Array<String>
-        if (!normalizedPath.isNullOrBlank()) {
-            selection = "${MediaStore.MediaColumns.DISPLAY_NAME}=? AND ${MediaStore.MediaColumns.RELATIVE_PATH}=?"
-            selectionArgs = arrayOf(fileName, normalizedPath)
-        } else {
-            selection = "${MediaStore.MediaColumns.DISPLAY_NAME}=?"
-            selectionArgs = arrayOf(fileName)
-        }
-        var scanned = 0
-        resolver.query(
-            filesCollection,
-            projection,
-            selection,
-            selectionArgs,
-            "${MediaStore.MediaColumns.DATE_ADDED} DESC",
-        )?.use { cursor ->
-            val idIndex = cursor.getColumnIndex(MediaStore.Files.FileColumns._ID)
-            val sizeIndex = cursor.getColumnIndex(MediaStore.MediaColumns.SIZE)
-            val pathIndex = cursor.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)
-            val pendingIndex = cursor.getColumnIndex(MediaStore.MediaColumns.IS_PENDING)
-            while (idIndex >= 0 && cursor.moveToNext()) {
-                scanned++
-                val rowPath = if (pathIndex >= 0) cursor.getString(pathIndex).orEmpty() else ""
-                if (!normalizedPath.isNullOrBlank() && !isSameRelativePath(rowPath, normalizedPath)) {
-                    continue
-                }
-                val pending = if (pendingIndex >= 0) cursor.getInt(pendingIndex) else -1
-                if (pending == 1) {
-                    Log.d(
-                        TAG,
-                        "[locate-files] skip pending row, file=$fileName, relativePath=$normalizedPath, scanned=$scanned",
-                    )
-                    continue
-                }
-                val size = if (sizeIndex >= 0) cursor.getLong(sizeIndex) else -1L
-                if (size == 0L) continue
-                val id = cursor.getLong(idIndex)
-                val uri = Uri.withAppendedPath(filesCollection, id.toString()).toString()
-                if (excludeUri != null && uri == excludeUri) continue
-                val accessible = isLocalUriAccessible(uri, "findAccessibleFileInFilesCollection")
-                Log.d(
-                    TAG,
-                    "[locate-files] candidate, file=$fileName, relativePath=$normalizedPath, scanned=$scanned, rowPath=$rowPath, size=$size, pending=$pending, uri=$uri, accessible=$accessible",
-                )
-                if (accessible) {
-                    Log.i(
-                        TAG,
-                        "[locate-files] hit, file=$fileName, relativePath=$normalizedPath, scanned=$scanned, uri=$uri",
-                    )
-                    return uri
-                }
-            }
-        }
-        Log.d(
-            TAG,
-            "[locate-files] miss, file=$fileName, relativePath=$normalizedPath, scanned=$scanned",
-        )
-        return null
-    }
-
-    private fun resolveInsertedOutputUri(
-        insertedUri: Uri,
-        expectedSize: Long,
-    ): String? {
-        val insertedUriString = insertedUri.toString()
-        val pending = queryIsPending(insertedUri)
-        // 保存成功必须确认本次输出确实可读；媒体库记录的 SIZE 不能代替文件描述符。
-        val insertedAccessible = runCatching {
-            resolver.openFileDescriptor(insertedUri, "r")?.use { descriptor ->
-                descriptor.statSize >= expectedSize && FileInputStream(descriptor.fileDescriptor).use { input ->
-                    expectedSize == 0L || input.read() >= 0
-                }
-            } ?: false
-        }.getOrDefault(false)
-        if (pending == 0 && insertedAccessible) {
-            Log.d(
-                TAG,
-                "[save-output] inserted uri is stable, uri=$insertedUri, pending=$pending",
-            )
-            return insertedUriString
-        }
-        Log.w(
-            TAG,
-            "[save-output] inserted uri is not ready, uri=$insertedUri, pending=$pending, accessible=$insertedAccessible",
-        )
-        return null
-    }
-
-    private fun recoverAfterFinalizeFailure(
-        insertedUri: Uri,
-        fileName: String,
-        expectedSize: Long,
-        finalizeErr: Throwable,
-    ): String? {
-        Log.w(
-            TAG,
-            "[save-output] recover after finalize failure start, insertedUri=$insertedUri, file=$fileName, error=${finalizeErr.message}",
-            finalizeErr,
-        )
-        val retryErr = runCatching { finalizeOutputFile(insertedUri) }.exceptionOrNull()
-        if (retryErr == null) {
-            Log.i(
-                TAG,
-                "[save-output] retry finalize succeeded, insertedUri=$insertedUri, file=$fileName",
-            )
-            return resolveInsertedOutputUri(insertedUri, expectedSize)
-        }
-        Log.w(
-            TAG,
-            "[save-output] retry finalize still failed, insertedUri=$insertedUri, file=$fileName, error=${retryErr.message}",
-            retryErr,
-        )
-        if (isLikelyDataPathUniqueConstraint(retryErr)) {
-            val renamed = tryFinalizeWithAlternativeNames(
-                insertedUri = insertedUri,
-                originalFileName = fileName,
-            )
-            if (renamed != null) {
-                return resolveInsertedOutputUri(insertedUri, expectedSize)
-            }
-        }
-        return resolveInsertedOutputUri(insertedUri, expectedSize)
-    }
-
-    private fun isLikelyDataPathUniqueConstraint(err: Throwable): Boolean {
-        val message = err.message.orEmpty().lowercase(Locale.US)
-        return message.contains("unique constraint failed") && message.contains("files._data")
-    }
-
-    private fun splitNameAndExtension(fileName: String): Pair<String, String> {
-        val index = fileName.lastIndexOf('.')
-        return if (index <= 0 || index == fileName.length - 1) {
-            fileName to ""
-        } else {
-            fileName.substring(0, index) to fileName.substring(index)
-        }
-    }
-
-    private fun buildAlternativeFileName(fileName: String, index: Int): String {
-        val (base, ext) = splitNameAndExtension(fileName)
-        return "$base ($index)$ext"
-    }
-
-    private fun tryFinalizeWithAlternativeNames(
-        insertedUri: Uri,
-        originalFileName: String,
-    ): String? {
-        for (index in 1..20) {
-            val candidate = buildAlternativeFileName(originalFileName, index)
-            val err = runCatching {
-                finalizeOutputFile(insertedUri, finalDisplayName = candidate)
-            }.exceptionOrNull()
-            if (err == null) {
-                Log.i(
-                    TAG,
-                    "[save-output] finalize succeeded with alternative name, insertedUri=$insertedUri, originalFile=$originalFileName, finalName=$candidate",
-                )
-                return insertedUri.toString()
-            }
-            Log.w(
-                TAG,
-                "[save-output] finalize with alternative name failed, insertedUri=$insertedUri, candidate=$candidate, error=${err.message}",
-                err,
-            )
-            if (!isLikelyDataPathUniqueConstraint(err)) {
-                break
-            }
-        }
-        return null
-    }
+    private fun normalizeRelativePath(relativePath: String): String =
+        DownloadPaths.normalize(relativePath)?.let { "$it/" }.orEmpty()
 
     private fun guessMimeType(fileName: String): String {
         val ext = fileName.substringAfterLast('.', "").lowercase(Locale.US)
@@ -4186,8 +3708,7 @@ class DownloadRepository(
         if (isLocalUriAccessible(currentUri, traceSource)) {
             return currentUri
         }
-        return findAccessibleDownload(item.fileName, item.groupId)
-            ?: findAccessibleDownloadAnywhere(item.fileName)
+        return null
     }
 
     private fun cleanupCompletedTempFiles(files: Collection<File>) {
@@ -4221,7 +3742,7 @@ class DownloadRepository(
             !safeTitle.isNullOrBlank() -> safeTitle
             else -> "BiliTools"
         }
-        val safe = sanitizeFolderName(base).trim()
+        val safe = NamingRenderer.normalizeComponent(base)
         val trimmed = trimFolderName(safe, 40)
         val candidate = if (trimmed.isBlank()) "BiliTools" else trimmed
         return ensureUniqueFolderName(candidate, existingNames)
@@ -4280,14 +3801,11 @@ class DownloadRepository(
         return "$normalizedRoot/$folderName"
     }
 
-    private fun resolveRequestedGroupRelativePath(requestedRelativePath: String): String {
-        val normalized = requestedRelativePath
-            .replace('\\', '/')
-            .trim()
-            .trim('/')
-        if (normalized.isBlank()) {
-            return buildGroupRelativePath("BiliTools")
-        }
+    private fun resolveRequestedGroupRelativePath(requestedRelativePath: String, root: String): String {
+        val normalized = requireNotNull(DownloadPaths.normalize(requestedRelativePath))
+        require(DownloadPaths.contains(root, normalized))
+        // 根目录可以直接保存文件，但绝不能为了目录避重生成根目录的兄弟目录。
+        if (normalized == root) return normalized
         if (settingsRepository.shouldOverwriteExistingNamingTargets()) {
             return normalized
         }
@@ -4326,7 +3844,7 @@ class DownloadRepository(
         val leaf = normalized.substringAfterLast('/')
         if (leaf.isBlank()) return normalized
         var index = 1
-        while (index <= 200) {
+        while (true) {
             val candidateLeaf = "$leaf($index)"
             val candidate = if (parent.isBlank()) {
                 candidateLeaf
@@ -4338,227 +3856,6 @@ class DownloadRepository(
             }
             index++
         }
-        return normalized
-    }
-
-    private fun sanitizeFolderName(name: String): String {
-        return name.replace(Regex("[\\\\/:*?\"<>|]"), "_")
-    }
-
-    private fun createOutputFile(
-        fileName: String,
-        mimeType: String,
-        relativePath: String,
-    ): OutputTarget? {
-        Log.d(
-            TAG,
-            "[output-create] start, file=$fileName, mimeType=$mimeType, relativePath=$relativePath",
-        )
-        val values = ContentValues().apply {
-            put(MediaStore.Downloads.DISPLAY_NAME, fileName)
-            put(MediaStore.Downloads.MIME_TYPE, mimeType)
-            put(MediaStore.Downloads.RELATIVE_PATH, relativePath)
-            put(MediaStore.Downloads.IS_PENDING, 1)
-        }
-        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: run {
-            Log.e(
-                TAG,
-                "[output-create] MediaStore insert returned null, file=$fileName, relativePath=$relativePath",
-            )
-            return null
-        }
-        val pfd = try {
-            resolver.openFileDescriptor(uri, "w")
-        } catch (error: Exception) {
-            runCatching { resolver.delete(uri, null, null) }
-            throw error
-        }
-        if (pfd == null) {
-            runCatching { resolver.delete(uri, null, null) }
-            Log.e(
-                TAG,
-                "[output-create] openFileDescriptor returned null, cleanup uri=$uri, file=$fileName",
-            )
-            return null
-        }
-        Log.d(
-            TAG,
-            "[output-create] success, uri=$uri, file=$fileName",
-        )
-        return OutputTarget(uri, pfd)
-    }
-
-    private fun finalizeOutputFile(uri: Uri, finalDisplayName: String? = null) {
-        val update = ContentValues().apply {
-            put(MediaStore.Downloads.IS_PENDING, 0)
-            if (!finalDisplayName.isNullOrBlank()) {
-                put(MediaStore.Downloads.DISPLAY_NAME, finalDisplayName)
-            }
-        }
-        val updatedRows = resolver.update(uri, update, null, null)
-        check(updatedRows > 0) { strings.get(R.string.download_saved_file_unavailable) }
-        Log.d(
-            TAG,
-            "[output-create] finalize pending->0, uri=$uri, displayName=$finalDisplayName, updatedRows=$updatedRows",
-        )
-    }
-
-    private fun findExistingDownload(fileName: String, groupId: Long): String? {
-        if (fileName.isBlank()) {
-            Log.d(
-                TAG,
-                "[locate] findExistingDownload skipped, blank fileName, groupId=$groupId",
-            )
-            return null
-        }
-        val relativePath = groupRelativePath(groupId).trim()
-        if (relativePath.isBlank()) {
-            Log.d(
-                TAG,
-                "[locate] findExistingDownload skipped, blank relativePath, file=$fileName, groupId=$groupId",
-            )
-            return null
-        }
-        val normalizedPath = if (relativePath.endsWith("/")) relativePath else "$relativePath/"
-        val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
-        val projection = arrayOf(
-            MediaStore.Downloads._ID,
-            MediaStore.Downloads.RELATIVE_PATH,
-        )
-        val selection = "${MediaStore.Downloads.DISPLAY_NAME}=?"
-        val selectionArgs = arrayOf(fileName)
-        Log.d(
-            TAG,
-            "[locate] query in-group start, file=$fileName, groupId=$groupId, relativePath=$relativePath, normalizedPath=$normalizedPath",
-        )
-        var scanned = 0
-        resolver.query(collection, projection, selection, selectionArgs, null)?.use { cursor ->
-            val idIndex = cursor.getColumnIndex(MediaStore.Downloads._ID)
-            val pathIndex = cursor.getColumnIndex(MediaStore.Downloads.RELATIVE_PATH)
-            while (idIndex >= 0 && cursor.moveToNext()) {
-                scanned++
-                val path = if (pathIndex >= 0) cursor.getString(pathIndex).orEmpty() else ""
-                if (path == normalizedPath || path == relativePath) {
-                    val id = cursor.getLong(idIndex)
-                    val uri = Uri.withAppendedPath(collection, id.toString()).toString()
-                    Log.i(
-                        TAG,
-                        "[locate] query in-group hit, file=$fileName, groupId=$groupId, scanned=$scanned, matchedPath=$path, uri=$uri",
-                    )
-                    return uri
-                }
-            }
-        }
-        Log.d(
-            TAG,
-            "[locate] query in-group miss, file=$fileName, groupId=$groupId, scanned=$scanned",
-        )
-        return null
-    }
-
-    private fun findAccessibleDownload(fileName: String, groupId: Long): String? {
-        val relativePath = normalizeRelativePath(groupRelativePath(groupId))
-        val uri = findAccessibleDownloadInRelativePath(
-            fileName = fileName,
-            relativePath = relativePath,
-        ) ?: findAccessibleFileInFilesCollection(
-            fileName = fileName,
-            relativePath = relativePath,
-        )
-        if (uri == null) {
-            Log.d(
-                TAG,
-                "[locate] in-group locate miss, file=$fileName, groupId=$groupId, relativePath=$relativePath",
-            )
-        } else {
-            Log.i(
-                TAG,
-                "[locate] in-group locate hit, file=$fileName, groupId=$groupId, relativePath=$relativePath, uri=$uri",
-            )
-        }
-        return uri
-    }
-
-    private fun findAccessibleDownloadAnywhere(fileName: String): String? {
-        if (fileName.isBlank()) {
-            Log.d(
-                TAG,
-                "[locate] findAccessibleDownloadAnywhere skipped, blank fileName",
-            )
-            return null
-        }
-        val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
-        val projection = arrayOf(
-            MediaStore.Downloads._ID,
-            MediaStore.MediaColumns.SIZE,
-            MediaStore.Downloads.IS_PENDING,
-        )
-        val selection = "${MediaStore.Downloads.DISPLAY_NAME}=?"
-        val selectionArgs = arrayOf(fileName)
-        Log.d(
-            TAG,
-            "[locate] anywhere lookup start, file=$fileName",
-        )
-        var scanned = 0
-        resolver.query(
-            collection,
-            projection,
-            selection,
-            selectionArgs,
-            "${MediaStore.MediaColumns.DATE_ADDED} DESC",
-        )?.use { cursor ->
-            val idIndex = cursor.getColumnIndex(MediaStore.Downloads._ID)
-            val sizeIndex = cursor.getColumnIndex(MediaStore.MediaColumns.SIZE)
-            val pendingIndex = cursor.getColumnIndex(MediaStore.Downloads.IS_PENDING)
-            while (idIndex >= 0 && cursor.moveToNext()) {
-                scanned++
-                val pending = if (pendingIndex >= 0) cursor.getInt(pendingIndex) else -1
-                if (pending == 1) {
-                    Log.d(
-                        TAG,
-                        "[locate] anywhere candidate skipped by pending=1, file=$fileName, scanned=$scanned",
-                    )
-                    continue
-                }
-                val size = if (sizeIndex >= 0) cursor.getLong(sizeIndex) else -1L
-                if (size == 0L) {
-                    Log.d(
-                        TAG,
-                        "[locate] anywhere candidate skipped by zero size, file=$fileName, scanned=$scanned",
-                    )
-                    continue
-                }
-                val id = cursor.getLong(idIndex)
-                val uri = Uri.withAppendedPath(collection, id.toString()).toString()
-                val accessible = isLocalUriAccessible(uri, "findAccessibleDownloadAnywhere")
-                Log.d(
-                    TAG,
-                    "[locate] anywhere candidate, file=$fileName, scanned=$scanned, size=$size, pending=$pending, uri=$uri, accessible=$accessible",
-                )
-                if (accessible) {
-                    Log.i(
-                        TAG,
-                        "[locate] anywhere lookup hit, file=$fileName, scanned=$scanned, uri=$uri",
-                    )
-                    return uri
-                }
-            }
-        }
-        Log.d(
-            TAG,
-            "[locate] anywhere lookup miss, file=$fileName, scanned=$scanned",
-        )
-        val filesUri = findAccessibleFileInFilesCollection(
-            fileName = fileName,
-            relativePath = null,
-        )
-        if (filesUri != null) {
-            Log.i(
-                TAG,
-                "[locate] anywhere lookup recovered from files collection, file=$fileName, uri=$filesUri",
-            )
-        }
-        return filesUri
     }
 
     private fun buildItem(
@@ -4665,11 +3962,7 @@ class DownloadRepository(
         val createdAt: Long,
         val relativePath: String,
         val sourceMetadata: DownloadEmbeddedMetadata? = null,
-    )
-
-    private data class OutputTarget(
-        val uri: Uri,
-        val pfd: ParcelFileDescriptor,
+        val downloadRootRelativePath: String? = null,
     )
 
     private data class ManagedRestoreResult(
@@ -4747,7 +4040,7 @@ class DownloadRepository(
         private const val LOGIN_REQUIRED_CODE = -101
         private const val PROGRESS_UPDATE_INTERVAL_MS = 300L
         private const val PERSIST_DELAY_MS = 1000L
-        private const val STORE_VERSION = 2
+        private const val STORE_VERSION = 3
         private const val EXTRA_TASK_PARALLELISM = 3
         private const val EXTRA_TASK_ID_START = -1_000_000_000L
     }

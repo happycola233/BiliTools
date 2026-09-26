@@ -10,7 +10,7 @@
     <string name="settings_naming_top_level_folder_mode_enabled_desc">始終為每一次下載操作包一層資料夾，適合整理同批次的多個下載項。</string>
     <string name="settings_naming_top_level_folder_mode_disabled_desc">不再額外包一層頂層資料夾，如單次下載多個條目，則會直接建立多個專案資料夾。</string>
     <string name="settings_naming_overwrite_existing">重名時直接覆蓋</string>
-    <string name="settings_naming_overwrite_existing_desc">開啟後，檢測到同名檔案（夾）時將直接覆蓋。若關閉，會自動追加序號以解決命名衝突。</string>
+    <string name="settings_naming_overwrite_existing_desc">開啟後取代同名檔案，並沿用同名資料夾；關閉後自動附加序號以避免重名。</string>
     <string name="settings_naming_clean_separators">自動清理多餘連線符</string>
     <string name="settings_naming_clean_separators_desc">開啟後，會自動清理命名結果首尾多餘的空格和“-”，以解決變數缺失時檔名的冗餘。</string>
     <string name="settings_naming_single_page_number">單 P 稿件也標註編號</string>

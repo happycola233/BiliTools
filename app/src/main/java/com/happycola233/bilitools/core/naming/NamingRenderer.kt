@@ -65,11 +65,12 @@ object NamingRenderer {
 
     fun normalizeComponent(raw: String, cleanSeparators: Boolean = true): String {
         val sanitized = sanitizeComponent(raw)
-        return if (cleanSeparators) cleanRedundantSeparators(sanitized) else sanitized
+        return sanitizeComponent(if (cleanSeparators) cleanRedundantSeparators(sanitized) else sanitized)
     }
 
     fun sanitizeComponent(raw: String): String {
         return raw
+            .trim()
             .replace(illegalPathCharsRegex, "_")
             .replace(trailingDotsRegex, "")
             .trim()

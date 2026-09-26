@@ -10,7 +10,7 @@
     <string name="settings_naming_top_level_folder_mode_enabled_desc">Cree siempre una carpeta contenedora para cada lote de descarga para mantener sus elementos juntos.</string>
     <string name="settings_naming_top_level_folder_mode_disabled_desc">No cree una carpeta contenedora. Al descargar varios elementos, cree sus carpetas individuales directamente.</string>
     <string name="settings_naming_overwrite_existing">Sobrescribir archivos existentes</string>
-    <string name="settings_naming_overwrite_existing_desc">Sobrescribir archivos o carpetas con el mismo nombre. Cuando esté desactivado, agregue un número para evitar conflictos de nombres.</string>
+    <string name="settings_naming_overwrite_existing_desc">Reemplazar los archivos con el mismo nombre y reutilizar las carpetas existentes. Si se desactiva, añadir un número para evitar nombres duplicados.</string>
     <string name="settings_naming_clean_separators">Eliminar separadores adicionales</string>
     <string name="settings_naming_clean_separators_desc">Elimine espacios y guiones adicionales al principio y al final de los nombres cuando las variables de plantilla estén vacías.</string>
     <string name="settings_naming_single_page_number">Número de vídeos de una sola parte</string>

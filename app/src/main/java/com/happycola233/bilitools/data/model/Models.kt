@@ -197,6 +197,8 @@ data class DownloadItem(
     val embeddedLyricsSource: String? = null,
     /** 保存后的实际字节数；合并、转码与元数据写入后可能不同于传输大小。 */
     val outputBytes: Long? = null,
+    /** 一次任务的稳定文件归属标识，取消与保存并发时也能找到尚未写回 localUri 的产物。 */
+    val outputOwnerKey: String = java.util.UUID.randomUUID().toString(),
 )
 
 data class DownloadMediaParams(
@@ -260,4 +262,6 @@ data class DownloadGroup(
     val tasks: List<DownloadItem>,
     /** 独立于下载类型保存来源，只有字幕或封面时也能查看详情和重新解析。 */
     val sourceMetadata: DownloadEmbeddedMetadata? = null,
+    /** 创建任务时的下载根目录，后续修改设置不能改变旧任务的存储边界。 */
+    val downloadRootRelativePath: String? = null,
 )

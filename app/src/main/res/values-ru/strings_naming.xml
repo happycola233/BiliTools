@@ -10,7 +10,7 @@
     <string name="settings_naming_top_level_folder_mode_enabled_desc">Всегда создавайте содержащую папку для каждого пакета загрузки, чтобы хранить его элементы вместе.</string>
     <string name="settings_naming_top_level_folder_mode_disabled_desc">Не создавайте содержащую папку. При загрузке нескольких элементов создайте непосредственно их отдельные папки.</string>
     <string name="settings_naming_overwrite_existing">Перезаписать существующие файлы</string>
-    <string name="settings_naming_overwrite_existing_desc">Перезаписать файлы или папки с тем же именем. Если этот параметр отключен, добавьте номер, чтобы избежать конфликтов имен.</string>
+    <string name="settings_naming_overwrite_existing_desc">Заменять одноимённые файлы и использовать существующие папки. Если выключено, добавлять номер во избежание совпадения имён.</string>
     <string name="settings_naming_clean_separators">Удалите лишние разделители.</string>
     <string name="settings_naming_clean_separators_desc">Удалите лишние пробелы и дефисы из начала и конца имен, когда переменные шаблона пусты.</string>
     <string name="settings_naming_single_page_number">Количество одночастных видеороликов</string>

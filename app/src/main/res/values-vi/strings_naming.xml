@@ -10,7 +10,7 @@
     <string name="settings_naming_top_level_folder_mode_enabled_desc">Luôn tạo một thư mục chứa cho mỗi đợt tải xuống để giữ các mục của nó lại với nhau.</string>
     <string name="settings_naming_top_level_folder_mode_disabled_desc">Không tạo thư mục chứa. Khi tải xuống một số mục, hãy trực tiếp tạo các thư mục riêng lẻ.</string>
     <string name="settings_naming_overwrite_existing">Ghi đè lên các tập tin hiện có</string>
-    <string name="settings_naming_overwrite_existing_desc">Ghi đè lên tập tin hoặc thư mục có cùng tên. Khi tắt, hãy thêm số để tránh xung đột tên.</string>
+    <string name="settings_naming_overwrite_existing_desc">Thay thế tệp trùng tên và dùng lại thư mục hiện có. Khi tắt, thêm số để tránh trùng tên.</string>
     <string name="settings_naming_clean_separators">Loại bỏ các dấu phân cách bổ sung</string>
     <string name="settings_naming_clean_separators_desc">Loại bỏ dấu cách và dấu gạch nối thừa ở đầu và cuối tên khi biến mẫu trống.</string>
     <string name="settings_naming_single_page_number">Số video một phần</string>

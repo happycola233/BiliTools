@@ -9,7 +9,7 @@
     <string name="settings_naming_top_level_folder_mode_enabled_desc">始终为每一次下载操作包一层文件夹，适合整理同批次的多个下载项。</string>
     <string name="settings_naming_top_level_folder_mode_disabled_desc">不再额外包一层顶层文件夹，如单次下载多个条目，则会直接创建多个项目文件夹。</string>
     <string name="settings_naming_overwrite_existing">重名时直接覆盖</string>
-    <string name="settings_naming_overwrite_existing_desc">开启后，检测到同名文件（夹）时将直接覆盖。若关闭，会自动追加序号以解决命名冲突。</string>
+    <string name="settings_naming_overwrite_existing_desc">开启后替换同名文件，并复用同名文件夹；关闭后自动追加序号以避免重名。</string>
     <string name="settings_naming_clean_separators">自动清理多余连接符</string>
     <string name="settings_naming_clean_separators_desc">开启后，会自动清理命名结果首尾多余的空格和“-”，以解决变量缺失时文件名的冗余。</string>
     <string name="settings_naming_single_page_number">单 P 稿件也标注编号</string>

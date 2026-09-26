@@ -10,7 +10,7 @@
     <string name="settings_naming_top_level_folder_mode_enabled_desc">Always create a containing folder for each download batch to keep its items together.</string>
     <string name="settings_naming_top_level_folder_mode_disabled_desc">Do not create a containing folder. When downloading several items, create their individual folders directly.</string>
     <string name="settings_naming_overwrite_existing">Overwrite existing files</string>
-    <string name="settings_naming_overwrite_existing_desc">Overwrite files or folders with the same name. When off, append a number to avoid name conflicts.</string>
+    <string name="settings_naming_overwrite_existing_desc">Replace files with the same name and reuse existing folders. When off, add a number to avoid name conflicts.</string>
     <string name="settings_naming_clean_separators">Remove extra separators</string>
     <string name="settings_naming_clean_separators_desc">Remove extra spaces and hyphens from the beginning and end of names when template variables are empty.</string>
     <string name="settings_naming_single_page_number">Number single-part videos</string>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_delete_incomplete">Bazı dosyalar silinemedi. İlgili görevler korundu. Dosya konumlarını veya erişim izinlerini kontrol edin.</string>
+    <string name="download_delete_shared_kept">Seçilen görevler temizlendi. Diğer görevlerin kullandığı dosyalar korundu.</string>
+    <string name="download_delete_finished">Seçilen görevler ve dosyaları silindi.</string>
+    <string name="download_clear_finished">Seçilen görev kayıtları temizlendi.</string>
+    <string name="download_history_unavailable">İndirme geçmişi okunamadı. İndirme ve silme işlemleri durduruldu. Mevcut kayıtlar ve dosyalar korundu.</string>
+</resources>

@@ -3,6 +3,10 @@ package com.happycola233.bilitools.ui.downloads
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.happycola233.bilitools.data.DownloadRepository
+import com.happycola233.bilitools.data.DownloadDeletionResult
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -10,6 +14,9 @@ class DownloadsViewModel(
     private val downloadRepository: DownloadRepository,
 ) : ViewModel() {
     val groups = downloadRepository.groups
+    val historyReadFailed = downloadRepository.historyReadFailed
+    private val deletionResults = Channel<DownloadDeletionResult>(Channel.BUFFERED)
+    val deletionEvents = deletionResults.receiveAsFlow()
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
@@ -51,24 +58,35 @@ class DownloadsViewModel(
     }
 
     fun deleteGroup(id: Long, deleteFile: Boolean) {
-        downloadRepository.deleteGroup(id, deleteFile)
+        delete { downloadRepository.deleteGroup(id, deleteFile) }
     }
 
     fun deleteTask(id: Long, deleteFile: Boolean) {
-        downloadRepository.deleteTask(id, deleteFile)
+        delete { downloadRepository.deleteTask(id, deleteFile) }
     }
 
     fun deleteGroups(ids: Collection<Long>, deleteFile: Boolean) {
-        ids.forEach { id ->
-            downloadRepository.deleteGroup(id, deleteFile)
-        }
+        delete { downloadRepository.deleteGroups(ids, deleteFile) }
     }
 
     fun clearCompleted() {
-        downloadRepository.clearCompletedGroups()
+        delete { downloadRepository.clearCompletedGroups() }
     }
 
     fun clearAll() {
-        downloadRepository.clearAllGroups()
+        delete { downloadRepository.clearAllGroups() }
+    }
+
+    private fun delete(block: suspend () -> DownloadDeletionResult) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = try {
+                block()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                DownloadDeletionResult(failedFiles = 1)
+            }
+            deletionResults.send(result)
+        }
     }
 }

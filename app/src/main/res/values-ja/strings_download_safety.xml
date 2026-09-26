@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_delete_incomplete">一部のファイルを削除できなかったため、関連するタスクを保持しました。ファイルの場所やアクセス権限をご確認ください。</string>
+    <string name="download_delete_shared_kept">選択したタスクを消去しました。他のタスクで使用中のファイルは保持しました。</string>
+    <string name="download_delete_finished">選択したタスクとファイルを削除しました。</string>
+    <string name="download_clear_finished">選択したタスクの記録を消去しました。</string>
+    <string name="download_history_unavailable">ダウンロード履歴を読み込めないため、ダウンロードと削除を停止しました。元の記録とファイルは保持されています。</string>
+</resources>

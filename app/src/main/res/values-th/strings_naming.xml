@@ -10,7 +10,7 @@
     <string name="settings_naming_top_level_folder_mode_enabled_desc">สร้างโฟลเดอร์ที่มีสำหรับชุดการดาวน์โหลดแต่ละชุดเสมอเพื่อเก็บรายการต่างๆ ไว้ด้วยกัน</string>
     <string name="settings_naming_top_level_folder_mode_disabled_desc">อย่าสร้างโฟลเดอร์ที่มี เมื่อดาวน์โหลดหลายรายการ ให้สร้างแต่ละโฟลเดอร์โดยตรง</string>
     <string name="settings_naming_overwrite_existing">เขียนทับไฟล์ที่มีอยู่</string>
-    <string name="settings_naming_overwrite_existing_desc">เขียนทับไฟล์หรือโฟลเดอร์ที่มีชื่อเดียวกัน เมื่อปิด ให้เพิ่มตัวเลขต่อท้ายเพื่อหลีกเลี่ยงความขัดแย้งของชื่อ</string>
+    <string name="settings_naming_overwrite_existing_desc">แทนที่ไฟล์ที่มีชื่อเดียวกันและใช้โฟลเดอร์เดิม เมื่อปิด จะเพิ่มหมายเลขเพื่อหลีกเลี่ยงชื่อซ้ำ</string>
     <string name="settings_naming_clean_separators">ลบตัวคั่นเพิ่มเติม</string>
     <string name="settings_naming_clean_separators_desc">ลบช่องว่างและเครื่องหมายยัติภังค์ส่วนเกินออกจากจุดเริ่มต้นและจุดสิ้นสุดของชื่อเมื่อตัวแปรเทมเพลตว่างเปล่า</string>
     <string name="settings_naming_single_page_number">นับจำนวนวิดีโอตอนเดียว</string>

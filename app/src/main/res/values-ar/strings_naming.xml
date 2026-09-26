@@ -10,7 +10,7 @@
     <string name="settings_naming_top_level_folder_mode_enabled_desc">قم دائمًا بإنشاء مجلد يحتوي على كل دفعة تنزيل للاحتفاظ بعناصرها معًا.</string>
     <string name="settings_naming_top_level_folder_mode_disabled_desc">لا تقم بإنشاء مجلد يحتوي على. عند تنزيل عدة عناصر، قم بإنشاء مجلداتها الفردية مباشرة.</string>
     <string name="settings_naming_overwrite_existing">الكتابة فوق الملفات الموجودة</string>
-    <string name="settings_naming_overwrite_existing_desc">الكتابة فوق الملفات أو المجلدات التي تحمل نفس الاسم. عند إيقاف التشغيل، قم بإلحاق رقم لتجنب تعارض الأسماء.</string>
+    <string name="settings_naming_overwrite_existing_desc">استبدال الملفات التي تحمل الاسم نفسه وإعادة استخدام المجلدات الموجودة. عند الإيقاف، تُضاف أرقام لتجنب تكرار الأسماء.</string>
     <string name="settings_naming_clean_separators">قم بإزالة الفواصل الإضافية</string>
     <string name="settings_naming_clean_separators_desc">قم بإزالة المسافات الإضافية والواصلات من بداية ونهاية الأسماء عندما تكون متغيرات القالب فارغة.</string>
     <string name="settings_naming_single_page_number">عدد مقاطع الفيديو ذات الجزء الواحد</string>

@@ -65,6 +65,22 @@ internal fun DownloadsRoute(
     LaunchedEffect(viewModel) {
         viewModel.refreshOutputAvailability()
     }
+    LaunchedEffect(viewModel, resources) {
+        viewModel.historyReadFailed.collect { failed ->
+            if (failed) Toast.makeText(context, resources.getString(R.string.download_history_unavailable), Toast.LENGTH_LONG).show()
+        }
+    }
+    LaunchedEffect(viewModel, resources) {
+        viewModel.deletionEvents.collect { result ->
+            val message = when {
+                result.blockedFiles > 0 || result.failedFiles > 0 -> R.string.download_delete_incomplete
+                result.sharedFiles > 0 -> R.string.download_delete_shared_kept
+                result.deleteFiles -> R.string.download_delete_finished
+                else -> R.string.download_clear_finished
+            }
+            Toast.makeText(context, resources.getString(message), Toast.LENGTH_LONG).show()
+        }
+    }
     LaunchedEffect(groups) {
         routeState.pruneAgainst(groups)
         if (groups.none { it.id == detailsGroupId }) detailsGroupId = null
@@ -208,7 +224,7 @@ internal fun DownloadsRoute(
                     routeState.swipedGroupId = null
                     viewModel.deleteTask(
                         dialogState.itemId,
-                        if (dialogState.canDeleteFile) deleteFile else true,
+                        if (dialogState.canDeleteFile) deleteFile else false,
                     )
                 }
 
@@ -216,7 +232,7 @@ internal fun DownloadsRoute(
                     routeState.swipedGroupId = null
                     viewModel.deleteGroup(
                         dialogState.groupId,
-                        if (dialogState.canDeleteFile) deleteFile else true,
+                        if (dialogState.canDeleteFile) deleteFile else false,
                     )
                 }
 
@@ -224,16 +240,6 @@ internal fun DownloadsRoute(
                     val targetIds = dialogState.groupIds
                     if (targetIds.isNotEmpty()) {
                         viewModel.deleteGroups(targetIds, dialogState.deleteFile)
-                        val toastRes = if (dialogState.deleteFile) {
-                            R.string.downloads_multi_done_delete
-                        } else {
-                            R.string.downloads_multi_done_clear
-                        }
-                        Toast.makeText(
-                            context,
-                            resources.getString(toastRes, targetIds.size),
-                            Toast.LENGTH_SHORT,
-                        ).show()
                         routeState.exitSelectionMode()
                     }
                 }
@@ -372,9 +378,7 @@ private class DownloadsRouteUiState(
     fun confirmTaskDelete(item: DownloadItem) {
         dialogState = DownloadsDialogState.DeleteTask(
             itemId = item.id,
-            canDeleteFile = item.status == DownloadStatus.Success &&
-                !item.outputMissing &&
-                !item.localUri.isNullOrBlank(),
+            canDeleteFile = !item.localUri.isNullOrBlank(),
         )
     }
 
@@ -382,9 +386,7 @@ private class DownloadsRouteUiState(
         dialogState = DownloadsDialogState.DeleteGroup(
             groupId = group.id,
             canDeleteFile = group.tasks.any {
-                it.status == DownloadStatus.Success &&
-                    !it.outputMissing &&
-                    !it.localUri.isNullOrBlank()
+                !it.localUri.isNullOrBlank()
             },
         )
     }

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_delete_incomplete">Não foi possível excluir alguns arquivos. As tarefas foram mantidas. Verifique a localização dos arquivos ou as permissões de acesso.</string>
+    <string name="download_delete_shared_kept">Tarefas selecionadas removidas. Os arquivos usados por outras tarefas foram mantidos.</string>
+    <string name="download_delete_finished">Tarefas selecionadas e seus arquivos excluídos.</string>
+    <string name="download_clear_finished">Registros das tarefas selecionadas removidos.</string>
+    <string name="download_history_unavailable">Não foi possível ler o histórico de downloads. Os downloads e as exclusões foram interrompidos. Os registros e arquivos existentes foram mantidos.</string>
+</resources>

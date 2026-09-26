@@ -10,7 +10,7 @@
     <string name="settings_naming_top_level_folder_mode_enabled_desc">ダウンロードバッチごとに、そのアイテムをまとめて保存するための格納フォルダを常に作成してください。</string>
     <string name="settings_naming_top_level_folder_mode_disabled_desc">格納フォルダを作成しないでください。複数のアイテムをダウンロードする場合は、個別のフォルダーを直接作成します。</string>
     <string name="settings_naming_overwrite_existing">既存のファイルを上書きする</string>
-    <string name="settings_naming_overwrite_existing_desc">同じ名前のファイルまたはフォルダを上書きします。オフの場合、名前の競合を避けるために番号を追加します。</string>
+    <string name="settings_naming_overwrite_existing_desc">同名のファイルを置き換え、既存のフォルダを再利用します。オフの場合は番号を付けて名前の重複を避けます。</string>
     <string name="settings_naming_clean_separators">余分なセパレータを削除する</string>
     <string name="settings_naming_clean_separators_desc">テンプレート変数が空の場合、名前の先頭と末尾から余分なスペースとハイフンを削除する。</string>
     <string name="settings_naming_single_page_number">単一パートのビデオの番号を付ける</string>

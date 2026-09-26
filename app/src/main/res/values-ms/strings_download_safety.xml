@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_delete_incomplete">Sesetengah fail tidak dapat dipadam. Tugas berkaitan dikekalkan. Semak lokasi fail atau kebenaran akses.</string>
+    <string name="download_delete_shared_kept">Tugas terpilih dikosongkan. Fail yang digunakan oleh tugas lain dikekalkan.</string>
+    <string name="download_delete_finished">Tugas terpilih dan failnya dipadam.</string>
+    <string name="download_clear_finished">Rekod tugas terpilih dikosongkan.</string>
+    <string name="download_history_unavailable">Sejarah muat turun tidak dapat dibaca. Muat turun dan pemadaman telah dihentikan. Rekod dan fail sedia ada dikekalkan.</string>
+</resources>

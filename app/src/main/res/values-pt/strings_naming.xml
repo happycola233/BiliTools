@@ -10,7 +10,7 @@
     <string name="settings_naming_top_level_folder_mode_enabled_desc">Sempre crie uma pasta contendo cada lote de download para manter seus itens juntos.</string>
     <string name="settings_naming_top_level_folder_mode_disabled_desc">Não crie uma pasta contendo. Ao baixar vários itens, crie suas pastas individuais diretamente.</string>
     <string name="settings_naming_overwrite_existing">Substituir arquivos existentes</string>
-    <string name="settings_naming_overwrite_existing_desc">Sobrescrever arquivos ou pastas com o mesmo nome. Quando desativado, anexe um número para evitar conflitos de nome.</string>
+    <string name="settings_naming_overwrite_existing_desc">Substituir arquivos com o mesmo nome e reutilizar as pastas existentes. Quando desativado, adicionar um número para evitar nomes duplicados.</string>
     <string name="settings_naming_clean_separators">Remover separadores extras</string>
     <string name="settings_naming_clean_separators_desc">Remova espaços e hífens extras do início e do final dos nomes quando as variáveis de modelo estiverem vazias.</string>
     <string name="settings_naming_single_page_number">Numerar vídeos de parte única</string>

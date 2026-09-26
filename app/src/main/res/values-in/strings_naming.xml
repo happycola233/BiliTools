@@ -10,7 +10,7 @@
     <string name="settings_naming_top_level_folder_mode_enabled_desc">Selalu buat folder berisi untuk setiap kumpulan unduhan untuk menyimpan item-itemnya bersama-sama.</string>
     <string name="settings_naming_top_level_folder_mode_disabled_desc">Jangan membuat folder berisi. Saat mengunduh beberapa item, buat folder masing-masing secara langsung.</string>
     <string name="settings_naming_overwrite_existing">Timpa file yang ada</string>
-    <string name="settings_naming_overwrite_existing_desc">Timpa file atau folder dengan nama yang sama. Jika tidak aktif, tambahkan nomor untuk menghindari konflik nama.</string>
+    <string name="settings_naming_overwrite_existing_desc">Ganti file dengan nama yang sama dan gunakan kembali folder yang ada. Jika dinonaktifkan, tambahkan nomor untuk menghindari nama yang sama.</string>
     <string name="settings_naming_clean_separators">Hapus pemisah tambahan</string>
     <string name="settings_naming_clean_separators_desc">Hapus spasi dan tanda hubung tambahan dari awal dan akhir nama ketika variabel templat kosong.</string>
     <string name="settings_naming_single_page_number">Nomor video satu bagian</string>
