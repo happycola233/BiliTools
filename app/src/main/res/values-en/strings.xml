@@ -241,8 +241,8 @@
     <string name="downloads_multi_clear_records">Clear records</string>
     <string name="downloads_multi_delete_files">Delete files</string>
     <string name="downloads_multi_no_task">No downloads available</string>
-    <string name="downloads_multi_confirm_clear_message">Selected: &lt;b&gt;%1$d&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Completed downloads&lt;/b&gt;&lt;br/&gt;Removes the records and keeps downloaded files.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Active downloads&lt;/b&gt;&lt;br/&gt;Stops the downloads and removes their tasks and temporary files.</string>
-    <string name="downloads_multi_confirm_delete_message">Selected: &lt;b&gt;%1$d&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Files will be deleted&lt;/b&gt;&lt;br/&gt;Removes the tasks, records and local files, including temporary files.</string>
+    <string name="downloads_multi_confirm_clear_message">Selected: &lt;b&gt;%1$d&lt;/b&gt;</string>
+    <string name="downloads_multi_confirm_delete_message">Selected: &lt;b&gt;%1$d&lt;/b&gt;</string>
     <string name="downloads_multi_hint_default">Select download groups to manage their records and files together.</string>
     <string name="downloads_multi_hint_running">&lt;b&gt;Clear records&lt;/b&gt;&lt;br/&gt;Keeps completed files. Stops active downloads and removes their tasks and temporary files.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Delete files&lt;/b&gt;&lt;br/&gt;Removes tasks, records and files.</string>
     <string name="downloads_multi_hint_has_file">&lt;b&gt;Clear records&lt;/b&gt;&lt;br/&gt;Keeps completed files. Stops active downloads and removes their tasks and temporary files.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Delete files&lt;/b&gt;&lt;br/&gt;Removes tasks, records and files.</string>

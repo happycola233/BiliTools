@@ -241,8 +241,8 @@
     <string name="downloads_multi_clear_records">ล้างบันทึก</string>
     <string name="downloads_multi_delete_files">ลบไฟล์</string>
     <string name="downloads_multi_no_task">ไม่มีการดาวน์โหลด</string>
-    <string name="downloads_multi_confirm_clear_message">ที่เลือก:&lt;b&gt;%1$d&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;&lt;b&gt;ดาวน์โหลดเสร็จสมบูรณ์&lt;/b&gt;&lt;br/&gt;ลบบันทึกและเก็บไฟล์ที่ดาวน์โหลด&lt;br/&gt;&lt;br/&gt;&lt;b&gt;การดาวน์โหลดที่ใช้งานอยู่&lt;/b&gt;&lt;br/&gt;หยุดการดาวน์โหลดและลบงานและไฟล์ชั่วคราวออก</string>
-    <string name="downloads_multi_confirm_delete_message">ที่เลือก:&lt;b&gt;%1$d&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;&lt;b&gt;ไฟล์จะถูกลบ&lt;/b&gt;&lt;br/&gt;ลบงาน บันทึก และไฟล์ในเครื่อง รวมถึงไฟล์ชั่วคราว</string>
+    <string name="downloads_multi_confirm_clear_message">ที่เลือก:&lt;b&gt;%1$d&lt;/b&gt;</string>
+    <string name="downloads_multi_confirm_delete_message">ที่เลือก:&lt;b&gt;%1$d&lt;/b&gt;</string>
     <string name="downloads_multi_hint_default">เลือกกลุ่มดาวน์โหลดเพื่อจัดการบันทึกและไฟล์ร่วมกัน</string>
     <string name="downloads_multi_hint_running">&lt;b&gt;ล้างบันทึก&lt;/b&gt;&lt;br/&gt;เก็บไฟล์ที่เสร็จสมบูรณ์ หยุดการดาวน์โหลดที่ใช้งานอยู่และลบงานและไฟล์ชั่วคราวออก&lt;br/&gt;&lt;br/&gt;&lt;b&gt;ลบไฟล์&lt;/b&gt;&lt;br/&gt;ลบงาน บันทึก และไฟล์</string>
     <string name="downloads_multi_hint_has_file">&lt;b&gt;ล้างบันทึก&lt;/b&gt;&lt;br/&gt;เก็บไฟล์ที่เสร็จสมบูรณ์ หยุดการดาวน์โหลดที่ใช้งานอยู่และลบงานและไฟล์ชั่วคราวออก&lt;br/&gt;&lt;br/&gt;&lt;b&gt;ลบไฟล์&lt;/b&gt;&lt;br/&gt;ลบงาน บันทึก และไฟล์</string>

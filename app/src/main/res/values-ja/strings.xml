@@ -241,8 +241,8 @@
     <string name="downloads_multi_clear_records">明確な記録</string>
     <string name="downloads_multi_delete_files">ファイルの削除</string>
     <string name="downloads_multi_no_task">ダウンロードは利用できません</string>
-    <string name="downloads_multi_confirm_clear_message">選択済み:&lt;b&gt;%1$d&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;&lt;b&gt;ダウンロード完了&lt;/b&gt;&lt;br/&gt;レコードを削除し、ダウンロードされたファイルを保持します。&lt;br/&gt;&lt;br/&gt;&lt;b&gt;アクティブなダウンロード&lt;/b&gt;&lt;br/&gt;ダウンロードを停止し、タスクと一時ファイルを削除します。</string>
-    <string name="downloads_multi_confirm_delete_message">選択済み:&lt;b&gt;%1$d&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;&lt;b&gt;ファイルが削除されます&lt;/b&gt;&lt;br/&gt;タスク、レコード、および一時ファイルを含むローカル ファイルを削除します。</string>
+    <string name="downloads_multi_confirm_clear_message">選択済み:&lt;b&gt;%1$d&lt;/b&gt;</string>
+    <string name="downloads_multi_confirm_delete_message">選択済み:&lt;b&gt;%1$d&lt;/b&gt;</string>
     <string name="downloads_multi_hint_default">ダウンロードグループを選択して、その記録とファイルを一緒に管理する。</string>
     <string name="downloads_multi_hint_running">&lt;b&gt;レコードをクリアします。&lt;/b&gt;&lt;br/&gt;完了したファイルを保持します。アクティブなダウンロードを停止し、そのタスクと一時ファイルを削除します。&lt;br/&gt;&lt;br/&gt;&lt;b&gt;ファイルの削除&lt;/b&gt;&lt;br/&gt;タスク、レコード、およびファイルを削除します。</string>
     <string name="downloads_multi_hint_has_file">&lt;b&gt;レコードをクリアします。&lt;/b&gt;&lt;br/&gt;完了したファイルを保持します。アクティブなダウンロードを停止し、そのタスクと一時ファイルを削除します。&lt;br/&gt;&lt;br/&gt;&lt;b&gt;ファイルの削除&lt;/b&gt;&lt;br/&gt;タスク、レコード、およびファイルを削除します。</string>

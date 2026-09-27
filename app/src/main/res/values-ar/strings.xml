@@ -241,8 +241,8 @@
     <string name="downloads_multi_clear_records">مسح السجلات</string>
     <string name="downloads_multi_delete_files">حذف الملفات</string>
     <string name="downloads_multi_no_task">لا توجد تنزيلات متاحة</string>
-    <string name="downloads_multi_confirm_clear_message">تم التحديد:&lt;b&gt;%1$d&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;&lt;b&gt;التنزيلات المكتملة&lt;/b&gt;&lt;br/&gt;يزيل السجلات ويحتفظ بالملفات التي تم تنزيلها.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;التنزيلات النشطة&lt;/b&gt;&lt;br/&gt;يوقف التنزيلات ويزيل مهامها وملفاتها المؤقتة.</string>
-    <string name="downloads_multi_confirm_delete_message">تم التحديد:&lt;b&gt;%1$d&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;&lt;b&gt;سيتم حذف الملفات&lt;/b&gt;&lt;br/&gt;إزالة المهام والسجلات والملفات المحلية، بما في ذلك الملفات المؤقتة.</string>
+    <string name="downloads_multi_confirm_clear_message">تم التحديد:&lt;b&gt;%1$d&lt;/b&gt;</string>
+    <string name="downloads_multi_confirm_delete_message">تم التحديد:&lt;b&gt;%1$d&lt;/b&gt;</string>
     <string name="downloads_multi_hint_default">حدد مجموعات التنزيل لإدارة سجلاتها وملفاتها معًا.</string>
     <string name="downloads_multi_hint_running">&lt;b&gt;مسح السجلات&lt;/b&gt;&lt;br/&gt;يحتفظ بالملفات المكتملة. يوقف التنزيلات النشطة ويزيل مهامها وملفاتها المؤقتة.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;حذف الملفات&lt;/b&gt;&lt;br/&gt;إزالة المهام والسجلات والملفات.</string>
     <string name="downloads_multi_hint_has_file">&lt;b&gt;مسح السجلات&lt;/b&gt;&lt;br/&gt;يحتفظ بالملفات المكتملة. يوقف التنزيلات النشطة ويزيل مهامها وملفاتها المؤقتة.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;حذف الملفات&lt;/b&gt;&lt;br/&gt;إزالة المهام والسجلات والملفات.</string>

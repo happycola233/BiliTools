@@ -255,24 +255,8 @@
     <string name="downloads_multi_clear_records">清除记录</string>
     <string name="downloads_multi_delete_files">删除文件</string>
     <string name="downloads_multi_no_task">暂无可操作任务</string>
-    <string name="downloads_multi_confirm_clear_message"><![CDATA[
-已选择 <b>%1$d</b> 项，确认执行“清除记录”？
-<br/>
-<br/>
-<b>已完成任务</b>
-<br/>仅删除记录，不删除已下载文件
-<br/>
-<br/>
-<b>进行中任务</b>
-<br/>停止下载，并删除任务与临时文件
-]]></string>
-    <string name="downloads_multi_confirm_delete_message"><![CDATA[
-已选择 <b>%1$d</b> 项，确认执行“删除文件”？
-<br/>
-<br/>
-<b>执行结果</b>
-<br/>删除任务、记录和本地文件（含临时文件）
-]]></string>
+    <string name="downloads_multi_confirm_clear_message"><![CDATA[已选择 <b>%1$d</b> 项，确认执行“清除记录”？]]></string>
+    <string name="downloads_multi_confirm_delete_message"><![CDATA[已选择 <b>%1$d</b> 项，确认执行“删除文件”？]]></string>
     <string name="downloads_multi_hint_default">选择项目组后可批量处理记录和文件。</string>
     <string name="downloads_multi_hint_running"><![CDATA[
 <b>清除记录</b>

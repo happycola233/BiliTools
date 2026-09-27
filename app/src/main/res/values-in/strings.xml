@@ -241,8 +241,8 @@
     <string name="downloads_multi_clear_records">Hapus catatan</string>
     <string name="downloads_multi_delete_files">Hapus file</string>
     <string name="downloads_multi_no_task">Tidak ada unduhan yang tersedia</string>
-    <string name="downloads_multi_confirm_clear_message">Dipilih:&lt;b&gt;%1$d&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Unduhan selesai&lt;/b&gt;&lt;br/&gt;Menghapus catatan dan menyimpan file yang diunduh.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Unduhan aktif&lt;/b&gt;&lt;br/&gt;Menghentikan unduhan dan menghapus tugas serta file sementaranya.</string>
-    <string name="downloads_multi_confirm_delete_message">Dipilih:&lt;b&gt;%1$d&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;&lt;b&gt;File akan dihapus&lt;/b&gt;&lt;br/&gt;Menghapus tugas, catatan, dan file lokal, termasuk file sementara.</string>
+    <string name="downloads_multi_confirm_clear_message">Dipilih:&lt;b&gt;%1$d&lt;/b&gt;</string>
+    <string name="downloads_multi_confirm_delete_message">Dipilih:&lt;b&gt;%1$d&lt;/b&gt;</string>
     <string name="downloads_multi_hint_default">Pilih grup unduhan untuk mengelola catatan dan file mereka bersama-sama.</string>
     <string name="downloads_multi_hint_running">&lt;b&gt;Hapus catatan&lt;/b&gt;&lt;br/&gt;Menyimpan file yang sudah selesai. Menghentikan unduhan aktif dan menghapus tugas serta file sementaranya.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Hapus file&lt;/b&gt;&lt;br/&gt;Menghapus tugas, catatan, dan file.</string>
     <string name="downloads_multi_hint_has_file">&lt;b&gt;Hapus catatan&lt;/b&gt;&lt;br/&gt;Menyimpan file yang sudah selesai. Menghentikan unduhan aktif dan menghapus tugas serta file sementaranya.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Hapus file&lt;/b&gt;&lt;br/&gt;Menghapus tugas, catatan, dan file.</string>
