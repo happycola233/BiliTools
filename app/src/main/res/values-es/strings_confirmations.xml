@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_confirm_dont_ask_again">Confirmar y no volver a preguntar</string>
+    <string name="download_remove_records_message">Quitar las tareas seleccionadas de la lista de descargas y conservar los archivos descargados.</string>
+    <string name="download_delete_files_message">Quitar las tareas seleccionadas y eliminar los archivos descargados. Esta acción no se puede deshacer.</string>
+    <string name="settings_reset_dismissed_confirmations">Restablecer confirmaciones ocultas</string>
+    <string name="settings_reset_dismissed_confirmations_desc">Volver a mostrar las confirmaciones de acciones que desactivaste</string>
+    <string name="settings_dismissed_confirmations_reset">Confirmaciones de acciones restablecidas</string>
+</resources>

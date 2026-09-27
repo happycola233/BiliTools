@@ -118,13 +118,15 @@ Material Color Utilities 的官方实现只有 TypeScript、Java、Dart、C++ �
 
 ### 删除操作的固定容器配色
 
-下载列表的侧滑删除背景使用 `AppDestructiveColors.container`，复用生成色板中的 `md_theme_dark_error`（`#FFB4AB`）。粉色背景上的图标使用 `onContainer`，对应 `md_theme_dark_onError`（`#690005`），避免白色轮廓在浅粉色上难以辨认。浅色、深色、纯黑以及动态取色均使用同一对容器颜色。
+下载列表的侧滑背景使用 `AppDestructiveColors`，复用生成色板中的基线错误色。清除记录使用浅粉色 `container`（`md_theme_dark_error`，`#FFB4AB`）与深红图标 `onContainer`（`md_theme_dark_onError`，`#690005`）；删除文件使用深红色 `strongContainer`（`md_theme_light_error`，`#BA1A1A`）与白色图标 `onStrongContainer`（`md_theme_light_onError`，`#FFFFFF`）。两档图标对比度分别为 7.72:1、6.46:1。浅色、深色、纯黑以及动态取色均使用同一组颜色。
 
 子列表右侧的独立删除图标使用 `MaterialTheme.colorScheme.onSurfaceVariant`，与暂停、继续、重试等操作图标共用中性色，随明暗模式适配。固定容器配色不覆盖全局错误角色；失败提示、输入错误、确认弹窗等既有语义色继续随当前主题解析。界面通过语义层取容器颜色，不直接引用深色资源，也不重复硬编码色值。
 
-这两处图标采用 [Google Fonts Material Icons Round 的 `delete_outline`](https://fonts.google.com/icons?selected=Material+Icons+Round:delete_outline:&icon.set=Material+Icons&icon.style=Rounded)，以独立的 `ic_delete_outline_rounded_24.xml` 随包提供，保留官方 24px SVG 的原始路径；其他删除入口继续使用原有图标。
+侧滑删除文件与子列表删除图标采用 [Google Fonts Material Icons Round 的 `delete_outline`](https://fonts.google.com/icons?selected=Material+Icons+Round:delete_outline:&icon.set=Material+Icons&icon.style=Rounded)，以独立的 `ic_delete_outline_rounded_24.xml` 随包提供，保留官方 24px SVG 的原始路径；侧滑清除记录使用同系列的 `playlist_remove`。
 
-该矢量资源将桶身与桶盖拆为具名路径，闭合轮廓保持不变。侧滑区域的 `SwipeDeleteIcon` 共用这份路径，由开合状态驱动弹簧动画，不再按拖动距离插值：越过第一停靠点（88dp）后再左滑 12dp 即触发，手指停住也会完成动作。桶盖弹开后回落至 40°，整体轻弹后稳定在 120%，同时平稳左移 2dp；开盖回弹比缩放更明显，平移不回弹。左移只在拖动期间保持，松手后独立回到按钮中央。回拖至 92dp 内、未触发删除的松手回位或取消手势时自然收拢；松手触发删除确认时，条目回到停靠点，图标仅向右补偿 1dp 以改善视觉居中，垂直位置不变，并保持开盖、放大，直至关闭弹窗、收起操作区后再复位。开合触发点之间的 8dp 缓冲避免抖动反复触发，动画中途反向保持连续。图标布局占位固定，子列表图标保持原始尺寸和闭合状态。开盖只是视觉预备动作，删除就绪及双向触感仍由 140dp 的第二阈值决定。
+`DownloadsSwipeAction` 在初始状态显示清除记录图标，可见最长边为 23dp，达到清除阈值时放大至 27.6dp；删除文件状态切换为开盖垃圾桶。垃圾桶按完整开盖轮廓归一化后额外放大 25%，并上移 3.45dp，使笔画分量和视觉重心与放大的记录图标接近。所有状态均在操作区水平居中，RTL 镜像水平方向；子列表图标保持原始尺寸和闭合状态。
+
+进入删除文件状态时，红色背景与白色图标共用圆角前缘扫入。过渡结束后只绘制单层红色，由外层 `Surface` 统一裁剪圆角，避免抗锯齿边缘混入底层粉色。
 
 ### 为什么要分离
 

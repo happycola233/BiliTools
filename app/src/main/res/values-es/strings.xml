@@ -241,9 +241,7 @@
     <string name="downloads_multi_clear_records">Borrar registros</string>
     <string name="downloads_multi_delete_files">Eliminar archivos</string>
     <string name="downloads_multi_no_task">No hay descargas disponibles</string>
-    <string name="downloads_multi_confirm_clear_title">¿Borrar registros seleccionados?</string>
     <string name="downloads_multi_confirm_clear_message">Seleccionado:&lt;b&gt;%1$d&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Descargas completadas&lt;/b&gt;&lt;br/&gt;Elimina los registros y conserva los archivos descargados.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Descargas activas&lt;/b&gt;&lt;br/&gt;Detiene las descargas y elimina sus tareas y archivos temporales.</string>
-    <string name="downloads_multi_confirm_delete_title">¿Eliminar archivos y registros seleccionados?</string>
     <string name="downloads_multi_confirm_delete_message">Seleccionado:&lt;b&gt;%1$d&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Los archivos se eliminarán&lt;/b&gt;&lt;br/&gt;Elimina las tareas, registros y archivos locales, incluidos los archivos temporales.</string>
     <string name="downloads_multi_hint_default">Seleccione grupos de descarga para administrar sus registros y archivos juntos.</string>
     <string name="downloads_multi_hint_running">&lt;b&gt;Borrar registros&lt;/b&gt;&lt;br/&gt;Mantiene archivos completos. Detiene las descargas activas y elimina sus tareas y archivos temporales.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Eliminar archivos&lt;/b&gt;&lt;br/&gt;Elimina tareas, registros y archivos.</string>
@@ -302,9 +300,6 @@
     <string name="download_cancel">Cancelar</string>
     <string name="download_retry">Reintentar</string>
     <string name="download_delete">Eliminar</string>
-    <string name="download_delete_with_file">Eliminar también archivos descargados</string>
-    <string name="download_delete_confirm_task">¿Eliminar esta descarga?</string>
-    <string name="download_delete_confirm_group">¿Eliminar este grupo de descarga y todas sus tareas?</string>
     <string name="download_time_unknown">Hora desconocida</string>
     <string name="downloads_reparse">Analizar de nuevo</string>
     <string name="downloads_view_details">Detalles</string>

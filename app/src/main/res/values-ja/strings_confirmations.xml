@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_confirm_dont_ask_again">確認して今後表示しない</string>
+    <string name="download_remove_records_message">選択したタスクをダウンロード一覧から削除します。ダウンロード済みのファイルは保持されます。</string>
+    <string name="download_delete_files_message">選択したタスクとダウンロード済みのファイルを削除します。この操作は取り消せません。</string>
+    <string name="settings_reset_dismissed_confirmations">非表示にした確認をリセット</string>
+    <string name="settings_reset_dismissed_confirmations_desc">非表示にした操作確認を再び表示します</string>
+    <string name="settings_dismissed_confirmations_reset">操作確認を再び表示するようにしました</string>
+</resources>

@@ -20,7 +20,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
@@ -51,6 +50,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -61,8 +61,10 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -86,19 +88,21 @@ import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import java.util.Locale
 
 sealed interface DownloadsDialogState {
+    val deleteFiles: Boolean
+
     data class DeleteTask(
         val itemId: Long,
-        val canDeleteFile: Boolean,
+        override val deleteFiles: Boolean,
     ) : DownloadsDialogState
 
     data class DeleteGroup(
         val groupId: Long,
-        val canDeleteFile: Boolean,
+        override val deleteFiles: Boolean,
     ) : DownloadsDialogState
 
     data class BatchDelete(
         val groupIds: Set<Long>,
-        val deleteFile: Boolean,
+        override val deleteFiles: Boolean,
     ) : DownloadsDialogState
 
 }
@@ -150,7 +154,7 @@ fun DownloadsScreenContent(
     onClearRecords: () -> Unit,
     onDeleteFiles: () -> Unit,
     onDialogDismiss: () -> Unit,
-    onDialogConfirm: (Boolean) -> Unit,
+    onDialogConfirm: (dontAskAgain: Boolean) -> Unit,
     onToggleSection: (DownloadSectionType) -> Unit,
     onToggleGroupExpanded: (Long) -> Unit,
     onSwipedGroupChange: (Long?) -> Unit,
@@ -159,7 +163,7 @@ fun DownloadsScreenContent(
     onGroupResume: (DownloadGroup) -> Unit,
     onGroupReparse: (DownloadGroup) -> Unit,
     onGroupShowDetails: (DownloadGroup) -> Unit,
-    onGroupDelete: (DownloadGroup) -> Unit,
+    onGroupDelete: (group: DownloadGroup, deleteFiles: Boolean) -> Unit,
     onTaskPauseResume: (DownloadItem) -> Unit,
     onTaskRetry: (DownloadItem) -> Unit,
     onTaskDelete: (DownloadItem) -> Unit,
@@ -377,59 +381,29 @@ private fun DownloadsEmptyState(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun DownloadsDeleteDialog(
+internal fun DownloadsDeleteDialog(
     dialogState: DownloadsDialogState?,
     onDismiss: () -> Unit,
-    onConfirm: (Boolean) -> Unit,
+    onConfirm: (dontAskAgain: Boolean) -> Unit,
 ) {
-    val state = when (dialogState) {
-        is DownloadsDialogState.DeleteTask,
-        is DownloadsDialogState.DeleteGroup,
-        is DownloadsDialogState.BatchDelete,
-        -> dialogState
-
-        null,
-        -> return
-    }
-    val haptics = rememberAppHaptics()
-    var deleteFileChecked by remember(state) { mutableStateOf(true) }
-    val onDeleteFileCheckedChange: (Boolean) -> Unit = { checked ->
-        haptics.toggle(checked)
-        deleteFileChecked = checked
-    }
-    val title = when (state) {
-        is DownloadsDialogState.DeleteTask -> stringResource(R.string.download_delete)
-        is DownloadsDialogState.DeleteGroup -> stringResource(R.string.downloads_group_delete)
-        is DownloadsDialogState.BatchDelete -> stringResource(
-            if (state.deleteFile) {
-                R.string.downloads_multi_confirm_delete_title
-            } else {
-                R.string.downloads_multi_confirm_clear_title
-            },
-        )
-    }
+    val state = dialogState ?: return
+    val title = stringResource(
+        if (state.deleteFiles) R.string.downloads_multi_delete_files
+        else R.string.downloads_multi_clear_records,
+    )
     val message = when (state) {
-        is DownloadsDialogState.DeleteTask -> AnnotatedString(
-            stringResource(R.string.download_delete_confirm_task),
-        )
-        is DownloadsDialogState.DeleteGroup -> AnnotatedString(
-            stringResource(R.string.download_delete_confirm_group),
-        )
+        is DownloadsDialogState.DeleteTask,
+        is DownloadsDialogState.DeleteGroup -> AnnotatedString(stringResource(
+            if (state.deleteFiles) R.string.download_delete_files_message
+            else R.string.download_remove_records_message,
+        ))
         is DownloadsDialogState.BatchDelete -> htmlToAnnotatedString(
             stringResource(
-                if (state.deleteFile) {
-                    R.string.downloads_multi_confirm_delete_message
-                } else {
-                    R.string.downloads_multi_confirm_clear_message
-                },
+                if (state.deleteFiles) R.string.downloads_multi_confirm_delete_message
+                else R.string.downloads_multi_confirm_clear_message,
                 state.groupIds.size,
             ),
         )
-    }
-    val showCheckbox = when (state) {
-        is DownloadsDialogState.DeleteTask -> state.canDeleteFile
-        is DownloadsDialogState.DeleteGroup -> state.canDeleteFile
-        is DownloadsDialogState.BatchDelete -> false
     }
 
     AppAlertDialog(
@@ -441,54 +415,53 @@ private fun DownloadsDeleteDialog(
                 color = MaterialTheme.colorScheme.onSurface,
             )
         },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(text = message)
-                if (showCheckbox) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable { onDeleteFileCheckedChange(!deleteFileChecked) }
-                            .padding(vertical = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Checkbox(
-                            checked = deleteFileChecked,
-                            onCheckedChange = onDeleteFileCheckedChange,
-                            colors = AppAccents.checkboxColors(),
-                        )
-                        Text(
-                            text = stringResource(R.string.download_delete_with_file),
-                            modifier = Modifier.padding(start = 8.dp),
-                        )
-                    }
-                }
-            }
-        },
+        text = { Text(text = message) },
         confirmButton = {
-            TextButton(
-                onClick = {
-                    haptics.confirm()
-                    val confirmDeleteFile = if (showCheckbox) deleteFileChecked else true
-                    onConfirm(confirmDeleteFile)
-                },
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = MaterialTheme.colorScheme.error,
-                ),
-            ) {
-                Text(
-                    text = stringResource(R.string.download_delete),
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(text = stringResource(android.R.string.cancel))
-            }
+            DownloadsDeleteDialogButtons(onDismiss, onConfirm)
         },
     )
+}
+
+@Composable
+private fun DownloadsDeleteDialogButtons(onDismiss: () -> Unit, onConfirm: (Boolean) -> Unit) {
+    val haptics = rememberAppHaptics()
+    // 三个按钮作为一个整体交给 Material，避免内部 FlowRow 换行时改变视觉顺序。
+    // 宽度不足时整组纵向排列；RTL 用 placeRelative 镜像，记忆按钮始终在中间。
+    Layout(content = {
+        TextButton(onClick = onDismiss) {
+            Text(stringResource(android.R.string.cancel))
+        }
+        TextButton(onClick = { haptics.confirm(); onConfirm(true) }) {
+            Text(stringResource(R.string.download_confirm_dont_ask_again), textAlign = TextAlign.Center)
+        }
+        TextButton(
+            onClick = { haptics.confirm(); onConfirm(false) },
+            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+        ) {
+            Text(stringResource(R.string.download_delete), fontWeight = FontWeight.Bold)
+        }
+    }) { measurables, constraints ->
+        val buttons = measurables.map { it.measure(constraints.copy(minWidth = 0, minHeight = 0)) }
+        val spacing = 8.dp.roundToPx()
+        val rowWidth = buttons.sumOf { it.width } + spacing * (buttons.size - 1)
+        val horizontal = rowWidth <= constraints.maxWidth
+        val width = constraints.constrainWidth(rowWidth)
+        val height = if (horizontal) buttons.maxOf { it.height }
+        else buttons.sumOf { it.height } + spacing * (buttons.size - 1)
+        layout(width, height) {
+            var x = width - rowWidth
+            var y = 0
+            buttons.forEach { button ->
+                if (horizontal) {
+                    button.placeRelative(x, (height - button.height) / 2)
+                    x += button.width + spacing
+                } else {
+                    button.placeRelative(width - button.width, y)
+                    y += button.height + spacing
+                }
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -543,14 +516,14 @@ private fun DownloadsManageFab(
     ) {
         FloatingActionButtonMenuItem(
             onClick = { expanded = false; haptics.confirm(); onClearAll() },
-            icon = { Icon(painter = painterResource(R.drawable.ic_delete_24), contentDescription = null) },
+            icon = { Icon(painter = painterResource(R.drawable.ic_delete_outline_rounded_24), contentDescription = null) },
             text = { Text(text = stringResource(R.string.downloads_clear_all)) },
             containerColor = menuItemContainerColor,
             contentColor = menuItemContentColor,
         )
         FloatingActionButtonMenuItem(
             onClick = { expanded = false; haptics.confirm(); onClearCompleted() },
-            icon = { Icon(painter = painterResource(R.drawable.ic_delete_sweep_24), contentDescription = null) },
+            icon = { Icon(painter = painterResource(R.drawable.ic_playlist_remove_rounded_24), contentDescription = null) },
             text = { Text(text = stringResource(R.string.downloads_clear_completed)) },
             containerColor = menuItemContainerColor,
             contentColor = menuItemContentColor,
@@ -661,7 +634,7 @@ internal fun DownloadsBatchPanel(
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             BatchActionButton(
-                iconRes = R.drawable.ic_delete_sweep_24,
+                iconRes = R.drawable.ic_playlist_remove_rounded_24,
                 text = stringResource(R.string.downloads_multi_clear_records),
                 enabled = clearEnabled,
                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -672,7 +645,7 @@ internal fun DownloadsBatchPanel(
                     .fillMaxHeight(),
             )
             BatchActionButton(
-                iconRes = R.drawable.ic_delete_24,
+                iconRes = R.drawable.ic_delete_outline_rounded_24,
                 text = stringResource(R.string.downloads_multi_delete_files),
                 enabled = deleteEnabled,
                 containerColor = MaterialTheme.colorScheme.errorContainer,

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_confirm_dont_ask_again">Onayla ve tekrar sorma</string>
+    <string name="download_remove_records_message">Seçili görevleri indirme listesinden kaldır ve indirilen dosyaları koru.</string>
+    <string name="download_delete_files_message">Seçili görevleri kaldır ve indirilen dosyaları sil. Bu işlem geri alınamaz.</string>
+    <string name="settings_reset_dismissed_confirmations">Gizlenen onayları sıfırla</string>
+    <string name="settings_reset_dismissed_confirmations_desc">Daha önce kapattığınız işlem onaylarını yeniden göster</string>
+    <string name="settings_dismissed_confirmations_reset">İşlem onayları geri yüklendi</string>
+</resources>

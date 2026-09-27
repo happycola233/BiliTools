@@ -241,9 +241,7 @@
     <string name="downloads_multi_clear_records">مسح السجلات</string>
     <string name="downloads_multi_delete_files">حذف الملفات</string>
     <string name="downloads_multi_no_task">لا توجد تنزيلات متاحة</string>
-    <string name="downloads_multi_confirm_clear_title">مسح السجلات المحددة؟</string>
     <string name="downloads_multi_confirm_clear_message">تم التحديد:&lt;b&gt;%1$d&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;&lt;b&gt;التنزيلات المكتملة&lt;/b&gt;&lt;br/&gt;يزيل السجلات ويحتفظ بالملفات التي تم تنزيلها.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;التنزيلات النشطة&lt;/b&gt;&lt;br/&gt;يوقف التنزيلات ويزيل مهامها وملفاتها المؤقتة.</string>
-    <string name="downloads_multi_confirm_delete_title">هل تريد حذف الملفات والسجلات المحددة؟</string>
     <string name="downloads_multi_confirm_delete_message">تم التحديد:&lt;b&gt;%1$d&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;&lt;b&gt;سيتم حذف الملفات&lt;/b&gt;&lt;br/&gt;إزالة المهام والسجلات والملفات المحلية، بما في ذلك الملفات المؤقتة.</string>
     <string name="downloads_multi_hint_default">حدد مجموعات التنزيل لإدارة سجلاتها وملفاتها معًا.</string>
     <string name="downloads_multi_hint_running">&lt;b&gt;مسح السجلات&lt;/b&gt;&lt;br/&gt;يحتفظ بالملفات المكتملة. يوقف التنزيلات النشطة ويزيل مهامها وملفاتها المؤقتة.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;حذف الملفات&lt;/b&gt;&lt;br/&gt;إزالة المهام والسجلات والملفات.</string>
@@ -314,9 +312,6 @@
     <string name="download_cancel">إلغاء</string>
     <string name="download_retry">إعادة المحاولة</string>
     <string name="download_delete">حذف</string>
-    <string name="download_delete_with_file">قم أيضًا بحذف الملفات التي تم تنزيلها</string>
-    <string name="download_delete_confirm_task">هل تريد حذف هذا التنزيل؟</string>
-    <string name="download_delete_confirm_group">هل تريد حذف مجموعة التنزيل هذه وجميع مهامها؟</string>
     <string name="download_time_unknown">الوقت غير معروف</string>
     <string name="downloads_reparse">التحليل مرة أخرى</string>
     <string name="downloads_view_details">التفاصيل</string>

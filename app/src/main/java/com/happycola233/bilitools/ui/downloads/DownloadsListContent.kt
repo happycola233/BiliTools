@@ -7,7 +7,6 @@ import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.Spring
@@ -20,17 +19,14 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -38,7 +34,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -50,11 +45,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,9 +58,9 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
@@ -98,13 +90,9 @@ import com.happycola233.bilitools.data.model.DownloadStatus
 import com.happycola233.bilitools.data.model.DownloadTaskType
 import com.happycola233.bilitools.data.model.isManagedTransfer
 import com.happycola233.bilitools.data.model.isResolvedWithoutFailure
-import com.happycola233.bilitools.ui.haptics.HapticThresholdGate
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
-import com.happycola233.bilitools.ui.theme.AppDestructiveColors
 import com.happycola233.bilitools.ui.theme.AppSurfaces
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 private data class DownloadsSectionUi(
     val type: DownloadSectionType,
@@ -232,7 +220,7 @@ internal fun DownloadsListContent(
     onToggleGroupExpanded: (Long) -> Unit,
     onSwipedGroupChange: (Long?) -> Unit,
     onGroupSelectionToggle: (Long) -> Unit,
-    onGroupDelete: (DownloadGroup) -> Unit,
+    onGroupDelete: (group: DownloadGroup, deleteFiles: Boolean) -> Unit,
     onGroupPause: (DownloadGroup) -> Unit,
     onGroupResume: (DownloadGroup) -> Unit,
     onGroupReparse: (DownloadGroup) -> Unit,
@@ -312,7 +300,7 @@ internal fun DownloadsListContent(
                             onSwipedGroupChange = onSwipedGroupChange,
                             onToggleSelection = { onGroupSelectionToggle(group.id) },
                             onToggleExpanded = { onToggleGroupExpanded(group.id) },
-                            onDelete = { onGroupDelete(group) },
+                            onDelete = { deleteFiles -> onGroupDelete(group, deleteFiles) },
                             onPauseGroup = { onGroupPause(group) },
                             onResumeGroup = { onGroupResume(group) },
                             onReparse = { onGroupReparse(group) },
@@ -341,7 +329,7 @@ internal fun DownloadsListContent(
                         onSwipedGroupChange = onSwipedGroupChange,
                         onToggleSelection = { onGroupSelectionToggle(group.id) },
                         onToggleExpanded = { onToggleGroupExpanded(group.id) },
-                        onDelete = { onGroupDelete(group) },
+                        onDelete = { deleteFiles -> onGroupDelete(group, deleteFiles) },
                         onPauseGroup = { onGroupPause(group) },
                         onResumeGroup = { onGroupResume(group) },
                         onReparse = { onGroupReparse(group) },
@@ -479,7 +467,7 @@ internal fun DownloadsGroupCard(
     onSwipedGroupChange: (Long?) -> Unit,
     onToggleSelection: () -> Unit,
     onToggleExpanded: () -> Unit,
-    onDelete: () -> Unit,
+    onDelete: (deleteFiles: Boolean) -> Unit,
     onPauseGroup: () -> Unit,
     onResumeGroup: () -> Unit,
     onReparse: () -> Unit,
@@ -492,32 +480,9 @@ internal fun DownloadsGroupCard(
     selectionMotion: DownloadsSelectionMotion = rememberDownloadsSelectionMotion(selectionMode),
 ) {
     val context = LocalContext.current
-    val density = LocalDensity.current
-    val layoutDirection = LocalLayoutDirection.current
     val haptics = rememberAppHaptics()
     val coverPlaceholderColor = AppSurfaces.insetContainerColor
-    val scope = rememberCoroutineScope()
-    val deleteActionWidth = 80.dp
-    val deleteActionGap = 8.dp
-    val swipeRevealOffsetPx = with(density) { (deleteActionWidth + deleteActionGap).toPx() }
-    val swipeDeleteThresholdPx = with(density) { 140.dp.toPx() }
-    // 开盖是停靠后的预备动作，与删除阈值分开；8dp 的回退缓冲避免轻微抖动反复开合。
-    val deleteIconOpenThresholdPx = swipeRevealOffsetPx + with(density) { 12.dp.toPx() }
-    val deleteIconCloseThresholdPx = swipeRevealOffsetPx + with(density) { 4.dp.toPx() }
-    val swipeOffsetX = remember(group.id) { Animatable(0f) }
-    var dragOffsetX by remember(group.id) { mutableFloatStateOf(0f) }
-    var dragging by remember(group.id) { mutableStateOf(false) }
-    var deleteIconOpen by remember(group.id) { mutableStateOf(false) }
     val interactionSource = remember(group.id) { MutableInteractionSource() }
-    val deleteThresholdGate = remember(group.id) { HapticThresholdGate() }
-    val currentSwiped by rememberUpdatedState(swiped)
-    val currentAnyGroupSwiped by rememberUpdatedState(anyGroupSwiped)
-    val currentOnSwipedGroupChange by rememberUpdatedState(onSwipedGroupChange)
-    val currentOnDelete by rememberUpdatedState(onDelete)
-    // 停靠后向 start 延长背景，end 边缘固定；RTL 时整套操作区随布局镜像。
-    val deleteContainerWidth = with(density) {
-        (-swipeOffsetX.value).toDp() - deleteActionGap
-    }.coerceAtLeast(deleteActionWidth)
     val groupContainerColor by animateColorAsState(
         targetValue = if (selected) {
             MaterialTheme.colorScheme.primaryContainer
@@ -563,143 +528,26 @@ internal fun DownloadsGroupCard(
     }
     val presentation = remember(group.tasks) { resolveDownloadsGroupPresentation(group) }
 
-    LaunchedEffect(swiped, anyGroupSwiped) {
-        // 另一个组先停靠时释放本组拖动；旧手指之后的移动和松开不能抢回停靠状态。
-        if (dragging && anyGroupSwiped && !swiped) {
-            dragging = false
-            deleteIconOpen = false
-        }
-    }
-
-    LaunchedEffect(swiped, selectionMode, dragging, swipeRevealOffsetPx) {
-        if (dragging) return@LaunchedEffect
-        // 删除确认期间回到停靠点仍保持开盖；弹窗关闭后，操作区收起时再统一复位。
-        if (!swiped || selectionMode) deleteIconOpen = false
-        val target = when {
-            selectionMode -> 0f
-            swiped -> -swipeRevealOffsetPx
-            else -> 0f
-        }
-        dragOffsetX = target
-        if (swipeOffsetX.value != target) {
-            swipeOffsetX.animateTo(target, tween(durationMillis = 200))
-        }
-    }
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(
-                start = selectionMotion.cardInset,
-                end = selectionMotion.cardInset,
-                bottom = 8.dp,
-            )
-            .pointerInput(group.id, selectionMode, density.density, layoutDirection) {
-                if (selectionMode) return@pointerInput
-                // 共享停靠状态只更新回调读到的值，避免收起旧组时重启正在拖动的新组手势。
-                try {
-                    detectHorizontalDragGestures(
-                        onDragStart = {
-                            if (currentAnyGroupSwiped && !currentSwiped) {
-                                currentOnSwipedGroupChange(null)
-                            }
-                            dragOffsetX = swipeOffsetX.value
-                            deleteThresholdGate.reset(dragOffsetX <= -swipeDeleteThresholdPx)
-                            dragging = true
-                        },
-                        onHorizontalDrag = drag@{ change, dragAmount ->
-                            change.consume()
-                            if (!dragging) return@drag
-                            // offset 使用逻辑方向，原始手势是物理方向；统一后阈值和停靠逻辑无需分叉。
-                            val logicalDelta = if (layoutDirection == LayoutDirection.Rtl) -dragAmount else dragAmount
-                            val target = (dragOffsetX + logicalDelta).coerceIn(-size.width.toFloat(), 0f)
-                            dragOffsetX = target
-                            when {
-                                -target >= deleteIconOpenThresholdPx -> deleteIconOpen = true
-                                -target <= deleteIconCloseThresholdPx -> deleteIconOpen = false
-                            }
-                            scope.launch {
-                                swipeOffsetX.snapTo(target)
-                            }
-                            deleteThresholdGate.update(target <= -swipeDeleteThresholdPx) { readyToDelete ->
-                                if (readyToDelete) haptics.thresholdActivate() else haptics.thresholdDeactivate()
-                            }
-                        },
-                        onDragEnd = end@{
-                            if (!dragging) return@end
-                            dragging = false
-                            val finalOffset = dragOffsetX
-                            deleteIconOpen = finalOffset <= -swipeDeleteThresholdPx
-                            when {
-                                finalOffset <= -swipeDeleteThresholdPx -> {
-                                    dragOffsetX = -swipeRevealOffsetPx
-                                    currentOnSwipedGroupChange(group.id)
-                                    currentOnDelete()
-                                }
-
-                                finalOffset <= -(swipeRevealOffsetPx / 2f) -> {
-                                    dragOffsetX = -swipeRevealOffsetPx
-                                    currentOnSwipedGroupChange(group.id)
-                                }
-
-                                else -> {
-                                    dragOffsetX = 0f
-                                    currentOnSwipedGroupChange(null)
-                                }
-                            }
-                        },
-                        onDragCancel = {
-                            dragging = false
-                            deleteIconOpen = false
-                        },
-                    )
-                } finally {
-                    // pointerInput 被取消（如进入多选）时不保证调用 onDragCancel，仍需释放回弹。
-                    if (dragging) {
-                        dragging = false
-                        deleteIconOpen = false
-                    }
-                }
-            },
-    ) {
-        if (!selectionMode) {
-            Box(
-                contentAlignment = Alignment.CenterEnd,
-                modifier = Modifier.matchParentSize(),
-            ) {
-                Surface(
-                    color = AppDestructiveColors.container,
-                    contentColor = AppDestructiveColors.onContainer,
-                    shape = RoundedCornerShape(20.dp),
-                    onClick = {
-                        haptics.tap()
-                        onDelete()
-                    },
-                    modifier = Modifier
-                        .width(deleteContainerWidth)
-                        .fillMaxHeight()
-                        .alpha(if (swipeOffsetX.value < 0f || swiped) 1f else 0f),
-                ) {
-                    Box(contentAlignment = Alignment.CenterEnd) {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier.width(deleteActionWidth).fillMaxHeight(),
-                        ) {
-                            SwipeDeleteIcon(isOpen = deleteIconOpen, isDragging = dragging)
-                        }
-                    }
-                }
-            }
-        }
-
+    DownloadsGroupSwipe(
+        groupId = group.id,
+        enabled = !selectionMode,
+        swiped = swiped,
+        anyGroupSwiped = anyGroupSwiped,
+        onSwipedGroupChange = onSwipedGroupChange,
+        onDelete = onDelete,
+        modifier = modifier.fillMaxWidth().padding(
+            start = selectionMotion.cardInset,
+            end = selectionMotion.cardInset,
+            bottom = 8.dp,
+        ),
+    ) { swipeModifier ->
         Surface(
             color = groupContainerColor,
             shape = RoundedCornerShape(20.dp),
             tonalElevation = 0.dp,
             shadowElevation = 0.dp,
-            modifier = Modifier
+            modifier = swipeModifier
                 .fillMaxWidth()
-                .offset { IntOffset(swipeOffsetX.value.roundToInt(), 0) }
                 .combinedClickable(
                     interactionSource = interactionSource,
                     indication = null,

@@ -241,9 +241,7 @@
     <string name="downloads_multi_clear_records">Limpar registros</string>
     <string name="downloads_multi_delete_files">Excluir arquivos</string>
     <string name="downloads_multi_no_task">Nenhum download disponível</string>
-    <string name="downloads_multi_confirm_clear_title">Limpar registros selecionados?</string>
     <string name="downloads_multi_confirm_clear_message">Selecionado:&lt;b&gt;%1$d&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Downloads concluídos&lt;/b&gt;&lt;br/&gt;Remove os registros e mantém os arquivos baixados.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Downloads ativos&lt;/b&gt;&lt;br/&gt;Interrompe os downloads e remove suas tarefas e arquivos temporários.</string>
-    <string name="downloads_multi_confirm_delete_title">Excluir arquivos e registros selecionados?</string>
     <string name="downloads_multi_confirm_delete_message">Selecionado:&lt;b&gt;%1$d&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Arquivos serão deletados&lt;/b&gt;&lt;br/&gt;Remove as tarefas, registros e arquivos locais, inclusive arquivos temporários.</string>
     <string name="downloads_multi_hint_default">Selecione grupos de download para gerenciar seus registros e arquivos juntos.</string>
     <string name="downloads_multi_hint_running">&lt;b&gt;Limpa registros&lt;/b&gt;&lt;br/&gt;Mantém arquivos concluídos. Interrompe downloads ativos e remove suas tarefas e arquivos temporários.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Excluir arquivos&lt;/b&gt;&lt;br/&gt;Remove tarefas, registros e arquivos.</string>
@@ -302,9 +300,6 @@
     <string name="download_cancel">Cancelar</string>
     <string name="download_retry">Tentar novamente</string>
     <string name="download_delete">Excluir</string>
-    <string name="download_delete_with_file">Exclua também os arquivos baixados</string>
-    <string name="download_delete_confirm_task">Excluir este download?</string>
-    <string name="download_delete_confirm_group">Excluir este grupo de download e todas as suas tarefas?</string>
     <string name="download_time_unknown">Tempo desconhecido</string>
     <string name="downloads_reparse">Analisar novamente</string>
     <string name="downloads_view_details">Detalhes</string>

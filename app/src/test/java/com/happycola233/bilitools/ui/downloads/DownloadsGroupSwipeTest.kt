@@ -1,11 +1,19 @@
 package com.happycola233.bilitools.ui.downloads
 
 import android.graphics.Bitmap
+import android.graphics.Color
+import android.graphics.Rect
 import android.view.HapticFeedbackConstants
 import android.view.ViewGroup
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,9 +32,11 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.unit.DpRect
+import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
 import com.happycola233.bilitools.data.AppSettings
 import com.happycola233.bilitools.data.AppThemeColor
 import com.happycola233.bilitools.data.AppThemeMode
@@ -35,6 +45,7 @@ import com.happycola233.bilitools.data.model.DownloadItem
 import com.happycola233.bilitools.data.model.DownloadStatus
 import com.happycola233.bilitools.data.model.DownloadTaskType
 import com.happycola233.bilitools.ui.theme.AppSurfaces
+import com.happycola233.bilitools.ui.theme.AppDestructiveColors
 import com.happycola233.bilitools.ui.theme.BiliToolsTheme
 import java.io.File
 import org.junit.Assert.assertEquals
@@ -73,11 +84,16 @@ class DownloadsGroupSwipeTest {
     private var touchSlopPx = 0f
     private var density = 1f
     private val card get() = compose.onNodeWithTag("swipe-card")
-    private val deleteButton get() = compose.onNodeWithContentDescription("删除")
-    private val deleteIcon get() = compose.onNodeWithContentDescription("删除", useUnmergedTree = true)
+    private val clearButton get() = compose.onNodeWithContentDescription("清除记录")
+    private val filesButton get() = compose.onNodeWithContentDescription("删除文件")
+    private val requestedFileDeletion = mutableListOf<Boolean>()
+    private var dragSign = -1f
+    private var referenceSize by mutableStateOf(DpSize.Zero)
 
-    @Test fun lightSwipeKeepsGapAndOnlyVibratesAcrossDeleteThreshold() = verifySwipe(AppThemeMode.Light)
-    @Test fun darkSwipeKeepsGapAndOnlyVibratesAcrossDeleteThreshold() = verifySwipe(AppThemeMode.Dark)
+    @Test fun lightSwipeUsesTwoActionThresholdsAndDocksBeforeRemoval() = verifySwipe(AppThemeMode.Light)
+    @Test fun darkSwipeUsesTwoActionThresholdsAndDocksBeforeRemoval() = verifySwipe(AppThemeMode.Dark)
+    @Test fun rtlLightSwipeUsesTwoActionThresholdsAndDocksBeforeRemoval() = verifySwipe(AppThemeMode.Light, LayoutDirection.Rtl)
+    @Test fun rtlDarkSwipeUsesTwoActionThresholdsAndDocksBeforeRemoval() = verifySwipe(AppThemeMode.Dark, LayoutDirection.Rtl)
 
     @Test fun lightConcurrentSwipesReturnTheOtherGroupToRest() = verifyConcurrentSwipes(AppThemeMode.Light)
     @Test fun darkConcurrentSwipesReturnTheOtherGroupToRest() = verifyConcurrentSwipes(AppThemeMode.Dark)
@@ -116,7 +132,7 @@ class DownloadsGroupSwipeTest {
         drag(88f)
         card.performTouchInput { up() }
         assertEquals(closed + 88f, cardLeft(), 0.5f)
-        val actionBounds = deleteButton.getUnclippedBoundsInRoot()
+        val actionBounds = clearButton.getUnclippedBoundsInRoot()
         assertEquals(closed, actionBounds.left.value, 0.5f)
         assertEquals(8f, cardLeft() - actionBounds.right.value, 0.5f)
         // 继续右拖跨过删除阈值，松开后仍回到同一停靠点。
@@ -216,191 +232,172 @@ class DownloadsGroupSwipeTest {
         compose.runOnIdle { assertEquals(0, deleteRequests) }
     }
 
-    private fun verifySwipe(mode: AppThemeMode) {
+    private fun verifySwipe(mode: AppThemeMode, direction: LayoutDirection = LayoutDirection.Ltr) {
+        dragSign = if (direction == LayoutDirection.Rtl) 1f else -1f
         compose.setContent {
             hapticViewShadow = Shadow.extract(LocalView.current)
             density = LocalDensity.current.density
             touchSlopPx = LocalViewConfiguration.current.touchSlop
-            BiliToolsTheme(AppSettings(themeMode = mode, themeColor = AppThemeColor.Periwinkle)) {
-                Column(Modifier.fillMaxSize().background(AppSurfaces.pageContainerColor)) {
-                    DownloadsGroupCard(
-                        group = group, selectionMode = false, selected = false, expanded = false,
-                        swiped = swiped, anyGroupSwiped = swiped,
-                        onSwipedGroupChange = { swiped = it == group.id },
-                        onToggleSelection = {}, onToggleExpanded = {}, onDelete = { deleteRequests++ },
-                        onPauseGroup = {}, onResumeGroup = {}, onReparse = {}, onShowDetails = {},
-                        onTaskPauseResume = {}, onTaskRetry = {}, onTaskDelete = {}, onTaskClick = { _, _ -> },
-                        modifier = Modifier.testTag("swipe-card"),
-                    )
+            CompositionLocalProvider(LocalLayoutDirection provides direction) {
+                BiliToolsTheme(AppSettings(themeMode = mode, themeColor = AppThemeColor.Periwinkle)) {
+                    Column(Modifier.fillMaxSize().background(AppSurfaces.pageContainerColor)) {
+                        DownloadsGroupCard(
+                            group = group, selectionMode = false, selected = false, expanded = false,
+                            swiped = swiped, anyGroupSwiped = swiped,
+                            onSwipedGroupChange = { swiped = it == group.id },
+                            onToggleSelection = {}, onToggleExpanded = {},
+                            onDelete = { requestedFileDeletion += it },
+                            onPauseGroup = {}, onResumeGroup = {}, onReparse = {}, onShowDetails = {},
+                            onTaskPauseResume = {}, onTaskRetry = {}, onTaskDelete = {}, onTaskClick = { _, _ -> },
+                            modifier = Modifier.testTag("swipe-card"),
+                        )
+                        Surface(
+                            color = AppDestructiveColors.strongContainer,
+                            shape = RoundedCornerShape(20.dp),
+                            modifier = Modifier.size(referenceSize).testTag("strong-reference"),
+                        ) {}
+                        Row(
+                            modifier = Modifier.padding(top = 16.dp).testTag("icon-comparison"),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            DownloadsSwipeStage.entries.forEach { stage ->
+                                Surface(color = androidx.compose.ui.graphics.Color.Transparent,
+                                    shape = RoundedCornerShape(20.dp), modifier = Modifier.size(80.dp, 88.dp)) {
+                                    DownloadsSwipeAction(stage)
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
-
-        // 停靠距离的一半不再发出反馈，小幅拖动后仍能正常收回。
-        val closedRight = compose.onNodeWithText(group.title).getUnclippedBoundsInRoot().right.value
-        startDragLeft(30f)
+        val activate = HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE
+        val deactivate = HapticFeedbackConstants.GESTURE_THRESHOLD_DEACTIVATE
+        startDrag(30f)
         card.performTouchInput { up() }
-        compose.runOnIdle { assertFalse(swiped); assertTrue(feedback.isEmpty()); assertEquals(0, deleteRequests) }
-        assertEquals(closedRight, compose.onNodeWithText(group.title).getUnclippedBoundsInRoot().right.value, 0.5f)
-
-        startDragLeft(88f)
+        compose.runOnIdle { assertFalse(swiped); assertTrue(feedback.isEmpty()) }
+        startDrag(88f)
         card.performTouchInput { up() }
-        compose.runOnIdle { assertTrue(swiped); assertTrue(feedback.isEmpty()); assertEquals(0, deleteRequests) }
-        val restingButton = deleteButton.getUnclippedBoundsInRoot()
-        val restingIcon = deleteIcon.getUnclippedBoundsInRoot()
-        val closedIconImage = deleteIcon.captureToImage().asAndroidBitmap()
-        assertEquals(80f, (restingButton.right - restingButton.left).value, 0.5f)
-        assertEquals(88f, closedRight - compose.onNodeWithText(group.title).getUnclippedBoundsInRoot().right.value, 0.5f)
-        capture("resting-${mode.name}")
+        compose.runOnIdle { assertTrue(swiped); assertTrue(feedback.isEmpty()) }
+        assertActionGeometry("清除记录", 80f, direction)
+        val restingIconTop = iconTop(clearButton.captureToImage().asAndroidBitmap())
+        val restingIconSize = iconSize(clearButton.captureToImage().asAndroidBitmap())
+        val restingInkArea = measureIconInk(clearButton.captureToImage().asAndroidBitmap()).area
+        capture("resting-${mode.name}-${direction.name}")
+        saveImage("icons-${mode.name}-${direction.name}", compose.onNodeWithTag("icon-comparison").captureToImage().asAndroidBitmap())
 
-        // 触发前保持闭合；越过开盖触发点后手指停住，图标也会自行完成带回弹的动作。
-        startDragLeft(10f)
-        assertTrue("尚未到开盖触发点时保持闭合", closedIconImage.sameAs(deleteIcon.captureToImage().asAndroidBitmap()))
-        compose.mainClock.autoAdvance = false
-        moveHorizontally(-4f)
-        compose.mainClock.advanceTimeBy(48)
-        val openingIconImage = deleteIcon.captureToImage().asAndroidBitmap()
-        val openingFrames = (1..36).map { frame ->
-            compose.mainClock.advanceTimeBy(16)
-            val bitmap = deleteButton.captureToImage().asAndroidBitmap()
-            saveImage("spring-${mode.name}-${frame.toString().padStart(2, '0')}", bitmap)
-            bitmap
-        }
-        compose.mainClock.autoAdvance = true
+        // 停靠与触发前始终显示列表移除图标，直到 140dp 才放大并震动。
+        startDrag(51f)
         assertFeedback()
-        val openIconImage = deleteIcon.captureToImage().asAndroidBitmap()
-        assertFalse("保持手指位置不动也会继续完成动画", openingIconImage.sameAs(openIconImage))
-        assertFalse("尚未达到删除阈值就已完成开盖", closedIconImage.sameAs(openIconImage))
-        val settledButtonImage = deleteButton.captureToImage().asAndroidBitmap()
-        assertTrue("桶身轻微放大过冲后回落", openingFrames.maxOf(::bodyInkWeight) > bodyInkWeight(settledButtonImage) * 1.01)
-        assertTrue("桶盖弹开过冲后回落", openingFrames.minOf(::lidInkCenterY) < lidInkCenterY(settledButtonImage) - 0.2 * density)
-        capture("triggered-open-${mode.name}")
+        assertActionGeometry("清除记录", 131f, direction)
+        assertEquals("移除阈值前图标不提前放大", restingIconTop, iconTop(clearButton.captureToImage().asAndroidBitmap()))
+        moveFurther(1f)
+        assertFeedback(activate)
+        assertActionGeometry("清除记录", 132f, direction)
+        compose.runOnIdle { assertTrue(requestedFileDeletion.isEmpty()) }
+        assertTrue("达到移除阈值后图标放大", iconTop(clearButton.captureToImage().asAndroidBitmap()) < restingIconTop)
+        val recordsIconSize = iconSize(clearButton.captureToImage().asAndroidBitmap())
+        val recordsInkArea = measureIconInk(clearButton.captureToImage().asAndroidBitmap()).area
+        assertTrue("触发后可见图标明显大于初始状态", recordsIconSize >= restingIconSize + 3 * density)
+        assertTrue("触发后的列表图标分量大于初始状态", recordsInkArea > restingInkArea * 1.3)
+        capture("clear-${mode.name}-${direction.name}")
+        moveFurther(79f)
+        assertFeedback(activate)
+        assertActionGeometry("清除记录", 211f, direction)
 
-        // 回退缓冲区内不重新播放；退回关闭点后合盖，再超过打开点可以重新触发。
-        moveHorizontally(6f) // 96dp，位于 92..100dp 的缓冲区。
-        assertTrue("轻微回拖不反复开合", openIconImage.sameAs(deleteIcon.captureToImage().asAndroidBitmap()))
-        moveHorizontally(6f) // 90dp，已退回关闭点。
-        assertTrue("退回关闭点时自然合盖", closedIconImage.sameAs(deleteIcon.captureToImage().asAndroidBitmap()))
-        moveHorizontally(-6f) // 回到 96dp，仍保持闭合。
-        assertTrue("缓冲区也不会提前重新开盖", closedIconImage.sameAs(deleteIcon.captureToImage().asAndroidBitmap()))
-        moveHorizontally(-6f) // 再次到 102dp。
-        assertTrue("再次越过打开点时可以重新开盖", openIconImage.sameAs(deleteIcon.captureToImage().asAndroidBitmap()))
-        assertFeedback()
-        moveHorizontally(-38f) // 第二阈值为 140dp。
-        assertTrue("继续拖动不会改变或重播已完成的图标动画", openIconImage.sameAs(deleteIcon.captureToImage().asAndroidBitmap()))
-        capture("fully-open-${mode.name}")
-
-        // 从第二阈值继续左滑，盖子保持全开且仍可删除，不逐帧重复震动。
-        moveHorizontally(-20f)
-        assertFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE)
-        assertExtendedButton(restingButton, restingIcon, 152f)
-        moveHorizontally(-40f)
-        assertFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE)
-        assertExtendedButton(restingButton, restingIcon, 192f)
-        assertTrue("超过第二阈值后保持全开", openIconImage.sameAs(deleteIcon.captureToImage().asAndroidBitmap()))
-        compose.runOnIdle { assertEquals("达到阈值只就绪，松手才请求删除", 0, deleteRequests) }
-        capture("extended-${mode.name}")
-
-        // 向右退回第二阈值内会取消，且同一手势可以再次进入和退出。
-        moveHorizontally(70f)
-        assertFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE, HapticFeedbackConstants.GESTURE_THRESHOLD_DEACTIVATE)
-        assertExtendedButton(restingButton, restingIcon, 122f)
-        moveHorizontally(16f)
-        assertTrue("退回删除阈值内仍保持视觉预备状态", openIconImage.sameAs(deleteIcon.captureToImage().asAndroidBitmap()))
-        moveHorizontally(-46f)
-        moveHorizontally(30f)
-        assertFeedback(
-            HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE, HapticFeedbackConstants.GESTURE_THRESHOLD_DEACTIVATE,
-            HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE, HapticFeedbackConstants.GESTURE_THRESHOLD_DEACTIVATE,
-        )
-        card.performTouchInput { up() }
-        compose.runOnIdle { assertTrue(swiped); assertEquals(0, deleteRequests) }
-        assertEquals(restingButton, deleteButton.getUnclippedBoundsInRoot())
-        assertEquals(restingIcon, deleteIcon.getUnclippedBoundsInRoot())
-        assertTrue("回到第一停靠点后合盖并恢复原始尺寸与位置", closedIconImage.sameAs(deleteIcon.captureToImage().asAndroidBitmap()))
-
-        // 松手触发删除确认后，条目回到停靠点，图标独立回中，整个过程保持开盖和放大。
-        feedback.clear()
-        startDragLeft(112f)
-        moveHorizontally(-60f)
-        val beforeReleaseImage = deleteButton.captureToImage().asAndroidBitmap()
-        var previousIconOffset = bodyOffsetFromActionCenter(beforeReleaseImage)
-        assertEquals("拖动时图标左移 2dp", -2.0 * density, previousIconOffset, 0.15 * density)
+        // 正好在 220dp 开盖、换色并再次震动；颜色沿手势方向扫过，不整面闪换。
+        val pale = clearButton.captureToImage().asAndroidBitmap().let { it.getPixel(it.width / 2, it.height / 4) }
         compose.mainClock.autoAdvance = false
-        card.performTouchInput { up() }
-        repeat(16) {
-            compose.mainClock.advanceTimeBy(16)
-            val frame = deleteButton.captureToImage().asAndroidBitmap()
-            assertEquals("回中过程不合盖", lidInkCenterY(beforeReleaseImage), lidInkCenterY(frame), 0.15 * density)
-            assertEquals("回中过程保持放大", bodyInkWeight(beforeReleaseImage), bodyInkWeight(frame), bodyInkWeight(beforeReleaseImage) * 0.03)
-            val iconOffset = bodyOffsetFromActionCenter(frame)
-            assertTrue("图标平稳向右回位", iconOffset >= previousIconOffset - 0.15 * density && iconOffset <= 1.15 * density)
-            previousIconOffset = iconOffset
+        moveFurther(1f)
+        assertFeedback(activate, activate)
+        compose.mainClock.advanceTimeBy(96)
+        val sweep = filesButton.captureToImage().asAndroidBitmap()
+        val left = sweep.getPixel(sweep.width / 10, sweep.height / 4)
+        val right = sweep.getPixel(sweep.width * 9 / 10, sweep.height / 4)
+        assertEquals("颜色从逻辑 end 向 start 过渡", pale, if (direction == LayoutDirection.Rtl) right else left)
+        assertTrue("end 一侧先变成深红", pale != if (direction == LayoutDirection.Rtl) left else right)
+        val strong = if (direction == LayoutDirection.Rtl) left else right
+        fun frontAt(y: Int): Int = if (direction == LayoutDirection.Rtl) {
+            (0 until sweep.width).last { sweep.getPixel(it, y) == strong }
+        } else {
+            (0 until sweep.width).first { sweep.getPixel(it, y) == strong }
         }
+        val roundedFront = frontAt((3 * density).toInt())
+        val straightFront = frontAt((24 * density).toInt())
+        assertTrue("深红背景前缘保留圆角", if (direction == LayoutDirection.Rtl) roundedFront < straightFront else roundedFront > straightFront)
+        saveImage("wipe-${mode.name}-${direction.name}", sweep)
         compose.mainClock.autoAdvance = true
-        compose.runOnIdle { assertEquals(1, deleteRequests); assertTrue(swiped) }
-        assertFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE)
-        assertEquals(restingButton, deleteButton.getUnclippedBoundsInRoot())
-        val centeredOpenIconImage = deleteIcon.captureToImage().asAndroidBitmap()
-        val centeredButtonImage = deleteButton.captureToImage().asAndroidBitmap()
-        assertEquals("等待删除确认时向右视觉补偿 1dp", 1.0 * density, bodyOffsetFromActionCenter(centeredButtonImage), 0.15 * density)
-        assertEquals("水平补偿保持开盖和垂直位置", lidInkCenterY(beforeReleaseImage), lidInkCenterY(centeredButtonImage), 0.15 * density)
-        capture("delete-confirmation-${mode.name}")
+        assertActionGeometry("删除文件", 212f, direction)
+        val trashInkArea = measureIconInk(filesButton.captureToImage().asAndroidBitmap()).area
+        assertTrue("垃圾桶应有与触发后列表图标相近的笔画分量：$trashInkArea / $recordsInkArea",
+            trashInkArea in recordsInkArea * 0.9..recordsInkArea * 1.15)
+        assertTrue("垃圾桶的笔画分量也应明显大于初始状态", trashInkArea > restingInkArea * 1.3)
+        assertSolidBackgroundCorners()
+        capture("files-${mode.name}-${direction.name}")
+        moveFurther(30f)
+        assertFeedback(activate, activate)
+        assertActionGeometry("删除文件", 242f, direction)
 
-        // 路由关闭删除弹窗会清除侧滑条目；再次打开操作区时不能残留开盖状态。
+        // 回拖准确撤销当前档位；在移除档松手只清记录，不沿用文件删除。
+        moveFurther(-31f)
+        assertFeedback(activate, activate, deactivate)
+        assertActionGeometry("清除记录", 211f, direction)
+        card.performTouchInput { up() }
+        compose.runOnIdle { assertEquals(listOf(false), requestedFileDeletion) }
+        assertActionGeometry("清除记录", 80f, direction)
+
         compose.runOnIdle { swiped = false }
         compose.waitForIdle()
-        startDragLeft(88f)
-        card.performTouchInput { up() }
-        assertTrue("取消删除后再次侧滑时图标已复位", closedIconImage.sameAs(deleteIcon.captureToImage().asAndroidBitmap()))
-        assertEquals(restingButton, deleteButton.getUnclippedBoundsInRoot())
-
-        // 系统取消手势也不能请求删除，并恢复原来的停靠状态。
         feedback.clear()
-        startDragLeft(72f)
+        // 快速跨过两档，只产生一次有效触感，松手后继续完成开盖并保持居中。
+        compose.mainClock.autoAdvance = false
+        startDrag(250f)
+        compose.mainClock.advanceTimeBy(48)
+        val fastSwipe = filesButton.captureToImage().asAndroidBitmap()
+        assertEquals("快速跨档仍从浅红开始过渡", pale, fastSwipe.getPixel(fastSwipe.width / 2, fastSwipe.height / 4))
+        card.performTouchInput { up() }
+        compose.mainClock.autoAdvance = true
+        assertFeedback(activate)
+        compose.runOnIdle { assertEquals(listOf(false, true), requestedFileDeletion) }
+        assertActionGeometry("删除文件", 80f, direction)
+        assertSolidBackgroundCorners()
+        capture("confirmation-${mode.name}-${direction.name}")
+
+        compose.runOnIdle { swiped = false }
+        compose.waitForIdle()
+        startDrag(88f)
+        card.performTouchInput { up() }
+        feedback.clear()
+        startDrag(132f)
         card.performTouchInput { cancel() }
-        compose.runOnIdle { assertEquals(1, deleteRequests); assertTrue(swiped) }
-        assertEquals(restingButton, deleteButton.getUnclippedBoundsInRoot())
-        assertTrue("取消手势后恢复图标", closedIconImage.sameAs(deleteIcon.captureToImage().asAndroidBitmap()))
+        compose.runOnIdle { assertEquals(2, requestedFileDeletion.size); assertTrue(swiped) }
+        assertActionGeometry("清除记录", 80f, direction)
 
-        // 动画尚未结束就快速回拖、重开、松手，也必须从当前画面自然接续并收拢。
+        // 回到移除阈值内再松手，只停靠；快速反向不能留下动画或删除请求。
         feedback.clear()
         compose.mainClock.autoAdvance = false
-        startDragLeft(14f)
-        compose.mainClock.advanceTimeBy(80)
-        moveHorizontally(12f)
-        compose.mainClock.advanceTimeBy(32)
-        moveHorizontally(-12f)
+        startDrag(132f)
         compose.mainClock.advanceTimeBy(48)
+        moveFurther(-81f)
         card.performTouchInput { up() }
         compose.mainClock.autoAdvance = true
-        assertTrue("快速反向和松手后恢复原始图标", closedIconImage.sameAs(deleteIcon.captureToImage().asAndroidBitmap()))
-        assertEquals(restingButton, deleteButton.getUnclippedBoundsInRoot())
-        assertFeedback()
-        compose.runOnIdle { assertEquals(1, deleteRequests) }
-
-        // 从完全收起状态一口气滑过删除阈值，开盖仍能在松手后继续完成并保持。
-        compose.runOnIdle { swiped = false }
-        compose.waitForIdle()
-        compose.mainClock.autoAdvance = false
-        startDragLeft(160f)
-        card.performTouchInput { up() }
-        compose.mainClock.autoAdvance = true
-        compose.runOnIdle { assertEquals(2, deleteRequests); assertTrue(swiped) }
-        assertTrue("快速滑动触发删除后继续完成开盖并居中", centeredOpenIconImage.sameAs(deleteIcon.captureToImage().asAndroidBitmap()))
-        assertEquals(restingButton, deleteButton.getUnclippedBoundsInRoot())
+        assertFeedback(activate, deactivate)
+        compose.runOnIdle { assertEquals(2, requestedFileDeletion.size) }
+        assertActionGeometry("清除记录", 80f, direction)
+        clearButton.performClick()
+        compose.runOnIdle { assertEquals(listOf(false, true, false), requestedFileDeletion) }
     }
 
-    private fun startDragLeft(distanceDp: Float) {
+    private fun startDrag(distanceDp: Float) {
         card.performTouchInput {
             down(center)
-            moveBy(Offset(-(touchSlopPx + distanceDp * density), 0f), delayMillis = 32)
+            moveBy(Offset(dragSign * (touchSlopPx + distanceDp * density), 0f), delayMillis = 32)
         }
         compose.waitForIdle()
     }
 
-    private fun moveHorizontally(distanceDp: Float) {
-        card.performTouchInput { moveBy(Offset(distanceDp * density, 0f), delayMillis = 32) }
+    private fun moveFurther(distanceDp: Float) {
+        card.performTouchInput { moveBy(Offset(dragSign * distanceDp * density, 0f), delayMillis = 32) }
         compose.waitForIdle()
     }
 
@@ -408,61 +405,97 @@ class DownloadsGroupSwipeTest {
         compose.runOnIdle { assertEquals(expected.toList(), feedback) }
     }
 
-    private fun assertExtendedButton(restingButton: DpRect, restingIcon: DpRect, widthDp: Float) {
-        val button = deleteButton.getUnclippedBoundsInRoot()
-        assertEquals("按钮宽度跟随条目位移", widthDp, (button.right - button.left).value, 0.5f)
-        assertEquals("按钮右边缘保持固定", restingButton.right, button.right)
-        assertEquals("图标的布局占位保持固定", restingIcon, deleteIcon.getUnclippedBoundsInRoot())
+    private fun assertActionGeometry(description: String, width: Float, direction: LayoutDirection) {
+        val action = compose.onNodeWithContentDescription(description)
+        val bounds = action.getUnclippedBoundsInRoot()
         val foreground = compose.onNodeWithText(group.title).getUnclippedBoundsInRoot()
-        assertEquals("条目与删除背景之间始终留 8dp", 8f, button.left.value - foreground.right.value, 0.5f)
+        assertEquals("按钮宽度跟随条目位移", width, (bounds.right - bounds.left).value, 0.5f)
+        val gap = if (direction == LayoutDirection.Rtl) foreground.left - bounds.right else bounds.left - foreground.right
+        assertEquals("条目与按钮始终相隔 8dp", 8f, gap.value, 0.5f)
+        val bitmap = action.captureToImage().asAndroidBitmap()
+        val ink = iconBounds(bitmap)
+        assertEquals("$description 图标整体水平居中", bitmap.width / 2f, ink.exactCenterX(), density)
+        assertEquals("$description 图标笔画重心垂直居中", bitmap.height / 2f, measureIconInk(bitmap).centerY, 1.2f * density)
     }
 
-    private fun capture(name: String) {
-        saveImage(name, card.captureToImage().asAndroidBitmap())
+    private fun iconBounds(bitmap: Bitmap): Rect {
+        val background = bitmap.getPixel(bitmap.width / 2, bitmap.height / 8)
+        val pixels = mutableListOf<Pair<Int, Int>>()
+        val halfSize = (26 * density).toInt()
+        for (y in bitmap.height / 2 - halfSize until bitmap.height / 2 + halfSize) {
+            for (x in bitmap.width / 2 - halfSize until bitmap.width / 2 + halfSize) {
+                if (bitmap.getPixel(x, y) != background) pixels += x to y
+            }
+        }
+        assertTrue("图标必须可见", pixels.isNotEmpty())
+        return Rect(pixels.minOf { it.first }, pixels.minOf { it.second },
+            pixels.maxOf { it.first } + 1, pixels.maxOf { it.second } + 1)
     }
+
+    private fun iconSize(bitmap: Bitmap): Float = iconBounds(bitmap).let { maxOf(it.width(), it.height()).toFloat() }
+
+    private data class IconInk(val area: Double, val centerY: Float)
+
+    /** 按前景覆盖率累计笔画面积与重心，排除开盖留白，并计入抗锯齿。 */
+    private fun measureIconInk(bitmap: Bitmap): IconInk {
+        val bounds = iconBounds(bitmap)
+        val background = bitmap.getPixel(bitmap.width / 2, bitmap.height / 8)
+        val pixels = (bounds.top until bounds.bottom).flatMap { y ->
+            (bounds.left until bounds.right).map { x -> bitmap.getPixel(x, y) }
+        }
+        fun contrast(color: Int): Int {
+            val r = Color.red(color) - Color.red(background)
+            val g = Color.green(color) - Color.green(background)
+            val b = Color.blue(color) - Color.blue(background)
+            return r * r + g * g + b * b
+        }
+        val foreground = pixels.maxBy(::contrast)
+        val redDelta = Color.red(foreground) - Color.red(background)
+        val greenDelta = Color.green(foreground) - Color.green(background)
+        val blueDelta = Color.blue(foreground) - Color.blue(background)
+        val contrastSquared = contrast(foreground).toDouble()
+        var area = 0.0
+        var weightedY = 0.0
+        pixels.forEachIndexed { index, color ->
+            val coverage = ((Color.red(color) - Color.red(background)) * redDelta +
+                (Color.green(color) - Color.green(background)) * greenDelta +
+                (Color.blue(color) - Color.blue(background)) * blueDelta) / contrastSquared
+            area += coverage
+            weightedY += coverage * (bounds.top + index / bounds.width() + 0.5)
+        }
+        return IconInk(area, (weightedY / area).toFloat())
+    }
+
+    private fun assertSolidBackgroundCorners() {
+        val bounds = filesButton.getUnclippedBoundsInRoot()
+        compose.runOnIdle { referenceSize = DpSize(bounds.right - bounds.left, bounds.bottom - bounds.top) }
+        val actual = filesButton.captureToImage().asAndroidBitmap()
+        val expected = compose.onNodeWithTag("strong-reference").captureToImage().asAndroidBitmap()
+        val radius = (20 * density).toInt()
+        var maxDifference = 0
+        for (y in 0 until radius) for (x in 0 until radius) {
+            for (px in listOf(x, actual.width - 1 - x)) for (py in listOf(y, actual.height - 1 - y)) {
+                val a = actual.getPixel(px, py)
+                val e = expected.getPixel(px, py)
+                maxDifference = maxOf(maxDifference,
+                    kotlin.math.abs(Color.red(a) - Color.red(e)),
+                    kotlin.math.abs(Color.green(a) - Color.green(e)),
+                    kotlin.math.abs(Color.blue(a) - Color.blue(e)))
+            }
+        }
+        assertTrue("四个圆角应与单层纯深红一致，不能露出浅红细边：最大色差 $maxDifference", maxDifference <= 2)
+    }
+
+    private fun capture(name: String) = saveImage(name, card.captureToImage().asAndroidBitmap())
+
+    private fun iconTop(bitmap: Bitmap): Int = iconBounds(bitmap).top
 
     private fun saveImage(name: String, bitmap: Bitmap) {
         val output = File("../.tmp/downloads-swipe/$name.png")
         output.parentFile!!.mkdirs()
-        output.outputStream().use {
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
-        }
+        output.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 
-    // 从真实渲染的按钮中央取样：粉色背景红通道为 255，轮廓更暗，差值同时计入抗锯齿像素。
-    // 桶盖与桶身分区测量，验证各自的过冲，而不是仅检查任意两帧是否不同。
-    private data class IconInk(val weight: Double, val weightedX: Double, val weightedY: Double)
-
-    private fun bodyInkWeight(bitmap: Bitmap): Double = iconInk(bitmap, lid = false).weight
-
-    private fun bodyOffsetFromActionCenter(bitmap: Bitmap): Double {
-        val ink = iconInk(bitmap, lid = false)
-        return ink.weightedX / ink.weight - (bitmap.width - 40f * density)
-    }
-
-    private fun lidInkCenterY(bitmap: Bitmap): Double {
-        val ink = iconInk(bitmap, lid = true)
-        return ink.weightedY / ink.weight
-    }
-
-    private fun iconInk(bitmap: Bitmap, lid: Boolean): IconInk {
-        val centerX = bitmap.width - 40f * density
-        val centerY = bitmap.height / 2f
-        val top = if (lid) centerY - 32f * density else centerY
-        val bottom = if (lid) centerY - 8f * density else centerY + 18f * density
-        var weight = 0.0
-        var weightedX = 0.0
-        var weightedY = 0.0
-        for (y in top.toInt() until bottom.toInt()) {
-            for (x in (centerX - 24f * density).toInt() until (centerX + 24f * density).toInt()) {
-                val ink = 255 - android.graphics.Color.red(bitmap.getPixel(x, y))
-                weight += ink
-                weightedX += ink * (x + 0.5)
-                weightedY += ink * y
-            }
-        }
-        return IconInk(weight, weightedX, weightedY)
-    }
 }
 
 /** 记录真实 Compose 宿主收到的触感调用，不替换 LocalView，保持手势与 View 互操作的运行环境。 */

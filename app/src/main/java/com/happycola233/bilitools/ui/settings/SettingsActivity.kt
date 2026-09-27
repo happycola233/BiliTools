@@ -186,6 +186,10 @@ class SettingsActivity : AppCompatActivity() {
                 onConvertVideoToMp4Change = viewModel::setConvertVideoToMp4,
                 onMaxConcurrentDownloadsChange = viewModel::setMaxConcurrentDownloads,
                 onConfirmCellularChange = viewModel::setConfirmCellularDownload,
+                onResetDismissedConfirmations = {
+                    viewModel.resetDismissedConfirmations()
+                    Toast.makeText(this, R.string.settings_dismissed_confirmations_reset, Toast.LENGTH_SHORT).show()
+                },
                 onHideInAlbumChange = viewModel::setHideDownloadedVideosInSystemAlbum,
                 onNamingTopLevelFolderModeChange = viewModel::setNamingTopLevelFolderMode,
                 onNamingOverwriteExistingFilesChange = viewModel::setNamingOverwriteExistingFiles,

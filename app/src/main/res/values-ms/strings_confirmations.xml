@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_confirm_dont_ask_again">Sahkan dan jangan tanya lagi</string>
+    <string name="download_remove_records_message">Alih keluar tugas yang dipilih daripada senarai muat turun dan simpan fail yang dimuat turun.</string>
+    <string name="download_delete_files_message">Alih keluar tugas yang dipilih dan padam fail yang dimuat turun. Tindakan ini tidak boleh dibuat asal.</string>
+    <string name="settings_reset_dismissed_confirmations">Tetapkan semula pengesahan tersembunyi</string>
+    <string name="settings_reset_dismissed_confirmations_desc">Tunjukkan semula pengesahan tindakan yang telah anda matikan</string>
+    <string name="settings_dismissed_confirmations_reset">Pengesahan tindakan dipulihkan</string>
+</resources>

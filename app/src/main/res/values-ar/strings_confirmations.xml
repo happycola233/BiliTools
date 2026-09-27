@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_confirm_dont_ask_again">تأكيد وعدم السؤال مجددًا</string>
+    <string name="download_remove_records_message">إزالة المهام المحددة من قائمة التنزيلات مع الاحتفاظ بالملفات المنزّلة.</string>
+    <string name="download_delete_files_message">إزالة المهام المحددة وحذف الملفات المنزّلة. لا يمكن التراجع عن هذا الإجراء.</string>
+    <string name="settings_reset_dismissed_confirmations">إعادة ضبط التأكيدات المخفية</string>
+    <string name="settings_reset_dismissed_confirmations_desc">إظهار تأكيدات الإجراءات التي أوقفت عرضها سابقًا</string>
+    <string name="settings_dismissed_confirmations_reset">تمت استعادة تأكيدات الإجراءات</string>
+</resources>

@@ -241,9 +241,7 @@
     <string name="downloads_multi_clear_records">Kayıtları temizle</string>
     <string name="downloads_multi_delete_files">Dosyaları sil</string>
     <string name="downloads_multi_no_task">İndirme mevcut değil</string>
-    <string name="downloads_multi_confirm_clear_title">Seçilen kayıtlar silinsin mi?</string>
     <string name="downloads_multi_confirm_clear_message">Seçilen:&lt;b&gt;%1$d&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Tamamlanan indirmeler&lt;/b&gt;&lt;br/&gt;Kayıtları kaldırır ve indirilen dosyaları saklar.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Etkin indirmeler&lt;/b&gt;&lt;br/&gt;İndirmeleri durdurur ve görevlerini ve geçici dosyalarını kaldırır.</string>
-    <string name="downloads_multi_confirm_delete_title">Seçilen dosyalar ve kayıtlar silinsin mi?</string>
     <string name="downloads_multi_confirm_delete_message">Seçilen:&lt;b&gt;%1$d&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Dosyalar silinecek&lt;/b&gt;&lt;br/&gt;Geçici dosyalar da dahil olmak üzere görevleri, kayıtları ve yerel dosyaları kaldırır.</string>
     <string name="downloads_multi_hint_default">Kayıtlarını ve dosyalarını birlikte yönetmek için indirme gruplarını seçin.</string>
     <string name="downloads_multi_hint_running">&lt;b&gt;Kayıtları temizle&lt;/b&gt;&lt;br/&gt;Tamamlanan dosyaları tutar. Etkin indirmeleri durdurur ve görevlerini ve geçici dosyalarını kaldırır.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Dosyaları sil&lt;/b&gt;&lt;br/&gt;Görevleri, kayıtları ve dosyaları kaldırır.</string>
@@ -302,9 +300,6 @@
     <string name="download_cancel">İptal</string>
     <string name="download_retry">Yeniden dene</string>
     <string name="download_delete">Sil</string>
-    <string name="download_delete_with_file">İndirilen dosyaları da sil</string>
-    <string name="download_delete_confirm_task">Bu indirme silinsin mi?</string>
-    <string name="download_delete_confirm_group">Bu indirme grubu ve tüm görevleri silinsin mi?</string>
     <string name="download_time_unknown">Zaman bilinmiyor</string>
     <string name="downloads_reparse">Tekrar ayrıştır</string>
     <string name="downloads_view_details">Ayrıntılar</string>

@@ -91,7 +91,7 @@ class DownloadsSelectionMotionTest {
                             collapsedSections = emptySet(), swipedGroupId = null, contentTopPadding = 0.dp,
                             listBottomPadding = 24.dp + 180.dp * motion.layoutProgress,
                             onToggleSection = {}, onToggleGroupExpanded = {}, onSwipedGroupChange = {},
-                            onGroupSelectionToggle = { selection = true }, onGroupDelete = {}, onGroupPause = {}, onGroupResume = {},
+                            onGroupSelectionToggle = { selection = true }, onGroupDelete = { _, _ -> }, onGroupPause = {}, onGroupResume = {},
                             onGroupReparse = {}, onGroupShowDetails = {}, onTaskPauseResume = {}, onTaskRetry = {}, onTaskDelete = {},
                             onTaskClick = { _, _ -> }, modifier = Modifier.fillMaxSize(),
                         )

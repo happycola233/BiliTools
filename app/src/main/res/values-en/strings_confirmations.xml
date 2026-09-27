@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_confirm_dont_ask_again">Confirm and don’t ask again</string>
+    <string name="download_remove_records_message">Remove the selected tasks from the download list and keep downloaded files.</string>
+    <string name="download_delete_files_message">Remove the selected tasks and delete downloaded files. This cannot be undone.</string>
+    <string name="settings_reset_dismissed_confirmations">Reset hidden confirmations</string>
+    <string name="settings_reset_dismissed_confirmations_desc">Show operation confirmations you previously dismissed</string>
+    <string name="settings_dismissed_confirmations_reset">Operation confirmations restored</string>
+</resources>

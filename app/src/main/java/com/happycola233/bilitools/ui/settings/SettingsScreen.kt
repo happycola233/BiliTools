@@ -236,6 +236,7 @@ fun BiliToolsSettingsContent(
     onRestoreNamingDefaults: () -> Unit,
     onBlackThemeChange: (Boolean) -> Unit,
     onLaunchSplashAnimationChange: (Boolean) -> Unit,
+    onResetDismissedConfirmations: () -> Unit,
     onLiquidBottomTabsChange: (Boolean) -> Unit,
     onLiquidGlassPanelsChange: (Boolean) -> Unit,
     onLiquidBarWidthChange: (Float) -> Unit,
@@ -285,6 +286,7 @@ fun BiliToolsSettingsContent(
                         onLiveUpdateIconChange = onLiveUpdateIconChange,
                         onHapticFeedbackLevelChange = onHapticFeedbackLevelChange,
                         onLaunchSplashAnimationChange = onLaunchSplashAnimationChange,
+                        onResetDismissedConfirmations = onResetDismissedConfirmations,
                         selectedLanguage = selectedLanguage,
                         onOpenLanguage = { onNavigate(SettingsDestination.Language) },
                         onBack = onNavigateBack,
@@ -569,6 +571,7 @@ internal fun GeneralSettingsScreen(
     onLiveUpdateIconChange: (LiveUpdateIcon) -> Unit,
     onHapticFeedbackLevelChange: (HapticFeedbackLevel) -> Unit,
     onLaunchSplashAnimationChange: (Boolean) -> Unit,
+    onResetDismissedConfirmations: () -> Unit,
     selectedLanguage: AppLanguage,
     onOpenLanguage: () -> Unit,
     onBack: () -> Unit,
@@ -640,6 +643,17 @@ internal fun GeneralSettingsScreen(
                             onIconChange = onLiveUpdateIconChange,
                         )
                     },
+                )
+            }
+            item { Spacer(Modifier.height(12.dp)) }
+            item {
+                ClickableListItem(
+                    items = 1,
+                    index = 0,
+                    leadingContent = { SettingsItemIcon(R.drawable.ic_restart_alt_24) },
+                    content = { SettingsItemTitle(stringResource(R.string.settings_reset_dismissed_confirmations)) },
+                    supportingContent = { Text(stringResource(R.string.settings_reset_dismissed_confirmations_desc)) },
+                    onClick = onResetDismissedConfirmations,
                 )
             }
             item { Spacer(Modifier.height(12.dp)) }

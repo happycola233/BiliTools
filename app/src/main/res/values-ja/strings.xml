@@ -241,9 +241,7 @@
     <string name="downloads_multi_clear_records">明確な記録</string>
     <string name="downloads_multi_delete_files">ファイルの削除</string>
     <string name="downloads_multi_no_task">ダウンロードは利用できません</string>
-    <string name="downloads_multi_confirm_clear_title">選択したレコードをクリアしますか?</string>
     <string name="downloads_multi_confirm_clear_message">選択済み:&lt;b&gt;%1$d&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;&lt;b&gt;ダウンロード完了&lt;/b&gt;&lt;br/&gt;レコードを削除し、ダウンロードされたファイルを保持します。&lt;br/&gt;&lt;br/&gt;&lt;b&gt;アクティブなダウンロード&lt;/b&gt;&lt;br/&gt;ダウンロードを停止し、タスクと一時ファイルを削除します。</string>
-    <string name="downloads_multi_confirm_delete_title">選択したファイルとレコードを削除しますか?</string>
     <string name="downloads_multi_confirm_delete_message">選択済み:&lt;b&gt;%1$d&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;&lt;b&gt;ファイルが削除されます&lt;/b&gt;&lt;br/&gt;タスク、レコード、および一時ファイルを含むローカル ファイルを削除します。</string>
     <string name="downloads_multi_hint_default">ダウンロードグループを選択して、その記録とファイルを一緒に管理する。</string>
     <string name="downloads_multi_hint_running">&lt;b&gt;レコードをクリアします。&lt;/b&gt;&lt;br/&gt;完了したファイルを保持します。アクティブなダウンロードを停止し、そのタスクと一時ファイルを削除します。&lt;br/&gt;&lt;br/&gt;&lt;b&gt;ファイルの削除&lt;/b&gt;&lt;br/&gt;タスク、レコード、およびファイルを削除します。</string>
@@ -299,9 +297,6 @@
     <string name="download_cancel">キャンセル</string>
     <string name="download_retry">リトライ</string>
     <string name="download_delete">削除</string>
-    <string name="download_delete_with_file">ダウンロードしたファイルも削除します</string>
-    <string name="download_delete_confirm_task">このダウンロードを削除しますか?</string>
-    <string name="download_delete_confirm_group">このダウンロード グループとそのすべてのタスクを削除しますか?</string>
     <string name="download_time_unknown">時期不明</string>
     <string name="downloads_reparse">再度解析する</string>
     <string name="downloads_view_details">詳細</string>

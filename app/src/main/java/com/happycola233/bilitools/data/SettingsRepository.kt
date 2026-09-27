@@ -79,6 +79,8 @@ data class AppSettings(
     val downloadRootRelativePath: String = SettingsRepository.DEFAULT_DOWNLOAD_ROOT,
     val maxConcurrentDownloads: Int = SettingsRepository.DEFAULT_MAX_CONCURRENT_DOWNLOADS,
     val confirmCellularDownload: Boolean = true,
+    val confirmDownloadRecordRemoval: Boolean = true,
+    val confirmDownloadedFileDeletion: Boolean = true,
     val hideDownloadedVideosInSystemAlbum: Boolean = false,
     val downloadsGlassDebugEnabled: Boolean = false,
     val downloadsGlassCornerRadiusDp: Float = SettingsRepository.DEFAULT_DOWNLOADS_GLASS_CORNER_RADIUS_DP,
@@ -507,6 +509,26 @@ class SettingsRepository(context: Context) {
         _settings.value = current.copy(confirmCellularDownload = enabled)
     }
 
+    fun skipDownloadDeletionConfirmation(deleteFiles: Boolean) {
+        val current = _settings.value
+        // 仅移除记录与删除本地文件分别记忆，不能因为跳过前者就跳过后者的确认。
+        val key = if (deleteFiles) KEY_CONFIRM_DOWNLOADED_FILE_DELETION else KEY_CONFIRM_DOWNLOAD_RECORD_REMOVAL
+        prefs.edit().putBoolean(key, false).apply()
+        _settings.value = if (deleteFiles) current.copy(confirmDownloadedFileDeletion = false)
+        else current.copy(confirmDownloadRecordRemoval = false)
+    }
+
+    fun resetDismissedConfirmations() {
+        prefs.edit()
+            .remove(KEY_CONFIRM_DOWNLOAD_RECORD_REMOVAL)
+            .remove(KEY_CONFIRM_DOWNLOADED_FILE_DELETION)
+            .apply()
+        _settings.value = _settings.value.copy(
+            confirmDownloadRecordRemoval = true,
+            confirmDownloadedFileDeletion = true,
+        )
+    }
+
     fun setMaxConcurrentDownloads(value: Int) {
         val normalized = value.coerceIn(
             MIN_MAX_CONCURRENT_DOWNLOADS,
@@ -815,6 +837,8 @@ class SettingsRepository(context: Context) {
                 DEFAULT_MAX_CONCURRENT_DOWNLOADS,
             ).coerceIn(MIN_MAX_CONCURRENT_DOWNLOADS, MAX_MAX_CONCURRENT_DOWNLOADS),
             confirmCellularDownload = prefs.getBoolean(KEY_CONFIRM_CELLULAR_DOWNLOAD, true),
+            confirmDownloadRecordRemoval = prefs.getBoolean(KEY_CONFIRM_DOWNLOAD_RECORD_REMOVAL, true),
+            confirmDownloadedFileDeletion = prefs.getBoolean(KEY_CONFIRM_DOWNLOADED_FILE_DELETION, true),
             hideDownloadedVideosInSystemAlbum = prefs.getBoolean(
                 KEY_HIDE_DOWNLOADED_VIDEOS_IN_SYSTEM_ALBUM,
                 false,
@@ -1114,6 +1138,8 @@ class SettingsRepository(context: Context) {
         private const val KEY_DOWNLOAD_ROOT_HISTORY = "download_root_history"
         private const val KEY_MAX_CONCURRENT_DOWNLOADS = "max_concurrent_downloads"
         private const val KEY_CONFIRM_CELLULAR_DOWNLOAD = "confirm_cellular_download"
+        private const val KEY_CONFIRM_DOWNLOAD_RECORD_REMOVAL = "confirm_download_record_removal"
+        private const val KEY_CONFIRM_DOWNLOADED_FILE_DELETION = "confirm_downloaded_file_deletion"
         private const val KEY_HIDE_DOWNLOADED_VIDEOS_IN_SYSTEM_ALBUM =
             "hide_downloaded_videos_in_system_album"
         private const val KEY_DOWNLOADS_GLASS_DEBUG_ENABLED = "downloads_glass_debug_enabled"

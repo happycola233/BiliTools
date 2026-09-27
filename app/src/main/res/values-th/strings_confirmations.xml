@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_confirm_dont_ask_again">ยืนยันและไม่ต้องถามอีก</string>
+    <string name="download_remove_records_message">นำงานที่เลือกออกจากรายการดาวน์โหลด โดยเก็บไฟล์ที่ดาวน์โหลดไว้</string>
+    <string name="download_delete_files_message">นำงานที่เลือกออกและลบไฟล์ที่ดาวน์โหลดไว้ การดำเนินการนี้ไม่สามารถยกเลิกได้</string>
+    <string name="settings_reset_dismissed_confirmations">รีเซ็ตการยืนยันที่ซ่อนไว้</string>
+    <string name="settings_reset_dismissed_confirmations_desc">แสดงข้อความยืนยันการดำเนินการที่คุณเคยปิดไว้อีกครั้ง</string>
+    <string name="settings_dismissed_confirmations_reset">เปิดข้อความยืนยันการดำเนินการอีกครั้งแล้ว</string>
+</resources>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_confirm_dont_ask_again">确认并不再显示</string>
+    <string name="download_remove_records_message">将从下载列表中移除所选任务，保留已下载的文件。</string>
+    <string name="download_delete_files_message">将移除所选任务并删除已下载的文件，此操作无法撤销。</string>
+    <string name="settings_reset_dismissed_confirmations">重置不再显示</string>
+    <string name="settings_reset_dismissed_confirmations_desc">恢复已关闭的操作确认提示</string>
+    <string name="settings_dismissed_confirmations_reset">已恢复操作确认提示</string>
+</resources>

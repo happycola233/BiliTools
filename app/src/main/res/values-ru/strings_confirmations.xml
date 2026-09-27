@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_confirm_dont_ask_again">Подтвердить и больше не спрашивать</string>
+    <string name="download_remove_records_message">Убрать выбранные задачи из списка загрузок, сохранив скачанные файлы.</string>
+    <string name="download_delete_files_message">Убрать выбранные задачи и удалить скачанные файлы. Это действие нельзя отменить.</string>
+    <string name="settings_reset_dismissed_confirmations">Сбросить скрытые подтверждения</string>
+    <string name="settings_reset_dismissed_confirmations_desc">Снова показывать отключённые подтверждения действий</string>
+    <string name="settings_dismissed_confirmations_reset">Подтверждения действий восстановлены</string>
+</resources>

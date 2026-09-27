@@ -241,9 +241,7 @@
     <string name="downloads_multi_clear_records">Kosongkan rekod</string>
     <string name="downloads_multi_delete_files">Padam fail</string>
     <string name="downloads_multi_no_task">Tiada muat turun tersedia</string>
-    <string name="downloads_multi_confirm_clear_title">Kosongkan rekod yang dipilih?</string>
     <string name="downloads_multi_confirm_clear_message">Dipilih:&lt;b&gt;%1$d&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Selesai muat turun&lt;/b&gt;&lt;br/&gt;Mengalih keluar rekod dan menyimpan fail yang dimuat turun.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Muat turun aktif&lt;/b&gt;&lt;br/&gt;Menghentikan muat turun dan mengalih keluar tugas dan fail sementaranya.</string>
-    <string name="downloads_multi_confirm_delete_title">Padamkan fail dan rekod yang dipilih?</string>
     <string name="downloads_multi_confirm_delete_message">Dipilih:&lt;b&gt;%1$d&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Fail akan dipadamkan&lt;/b&gt;&lt;br/&gt;Mengalih keluar tugas, rekod dan fail setempat, termasuk fail sementara.</string>
     <string name="downloads_multi_hint_default">Pilih kumpulan muat turun untuk mengurus rekod dan fail mereka bersama-sama.</string>
     <string name="downloads_multi_hint_running">&lt;b&gt;Kosongkan rekod&lt;/b&gt;&lt;br/&gt;Menyimpan fail yang lengkap. Menghentikan muat turun aktif dan mengalih keluar tugas dan fail sementara mereka.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Padam fail&lt;/b&gt;&lt;br/&gt;Alih keluar tugas, rekod dan fail.</string>
@@ -299,9 +297,6 @@
     <string name="download_cancel">Batal</string>
     <string name="download_retry">Cuba semula</string>
     <string name="download_delete">Padam</string>
-    <string name="download_delete_with_file">Padam juga fail yang dimuat turun</string>
-    <string name="download_delete_confirm_task">Padamkan muat turun ini?</string>
-    <string name="download_delete_confirm_group">Padamkan kumpulan muat turun ini dan semua tugasnya?</string>
     <string name="download_time_unknown">Masa tidak diketahui</string>
     <string name="downloads_reparse">Huraikan lagi</string>
     <string name="downloads_view_details">Butiran</string>

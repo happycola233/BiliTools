@@ -140,6 +140,10 @@ class SettingsViewModel(
         settingsRepository.setLiveUpdateIcon(icon)
     }
 
+    fun resetDismissedConfirmations() {
+        settingsRepository.resetDismissedConfirmations()
+    }
+
     fun setConfirmCellularDownload(enabled: Boolean) {
         settingsRepository.setConfirmCellularDownload(enabled)
     }

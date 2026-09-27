@@ -241,9 +241,7 @@
     <string name="downloads_multi_clear_records">清除記錄</string>
     <string name="downloads_multi_delete_files">刪除檔案</string>
     <string name="downloads_multi_no_task">暫無可操作任務</string>
-    <string name="downloads_multi_confirm_clear_title">清除所選記錄</string>
     <string name="downloads_multi_confirm_clear_message">\n已選擇 &lt;b&gt;%1$d&lt;/b&gt; 項，確認執行“清除記錄”？\n&lt;br/&gt;\n&lt;br/&gt;\n&lt;b&gt;已完成任務&lt;/b&gt;\n&lt;br/&gt;僅刪除記錄，不刪除已下載檔案\n&lt;br/&gt;\n&lt;br/&gt;\n&lt;b&gt;進行中任務&lt;/b&gt;\n&lt;br/&gt;停止下載，並刪除任務與臨時檔案\n</string>
-    <string name="downloads_multi_confirm_delete_title">刪除所選檔案與記錄</string>
     <string name="downloads_multi_confirm_delete_message">\n已選擇 &lt;b&gt;%1$d&lt;/b&gt; 項，確認執行“刪除檔案”？\n&lt;br/&gt;\n&lt;br/&gt;\n&lt;b&gt;執行結果&lt;/b&gt;\n&lt;br/&gt;刪除任務、記錄和本地檔案（含臨時檔案）\n</string>
     <string name="downloads_multi_hint_default">選擇專案組後可批次處理記錄和檔案。</string>
     <string name="downloads_multi_hint_running">\n&lt;b&gt;清除記錄&lt;/b&gt;\n&lt;br/&gt;已完成專案僅刪記錄\n&lt;br/&gt;進行中專案會停止並刪除任務及臨時檔案\n&lt;br/&gt;\n&lt;br/&gt;\n&lt;b&gt;刪除檔案&lt;/b&gt;\n&lt;br/&gt;刪除任務、記錄和檔案\n</string>
@@ -299,9 +297,6 @@
     <string name="download_cancel">取消</string>
     <string name="download_retry">重試</string>
     <string name="download_delete">刪除</string>
-    <string name="download_delete_with_file">同時刪除已下載的檔案</string>
-    <string name="download_delete_confirm_task">確定要刪除該任務嗎？</string>
-    <string name="download_delete_confirm_group">確定要刪除該任務組嗎？此操作將刪除組內所有任務。</string>
     <string name="download_time_unknown">時間未知</string>
     <string name="downloads_reparse">重新解析</string>
     <string name="downloads_view_details">詳細資訊</string>

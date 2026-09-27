@@ -241,9 +241,7 @@
     <string name="downloads_multi_clear_records">Xóa hồ sơ</string>
     <string name="downloads_multi_delete_files">Xóa tập tin</string>
     <string name="downloads_multi_no_task">Không có bản tải xuống nào</string>
-    <string name="downloads_multi_confirm_clear_title">Xóa các bản ghi đã chọn?</string>
     <string name="downloads_multi_confirm_clear_message">Đã chọn:&lt;b&gt;%1$d&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Đã hoàn tất tải xuống&lt;/b&gt;&lt;br/&gt;Xóa bản ghi và giữ lại các tệp đã tải xuống.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Đang tải xuống&lt;/b&gt;&lt;br/&gt;Dừng tải xuống và xóa tác vụ cũng như tệp tạm thời của chúng.</string>
-    <string name="downloads_multi_confirm_delete_title">Xóa tập tin và bản ghi đã chọn?</string>
     <string name="downloads_multi_confirm_delete_message">Đã chọn:&lt;b&gt;%1$d&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Tệp sẽ bị xóa&lt;/b&gt;&lt;br/&gt;Xóa tác vụ, bản ghi và tệp cục bộ, bao gồm cả tệp tạm thời.</string>
     <string name="downloads_multi_hint_default">Chọn các nhóm tải xuống để quản lý các bản ghi và tệp của chúng cùng nhau.</string>
     <string name="downloads_multi_hint_running">&lt;b&gt;Xóa bản ghi&lt;/b&gt;&lt;br/&gt;Giữ các tệp đã hoàn thành. Dừng tải xuống đang hoạt động và xóa các tác vụ cũng như tệp tạm thời của chúng.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Xóa tệp&lt;/b&gt;&lt;br/&gt;Xóa tác vụ, bản ghi và tệp.</string>
@@ -299,9 +297,6 @@
     <string name="download_cancel">Hủy bỏ</string>
     <string name="download_retry">Thử lại</string>
     <string name="download_delete">Xóa</string>
-    <string name="download_delete_with_file">Đồng thời xóa các tập tin đã tải xuống</string>
-    <string name="download_delete_confirm_task">Xóa bản tải xuống này?</string>
-    <string name="download_delete_confirm_group">Xóa nhóm tải xuống này và tất cả các tác vụ của nó?</string>
     <string name="download_time_unknown">Không rõ thời gian</string>
     <string name="downloads_reparse">Phân tích lại</string>
     <string name="downloads_view_details">Chi tiết</string>

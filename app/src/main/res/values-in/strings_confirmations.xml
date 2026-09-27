@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_confirm_dont_ask_again">Konfirmasi dan jangan tanya lagi</string>
+    <string name="download_remove_records_message">Hapus tugas yang dipilih dari daftar unduhan dan simpan file yang diunduh.</string>
+    <string name="download_delete_files_message">Hapus tugas yang dipilih beserta file yang diunduh. Tindakan ini tidak dapat dibatalkan.</string>
+    <string name="settings_reset_dismissed_confirmations">Reset konfirmasi tersembunyi</string>
+    <string name="settings_reset_dismissed_confirmations_desc">Tampilkan kembali konfirmasi tindakan yang telah Anda nonaktifkan</string>
+    <string name="settings_dismissed_confirmations_reset">Konfirmasi tindakan dipulihkan</string>
+</resources>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_confirm_dont_ask_again">Xác nhận và không hỏi lại</string>
+    <string name="download_remove_records_message">Xóa các tác vụ đã chọn khỏi danh sách tải xuống và giữ lại các tệp đã tải.</string>
+    <string name="download_delete_files_message">Xóa các tác vụ đã chọn và các tệp đã tải. Không thể hoàn tác thao tác này.</string>
+    <string name="settings_reset_dismissed_confirmations">Đặt lại xác nhận đã ẩn</string>
+    <string name="settings_reset_dismissed_confirmations_desc">Hiển thị lại các xác nhận thao tác mà bạn đã tắt</string>
+    <string name="settings_dismissed_confirmations_reset">Đã khôi phục xác nhận thao tác</string>
+</resources>

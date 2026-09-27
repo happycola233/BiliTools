@@ -76,6 +76,7 @@ class LiveUpdateIconSettingsTest {
                     onLiveUpdateIconChange = repository::setLiveUpdateIcon,
                     onHapticFeedbackLevelChange = repository::setHapticFeedbackLevel,
                     onLaunchSplashAnimationChange = repository::setLaunchSplashAnimationEnabled,
+                    onResetDismissedConfirmations = repository::resetDismissedConfirmations,
                     selectedLanguage = AppLanguage.System,
                     onOpenLanguage = {},
                     onBack = {},
@@ -94,6 +95,19 @@ class LiveUpdateIconSettingsTest {
             assertEquals(LiveUpdateIcon.BiliTools, SettingsRepository(app).currentSettings().liveUpdateIcon)
         }
         saveImage(compose.onRoot().captureToImage().asAndroidBitmap(), "settings-${mode.name.lowercase()}-bilitools")
+        compose.runOnIdle {
+            repository.skipDownloadDeletionConfirmation(false)
+            repository.skipDownloadDeletionConfirmation(true)
+        }
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("重置不再显示"))
+        compose.onNodeWithText("重置不再显示").performClick()
+        compose.runOnIdle {
+            val restored = SettingsRepository(app).currentSettings()
+            assertTrue(restored.confirmDownloadRecordRemoval)
+            assertTrue(restored.confirmDownloadedFileDeletion)
+            assertEquals(LiveUpdateIcon.BiliTools, restored.liveUpdateIcon)
+        }
+        saveImage(compose.onRoot().captureToImage().asAndroidBitmap(), "settings-${mode.name.lowercase()}-reset-confirmations")
     }
 
     private fun saveImage(bitmap: Bitmap, name: String) {

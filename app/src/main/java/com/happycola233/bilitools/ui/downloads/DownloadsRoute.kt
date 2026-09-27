@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.Dp
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.AppLog as Log
 import com.happycola233.bilitools.core.appContainer
+import com.happycola233.bilitools.data.AppSettings
 import com.happycola233.bilitools.data.SettingsRepository
 import com.happycola233.bilitools.data.model.DownloadGroup
 import com.happycola233.bilitools.data.model.DownloadItem
@@ -144,6 +145,34 @@ internal fun DownloadsRoute(
         )
     }
 
+    fun executeDeletion(request: DownloadsDialogState) {
+        routeState.dismissDialog()
+        routeState.swipedGroupId = null
+        when (request) {
+            is DownloadsDialogState.DeleteTask -> viewModel.deleteTask(request.itemId, request.deleteFiles)
+            is DownloadsDialogState.DeleteGroup -> viewModel.deleteGroup(request.groupId, request.deleteFiles)
+            is DownloadsDialogState.BatchDelete -> {
+                viewModel.deleteGroups(request.groupIds, request.deleteFiles)
+                routeState.exitSelectionMode()
+            }
+        }
+    }
+
+    fun requestDeletion(request: DownloadsDialogState) {
+        routeState.requestDelete(request, settings, ::executeDeletion)
+    }
+
+    fun requestBatchDeletion(deleteFiles: Boolean) {
+        if (selectedGroups.isEmpty()) {
+            Toast.makeText(context, resources.getString(R.string.downloads_multi_no_task), Toast.LENGTH_SHORT).show()
+            return
+        }
+        requestDeletion(DownloadsDialogState.BatchDelete(
+            groupIds = selectedGroups.mapTo(linkedSetOf()) { it.id },
+            deleteFiles = deleteFiles,
+        ))
+    }
+
     DownloadsScreenContent(
         groups = groups,
         selectionMode = routeState.selectionMode,
@@ -199,54 +228,14 @@ internal fun DownloadsRoute(
         onClearAll = viewModel::clearAll,
         onExitSelection = routeState::exitSelectionMode,
         onSelectAll = { routeState.toggleSelectAll(groups) },
-        onClearRecords = {
-            if (!routeState.confirmBatchDelete(groups, deleteFile = false)) {
-                Toast.makeText(
-                    context,
-                    resources.getString(R.string.downloads_multi_no_task),
-                    Toast.LENGTH_SHORT,
-                ).show()
-            }
-        },
-        onDeleteFiles = {
-            if (!routeState.confirmBatchDelete(groups, deleteFile = true)) {
-                Toast.makeText(
-                    context,
-                    resources.getString(R.string.downloads_multi_no_task),
-                    Toast.LENGTH_SHORT,
-                ).show()
-            }
-        },
+        onClearRecords = { requestBatchDeletion(deleteFiles = false) },
+        onDeleteFiles = { requestBatchDeletion(deleteFiles = true) },
         onDialogDismiss = routeState::dismissDialog,
-        onDialogConfirm = { deleteFile ->
-            when (val dialogState = routeState.dialogState) {
-                is DownloadsDialogState.DeleteTask -> {
-                    routeState.swipedGroupId = null
-                    viewModel.deleteTask(
-                        dialogState.itemId,
-                        if (dialogState.canDeleteFile) deleteFile else false,
-                    )
-                }
-
-                is DownloadsDialogState.DeleteGroup -> {
-                    routeState.swipedGroupId = null
-                    viewModel.deleteGroup(
-                        dialogState.groupId,
-                        if (dialogState.canDeleteFile) deleteFile else false,
-                    )
-                }
-
-                is DownloadsDialogState.BatchDelete -> {
-                    val targetIds = dialogState.groupIds
-                    if (targetIds.isNotEmpty()) {
-                        viewModel.deleteGroups(targetIds, dialogState.deleteFile)
-                        routeState.exitSelectionMode()
-                    }
-                }
-
-                null -> Unit
+        onDialogConfirm = { dontAskAgain ->
+            routeState.dialogState?.let { request ->
+                if (dontAskAgain) settingsRepository.skipDownloadDeletionConfirmation(request.deleteFiles)
+                executeDeletion(request)
             }
-            routeState.dialogState = null
         },
         onToggleSection = routeState::toggleSection,
         onToggleGroupExpanded = routeState::toggleGroupExpanded,
@@ -258,7 +247,12 @@ internal fun DownloadsRoute(
         onGroupResume = { group -> viewModel.resumeGroup(group.id) },
         onGroupReparse = { group -> group.sourceUrl()?.let(onOpenParseUrl) },
         onGroupShowDetails = { group -> detailsGroupId = group.id },
-        onGroupDelete = routeState::confirmGroupDelete,
+        onGroupDelete = { group, deleteFiles ->
+            requestDeletion(DownloadsDialogState.DeleteGroup(
+                groupId = group.id,
+                deleteFiles = deleteFiles && group.tasks.any { !it.localUri.isNullOrBlank() },
+            ))
+        },
         onTaskPauseResume = { item ->
             when (item.status) {
                 DownloadStatus.Pending,
@@ -273,7 +267,12 @@ internal fun DownloadsRoute(
         onTaskRetry = { item ->
             if (item.status == DownloadStatus.Failed) viewModel.retry(item.id)
         },
-        onTaskDelete = routeState::confirmTaskDelete,
+        onTaskDelete = { item ->
+            requestDeletion(DownloadsDialogState.DeleteTask(
+                itemId = item.id,
+                deleteFiles = !item.localUri.isNullOrBlank(),
+            ))
+        },
         onTaskClick = ::showTaskActions,
         onGlassCornerRadiusChange = settingsRepository::setDownloadsGlassCornerRadiusDp,
         onGlassBlurRadiusChange = settingsRepository::setDownloadsGlassBlurRadiusDp,
@@ -296,7 +295,7 @@ internal fun DownloadsRoute(
 }
 
 @Stable
-private class DownloadsRouteUiState(
+internal class DownloadsRouteUiState(
     selectionMode: Boolean = false,
     selectedGroupIds: Set<Long> = emptySet(),
     expandedGroupIds: Set<Long> = emptySet(),
@@ -375,31 +374,14 @@ private class DownloadsRouteUiState(
         }
     }
 
-    fun confirmTaskDelete(item: DownloadItem) {
-        dialogState = DownloadsDialogState.DeleteTask(
-            itemId = item.id,
-            canDeleteFile = !item.localUri.isNullOrBlank(),
-        )
-    }
-
-    fun confirmGroupDelete(group: DownloadGroup) {
-        dialogState = DownloadsDialogState.DeleteGroup(
-            groupId = group.id,
-            canDeleteFile = group.tasks.any {
-                !it.localUri.isNullOrBlank()
-            },
-        )
-    }
-
-    fun confirmBatchDelete(groups: List<DownloadGroup>, deleteFile: Boolean): Boolean {
-        val targetIds = groups
-            .asSequence()
-            .map { it.id }
-            .filter { it in selectedGroupIds }
-            .toCollection(linkedSetOf())
-        if (targetIds.isEmpty()) return false
-        dialogState = DownloadsDialogState.BatchDelete(targetIds, deleteFile)
-        return true
+    fun requestDelete(
+        request: DownloadsDialogState,
+        settings: AppSettings,
+        onDelete: (DownloadsDialogState) -> Unit,
+    ) {
+        val needsConfirmation = if (request.deleteFiles) settings.confirmDownloadedFileDeletion
+        else settings.confirmDownloadRecordRemoval
+        if (needsConfirmation) dialogState = request else onDelete(request)
     }
 
     fun dismissDialog() {
