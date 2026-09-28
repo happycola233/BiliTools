@@ -288,10 +288,9 @@ private fun SubtitleSelectionStatus(
             else stringResource(R.string.subtitle_source_loading)
         failed -> if (batch) stringResource(R.string.subtitle_source_partial_failure, state.subtitleFailedCount)
             else stringResource(R.string.subtitle_source_failure)
+        // 没有可选语言时歌词与字幕一样只说明现状，不要求关闭选项；下载照常进行。
         state.subtitleList.isEmpty() -> stringResource(when {
-            loginNeeded && single && selected.isEmpty() -> R.string.subtitle_source_login_lyrics
             loginNeeded -> R.string.subtitle_source_login
-            single && selected.isEmpty() -> R.string.subtitle_source_no_lyrics
             selected.isNotEmpty() -> R.string.subtitle_source_missing_selection
             batch -> R.string.subtitle_source_empty_batch
             else -> R.string.subtitle_source_empty

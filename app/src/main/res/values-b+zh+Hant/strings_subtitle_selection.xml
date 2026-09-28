@@ -24,9 +24,7 @@
     <string name="subtitle_source_empty">當前影片暫無可用字幕。</string>
     <string name="subtitle_source_empty_batch">這些條目暫無可用字幕。</string>
     <string name="subtitle_source_login">登入後可獲取影片字幕。</string>
-    <string name="subtitle_source_login_lyrics">登入後選擇歌詞語言，或關閉內嵌歌詞。</string>
     <string name="subtitle_source_choose_lyrics">請選擇一種字幕作為歌詞。</string>
-    <string name="subtitle_source_no_lyrics">暫無可用字幕，請關閉內嵌歌詞後下載。</string>
     <string name="subtitle_source_choose_subtitles">請至少選擇一種字幕。</string>
     <string name="subtitle_source_missing_selection">部分條目沒有所選字幕。</string>
 </resources>

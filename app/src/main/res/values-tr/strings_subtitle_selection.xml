@@ -24,9 +24,7 @@
     <string name="subtitle_source_empty">Bu video için altyazı mevcut değil.</string>
     <string name="subtitle_source_empty_batch">Bu öğeler için altyazı mevcut değildir.</string>
     <string name="subtitle_source_login">Video altyazılarına erişmek için oturum açın.</string>
-    <string name="subtitle_source_login_lyrics">Şarkı sözü dilini seçmek veya gömülü şarkı sözlerini kapatmak için oturum açın.</string>
     <string name="subtitle_source_choose_lyrics">Şarkı sözü olarak kullanmak için bir altyazı parçası seçin.</string>
-    <string name="subtitle_source_no_lyrics">Altyazı mevcut değil. İndirmeden önce gömülü şarkı sözlerini kapatın.</string>
     <string name="subtitle_source_choose_subtitles">Lütfen en az bir altyazı seçin.</string>
     <string name="subtitle_source_missing_selection">Seçilen altyazı dili bazı öğelerde eksik.</string>
 </resources>

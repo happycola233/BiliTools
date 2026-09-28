@@ -24,9 +24,7 @@
     <string name="subtitle_source_empty">لا توجد ترجمة متاحة لهذا الفيديو.</string>
     <string name="subtitle_source_empty_batch">لا توجد ترجمة متاحة لهذه العناصر.</string>
     <string name="subtitle_source_login">قم بتسجيل الدخول للوصول إلى ترجمات الفيديو.</string>
-    <string name="subtitle_source_login_lyrics">قم بتسجيل الدخول لاختيار لغة كلمات الأغاني، أو قم بإيقاف تشغيل كلمات الأغاني المضمنة.</string>
     <string name="subtitle_source_choose_lyrics">حدد مسار الترجمة لاستخدامه ككلمات.</string>
-    <string name="subtitle_source_no_lyrics">لا توجد ترجمات متوفرة. قم بإيقاف تشغيل كلمات الأغاني المضمنة قبل التنزيل.</string>
     <string name="subtitle_source_choose_subtitles">يرجى تحديد عنوان فرعي واحد على الأقل.</string>
     <string name="subtitle_source_missing_selection">لغة الترجمة المحددة مفقودة من بعض العناصر.</string>
 </resources>

@@ -409,18 +409,15 @@ fun ParseScreenContent(
     val showOptions = info != null && state.selectedItemIndices.isNotEmpty()
 
     val hasSelection = state.selectedItemIndices.isNotEmpty()
-    val hasSupportedDownloadContent = state.restrictExtraSelections(
-        state.selectedItemIndices.mapNotNull { index -> state.items.getOrNull(index)?.type },
-    ).hasSelectedDownloadContent
     val streamReady = state.outputType == null || state.playUrlInfo != null
+    // 选项需要调整时按钮保持可点，点击后说明原因；只在加载、提交期间或流尚未就绪时禁用。
     val downloadEnabled = !state.loading &&
         !state.collectionModeLoading &&
         !state.streamLoading &&
         !state.downloadStarting &&
+        !state.awaitingSubtitleCatalog &&
         hasSelection &&
-        hasSupportedDownloadContent &&
-        streamReady && !state.hasIncompleteSubtitleSelection &&
-        (state.outputType == null || state.hasCommonStreamFormat)
+        streamReady
     val quickActionVisible = info != null && hasSelection
     // 页面全出血绘制，内容从主界面底栏后方滚过，滚动与悬浮控件需预留底栏净空；外部下载入口无底栏
     val mainBarBottomInset = if (externalMode) 0.dp else mainBottomBarBottomInset()

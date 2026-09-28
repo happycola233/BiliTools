@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
@@ -18,6 +19,7 @@ import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onChildren
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -99,6 +101,40 @@ class ParseEmbeddingControlsTest {
     @Test fun lyricsInDarkTheme() = verifyLyrics(AppThemeMode.Dark)
     @Test fun externalSubtitleSelectionInLightTheme() = verifyExternalSubtitles(AppThemeMode.Light)
     @Test fun externalSubtitleSelectionInDarkTheme() = verifyExternalSubtitles(AppThemeMode.Dark)
+    @Test fun lyricsWithoutSubtitlesInLightTheme() = verifyLyricsWithoutSubtitles(AppThemeMode.Light)
+    @Test fun lyricsWithoutSubtitlesInDarkTheme() = verifyLyricsWithoutSubtitles(AppThemeMode.Dark)
+
+    /** 目录确认没有字幕时，内嵌歌词与内嵌字幕一样只说明现状，不拦下同时勾选的其他内容。 */
+    private fun verifyLyricsWithoutSubtitles(theme: AppThemeMode) {
+        var downloads = 0
+        val state = readyState.copy(
+            outputType = OutputType.AudioOnly, subtitleList = emptyList(), subtitleAvailableCounts = emptyMap(),
+            embedLyricsLanguage = null, danmakuLiveEnabled = true,
+        )
+        setContent(theme, { state }, onDownload = { downloads++ }) {}
+        compose.onAllNodes(hasScrollToIndexAction()).onFirst().performScrollToNode(hasText("内嵌歌词"))
+        compose.onNodeWithText("当前视频暂无可用字幕。").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("暂无可用字幕，请关闭内嵌歌词后下载。").assertDoesNotExist()
+        compose.onNodeWithText("歌词语言").assertDoesNotExist()
+        capture("embed-lyrics-no-subtitles-${theme.name.lowercase()}")
+        compose.onNodeWithContentDescription("下载").performClick()
+        compose.runOnIdle { assertEquals(1, downloads) }
+    }
+
+    /** 选项需要调整时按钮仍可点击，由下载校验说明原因；只有字幕目录仍在读取时才暂不响应。 */
+    @Test fun downloadIgnoresTapsOnlyWhileTheCatalogDecidesTheChoice() {
+        var downloads = 0
+        var state by mutableStateOf(readyState.copy(outputType = OutputType.AudioOnly, embedLyricsLanguage = null))
+        setContent(AppThemeMode.Light, { state }, onDownload = { downloads++ }) { state = it }
+        compose.onNodeWithContentDescription("下载").performClick()
+        compose.runOnIdle { assertEquals(1, downloads) }
+        state = state.copy(subtitleList = emptyList(), subtitleLoadStatus = SubtitleLoadStatus.Loading)
+        compose.onNodeWithContentDescription("下载").performClick()
+        compose.runOnIdle { assertEquals(1, downloads) }
+        state = state.copy(subtitleLoadStatus = SubtitleLoadStatus.Ready)
+        compose.onNodeWithContentDescription("下载").performClick()
+        compose.runOnIdle { assertEquals(2, downloads) }
+    }
 
     private fun verifyExternalSubtitles(theme: AppThemeMode) {
         var state by mutableStateOf(readyState.copy(subtitleEnabled = true, embedSubtitlesEnabled = false))
@@ -231,6 +267,7 @@ class ParseEmbeddingControlsTest {
         theme: AppThemeMode,
         state: () -> ParseUiState,
         conversionSettings: () -> ParseConversionSettings = { ParseConversionSettings() },
+        onDownload: () -> Unit = {},
         update: (ParseUiState) -> Unit,
     ) {
         compose.setContent {
@@ -243,7 +280,7 @@ class ParseEmbeddingControlsTest {
                     externalMode = false,
                     subtitleCopyDialogEntries = null,
                     aiSummaryCopyDialogEntries = null,
-                    onInputChange = {}, onPaste = {}, onParse = {}, onMediaTypeChange = {}, onDownload = {},
+                    onInputChange = {}, onPaste = {}, onParse = {}, onMediaTypeChange = {}, onDownload = onDownload,
                     onSectionChange = {}, onOpenUpper = {}, onCopyResultContent = { _, _ -> },
                     onSelectAllItems = {}, onClearSelectedItems = {}, onLoadPrevPage = {}, onLoadNextPage = {},
                     onLoadPage = {}, onItemClick = {}, onItemSelectionChange = { _, _ -> },

@@ -314,6 +314,13 @@ private data class PreparedDownloadTarget(
     val opusDocument: OpusDocument?,
 )
 
+/** 通过下载前校验的状态快照；后续任务构建只读取这份快照。 */
+private data class ValidatedDownload(
+    val state: ParseUiState,
+    val info: MediaInfo,
+    val selectedIndices: List<Int>,
+)
+
 data class ParseUiState(
     val inputText: String = "",
     val loading: Boolean = false,
@@ -1384,13 +1391,17 @@ class ParseViewModel(
         }
     }
 
-    fun download() {
+    /** 在询问通知权限或流量确认之前调用，避免用户确认后才得知需要调整选项。 */
+    fun validateDownload(): Boolean = validatedDownloadOrNull() != null
+
+    /** 下载按钮只在加载、提交期间或流尚未就绪时禁用；选项需要调整的原因都在点击时由这里以错误提示说明。 */
+    private fun validatedDownloadOrNull(): ValidatedDownload? {
         val initialState = _state.value
-        val info = initialState.mediaInfo ?: return
+        val info = initialState.mediaInfo ?: return null
         val selectedIndices = initialState.selectedItemIndices.filter { it in initialState.items.indices }
         if (selectedIndices.isEmpty()) {
             _state.update { it.copy(error = strings.get(R.string.parse_error_no_selection)) }
-            return
+            return null
         }
         val state = initialState.restrictExtraSelections(
             selectedIndices.map { index -> initialState.items[index].type },
@@ -1398,35 +1409,25 @@ class ParseViewModel(
         if (state != initialState) {
             _state.value = state
         }
-        if (!state.hasSelectedDownloadContent) {
-            _state.update { it.copy(error = strings.get(R.string.parse_error_no_download_content)) }
-            return
+        val errorRes = when {
+            !state.hasSelectedDownloadContent -> R.string.parse_error_no_download_content
+            state.hasIncompleteSubtitleSelection -> R.string.parse_subtitle_selection_required
+            state.outputType != null && !state.hasCommonStreamFormat -> R.string.parse_formats_no_common
+            state.danmakuHistoryEnabled && !isValidDate(state.danmakuDate) -> R.string.parse_error_invalid_date
+            state.danmakuHistoryEnabled && state.danmakuHour.isNotBlank() && parseHour(state.danmakuHour) == null ->
+                R.string.parse_error_invalid_hour
+            state.outputType != null && state.playUrlInfo == null -> R.string.parse_error_no_stream
+            else -> null
         }
-        if (state.hasIncompleteSubtitleSelection) {
-            _state.update { it.copy(error = strings.get(R.string.parse_subtitle_selection_required)) }
-            return
+        if (errorRes != null) {
+            _state.update { it.copy(error = strings.get(errorRes)) }
+            return null
         }
-        if (state.outputType != null && !state.hasCommonStreamFormat) {
-            _state.update { it.copy(error = strings.get(R.string.parse_formats_no_common)) }
-            return
-        }
-        if (state.danmakuHistoryEnabled) {
-            val historyInputError = when {
-                !isValidDate(state.danmakuDate) -> strings.get(R.string.parse_error_invalid_date)
-                state.danmakuHour.isNotBlank() && parseHour(state.danmakuHour) == null ->
-                    strings.get(R.string.parse_error_invalid_hour)
-                else -> null
-            }
-            if (historyInputError != null) {
-                _state.update { it.copy(error = historyInputError) }
-                return
-            }
-        }
-        if (state.outputType != null && state.playUrlInfo == null) {
-            _state.update { it.copy(error = strings.get(R.string.parse_error_no_stream)) }
-            return
-        }
-        val snapshot = state
+        return ValidatedDownload(state, info, selectedIndices)
+    }
+
+    fun download() {
+        val (snapshot, info, selectedIndices) = validatedDownloadOrNull() ?: return
         viewModelScope.launch {
             _state.update {
                 it.copy(

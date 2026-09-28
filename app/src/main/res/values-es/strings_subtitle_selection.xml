@@ -24,9 +24,7 @@
     <string name="subtitle_source_empty">No hay subtítulos disponibles para este vídeo.</string>
     <string name="subtitle_source_empty_batch">No hay subtítulos disponibles para estos artículos.</string>
     <string name="subtitle_source_login">Inicie sesión para acceder a los subtítulos de vídeo.</string>
-    <string name="subtitle_source_login_lyrics">Inicie sesión para elegir un idioma de letras o desactive las letras incrustadas.</string>
     <string name="subtitle_source_choose_lyrics">Seleccione una pista de subtítulos para usar como letra.</string>
-    <string name="subtitle_source_no_lyrics">No hay subtítulos disponibles. Desactive las letras incrustadas antes de descargarlas.</string>
     <string name="subtitle_source_choose_subtitles">Seleccione al menos un subtítulo.</string>
     <string name="subtitle_source_missing_selection">El idioma de subtítulos seleccionado falta en algunos elementos.</string>
 </resources>

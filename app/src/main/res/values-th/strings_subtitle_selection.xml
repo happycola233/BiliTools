@@ -24,9 +24,7 @@
     <string name="subtitle_source_empty">ไม่มีคำบรรยายสำหรับวิดีโอนี้</string>
     <string name="subtitle_source_empty_batch">ไม่มีคำบรรยายสำหรับรายการเหล่านี้</string>
     <string name="subtitle_source_login">เข้าสู่ระบบเพื่อเข้าถึงคำบรรยายวิดีโอ</string>
-    <string name="subtitle_source_login_lyrics">เข้าสู่ระบบเพื่อเลือกภาษาของเนื้อเพลง หรือปิดเนื้อเพลงที่ฝังไว้</string>
     <string name="subtitle_source_choose_lyrics">เลือกแทร็กคำบรรยายเพื่อใช้เป็นเนื้อเพลง</string>
-    <string name="subtitle_source_no_lyrics">ไม่มีคำบรรยาย ปิดเนื้อเพลงที่ฝังไว้ก่อนที่จะดาวน์โหลด</string>
     <string name="subtitle_source_choose_subtitles">โปรดเลือกคำบรรยายอย่างน้อยหนึ่งรายการ</string>
     <string name="subtitle_source_missing_selection">ภาษาคำบรรยายที่เลือกหายไปจากบางรายการ</string>
 </resources>

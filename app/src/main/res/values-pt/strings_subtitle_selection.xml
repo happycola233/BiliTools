@@ -24,9 +24,7 @@
     <string name="subtitle_source_empty">Nenhuma legenda está disponível para este vídeo.</string>
     <string name="subtitle_source_empty_batch">Nenhuma legenda está disponível para esses itens.</string>
     <string name="subtitle_source_login">Faça login para acessar as legendas do vídeo.</string>
-    <string name="subtitle_source_login_lyrics">Faça login para escolher o idioma da letra ou desative as letras incorporadas.</string>
     <string name="subtitle_source_choose_lyrics">Selecione uma faixa de legenda para usar como letra.</string>
-    <string name="subtitle_source_no_lyrics">Nenhuma legenda está disponível. Desative as letras incorporadas antes de fazer o download.</string>
     <string name="subtitle_source_choose_subtitles">Selecione pelo menos uma legenda.</string>
     <string name="subtitle_source_missing_selection">O idioma de legenda selecionado está faltando em alguns itens.</string>
 </resources>

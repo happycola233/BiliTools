@@ -24,9 +24,7 @@
     <string name="subtitle_source_empty">Tiada sari kata tersedia untuk video ini.</string>
     <string name="subtitle_source_empty_batch">Tiada sari kata tersedia untuk item ini.</string>
     <string name="subtitle_source_login">Log masuk untuk mengakses sari kata video.</string>
-    <string name="subtitle_source_login_lyrics">Log masuk untuk memilih bahasa lirik, atau matikan lirik terbenam.</string>
     <string name="subtitle_source_choose_lyrics">Pilih lagu sari kata untuk digunakan sebagai lirik.</string>
-    <string name="subtitle_source_no_lyrics">Tiada sarikata tersedia. Matikan lirik terbenam sebelum memuat turun.</string>
     <string name="subtitle_source_choose_subtitles">Sila pilih sekurang-kurangnya satu sari kata.</string>
     <string name="subtitle_source_missing_selection">Bahasa sari kata yang dipilih tiada daripada beberapa item.</string>
 </resources>

@@ -24,9 +24,7 @@
     <string name="subtitle_source_empty">Для этого видео субтитры недоступны.</string>
     <string name="subtitle_source_empty_batch">Для этих элементов субтитры недоступны.</string>
     <string name="subtitle_source_login">Войдите в систему, чтобы получить доступ к видеосубтитрам.</string>
-    <string name="subtitle_source_login_lyrics">Войдите в систему, чтобы выбрать язык текстов песен, или отключите встроенные тексты песен.</string>
     <string name="subtitle_source_choose_lyrics">Выберите дорожку субтитров для использования в качестве текста песни.</string>
-    <string name="subtitle_source_no_lyrics">Субтитры отсутствуют. Отключите встроенные тексты песен перед загрузкой.</string>
     <string name="subtitle_source_choose_subtitles">Пожалуйста, выберите хотя бы один субтитр.</string>
     <string name="subtitle_source_missing_selection">Выбранный язык субтитров отсутствует в некоторых элементах.</string>
 </resources>

@@ -24,9 +24,7 @@
     <string name="subtitle_source_empty">Không có phụ đề cho video này.</string>
     <string name="subtitle_source_empty_batch">Không có phụ đề cho những mục này.</string>
     <string name="subtitle_source_login">Đăng nhập để truy cập phụ đề video.</string>
-    <string name="subtitle_source_login_lyrics">Đăng nhập để chọn ngôn ngữ lời bài hát hoặc tắt lời bài hát được nhúng.</string>
     <string name="subtitle_source_choose_lyrics">Chọn bản nhạc phụ đề để sử dụng làm lời bài hát.</string>
-    <string name="subtitle_source_no_lyrics">Không có phụ đề. Tắt lời bài hát được nhúng trước khi tải xuống.</string>
     <string name="subtitle_source_choose_subtitles">Vui lòng chọn ít nhất một phụ đề.</string>
     <string name="subtitle_source_missing_selection">Ngôn ngữ phụ đề đã chọn bị thiếu ở một số mục.</string>
 </resources>

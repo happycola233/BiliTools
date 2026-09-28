@@ -24,9 +24,7 @@
     <string name="subtitle_source_empty">このビデオには字幕がありません。</string>
     <string name="subtitle_source_empty_batch">これらの項目には字幕が利用できない。</string>
     <string name="subtitle_source_login">ビデオ字幕にアクセスするにはログインする。</string>
-    <string name="subtitle_source_login_lyrics">ログインして歌詞言語を選択するか、埋め込み歌詞をオフにする。</string>
     <string name="subtitle_source_choose_lyrics">歌詞として使用する字幕トラックを選択します。</string>
-    <string name="subtitle_source_no_lyrics">字幕はありません。ダウンロードする前に埋め込み歌詞をオフにしてください。</string>
     <string name="subtitle_source_choose_subtitles">少なくとも 1 つのサブタイトルを選択してください。</string>
     <string name="subtitle_source_missing_selection">選択された字幕言語が一部の項目で欠落している。</string>
 </resources>

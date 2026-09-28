@@ -222,6 +222,18 @@ class SubtitleSourcePickerTest {
         dialogText("完成").assertIsEnabled()
     }
 
+    @Test fun lyricsWithoutSubtitlesOnlyDescribeTheCatalog() {
+        var state by mutableStateOf(ready.copy(subtitleList = emptyList(), subtitleTargetCount = 1, subtitleCompletedCount = 1))
+        setContent {
+            SubtitleSourcePicker(state = state, selection = SubtitleLanguageSelection.Languages(emptySet()), enabled = true,
+                onSelectionChange = {}, onRetry = {}, singleSelection = true, selectedLanguage = null)
+        }
+        compose.onNodeWithText("当前视频暂无可用字幕。").assertIsDisplayed()
+        compose.onNodeWithText("歌词语言").assertDoesNotExist()
+        state = state.copy(isLoggedIn = false)
+        compose.onNodeWithText("登录后可获取视频字幕。").assertIsDisplayed()
+    }
+
     @Test fun longAiListScrollsWhileConfirmationRemainsVisible() {
         val sources = listOf("中文", "English", "日本語", "Español", "العربية", "Português", "Français", "한국어")
             .mapIndexed { index, name -> SubtitleInfo("ai-$index", name, "https://example.com/$index", isAi = true) }

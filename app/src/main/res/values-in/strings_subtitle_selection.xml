@@ -24,9 +24,7 @@
     <string name="subtitle_source_empty">Tidak ada subtitle yang tersedia untuk video ini.</string>
     <string name="subtitle_source_empty_batch">Tidak ada subtitle yang tersedia untuk item ini.</string>
     <string name="subtitle_source_login">Masuk untuk mengakses subtitle video.</string>
-    <string name="subtitle_source_login_lyrics">Masuk untuk memilih bahasa lirik, atau matikan lirik yang disematkan.</string>
     <string name="subtitle_source_choose_lyrics">Pilih trek subtitle untuk digunakan sebagai lirik.</string>
-    <string name="subtitle_source_no_lyrics">Tidak ada subtitle yang tersedia. Matikan lirik yang disematkan sebelum mengunduh.</string>
     <string name="subtitle_source_choose_subtitles">Silakan pilih setidaknya satu subtitle.</string>
     <string name="subtitle_source_missing_selection">Bahasa subtitle yang dipilih hilang pada beberapa item.</string>
 </resources>

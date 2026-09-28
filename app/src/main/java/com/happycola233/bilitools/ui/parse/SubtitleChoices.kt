@@ -58,13 +58,24 @@ internal fun ParseUiState.downloadEmbedding(): DownloadEmbedding? {
     return if (subtitles == null && lyrics == null) null else DownloadEmbedding(subtitles, lyrics)
 }
 
-internal val ParseUiState.needsLyricsLanguage: Boolean
-    get() = embedLyricsEnabled && embedLyricsApplicable && embedLyricsLanguage == null &&
+/** 已开启但语言尚未确定的选项；音乐条目使用自带的原始歌词，只有视频类条目需要选择歌词语言。 */
+private val ParseUiState.hasPendingSubtitleChoice: Boolean
+    get() = subtitleEnabled && subtitleLanguageSelection.isEmpty ||
+        embedSubtitlesEnabled && embedSubtitlesApplicable && embedSubtitleSelection.isEmpty ||
+        embedLyricsEnabled && embedLyricsApplicable && embedLyricsLanguage == null &&
         selectedItemIndices.any { items.getOrNull(it)?.type?.capabilities?.supportsSubtitleExport == true }
 
+/** 目录读完前无法判断：可能自动确定唯一的歌词语言，也可能确认没有可选语言。 */
+internal val ParseUiState.awaitingSubtitleCatalog: Boolean
+    get() = hasPendingSubtitleChoice && subtitleLoadStatus == SubtitleLoadStatus.Loading
+
+/**
+ * 需要用户补选语言后才能下载。目录已完整确认没有字幕时无从选择，与内嵌字幕一样照常下载、
+ * 由下载阶段反馈缺失；读取失败不等于没有字幕，仍需重试或关闭对应选项。
+ */
 internal val ParseUiState.hasIncompleteSubtitleSelection: Boolean
-    get() = subtitleEnabled && subtitleLanguageSelection.isEmpty ||
-        embedSubtitlesEnabled && embedSubtitlesApplicable && embedSubtitleSelection.isEmpty || needsLyricsLanguage
+    get() = hasPendingSubtitleChoice &&
+        !(subtitleLoadStatus == SubtitleLoadStatus.Ready && subtitleList.isEmpty())
 
 internal data class SubtitleTarget(val aid: Long, val cid: Long)
 
