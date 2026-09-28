@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.MotionDurationScale
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.captureToImage
@@ -39,12 +40,19 @@ import org.robolectric.annotation.GraphicsMode
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 class DownloadsGroupProgressIndicatorTest {
-    @get:Rule val compose = createComposeRule()
+    private val motionDurationScale = object : MotionDurationScale {
+        override var scaleFactor = 1f
+    }
+    @get:Rule val compose = createComposeRule(effectContext = motionDurationScale)
 
     @Test fun lightDeterminatePauseKeepsWavePhase() = verifyPauseResume(AppThemeMode.Light, resolvedCount = 2)
     @Test fun darkDeterminatePauseKeepsWavePhase() = verifyPauseResume(AppThemeMode.Dark, resolvedCount = 2)
     @Test fun lightIndeterminatePauseKeepsWavePhase() = verifyPauseResume(AppThemeMode.Light, resolvedCount = 0)
     @Test fun darkIndeterminatePauseKeepsWavePhase() = verifyPauseResume(AppThemeMode.Dark, resolvedCount = 0)
+    @Test fun slowAnimationsKeepTheFinalAmplitudeTarget() {
+        motionDurationScale.scaleFactor = 2f
+        verifyPauseResume(AppThemeMode.Light, resolvedCount = 2)
+    }
 
     private fun verifyPauseResume(themeMode: AppThemeMode, resolvedCount: Int) {
         val running = presentation(resolvedCount)
@@ -54,7 +62,7 @@ class DownloadsGroupProgressIndicatorTest {
         compose.setContent {
             BiliToolsTheme(AppSettings(themeMode = themeMode, themeColor = AppThemeColor.Sakura)) {
                 Row {
-                    for (tag in listOf("subject", "running", "paused")) {
+                    for (tag in listOf("subject", "running", "paused", "native-morph")) {
                         Box(
                             Modifier.size(64.dp).background(MaterialTheme.colorScheme.surface).testTag(tag),
                             contentAlignment = Alignment.Center,
@@ -70,6 +78,10 @@ class DownloadsGroupProgressIndicatorTest {
                                         progress = { running.completionFraction }, color = color, trackColor = trackColor,
                                     )
                                 }
+                                "native-morph" -> CircularWavyProgressIndicator(
+                                    progress = { running.completionFraction }, color = color, trackColor = trackColor,
+                                    amplitude = { if (current.executing) WavyProgressIndicatorDefaults.indicatorAmplitude(it) else 0f },
+                                )
                                 else -> CircularWavyProgressIndicator(
                                     progress = { paused.completionFraction }, color = color, trackColor = trackColor,
                                     amplitude = { 0f },
@@ -94,6 +106,9 @@ class DownloadsGroupProgressIndicatorTest {
         save(firstPausedFrame, "$prefix-pause-first")
         for (frame in 1..12) {
             val bitmap = advanceAndCapture(64)
+            if (resolvedCount > 0) {
+                assertImagesClose("暂停过程应保留原生振幅收拢动画", bitmap, capture("native-morph"))
+            }
             if (frame in listOf(1, 3, 6, 12)) save(bitmap, "$prefix-pause-$frame")
         }
         assertImagesClose("暂停后应收拢为对应进度的圆环", capture(), capture("paused"))
@@ -103,7 +118,12 @@ class DownloadsGroupProgressIndicatorTest {
         compose.runOnIdle { current = running }
         compose.mainClock.advanceTimeByFrame()
         assertImagesClose("继续首帧不应突然出现完整波浪", settled, capture())
-        repeat(12) { advanceAndCapture(64) }
+        repeat(12) {
+            val bitmap = advanceAndCapture(64)
+            if (resolvedCount > 0) {
+                assertImagesClose("继续过程应保留原生振幅展开动画", bitmap, capture("native-morph"))
+            }
+        }
         val resumed = capture()
         assertTrue("继续后应恢复波浪运动", imageDifference(resumed, advanceAndCapture(128)) > 0.002)
         save(resumed, "$prefix-resumed")
@@ -122,6 +142,29 @@ class DownloadsGroupProgressIndicatorTest {
         repeat(16) { advanceAndCapture(64) }
         val finalRunning = capture()
         assertTrue("快速切换后仍可继续运动", imageDifference(finalRunning, advanceAndCapture(128)) > 0.002)
+
+        // 从已收拢状态开始，只打断展开动画。等间隔反复切换可能恰好回到旧动画目标，掩盖丢目标的问题。
+        for (interruptionMillis in listOf(16L, 80L, 240L)) {
+            compose.runOnIdle { current = paused }
+            repeat(32) { advanceAndCapture(64) }
+            compose.runOnIdle { current = running }
+            advanceAndCapture(interruptionMillis)
+            compose.runOnIdle { current = paused }
+            repeat(32) { advanceAndCapture(64) }
+            val finalPaused = capture()
+            save(finalPaused, "$prefix-interrupted-resume-$interruptionMillis")
+            assertImagesClose("展开途中再次暂停，不能丢失最后的收拢目标", finalPaused, capture("paused"))
+            assertImagesClose("最终暂停后应保持静止", finalPaused, advanceAndCapture(256))
+
+            compose.runOnIdle { current = running }
+            repeat(32) { advanceAndCapture(64) }
+            compose.runOnIdle { current = paused }
+            advanceAndCapture(interruptionMillis)
+            compose.runOnIdle { current = running }
+            repeat(32) { advanceAndCapture(64) }
+            val interruptedPause = capture()
+            assertTrue("收拢途中继续，不能停在旧的暂停目标", imageDifference(interruptedPause, advanceAndCapture(128)) > 0.002)
+        }
 
         if (resolvedCount == 0) {
             // 首个结果产生时同样会切换组件，旧波浪应保留到交接完成。
@@ -144,7 +187,7 @@ class DownloadsGroupProgressIndicatorTest {
     private fun capture(tag: String = "subject") = compose.onNodeWithTag(tag).captureToImage().asAndroidBitmap()
 
     private fun advanceAndCapture(millis: Long): Bitmap {
-        compose.mainClock.advanceTimeBy(millis)
+        compose.mainClock.advanceTimeBy((millis * motionDurationScale.scaleFactor).toLong())
         return capture()
     }
 
