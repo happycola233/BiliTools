@@ -3,6 +3,7 @@ package com.happycola233.bilitools.core
 import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.FFmpegSession
 import com.arthenica.ffmpegkit.FFprobeKit
+import com.arthenica.ffmpegkit.MediaInformation
 import com.arthenica.ffmpegkit.MediaInformationSession
 import com.arthenica.ffmpegkit.ReturnCode
 import java.io.File
@@ -241,17 +242,40 @@ object MediaProcessingEngine {
 
     /** 输入来自下载服务器，实际编码在这里探测，不能由文件后缀或音质名称猜测。 */
     private suspend fun firstAudioCodec(inputFile: File): String? {
+        val information = checkNotNull(inspectMedia(inputFile)) { "Media inspection failed" }
+        return information.streams.firstOrNull { it.type == "audio" }?.codec
+    }
+
+    /**
+     * 合并与重试复用 FFmpeg 的解封装能力。系统 MediaExtractor 对部分 DASH / Hi-Res
+     * 音轨的支持与 FFmpeg 不一致，不能据此拒绝合并或删除已经下载好的源文件。
+     */
+    internal suspend fun hasMediaStream(inputFile: File, streamType: String): Boolean {
+        if (!inputFile.isFile || inputFile.length() <= 0L) return false
+        val information = inspectMedia(inputFile) ?: return false
+        val hasStream = information.streams.any { it.type == streamType }
+        if (!hasStream) {
+            AppLog.w(
+                "MediaProcessingEngine",
+                "[probe] missing stream, file=${inputFile.name}, expected=$streamType, " +
+                    "streams=${information.streams.map { "${it.type}:${it.codec}" }}",
+            )
+        }
+        return hasStream
+    }
+
+    private suspend fun inspectMedia(inputFile: File): MediaInformation? {
         val completed = awaitNativeOperation<MediaInformationSession> { finish ->
             val session = FFprobeKit.getMediaInformationAsync(inputFile.absolutePath) { finish(it) }
             val cancel: () -> Unit = { FFmpegKit.cancel(session.sessionId) }
             cancel
         }
         if (ReturnCode.isCancel(completed.returnCode)) throw CancellationException("Media inspection cancelled")
-        if (!ReturnCode.isSuccess(completed.returnCode) || completed.mediaInformation == null) logSessionFailure(completed, "Media inspection")
-        check(ReturnCode.isSuccess(completed.returnCode) && completed.mediaInformation != null) {
-            "Media inspection failed"
+        if (!ReturnCode.isSuccess(completed.returnCode) || completed.mediaInformation == null) {
+            logSessionFailure(completed, "Media inspection")
+            return null
         }
-        return completed.mediaInformation.streams.firstOrNull { it.type == "audio" }?.codec
+        return completed.mediaInformation
     }
 
     private suspend fun execute(arguments: List<String>, operationName: String) {

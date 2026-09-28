@@ -6,8 +6,6 @@ import com.happycola233.bilitools.core.resolve
 import com.happycola233.bilitools.data.model.DownloadMessage
 import com.happycola233.bilitools.data.model.DownloadMessageCode
 import android.content.Context
-import android.media.MediaExtractor
-import android.media.MediaFormat
 import android.net.Uri
 import android.os.Environment
 import android.os.SystemClock
@@ -2195,12 +2193,12 @@ class DownloadRepository(
         )
     }
 
-    private fun prepareMergedTaskForRun(task: MergedDownload) {
-        prepareMergedPartForRetry(task.video, "video/")
-        prepareMergedPartForRetry(task.audio, "audio/")
+    private suspend fun prepareMergedTaskForRun(task: MergedDownload) {
+        prepareMergedPartForRetry(task.video, "video")
+        prepareMergedPartForRetry(task.audio, "audio")
     }
 
-    private fun prepareMergedPartForRetry(part: ResumablePart, mimePrefix: String) {
+    private suspend fun prepareMergedPartForRetry(part: ResumablePart, streamType: String) {
         part.job = null
         val file = part.tempFile
         if (!file.exists()) {
@@ -2210,7 +2208,8 @@ class DownloadRepository(
 
         val currentSize = file.length().coerceAtLeast(0L)
         if (part.completed) {
-            if (!isMediaPartUsable(file, mimePrefix)) {
+            if (!MediaProcessingEngine.hasMediaStream(file, streamType)) {
+                currentCoroutineContext().ensureActive()
                 runCatching { file.delete() }
                 resetMergedPartForFreshDownload(part)
                 return
@@ -3409,8 +3408,8 @@ class DownloadRepository(
             )
             return null
         }
-        val videoUsable = isMediaPartUsable(videoFile, "video/")
-        val audioUsable = isMediaPartUsable(audioFile, "audio/")
+        val videoUsable = MediaProcessingEngine.hasMediaStream(videoFile, "video")
+        val audioUsable = MediaProcessingEngine.hasMediaStream(audioFile, "audio")
         if (!videoUsable || !audioUsable) {
             Log.w(
                 TAG,
@@ -3474,32 +3473,6 @@ class DownloadRepository(
             )
         }
         return uri
-    }
-
-    private fun selectTrack(extractor: MediaExtractor, prefix: String): Int {
-        for (i in 0 until extractor.trackCount) {
-            val format = extractor.getTrackFormat(i)
-            val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
-            if (mime.startsWith(prefix)) {
-                return i
-            }
-        }
-        return -1
-    }
-
-    private fun isMediaPartUsable(file: File, prefix: String): Boolean {
-        if (!file.exists() || file.length() <= 0L) return false
-        val extractor = MediaExtractor()
-        val input = runCatching { FileInputStream(file) }.getOrNull() ?: return false
-        return try {
-            extractor.setDataSource(input.fd)
-            selectTrack(extractor, prefix) >= 0
-        } catch (_: Throwable) {
-            false
-        } finally {
-            runCatching { extractor.release() }
-            runCatching { input.close() }
-        }
     }
 
     /** 元数据受全局开关控制；内嵌字幕与歌词是这次下载单独选择的，开关关闭时照常写入。 */
