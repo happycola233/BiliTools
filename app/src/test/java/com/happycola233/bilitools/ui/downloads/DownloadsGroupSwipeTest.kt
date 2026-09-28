@@ -273,10 +273,29 @@ class DownloadsGroupSwipeTest {
         }
         val activate = HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE
         val deactivate = HapticFeedbackConstants.GESTURE_THRESHOLD_DEACTIVATE
+        clearButton.assertDoesNotExist()
         startDrag(30f)
         card.performTouchInput { up() }
         compose.runOnIdle { assertFalse(swiped); assertTrue(feedback.isEmpty()) }
-        startDrag(88f)
+        clearButton.assertDoesNotExist()
+
+        // 前半程揭开固定宽度的按钮，图标仍被前景卡片遮住；完全露出后才开始拉伸。
+        startDrag(40f)
+        val partiallyRevealedBounds = clearButton.getUnclippedBoundsInRoot()
+        assertEquals("揭露期间保持完整按钮宽度", 80f,
+            (partiallyRevealedBounds.right - partiallyRevealedBounds.left).value, 0.5f)
+        val foreground = compose.onNodeWithText(group.title).getUnclippedBoundsInRoot()
+        val overlap = if (direction == LayoutDirection.Rtl) {
+            partiallyRevealedBounds.right - foreground.left
+        } else {
+            foreground.right - partiallyRevealedBounds.left
+        }
+        assertEquals("卡片仍遮住按钮的一半", 40f, overlap.value, 0.5f)
+        capture("revealing-${mode.name}-${direction.name}")
+        moveFurther(40f)
+        assertEquals("揭露期间按钮位置与宽度固定", partiallyRevealedBounds, clearButton.getUnclippedBoundsInRoot())
+        capture("revealed-${mode.name}-${direction.name}")
+        moveFurther(8f)
         card.performTouchInput { up() }
         compose.runOnIdle { assertTrue(swiped); assertTrue(feedback.isEmpty()) }
         assertActionGeometry("清除记录", 80f, direction)

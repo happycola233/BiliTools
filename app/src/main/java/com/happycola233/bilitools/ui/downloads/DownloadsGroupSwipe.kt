@@ -40,6 +40,9 @@ import kotlin.math.roundToInt
 
 internal enum class DownloadsSwipeStage { RevealRecords, ClearRecords, DeleteFiles }
 
+private val SwipeActionRestingWidth = 80.dp
+private val SwipeActionGap = 8.dp
+
 /** 动画、触感与松手动作共用同一档位，不能各自设置提前量。 */
 private fun swipeStage(distance: Float, clearThreshold: Float, deleteThreshold: Float) = when {
     distance >= deleteThreshold -> DownloadsSwipeStage.DeleteFiles
@@ -62,7 +65,7 @@ internal fun DownloadsGroupSwipe(
     val layoutDirection = LocalLayoutDirection.current
     val haptics = rememberAppHaptics()
     val scope = rememberCoroutineScope()
-    val revealOffset = with(density) { 88.dp.toPx() }
+    val revealOffset = with(density) { (SwipeActionRestingWidth + SwipeActionGap).toPx() }
     val clearThreshold = with(density) { 140.dp.toPx() }
     val deleteThreshold = with(density) { 220.dp.toPx() }
     val offset = remember(groupId) { Animatable(0f) }
@@ -143,7 +146,10 @@ internal fun DownloadsGroupSwipe(
             }
         },
     ) {
-        val actionWidth = (with(density) { (-offset.value).toDp() } - 8.dp).coerceAtLeast(0.dp)
+        // 停靠前保持完整按钮藏在卡片后方；完全露出后才随继续拖动拉伸，图标始终居中。
+        val actionWidth = (with(density) { (-offset.value).toDp() } - SwipeActionGap)
+            .coerceAtLeast(SwipeActionRestingWidth)
+        val actionVisible = offset.value < 0f
         if (enabled) {
             val description = stringResource(
                 when (stage) {
@@ -154,7 +160,7 @@ internal fun DownloadsGroupSwipe(
             )
             Box(Modifier.matchParentSize(), contentAlignment = Alignment.CenterEnd) {
                 Surface(
-                    enabled = actionWidth > 0.dp,
+                    enabled = actionVisible,
                     onClick = {
                         haptics.tap()
                         onDelete(stage == DownloadsSwipeStage.DeleteFiles)
@@ -163,9 +169,9 @@ internal fun DownloadsGroupSwipe(
                     color = Color.Transparent,
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier.width(actionWidth).fillMaxHeight()
-                        .alpha(if (actionWidth > 0.dp) 1f else 0f)
+                        .alpha(if (actionVisible) 1f else 0f)
                         .then(
-                            if (actionWidth > 0.dp) Modifier.semantics { contentDescription = description }
+                            if (actionVisible) Modifier.semantics { contentDescription = description }
                             else Modifier.clearAndSetSemantics {},
                         ),
                 ) {
