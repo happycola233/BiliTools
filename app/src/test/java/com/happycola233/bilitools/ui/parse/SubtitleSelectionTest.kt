@@ -1,6 +1,10 @@
 package com.happycola233.bilitools.ui.parse
 
+import com.happycola233.bilitools.data.planSubtitleDiscovery
+import com.happycola233.bilitools.data.selectEmbeddedSubtitleTracks
 import com.happycola233.bilitools.data.model.DownloadEmbedding
+import com.happycola233.bilitools.data.model.DownloadExtraTaskOperation
+import com.happycola233.bilitools.data.model.DownloadExtraTaskSpec
 import com.happycola233.bilitools.data.model.LyricsEmbedding
 import com.happycola233.bilitools.data.model.MediaItem
 import com.happycola233.bilitools.data.model.MediaType
@@ -102,6 +106,25 @@ class SubtitleSelectionTest {
         )
         assertTrue(state.hasIncompleteSubtitleSelection)
         assertFalse(state.copy(subtitleList = emptyList()).hasIncompleteSubtitleSelection)
+    }
+
+    /** 解析目录为空时允许下载，但任务执行时即使字幕恢复可用，也必须保留原来的空选。 */
+    @Test fun emptySubtitleSelectionCannotExpandDuringDownload() {
+        val empty = SubtitleLanguageSelection.Languages(emptySet())
+        val state = ParseUiState(
+            items = listOf(videoItem), selectedItemIndices = listOf(0), outputType = OutputType.VideoOnly,
+            subtitleEnabled = true, subtitleLanguageSelection = empty,
+            embedSubtitlesEnabled = true, embedSubtitleSelection = empty,
+            subtitleLoadStatus = SubtitleLoadStatus.Ready,
+        )
+        assertFalse(state.hasIncompleteSubtitleSelection)
+        assertTrue(selectEmbeddedSubtitleTracks(subtitles, requireNotNull(state.downloadEmbedding()?.subtitles)).isEmpty())
+        val export = DownloadExtraTaskSpec(
+            operation = DownloadExtraTaskOperation.SubtitleDiscovery,
+            unavailableMessage = "无字幕",
+            subtitleSelection = state.subtitleLanguageSelection.toRequest(),
+        )
+        assertTrue(planSubtitleDiscovery(subtitles, export).isEmpty())
     }
 
     @Test fun togglingAllChangesOnlyTheClickedSource() {

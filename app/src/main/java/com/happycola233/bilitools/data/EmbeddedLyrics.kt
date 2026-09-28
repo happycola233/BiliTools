@@ -8,14 +8,14 @@ import kotlin.math.roundToLong
 
 internal data class LyricsSubtitleLine(val from: Double, val to: Double, val content: String)
 
-/** 指定了语言就只取这些语言（保持 B 站列表顺序）；空集合是用户选择「全部字幕」的快捷方式。 */
+/** 按明确的全选或语言集合匹配，保持 B 站列表顺序；显式空选不能在目录更新后变成全选。 */
 internal fun selectEmbeddedSubtitleTracks(
     subtitles: List<SubtitleInfo>,
     request: SubtitleTrackEmbedding,
 ): List<SubtitleInfo> {
     return subtitles.filter {
         it.url.isNotBlank() &&
-            (request.languages.isEmpty() || it.lan in request.languages)
+            (request.allLanguages || it.lan in request.languages)
     }
 }
 

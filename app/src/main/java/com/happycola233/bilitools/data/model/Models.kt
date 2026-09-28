@@ -221,8 +221,10 @@ data class DownloadEmbedding(
 )
 
 data class SubtitleTrackEmbedding(
-    /** 要嵌入的字幕语言代码（B 站 lan 值）；为空表示嵌入该条目的全部可用字幕。 */
+    /** 明确选定的字幕语言代码（B 站 lan 值）；是否全选由 [allLanguages] 决定。 */
     val languages: List<String> = emptyList(),
+    /** 旧任务的空列表代表全选；新任务的显式空选需传 false，避免恢复或重试时扩大选择。 */
+    val allLanguages: Boolean = languages.isEmpty(),
 )
 
 data class LyricsEmbedding(

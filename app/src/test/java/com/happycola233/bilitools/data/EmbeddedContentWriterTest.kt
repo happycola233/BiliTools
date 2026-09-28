@@ -164,6 +164,22 @@ class EmbeddedContentWriterTest {
         }
     }
 
+    @Test fun emptySelectionLeavesVideoUntouchedWhenSubtitlesBecomeAvailable() = withAudio { file ->
+        val original = file.readBytes()
+        val paths = mutableListOf<String>()
+        val embedding = DownloadEmbedding(subtitles = SubtitleTrackEmbedding(allLanguages = false))
+        val video = item(file, embedding).copy(
+            taskType = DownloadTaskType.Video, fileName = "video.mp4",
+            embeddedMetadata = metadata.copy(lyricUrl = null, subtitleAid = 1, subtitleCid = 2),
+        )
+        val result = subtitleWriter { paths += it.url.encodedPath }
+            .write(file, video, null, DownloadMetadataSettings())
+        assertEquals(setOf(EmbeddedContentIssue.SubtitlesUnavailable), result.issues)
+        assertTrue(result.subtitleTitles.isEmpty())
+        assertFalse(paths.any { it.endsWith(".json") })
+        assertArrayEquals(original, file.readBytes())
+    }
+
     @Test fun allSubtitleTracksIncludeAiWithAnExplicitSourceLabel() = runBlocking {
         val issues = mutableSetOf<EmbeddedContentIssue>()
         val incomplete = mutableListOf<String>()

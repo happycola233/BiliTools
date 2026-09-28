@@ -69,6 +69,18 @@ class DownloadSubtitleDiscoveryTest {
         assertTrue(planSubtitleDiscovery(emptyList(), spec).isEmpty())
     }
 
+    @Test fun emptySelectionDoesNotDiscoverNewSubtitlesWhenRetried() = runBlocking {
+        val emptySpec = spec.copy(subtitleSelection = SubtitleTrackEmbedding(allLanguages = false))
+        val fixture = Fixture(emptySpec)
+        assertNull(fixture.discover())
+
+        fixture.catalog = listOf(chinese, english)
+        assertNull(fixture.discover())
+        assertEquals(emptySpec, fixture.retrySpec)
+        assertEquals(1, fixture.items.size)
+        assertFalse(fixture.requestPaths.any { it.endsWith(".json") })
+    }
+
     @Test fun missingUrlPreservesTheProvidedNameAndAiSource() {
         val noUrl = english.copy(name = "英语（美国）", url = "", isAi = true)
         val plan = planSubtitleDiscovery(listOf(noUrl), spec.copy(subtitleSelection = SubtitleTrackEmbedding(listOf("en"))))

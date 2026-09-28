@@ -67,7 +67,7 @@ class DownloadExtraTaskSpecTest {
     }
 
     @Test
-    fun `persisted subtitle requests preserve both specific sources and all-language selection`() {
+    fun `persisted subtitle requests preserve specific sources and all or empty selections`() {
         val adapter = Moshi.Builder().add(KotlinJsonAdapterFactory()).build().adapter(DownloadExtraTaskSpec::class.java)
         val source = subtitleDiscoverySpec(aid = 100L, cid = 200L).copy(
             subtitleBaseFileName = "视频标题",
@@ -77,6 +77,7 @@ class DownloadExtraTaskSpecTest {
         listOf(
             source.copy(subtitleSelection = SubtitleTrackEmbedding(listOf("zh-Hans", "ai-en"))),
             source.copy(subtitleSelection = SubtitleTrackEmbedding()),
+            source.copy(subtitleSelection = SubtitleTrackEmbedding(allLanguages = false)),
         ).forEach { spec ->
             assertEquals(spec, adapter.fromJson(adapter.toJson(spec)))
         }

@@ -25,7 +25,7 @@ sealed interface SubtitleLanguageSelection {
 
 internal fun SubtitleLanguageSelection.toRequest(): SubtitleTrackEmbedding = when (this) {
     SubtitleLanguageSelection.All -> SubtitleTrackEmbedding()
-    is SubtitleLanguageSelection.Languages -> SubtitleTrackEmbedding(languages.toList())
+    is SubtitleLanguageSelection.Languages -> SubtitleTrackEmbedding(languages.toList(), allLanguages = false)
 }
 
 internal fun selectSubtitles(
