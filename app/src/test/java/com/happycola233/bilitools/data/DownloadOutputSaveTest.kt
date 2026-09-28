@@ -100,7 +100,7 @@ class DownloadOutputSaveTest {
             provider.add("clip.m4a", "Download/BiliTools", originalBytes)
             val cookies = CookieStore(context)
             val settings = SettingsRepository(context).apply { setNamingOverwriteExistingFiles(overwrite) }
-            val bili = BiliHttpClient(cookies, settings)
+            val bili = BiliHttpClient(cookies)
             val signer = WbiSigner(bili)
             val exports = ExportRepository(context, settings)
             exports.outputStorage.adoptLegacy(provider.uri(1).toString(), "Download/BiliTools", "Download/BiliTools", "clip.m4a", "old")

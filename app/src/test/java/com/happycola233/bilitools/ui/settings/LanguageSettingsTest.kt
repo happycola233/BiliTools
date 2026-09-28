@@ -57,7 +57,7 @@ class LanguageSettingsTest {
     @Test
     fun languageNavigationKeepsGeneralAsItsParent() {
         val container = (RuntimeEnvironment.getApplication() as BiliToolsApp).container
-        val viewModel = SettingsViewModel(container.settingsRepository, container.issueReportRepository)
+        val viewModel = SettingsViewModel(container.settingsRepository)
         viewModel.navigateTo(SettingsDestination.General)
         viewModel.navigateTo(SettingsDestination.Language)
         assertEquals(

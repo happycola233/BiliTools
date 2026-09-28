@@ -1,5 +1,6 @@
 package com.happycola233.bilitools.data
 
+import com.happycola233.bilitools.core.AppLog
 import com.happycola233.bilitools.core.BiliHttpClient
 import com.happycola233.bilitools.core.BiliHttpException
 import com.happycola233.bilitools.core.DanmakuElem
@@ -35,6 +36,7 @@ class ExtrasRepository(
             throw BiliHttpException(resp.message ?: "Player info failed", resp.code)
         }
         val subtitles = resp.data?.subtitle?.subtitles.orEmpty()
+        AppLog.d("ExtrasRepository", "[subtitles] aid=$aid cid=$cid available=${subtitles.size}")
         return subtitles.map {
             SubtitleInfo(
                 lan = it.lan,
@@ -117,7 +119,10 @@ class ExtrasRepository(
             throw BiliHttpException(resp.message ?: "AI summary failed", resp.code)
         }
         val data = resp.data ?: return null
-        if (data.code != null && data.code != 0) return null
+        if (data.code != null && data.code != 0) {
+            AppLog.w("ExtrasRepository", "[ai-summary] unavailable aid=$aid cid=$cid code=${data.code}")
+            return null
+        }
         val result = data.modelResult ?: return null
         if (result.resultType == 0) return null
         val summary = result.summary?.takeIf { it.isNotBlank() } ?: return null

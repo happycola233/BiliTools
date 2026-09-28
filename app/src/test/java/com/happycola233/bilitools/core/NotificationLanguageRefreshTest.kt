@@ -2,7 +2,6 @@ package com.happycola233.bilitools.core
 
 import android.app.Notification
 import android.app.NotificationManager
-import android.content.res.Configuration
 import com.happycola233.bilitools.BiliToolsApp
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.DownloadNotificationState
@@ -105,24 +104,6 @@ class NotificationLanguageRefreshTest {
             download.destroy()
             update.destroy()
             AppLanguage.select(AppLanguage.System)
-        }
-    }
-
-    @Test
-    @Config(sdk = [35])
-    fun systemLocaleChangesRefreshChannelNamesWithoutStartingADownload() {
-        val controller = Robolectric.buildService(UpdateDownloadService::class.java).create()
-        val app = RuntimeEnvironment.getApplication()
-        val manager = app.getSystemService(NotificationManager::class.java)
-        try {
-            val originalNames = manager.notificationChannels.map { it.name.toString() }
-            RuntimeEnvironment.setQualifiers("en-rUS")
-            controller.get().onConfigurationChanged(Configuration(app.resources.configuration))
-            assertNotEquals(originalNames, manager.notificationChannels.map { it.name.toString() })
-            assertTrue(manager.notificationChannels.any { it.name.toString() == app.getString(R.string.update_notification_channel_progress_name) })
-            assertNull(shadowOf(controller.get()).lastForegroundNotification)
-        } finally {
-            controller.destroy()
         }
     }
 

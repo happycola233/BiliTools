@@ -559,7 +559,7 @@ class ParseViewModel(
                         return@collectLatest
                     }
                     val followerCount = upperFollowerCache[target.mid] ?: withContext(Dispatchers.IO) {
-                        runCatching { mediaRepository.getUpperFollowerCount(target.mid) }.getOrNull()
+                        runCatching { mediaRepository.getUpperFollowerCount(target.mid) }.onFailure { if (it is CancellationException) throw it; logFailure("uploader-followers", it) }.getOrNull()
                     } ?: return@collectLatest
                     upperFollowerCache[target.mid] = followerCount
                     applyUpperFollowerCount(target.mid, followerCount)
@@ -645,8 +645,10 @@ class ParseViewModel(
     }
 
     fun parse(input: String) {
+        AppLog.i(TAG, "[parse] start input=${AppLog.redact(input)} type=${_state.value.selectedMediaType}")
         _state.update { it.copy(inputText = input) }
         if (input.isBlank()) {
+            logFailure("parse", reason = "empty input")
             _state.update {
                 it.copy(inputError = strings.get(R.string.parse_error_empty_input), error = null)
             }
@@ -681,6 +683,7 @@ class ParseViewModel(
                     resolvedType,
                     MediaQueryOptions(target = parsed.target, videoPartNumber = parsed.videoPartNumber),
                 )
+                AppLog.i(TAG, "[parse] success type=${info.type} contentId=${info.id} entries=${info.list.size} collection=${info.collection}")
                 val defaultIndex =
                     info.list.indexOfFirst { it.isTarget }.takeIf { it >= 0 } ?: 0
                 val defaultItem = info.list.getOrNull(defaultIndex)
@@ -722,6 +725,7 @@ class ParseViewModel(
                 if (err is CancellationException) throw err
                 // 输入无法识别属于表单校验问题，就地提示比顶部横幅更贴近出错位置。
                 if (err is InvalidMediaInputException) {
+                    logFailure("input", err)
                     _state.update {
                         it.copy(
                             loading = false,
@@ -916,6 +920,7 @@ class ParseViewModel(
                     val info = before.mediaInfo!!
                     val page = before.pagination.lastLoadedPage!! + 1
                     val offset = pageOffset(info, page) ?: run {
+                        logFailure("pagination", reason = "missing offset page=$page")
                         _state.update {
                             it.copy(pagination = it.pagination.copy(
                                 appending = false,
@@ -941,6 +946,7 @@ class ParseViewModel(
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Throwable) {
+                logFailure("pagination", error)
                 _state.update {
                     it.copy(pagination = it.pagination.copy(appending = false, appendError = mapError(error), scrollRequest = null))
                 }
@@ -1400,6 +1406,7 @@ class ParseViewModel(
         val info = initialState.mediaInfo ?: return null
         val selectedIndices = initialState.selectedItemIndices.filter { it in initialState.items.indices }
         if (selectedIndices.isEmpty()) {
+            AppLog.w(TAG, "[selection] empty selection")
             _state.update { it.copy(error = strings.get(R.string.parse_error_no_selection)) }
             return null
         }
@@ -1420,6 +1427,7 @@ class ParseViewModel(
             else -> null
         }
         if (errorRes != null) {
+            AppLog.w(TAG, "[selection] invalid download options errorRes=$errorRes")
             _state.update { it.copy(error = strings.get(errorRes)) }
             return null
         }
@@ -1480,6 +1488,7 @@ class ParseViewModel(
                             val opusDocument = preparedTarget.opusDocument
                             val preparedItem = preparedTarget.item
                             val item = runCatching { mediaRepository.resolveItemForPlay(preparedItem, preparedItem.type) }
+                                .onFailure { if (it is CancellationException) throw it; logFailure("resolve-download-source", it) }
                                 .getOrDefault(preparedItem)
                             val playUrlResult = if (snapshot.outputType != null) {
                                 runCatching {
@@ -1769,6 +1778,7 @@ class ParseViewModel(
                 },
                 onFailure = { error ->
                     if (error is CancellationException) throw error
+                    logFailure("enqueue", error)
                     _state.update { it.copy(downloadStarting = false, error = mapError(error)) }
                 },
             )
@@ -2236,11 +2246,13 @@ class ParseViewModel(
         val info = snapshot.mediaInfo ?: return
         if (snapshot.subtitleCopying || snapshot.aiSummaryCopying) return
         if (snapshot.subtitleLanguageSelection.isEmpty) {
+            logFailure("copy-subtitles", reason = "no language selected")
             _state.update { it.copy(error = strings.get(R.string.parse_subtitle_selection_required)) }
             return
         }
         val requestedIndices = snapshot.selectedItemIndices.filter { it in snapshot.items.indices }
         if (requestedIndices.isEmpty()) {
+            AppLog.w(TAG, "[selection] empty selection")
             _state.update { it.copy(error = strings.get(R.string.parse_error_no_selection)) }
             return
         }
@@ -2248,6 +2260,7 @@ class ParseViewModel(
             snapshot.items[index].type.capabilities.supportsSubtitleExport
         }
         if (selectedIndices.isEmpty()) {
+            logFailure("copy-subtitles", reason = "no supported content")
             _state.update { it.copy(error = strings.get(R.string.parse_error_no_subtitle)) }
             return
         }
@@ -2266,6 +2279,7 @@ class ParseViewModel(
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
+                logFailure("copy-subtitles", error)
                 _state.update { it.copy(error = mapError(error)) }
                 return@launch
             } finally {
@@ -2274,6 +2288,7 @@ class ParseViewModel(
             if (entries.size <= 1) {
                 val entry = entries.firstOrNull()
                 if (entry?.content.isNullOrBlank()) {
+                    logFailure("copy-subtitles", reason = "no available content")
                     val message = entry?.error ?: strings.get(R.string.parse_error_no_subtitle)
                     _state.update {
                         it.copy(
@@ -2297,6 +2312,7 @@ class ParseViewModel(
         if (snapshot.subtitleCopying || snapshot.aiSummaryCopying) return
         val requestedIndices = snapshot.selectedItemIndices.filter { it in snapshot.items.indices }
         if (requestedIndices.isEmpty()) {
+            AppLog.w(TAG, "[selection] empty selection")
             _state.update { it.copy(error = strings.get(R.string.parse_error_no_selection)) }
             return
         }
@@ -2304,6 +2320,7 @@ class ParseViewModel(
             snapshot.items[index].type.capabilities.supportsAiSummaryExport
         }
         if (selectedIndices.isEmpty()) {
+            logFailure("copy-ai-summary", reason = "no supported content")
             _state.update { it.copy(error = strings.get(R.string.parse_error_no_ai)) }
             return
         }
@@ -2320,6 +2337,8 @@ class ParseViewModel(
                     buildAiSummaryCopyEntries(snapshot, info, selectedIndices)
                 }
             }.getOrElse { err ->
+                if (err is CancellationException) throw err
+                logFailure("copy-ai-summary", err)
                 val message = mapError(err)
                 _state.update {
                     it.copy(
@@ -2331,6 +2350,7 @@ class ParseViewModel(
             }
             val availableCount = entries.count { !it.content.isNullOrBlank() }
             if (availableCount <= 0) {
+                logFailure("copy-ai-summary", reason = "no available content")
                 val message = strings.get(R.string.parse_error_no_ai)
                 _state.update {
                     it.copy(
@@ -2398,6 +2418,7 @@ class ParseViewModel(
         val targets = buildDownloadTargets(snapshot, info, selectedIndices)
         return targets.map { rawItem ->
             val item = runCatching { mediaRepository.resolveItemForPlay(rawItem, rawItem.type) }
+                .onFailure { if (it is CancellationException) throw it; logFailure("resolve-copy-source", it) }
                 .getOrDefault(rawItem)
             val groupLabel = resolveGroupLabel(info = info, item = item)
             val title = buildSubtitleEntryTitle(groupLabel.title, groupLabel.subtitle)
@@ -2414,7 +2435,7 @@ class ParseViewModel(
                 val summaryTitle = info.nfo.showTitle?.ifBlank { item.title } ?: item.title
                 val content = runCatching {
                     extrasRepository.getAiSummaryMarkdown(summaryTitle, bvid, aid, cid)
-                }.getOrNull()
+                }.onFailure { if (it is CancellationException) throw it; logFailure("ai-summary", it) }.getOrNull()
                 if (content.isNullOrBlank()) {
                     AiSummaryCopyEntry(
                         title = title,
@@ -2443,6 +2464,7 @@ class ParseViewModel(
             runCatching { mediaRepository.getVideoPages(episode) }
                 .getOrElse { error ->
                     if (error is CancellationException) throw error
+                    logFailure("collection-pages", error)
                     listOf(episode)
                 }
                 .map { page -> page.copy(title = page.title.ifBlank { episode.title }) }
@@ -2739,6 +2761,7 @@ class ParseViewModel(
         val isOpus = capabilities.supportsOpusExport
         val opusDocument = if (isOpus) {
             runCatching { opusRepository.getDocument(item) }
+                .onFailure { if (it is CancellationException) throw it; logFailure("opus-extras", it) }
                 .getOrNull()
                 ?.withItemFallback(item, item.resolvedUpper(info))
         } else {
@@ -2860,7 +2883,7 @@ class ParseViewModel(
         val query = buildPresentationDetailQuery(item) ?: return null
         val detailedInfo = runCatching {
             mediaRepository.getMediaInfo(query.id, query.type, query.options)
-        }.getOrNull() ?: return null
+        }.onFailure { if (it is CancellationException) throw it; logFailure("presentation-detail", it) }.getOrNull() ?: return null
         val detailedItem = when {
             item.type == MediaType.Bangumi && item.epid == null -> null
             item.epid != null -> detailedInfo.list.firstOrNull { it.epid == item.epid }
@@ -3590,7 +3613,13 @@ class ParseViewModel(
         private const val OPUS_DETAIL_DOWNLOAD_PARALLELISM = 4
     }
 
+    private fun logFailure(operation: String, error: Throwable? = null, reason: String? = null) {
+        val snapshot = _state.value
+        AppLog.w(TAG, "[$operation] failed type=${snapshot.mediaInfo?.type ?: snapshot.selectedMediaType} contentId=${snapshot.mediaInfo?.id} page=${snapshot.pageIndex} collection=${snapshot.collectionMode} format=${snapshot.format} reason=${reason ?: error?.message} error=${error?.javaClass?.simpleName}", error)
+    }
+
     private fun setLoadingError(err: Throwable) {
+        logFailure("parse", err)
         _state.update {
             it.copy(
                 loading = false,
@@ -3602,6 +3631,7 @@ class ParseViewModel(
     }
 
     private fun setStreamLoadingError(err: Throwable) {
+        logFailure("stream", err)
         _state.update {
             it.copy(
                 streamLoading = false,

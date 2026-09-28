@@ -173,7 +173,7 @@ class DownloadSubtitleDiscoveryTest {
             val context = RuntimeEnvironment.getApplication()
             val cookies = CookieStore(context)
             val settings = SettingsRepository(context)
-            val bili = BiliHttpClient(cookies, settings)
+            val bili = BiliHttpClient(cookies)
             ReflectionHelpers.setField(bili, "client\$delegate", lazyOf(client))
             val signer = WbiSigner(bili)
             ReflectionHelpers.setField(signer, "cachedMixinKey", "fixture")

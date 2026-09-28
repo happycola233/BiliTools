@@ -1,5 +1,6 @@
 ﻿package com.happycola233.bilitools.data
 
+import com.happycola233.bilitools.core.AppLog
 import com.happycola233.bilitools.core.BiliHttpClient
 import com.happycola233.bilitools.core.BiliHttpException
 import com.happycola233.bilitools.core.CookieStore
@@ -249,7 +250,7 @@ class MediaRepository(
                 } else {
                     emptyList()
                 }
-            }.getOrDefault(emptyList())
+            }.onFailure { if (it is kotlinx.coroutines.CancellationException) throw it; AppLog.w("MediaRepository", "[metadata] tags unavailable", it) }.getOrDefault(emptyList())
         } else {
             emptyList()
         }
@@ -581,7 +582,7 @@ class MediaRepository(
                 addAll(collectPublicImages(seasonJson, "season"))
             }
             images.takeIf { it.isNotEmpty() }
-        }.getOrNull() ?: buildList {
+        }.onFailure { AppLog.w("MediaRepository", "[metadata] image parsing fallback", it) }.getOrNull() ?: buildList {
             fun addThumb(id: String, url: String?) {
                 if (!url.isNullOrBlank()) {
                     add(MediaThumb(id, normalizeCoverUrl(url)))
@@ -712,7 +713,7 @@ class MediaRepository(
                 }
             }
             images.takeIf { it.isNotEmpty() }
-        }.getOrNull() ?: buildList {
+        }.onFailure { AppLog.w("MediaRepository", "[metadata] image parsing fallback", it) }.getOrNull() ?: buildList {
             add(MediaThumb("cover", normalizeCoverUrl(data.cover)))
             data.brief?.img?.forEachIndexed { idx, image ->
                 add(MediaThumb("brief-${idx + 1}", normalizeCoverUrl(image.url)))
@@ -765,7 +766,7 @@ class MediaRepository(
                 val tagAdapter = httpClient.adapter(MusicTagsResponse::class.java)
                 val tagResp = tagAdapter.fromJson(tagBody)
                 tagResp?.data?.map { it.info }.orEmpty()
-            }.getOrDefault(emptyList())
+            }.onFailure { if (it is kotlinx.coroutines.CancellationException) throw it; AppLog.w("MediaRepository", "[metadata] tags unavailable", it) }.getOrDefault(emptyList())
         } else {
             emptyList()
         }
@@ -779,7 +780,7 @@ class MediaRepository(
                 )
                 val upperAdapter = httpClient.adapter(MusicUpperResponse::class.java)
                 upperAdapter.fromJson(upperBody)?.data
-            }.getOrNull()
+            }.onFailure { if (it is kotlinx.coroutines.CancellationException) throw it; AppLog.w("MediaRepository", "[metadata] music uploader unavailable", it) }.getOrNull()
         } else {
             null
         }
@@ -1645,6 +1646,7 @@ class MediaRepository(
                 item.ssid?.let { params["season_id"] = it.toString() }
             }
         }
+        AppLog.d("MediaRepository", "[stream] request type=$type aid=${item.aid} cid=${item.cid} qn=${params["qn"]} fnval=${params["fnval"]} format=$format loggedIn=${cookieStore.isLoggedIn()}")
         val cleaned = params.filterValues { it.isNotBlank() }
         val body = httpClient.get(wbiSigner.signedUrl(baseUrl, cleaned))
         val adapter = httpClient.adapter(PlayUrlResponse::class.java)
@@ -1659,6 +1661,7 @@ class MediaRepository(
         }
         val data = resolvePlayUrlData(resp, alt)
             ?: throw BiliHttpException("No playable stream", -1)
+        AppLog.d("MediaRepository", "[stream] response quality=${data.quality} accept_quality=${data.acceptQuality} codecs=${data.dash?.video?.map { it.codecid }?.distinct()} dash=${data.dash != null} preview=${data.isPreview} dolby=${data.dash?.dolby?.audio?.isNotEmpty()} flac=${data.dash?.flac?.audio != null}")
         val acceptQuality = data.acceptQuality ?: emptyList()
         val acceptDescription = data.acceptDescription ?: emptyList()
 
@@ -1852,7 +1855,7 @@ class MediaRepository(
 
     private suspend fun fetchMusicPlayUrl(item: MediaItem): PlayUrlInfo {
         return runCatching { fetchMusicPlayUrlViaAppApi(item) }
-            .getOrElse { fetchMusicPlayUrlViaWebApi(item) }
+            .getOrElse { if (it is kotlinx.coroutines.CancellationException) throw it; AppLog.w("MediaRepository", "[stream] music web fallback", it); fetchMusicPlayUrlViaWebApi(item) }
     }
 
     private suspend fun fetchMusicPlayUrlViaAppApi(item: MediaItem): PlayUrlInfo {
@@ -2959,6 +2962,7 @@ private data class PlayUrlVideoInfoResult(
 )
 
 private data class PlayUrlData(
+    @Json(name = "is_preview") val isPreview: Int? = null,
     @Json(name = "quality") val quality: Int?,
     @Json(name = "format") val format: String?,
     @Json(name = "accept_quality") val acceptQuality: List<Int>?,

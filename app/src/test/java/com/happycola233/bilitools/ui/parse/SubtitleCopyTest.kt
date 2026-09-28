@@ -14,6 +14,8 @@ import org.junit.Before
 import org.junit.After
 import java.util.Locale
 
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class SubtitleCopyTest {
     private lateinit var previousLocale: Locale
     @Before fun useChineseDisplayLanguage() { previousLocale = Locale.getDefault(); Locale.setDefault(Locale.SIMPLIFIED_CHINESE) }

@@ -1,6 +1,8 @@
 package com.happycola233.bilitools.ui.login
 
 import android.graphics.Bitmap
+import com.happycola233.bilitools.core.AppLog
+import com.happycola233.bilitools.core.BiliHttpException
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.happycola233.bilitools.R
@@ -200,6 +202,8 @@ class LoginViewModel(
                 }
                 startPolling(qrInfo.qrKey)
             }.onFailure { err ->
+                    if (err is CancellationException) throw err
+                    logLoginFailure("refreshQr", err)
                 _state.update {
                     it.copy(
                         qrStatusRes = R.string.login_status_qr_failed,
@@ -283,6 +287,8 @@ class LoginViewModel(
                 }.onSuccess {
                     handleLoginSuccess()
                 }.onFailure { err ->
+                    if (err is CancellationException) throw err
+                    logLoginFailure("loginWithSms", err)
                     setError(err.message ?: strings.get(R.string.login_error_failed))
                 }
             }
@@ -299,6 +305,8 @@ class LoginViewModel(
             }.onSuccess {
                 handleLoginSuccess()
             }.onFailure { err ->
+                    if (err is CancellationException) throw err
+                    logLoginFailure("loginWithSms", err)
                 setError(err.message ?: strings.get(R.string.login_error_failed))
             }
         }
@@ -327,6 +335,7 @@ class LoginViewModel(
     }
 
     fun submitCaptcha(result: CaptchaResult) {
+        AppLog.i("LoginViewModel", "[captcha] verified")
         val pending = pendingCaptcha ?: return
         pendingCaptcha = null
         when (pending.purpose) {
@@ -342,6 +351,7 @@ class LoginViewModel(
     }
 
     private fun requestCaptcha(purpose: CaptchaPurpose) {
+        AppLog.d("LoginViewModel", "[captcha] loading purpose=$purpose")
         viewModelScope.launch {
             updateCaptchaLoading(purpose, true)
             runCatching {
@@ -353,10 +363,13 @@ class LoginViewModel(
                 }
             }
                 .onSuccess { params ->
+                    AppLog.i("LoginViewModel", "[captcha] loaded purpose=$purpose")
                     pendingCaptcha = PendingCaptcha(purpose, params.token)
                     _events.emit(LoginEvent.ShowCaptcha(params))
                 }
                 .onFailure { err ->
+                    if (err is CancellationException) throw err
+                    logLoginFailure("requestCaptcha", err)
                     updateCaptchaLoading(purpose, false)
                     setError(err.message ?: strings.get(R.string.login_error_captcha_failed))
                 }
@@ -383,6 +396,8 @@ class LoginViewModel(
                 }
                 _events.emit(LoginEvent.Message(strings.get(R.string.login_sms_sent)))
             }.onFailure { err ->
+                    if (err is CancellationException) throw err
+                    logLoginFailure("sendSmsWithCaptcha", err)
                 setError(err.message ?: strings.get(R.string.login_error_failed))
                 _state.update { it.copy(isSendingSms = false) }
             }
@@ -417,6 +432,8 @@ class LoginViewModel(
                 }
                 _events.emit(LoginEvent.Message(strings.get(R.string.login_sms_sent)))
             }.onFailure { err ->
+                    if (err is CancellationException) throw err
+                    logLoginFailure("sendRiskSmsWithCaptcha", err)
                 setError(err.message ?: strings.get(R.string.login_error_failed))
                 _state.update { it.copy(isSendingSms = false) }
             }
@@ -464,12 +481,15 @@ class LoginViewModel(
                     }
                 }
             }.onFailure { err ->
+                    if (err is CancellationException) throw err
+                    logLoginFailure("loginWithCaptcha", err)
                 setError(err.message ?: strings.get(R.string.login_error_failed))
             }
         }
     }
 
     private fun handleLoginSuccess() {
+        AppLog.i("LoginViewModel", "[login] confirmed")
         pendingCaptcha = null
         pendingSms = null
         pendingPwd = null
@@ -503,6 +523,10 @@ class LoginViewModel(
         }
     }
 
+    private fun logLoginFailure(operation: String, error: Throwable) {
+        AppLog.w("LoginViewModel", "[login] operation=$operation error=${error.javaClass.simpleName} code=${(error as? BiliHttpException)?.code}")
+    }
+
     private fun setError(message: String) {
         _state.update { it.copy(isLoggingIn = false, isSendingSms = false, errorText = message) }
     }
@@ -510,7 +534,10 @@ class LoginViewModel(
     private fun loadCountries() {
         viewModelScope.launch {
             val zone = runCatching { authRepository.getZoneCode() }.getOrDefault(86)
-            val list = runCatching { authRepository.getCountryList() }.getOrDefault(emptyList())
+            val list = runCatching { authRepository.getCountryList() }.onFailure {
+                if (it is CancellationException) throw it
+                logLoginFailure("countries", it)
+            }.getOrDefault(emptyList())
             _state.update {
                 it.copy(
                     countries = list.toOptions(),
@@ -524,7 +551,14 @@ class LoginViewModel(
         pollJob?.cancel()
         pollJob = viewModelScope.launch {
             while (isActive) {
-                val result = authRepository.pollQr(qrKey)
+                val result = try {
+                    authRepository.pollQr(qrKey)
+                } catch (error: Exception) {
+                    if (error is CancellationException) throw error
+                    logLoginFailure("qr-poll", error)
+                    _state.update { it.copy(isPolling = false, qrStatusRes = R.string.login_status_failed_retry) }
+                    break
+                }
                 val statusRes = when (result.status) {
                     QrLoginStatus.Waiting -> R.string.login_status_waiting
                     QrLoginStatus.Scanned -> R.string.login_status_scanned
@@ -596,7 +630,8 @@ class LoginViewModel(
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
-            } catch (_: Throwable) {
+            } catch (error: Throwable) {
+                logLoginFailure("account-refresh", error)
                 val isLoggedIn = authRepository.isLoggedIn()
                 val cachedMid = if (isLoggedIn) authRepository.getCachedMid() else null
                 _state.update {

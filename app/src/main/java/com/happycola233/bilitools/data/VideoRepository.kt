@@ -1,5 +1,6 @@
 package com.happycola233.bilitools.data
 
+import com.happycola233.bilitools.core.AppLog
 import com.happycola233.bilitools.core.BiliHttpClient
 import com.happycola233.bilitools.core.BiliHttpException
 import com.happycola233.bilitools.core.CookieStore
@@ -42,7 +43,7 @@ class VideoRepository(
             val tagAdapter = httpClient.adapter(TagResponse::class.java)
             val tagResp = tagAdapter.fromJson(tagBody)
             tagResp?.data?.mapNotNull { it.tagName } ?: emptyList()
-        }.getOrDefault(emptyList())
+        }.onFailure { if (it is kotlinx.coroutines.CancellationException) throw it; AppLog.w("VideoRepository", "[video] tags unavailable", it) }.getOrDefault(emptyList())
         val pages = resp.data.pages?.map {
             VideoPage(it.cid, it.part, it.duration)
         } ?: listOf(VideoPage(resp.data.cid, resp.data.title, resp.data.duration))
@@ -83,6 +84,7 @@ class VideoRepository(
             StreamFormat.Dash -> baseParams["fnval"] = if (cookieStore.isLoggedIn()) "4048" else "16"
         }
         val baseUrl = "https://api.bilibili.com/x/player/wbi/playurl"
+        AppLog.d("VideoRepository", "[stream] aid=$aid cid=$cid qn=${baseParams["qn"]} fnval=${baseParams["fnval"]}")
         val body = httpClient.get(wbiSigner.signedUrl(baseUrl, baseParams))
         val adapter = httpClient.adapter(VideoPlayUrlResponse::class.java)
         val resp =
@@ -102,6 +104,7 @@ class VideoRepository(
         if (data == null) {
             throw BiliHttpException("Empty playurl response", -1)
         }
+        AppLog.d("VideoRepository", "[stream] quality=${data.quality} accept_quality=${data.acceptQuality} dash=${data.dash != null} codecs=${data.dash?.video?.map { it.codecid }?.distinct()}")
         val acceptQuality = data.acceptQuality ?: emptyList()
         val acceptDescription = data.acceptDescription ?: emptyList()
 

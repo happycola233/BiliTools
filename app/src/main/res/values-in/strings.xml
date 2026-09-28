@@ -408,7 +408,7 @@
     <string name="settings_general_summary">Bahasa, haptik, animasi startup, dan notifikasi</string>
     <string name="settings_download_summary">Lokasi, konkurensi, kualitas, metadata, dan format file</string>
     <string name="settings_appearance_summary">Tema, warna, mode hitam murni, dan kaca cair</string>
-    <string name="settings_about_summary">Versi, pembaruan, log, lisensi, dan penafian</string>
+    <string name="settings_about_summary">Versi, pembaruan, laporan masalah, lisensi, dan penafian</string>
     <string name="settings_add_metadata">Tambahkan metadata ke unduhan</string>
     <string name="settings_add_metadata_desc">Sematkan judul, artis, album, dan sumber ke dalam file audio atau video.</string>
     <string name="settings_metadata_options">Opsi metadata</string>
@@ -554,23 +554,6 @@
     <string name="settings_license_title">Lisensi</string>
     <string name="settings_opensource_licenses_title">Lisensi sumber terbuka</string>
     <string name="settings_opensource_licenses_summary">Pustaka pihak ketiga yang digunakan oleh BiliTools</string>
-    <string name="settings_issue_report_enabled_title">Pencatatan diagnostik terperinci</string>
-    <string name="settings_issue_report_enabled_desc">Log disimpan secara lokal. Ekspor mencakup informasi perangkat, pengaturan saat ini, dan status jaringan. Nilai Cookie, Set-Cookie, dan Otorisasi disunting.</string>
-    <string name="settings_issue_report_export_title">Ekspor dan bagikan log</string>
-    <string name="settings_issue_report_clear_title">Hapus log lokal</string>
-    <string name="settings_issue_report_clear_desc">Menghapus log diagnostik aplikasi. Hapus masalah tersebut sebelum mereproduksi masalah agar ekspor berikutnya tetap fokus pada masalah tersebut.</string>
-    <string name="settings_issue_report_export_success">Log diekspor. Membuka lembar berbagi…</string>
-    <string name="settings_issue_report_export_failed">Tidak dapat mengekspor log. Coba lagi nanti.</string>
-    <string name="settings_issue_report_share_failed">Kayu gelondongan diekspor, tetapi lembar pembagian tidak dapat dibuka.</string>
-    <string name="settings_issue_report_clear_success">Log lokal dihapus</string>
-    <string name="settings_issue_report_export_running">Mempersiapkan dan mengekspor log…</string>
-    <string name="settings_issue_report_clear_running">Menghapus log lokal…</string>
-    <string name="settings_issue_report_status_disabled">Pencatatan log terperinci tidak aktif. Ekspor terutama akan berisi informasi diagnostik dasar.</string>
-    <string name="settings_issue_report_status_enabled">Pencatatan log terperinci aktif.</string>
-    <string name="settings_issue_report_status_enabled_since_suffix">Sejak %1$s.</string>
-    <string name="settings_issue_report_status_files">Log yang di-cache: %1$d · Tentang %2$s</string>
-    <string name="settings_issue_report_status_last_capture">Terakhir direkam: %1$s</string>
-    <string name="settings_issue_report_status_last_export">Terakhir diekspor: %1$s</string>
     <string name="settings_disclaimer_title">Penafian</string>
     <string name="settings_about_disclaimer">Semua data yang disimpan oleh aplikasi ini disimpan secara lokal di perangkat Anda dalam teks biasa.\nAnda bertanggung jawab atas konsekuensi penggunaan proyek ini. Pengembang tidak bertanggung jawab.\nNama, logo, dan gambar terkait 哔哩哔哩 dan Bilibili adalah merek dagang atau merek dagang terdaftar dari Shanghai Huandian Information Technology Co., Ltd.\nProyek ini tidak berafiliasi dengan, diizinkan oleh, didukung oleh, atau bermitra dengan Bilibili atau afiliasinya.</string>
     <string name="update_dialog_title">Pembaruan tersedia</string>
@@ -580,4 +563,32 @@
     <string name="downloads_details_close">Tutup detail unduhan</string>
     <string name="downloads_details_expand_path">Perluas jalur</string>
     <string name="downloads_details_collapse_path">Ciutkan jalur</string>
+
+    <!-- Local diagnostic reports -->
+    <string name="diagnostic_feedback">Laporkan masalah</string>
+    <string name="diagnostic_feedback_description">Ekspor laporan diagnostik untuk dibagikan kepada pengembang</string>
+    <string name="diagnostic_clear">Hapus log diagnostik</string>
+    <string name="diagnostic_clear_description">Hapus detail aktivitas aplikasi dan kesalahan untuk pemecahan masalah</string>
+    <string name="diagnostic_cleared">Log diagnostik dihapus</string>
+    <string name="diagnostic_title">Laporan diagnostik</string>
+    <string name="diagnostic_description">Berisi informasi aplikasi dan perangkat, log diagnostik 7 hari (termasuk ID video dan nama file unduhan), unduhan gagal, penghentian tak terduga, serta pengaturan yang diubah.</string>
+    <string name="diagnostic_problem">Deskripsi masalah (opsional)</string>
+    <string name="diagnostic_problem_hint">Apa yang terjadi? Bagaimana cara memunculkannya kembali?</string>
+    <string name="diagnostic_preview">Lihat isi laporan</string>
+    <string name="diagnostic_hide_preview">Sembunyikan isi laporan</string>
+    <string name="diagnostic_log_summary">Log diagnostik: %1$d baris\nRentang waktu: %2$s</string>
+    <string name="diagnostic_share">Bagikan</string>
+    <string name="diagnostic_save">Simpan</string>
+    <string name="diagnostic_github">Laporkan di GitHub</string>
+    <string name="diagnostic_attach_hint">Lampirkan file laporan yang disimpan saat mengirim</string>
+    <string name="diagnostic_crash_title">BiliTools mengalami masalah pada penggunaan terakhir</string>
+    <string name="diagnostic_crash_description">Mengekspor laporan diagnostik dan membagikannya kepada pengembang dapat membantu memperbaiki masalah ini.</string>
+    <string name="diagnostic_export">Ekspor laporan</string>
+    <string name="diagnostic_ignore">Abaikan</string>
+    <string name="diagnostic_failed">Operasi tidak dapat diselesaikan. Coba lagi nanti.</string>
+    <string name="diagnostic_saved">Laporan disimpan</string>
+    <string name="diagnostic_clear_explanation">Log diagnostik mencatat kejadian dan kesalahan saat aplikasi berjalan, mengurai video, dan mengunduh file untuk membantu pengembang menyelidiki masalah.\n\nSetelah dihapus, pencatatan dimulai kembali dan laporan sementara yang dibuat di aplikasi untuk dibagikan ikut dihapus.</string>
+    <string name="diagnostic_clear_confirm">Hapus</string>
+    <string name="diagnostic_privacy">Disimpan di perangkat; Anda yang memilih untuk berbagi. Kata sandi, cookie, dan kredensial masuk lainnya tidak disertakan. UID akun disembunyikan.</string>
+    <string name="diagnostic_close">Tutup laporan diagnostik</string>
 </resources>

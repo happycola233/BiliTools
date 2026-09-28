@@ -193,7 +193,7 @@ internal class DownloadOutputStorage(private val context: Context) {
             return@withLock try {
                 if (mediaId(Uri.parse(uri)) != null && query(Uri.parse(uri)) == null) OutputDeleteResult.Missing
                 else OutputDeleteResult.Blocked
-            } catch (_: Exception) { OutputDeleteResult.Failed }
+            } catch (error: Exception) { Log.w(TAG, "[delete] verification failed uri=$uri", error); OutputDeleteResult.Failed }
         }
         if (ownerKeys != null && output.ownerKey !in ownerKeys) return@withLock OutputDeleteResult.Blocked
         deleteVerified(output, rollback = !output.complete)
@@ -243,6 +243,7 @@ internal class DownloadOutputStorage(private val context: Context) {
             if (!matchesIdentity(output, current, rollback)) return OutputDeleteResult.Blocked
             // 条件随单文件删除一起交给提供者，防止检查后移动/重命名导致越界。
             val count = resolver.delete(uri, identitySelection(current), identityArgs(current))
+            Log.i(TAG, "[delete] uri=$uri directory=${output.directory} file=${output.name} removed=$count rollback=$rollback")
             if (count == 1) {
                 onDeleted()
                 forget(output.uri)

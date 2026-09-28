@@ -1,5 +1,6 @@
 package com.happycola233.bilitools.ui.history
 
+import com.happycola233.bilitools.core.AppLog
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.happycola233.bilitools.R
@@ -324,6 +325,7 @@ class HistoryViewModel(
     }
 
     private fun failLoad(error: Throwable, resetProgress: (HistoryUiState) -> HistoryUiState) {
+        AppLog.w("HistoryViewModel", "[history] load failed", error)
         if (error is BiliHttpException && error.code == -101) {
             _state.update { it.loggedOut() }
             return

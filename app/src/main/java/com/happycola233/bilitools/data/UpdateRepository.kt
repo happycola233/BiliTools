@@ -5,7 +5,7 @@ import com.happycola233.bilitools.core.StringProvider
 import android.content.Context
 import android.os.Build
 import com.happycola233.bilitools.core.AppLog as Log
-import com.happycola233.bilitools.core.createHttpDiagnosticLoggingInterceptor
+import com.happycola233.bilitools.core.NetworkDiagnosticInterceptor
 import com.squareup.moshi.Json
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
@@ -55,7 +55,6 @@ sealed interface UpdateCheckResult {
 class UpdateRepository(
     context: Context,
     private val gitHubRouteManager: GitHubRouteManager,
-    private val settingsRepository: SettingsRepository,
 ) {
     private val appContext = context.applicationContext
     private val strings = StringProvider(context)
@@ -63,9 +62,8 @@ class UpdateRepository(
     private val client by lazy {
         OkHttpClient.Builder()
             .addInterceptor(
-                createHttpDiagnosticLoggingInterceptor(
+                NetworkDiagnosticInterceptor(
                     tag = TAG,
-                    settingsRepository = settingsRepository,
                 ),
             )
             .build()

@@ -31,6 +31,7 @@ class MainActivity : AppCompatActivity() {
         AppViewModelFactory(applicationContext.appContainer)
     }
 
+    private val launchFinished = androidx.compose.runtime.mutableStateOf(false)
     private val selectedTabIndex = mutableIntStateOf(MAIN_TAB_PARSE)
     private var mainContentView: View? = null
     private var launchFlashGuard: View? = null
@@ -48,9 +49,12 @@ class MainActivity : AppCompatActivity() {
                 MainLaunchSplashAnimator.play(
                     splashScreenView = splashScreenView,
                     contentView = mainContentView,
+                    onFinished = { launchFinished.value = true },
                 )
                 releaseLaunchFlashGuardAfterSplashDrawn()
             }
+        } else {
+            splashScreen.setOnExitAnimationListener { it.remove(); launchFinished.value = true }
         }
 
         enableBiliEdgeToEdge()
@@ -71,6 +75,7 @@ class MainActivity : AppCompatActivity() {
             val selectedTabIndexProvider = remember { { selectedTabIndex.intValue } }
             val selectTab = remember { { index: Int -> selectedTabIndex.intValue = index } }
             BiliToolsTheme(settings = settings) {
+                if (launchFinished.value) com.happycola233.bilitools.ui.diagnostics.DiagnosticStartupPrompt()
                 MainScreen(
                     activity = this@MainActivity,
                     checkForUpdates = savedInstanceState == null,

@@ -12,7 +12,6 @@ import com.happycola233.bilitools.data.DownloadMetadataSettings
 import com.happycola233.bilitools.data.DownloadPreferenceMemorySettings
 import com.happycola233.bilitools.data.DefaultDownloadQualitySettings
 import com.happycola233.bilitools.data.HapticFeedbackLevel
-import com.happycola233.bilitools.data.IssueReportRepository
 import com.happycola233.bilitools.data.LiveUpdateIcon
 import com.happycola233.bilitools.data.SettingsRepository
 import com.happycola233.bilitools.data.TopLevelFolderMode
@@ -33,10 +32,8 @@ sealed class SettingsDestination : NavKey {
 
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
-    private val issueReportRepository: IssueReportRepository,
 ) : ViewModel() {
     val settings = settingsRepository.settings
-    val issueReportState = issueReportRepository.state
     val backStack = mutableStateListOf<SettingsDestination>(SettingsDestination.Main)
 
     fun navigateTo(destination: SettingsDestination) {
@@ -196,21 +193,8 @@ class SettingsViewModel(
         settingsRepository.restoreNamingDefaults()
     }
 
-    fun setIssueReportDetailedLoggingEnabled(enabled: Boolean) {
-        issueReportRepository.setDetailedLoggingEnabled(enabled)
-    }
-
-    fun refreshIssueReportState() {
-        issueReportRepository.refreshState()
-    }
-
     fun setDownloadRootFromTreeUri(uri: Uri): Boolean {
         return settingsRepository.setDownloadRootFromTreeUri(uri)
     }
 
-    suspend fun exportDetailedIssueLogs() = issueReportRepository.exportDetailedLogs()
-
-    suspend fun clearDetailedIssueLogs() {
-        issueReportRepository.clearLogs()
-    }
 }

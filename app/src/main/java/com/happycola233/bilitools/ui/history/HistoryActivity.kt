@@ -1,5 +1,6 @@
 package com.happycola233.bilitools.ui.history
 
+import com.happycola233.bilitools.core.AppLog
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
@@ -102,6 +103,7 @@ class HistoryActivity : AppCompatActivity() {
     private fun openUrl(url: String) {
         val intent = Intent(Intent.ACTION_VIEW, url.toUri())
         runCatching { startActivity(intent) }.onFailure {
+                AppLog.w("HistoryActivity", "[open-link] failed", it)
             Toast.makeText(this, getString(R.string.common_open_link_failed), Toast.LENGTH_SHORT).show()
         }
     }

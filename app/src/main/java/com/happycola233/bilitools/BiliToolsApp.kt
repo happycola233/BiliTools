@@ -21,6 +21,14 @@ class BiliToolsApp : Application(), Application.ActivityLifecycleCallbacks, Sing
     val container: AppContainer by lazy { AppContainer(this) }
     @Volatile
     private var startedActivityCount: Int = 0
+    private val lifecycleHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var foregroundLogged = false
+    private val logBackground = Runnable {
+        if (startedActivityCount == 0 && foregroundLogged) {
+            foregroundLogged = false
+            AppLog.i(TAG, "[lifecycle] background")
+        }
+    }
     private var previousUncaughtExceptionHandler: Thread.UncaughtExceptionHandler? = null
 
     val isAppInForeground: Boolean
@@ -38,15 +46,17 @@ class BiliToolsApp : Application(), Application.ActivityLifecycleCallbacks, Sing
     override fun onCreate() {
         super.onCreate()
         AppLog.install(container.diagnosticLogStore)
-        container.updatePackageCleanupManager.cleanupAfterAppUpdateIfNeeded()
         registerActivityLifecycleCallbacks(this)
         // Load persisted settings at startup (including theme mode).
         val settingsRepository = container.settingsRepository
-        if (settingsRepository.currentSettings().issueReportDetailedLoggingEnabled) {
-            AppLog.startNewDiagnosticSession("Application created")
-        }
+        container.diagnosticExitHistory.initialize()
+        @Suppress("DEPRECATION")
+        val packageInfo = packageManager.getPackageInfo(packageName, 0)
+        val previousExit = container.diagnosticExitHistory.recent().firstOrNull()?.summary()
+        AppLog.startNewDiagnosticSession("pid=${android.os.Process.myPid()} version=${packageInfo.versionName}/${packageInfo.longVersionCode} previousExit=$previousExit")
         AppLog.i(TAG, "[lifecycle] application created")
         installUncaughtExceptionLogging()
+        container.updatePackageCleanupManager.cleanupAfterAppUpdateIfNeeded()
         val options = DynamicColorsOptions.Builder()
             .setPrecondition { _, _ ->
                 settingsRepository.currentSettings().themeColor == AppThemeColor.Dynamic
@@ -61,46 +71,30 @@ class BiliToolsApp : Application(), Application.ActivityLifecycleCallbacks, Sing
         container.downloadNotifications.refresh(refreshChannels = true)
     }
 
-    override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
-        AppLog.d(
-            TAG,
-            "[lifecycle] activity created=${activity.localClassName}, restored=${savedInstanceState != null}",
-        )
-    }
+    override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
 
     override fun onActivityStarted(activity: Activity) {
-        startedActivityCount += 1
-        AppLog.d(
-            TAG,
-            "[lifecycle] activity started=${activity.localClassName}, startedCount=$startedActivityCount",
-        )
+        startedActivityCount++
+        lifecycleHandler.removeCallbacks(logBackground)
+        if (!foregroundLogged) {
+            foregroundLogged = true
+            AppLog.i(TAG, "[lifecycle] foreground")
+        }
     }
 
     override fun onActivityResumed(activity: Activity) {
-        AppLog.d(TAG, "[lifecycle] activity resumed=${activity.localClassName}")
-        // 从系统设置返回时，重新评估通知权限和 Live Update 提升许可。
         container.downloadNotifications.refresh()
     }
 
-    override fun onActivityPaused(activity: Activity) {
-        AppLog.d(TAG, "[lifecycle] activity paused=${activity.localClassName}")
-    }
+    override fun onActivityPaused(activity: Activity) = Unit
 
     override fun onActivityStopped(activity: Activity) {
-        startedActivityCount = (startedActivityCount - 1).coerceAtLeast(0)
-        AppLog.d(
-            TAG,
-            "[lifecycle] activity stopped=${activity.localClassName}, startedCount=$startedActivityCount",
-        )
+        // 与进程生命周期相同的短延迟，避免 Activity 切换或配置重建产生伪前后台事件。
+        if (--startedActivityCount == 0 && !activity.isChangingConfigurations) lifecycleHandler.postDelayed(logBackground, 700)
     }
 
-    override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {
-        AppLog.d(TAG, "[lifecycle] activity saveInstanceState=${activity.localClassName}")
-    }
-
-    override fun onActivityDestroyed(activity: Activity) {
-        AppLog.d(TAG, "[lifecycle] activity destroyed=${activity.localClassName}")
-    }
+    override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
+    override fun onActivityDestroyed(activity: Activity) = Unit
 
     private fun installUncaughtExceptionLogging() {
         previousUncaughtExceptionHandler = Thread.getDefaultUncaughtExceptionHandler()
@@ -110,6 +104,7 @@ class BiliToolsApp : Application(), Application.ActivityLifecycleCallbacks, Sing
                 "[crash] uncaught exception on thread=${thread.name}",
                 throwable,
             )
+            container.diagnosticExitHistory.recordUncaughtException()
             runCatching {
                 runBlocking {
                     AppLog.flushDiagnosticLogs()

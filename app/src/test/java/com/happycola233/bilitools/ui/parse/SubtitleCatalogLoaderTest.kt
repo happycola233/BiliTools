@@ -17,6 +17,8 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class SubtitleCatalogLoaderTest {
     private val chinese = SubtitleInfo("zh-Hans", "中文", "https://example.invalid/zh")
     private val english = SubtitleInfo("en", "英语", "https://example.invalid/en")

@@ -411,7 +411,7 @@
     <string name="settings_general_summary">Language, haptics, startup animation and notifications</string>
     <string name="settings_download_summary">Location, concurrency, quality, metadata and file formats</string>
     <string name="settings_appearance_summary">Theme, colors, pure black mode and liquid glass</string>
-    <string name="settings_about_summary">Version, updates, logs, licenses and disclaimer</string>
+    <string name="settings_about_summary">Version, updates, problem reports, licenses and disclaimer</string>
     <string name="settings_add_metadata">Add metadata to downloads</string>
     <string name="settings_add_metadata_desc">Embed title, artist, album and source into audio or video files.</string>
     <string name="settings_metadata_options">Metadata options</string>
@@ -557,23 +557,6 @@
     <string name="settings_license_title">License</string>
     <string name="settings_opensource_licenses_title">Open source licenses</string>
     <string name="settings_opensource_licenses_summary">Third-party libraries used by BiliTools</string>
-    <string name="settings_issue_report_enabled_title">Detailed diagnostic logging</string>
-    <string name="settings_issue_report_enabled_desc">Logs are stored locally. Exports include device information, current settings and network status. Cookie, Set-Cookie and Authorization values are redacted.</string>
-    <string name="settings_issue_report_export_title">Export and share logs</string>
-    <string name="settings_issue_report_clear_title">Clear local logs</string>
-    <string name="settings_issue_report_clear_desc">Deletes the app\'s diagnostic logs. Clear them before reproducing an issue to keep the next export focused on that issue.</string>
-    <string name="settings_issue_report_export_success">Logs exported. Opening the share sheet…</string>
-    <string name="settings_issue_report_export_failed">Could not export logs. Try again later.</string>
-    <string name="settings_issue_report_share_failed">Logs were exported, but the share sheet could not be opened.</string>
-    <string name="settings_issue_report_clear_success">Local logs cleared</string>
-    <string name="settings_issue_report_export_running">Preparing and exporting logs…</string>
-    <string name="settings_issue_report_clear_running">Clearing local logs…</string>
-    <string name="settings_issue_report_status_disabled">Detailed logging is off. Exports will mainly contain basic diagnostic information.</string>
-    <string name="settings_issue_report_status_enabled">Detailed logging is on.</string>
-    <string name="settings_issue_report_status_enabled_since_suffix">Since %1$s.</string>
-    <string name="settings_issue_report_status_files">Cached logs: %1$d · About %2$s</string>
-    <string name="settings_issue_report_status_last_capture">Last recorded: %1$s</string>
-    <string name="settings_issue_report_status_last_export">Last exported: %1$s</string>
     <string name="settings_disclaimer_title">Disclaimer</string>
     <string name="settings_about_disclaimer">All data saved by this app is stored locally on your device in plain text.\nYou are responsible for the consequences of using this project. The developer accepts no liability.\nThe names, logos and related graphics of 哔哩哔哩 and Bilibili are trademarks or registered trademarks of Shanghai Huandian Information Technology Co., Ltd.\nThis project is not affiliated with, authorized by, endorsed by, or partnered with Bilibili or its affiliates.</string>
     <string name="update_dialog_title">Update available</string>
@@ -583,4 +566,32 @@
     <string name="downloads_details_close">Close download details</string>
     <string name="downloads_details_expand_path">Expand path</string>
     <string name="downloads_details_collapse_path">Collapse path</string>
+
+    <!-- Local diagnostic reports -->
+    <string name="diagnostic_feedback">Report a problem</string>
+    <string name="diagnostic_feedback_description">Export a diagnostic report to share with the developer</string>
+    <string name="diagnostic_clear">Clear diagnostic logs</string>
+    <string name="diagnostic_clear_description">Remove app activity and error details used for troubleshooting</string>
+    <string name="diagnostic_cleared">Diagnostic logs cleared</string>
+    <string name="diagnostic_title">Diagnostic report</string>
+    <string name="diagnostic_description">Includes app and device information, 7 days of diagnostic logs (with video IDs and downloaded filenames), failed downloads, unexpected exits, and changed settings.</string>
+    <string name="diagnostic_problem">Problem description (optional)</string>
+    <string name="diagnostic_problem_hint">What happened? How can we reproduce it?</string>
+    <string name="diagnostic_preview">View report contents</string>
+    <string name="diagnostic_hide_preview">Hide report contents</string>
+    <string name="diagnostic_log_summary">Diagnostic logs: %1$d lines\nTime range: %2$s</string>
+    <string name="diagnostic_share">Share</string>
+    <string name="diagnostic_save">Save</string>
+    <string name="diagnostic_github">Report on GitHub</string>
+    <string name="diagnostic_attach_hint">Attach the saved report file when submitting</string>
+    <string name="diagnostic_crash_title">BiliTools had a problem during its last run</string>
+    <string name="diagnostic_crash_description">Exporting a diagnostic report and sharing it with the developer can help fix this problem.</string>
+    <string name="diagnostic_export">Export report</string>
+    <string name="diagnostic_ignore">Ignore</string>
+    <string name="diagnostic_failed">Could not complete the operation. Please try again later.</string>
+    <string name="diagnostic_saved">Report saved</string>
+    <string name="diagnostic_clear_explanation">Diagnostic logs capture events and errors while the app runs, parses videos, and downloads files to help developers investigate problems.\n\nClearing them starts a new log and removes temporary reports created in the app for sharing.</string>
+    <string name="diagnostic_clear_confirm">Clear</string>
+    <string name="diagnostic_privacy">Stored locally; you choose when to share. Passwords, cookies, and other login credentials are excluded. Your account UID is hidden.</string>
+    <string name="diagnostic_close">Close diagnostic report</string>
 </resources>

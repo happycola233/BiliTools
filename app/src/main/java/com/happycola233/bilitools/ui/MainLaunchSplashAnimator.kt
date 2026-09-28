@@ -35,9 +35,11 @@ internal object MainLaunchSplashAnimator {
     fun play(
         splashScreenView: SplashScreenViewProvider,
         contentView: View?,
+        onFinished: () -> Unit = {},
     ) {
         if (!ValueAnimator.areAnimatorsEnabled()) {
             splashScreenView.remove()
+            onFinished()
             return
         }
 
@@ -55,6 +57,7 @@ internal object MainLaunchSplashAnimator {
             }
             splashView.setLayerType(View.LAYER_TYPE_NONE, null)
             iconView.setLayerType(View.LAYER_TYPE_NONE, null)
+            onFinished()
         }
 
         contentView?.prepareForReveal()

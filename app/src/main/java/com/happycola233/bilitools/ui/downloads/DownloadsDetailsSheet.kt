@@ -25,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -68,7 +69,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private data class DownloadOutputDetails(val path: String?, val sizeBytes: Long?)
+internal data class DownloadOutputDetails(val path: String?, val sizeBytes: Long?)
 
 /** 仅在打开详情或成品发生变化时查询 MediaStore，不把磁盘查询放进列表重组。 */
 private fun readDownloadOutput(context: Context, uri: String): DownloadOutputDetails? = runCatching {
@@ -94,6 +95,11 @@ private fun readDownloadOutput(context: Context, uri: String): DownloadOutputDet
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun DownloadsDetailsSheet(group: DownloadGroup, onDismiss: () -> Unit) {
+    var focusTaskId by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf<Long?>(null) }
+    if (focusTaskId != null) {
+        com.happycola233.bilitools.ui.diagnostics.DiagnosticReportHost(focusTaskId, onDismiss = { focusTaskId = null })
+        return
+    }
     val context = LocalContext.current
     val metadata = group.detailsMetadata
     val savedTasks = group.tasks.filter { it.status == DownloadStatus.Success && !it.outputMissing }
@@ -188,7 +194,7 @@ internal fun DownloadsDetailsSheet(group: DownloadGroup, onDismiss: () -> Unit) 
             }
             itemsIndexed(group.tasks, key = { _, task -> "file:${task.id}" }) { index, task ->
                 if (index > 0) DetailsDivider()
-                DownloadFileDetails(task, group.relativePath, outputDetails[task.id])
+                DownloadFileDetails(task, group.relativePath, outputDetails[task.id], onFeedback = { focusTaskId = task.id })
             }
             item(key = "source") {
                 DetailsSectionTitle(stringResource(R.string.downloads_details_source))
@@ -248,7 +254,7 @@ private fun DownloadSourceDetails(group: DownloadGroup, metadata: DownloadEmbedd
 }
 
 @Composable
-private fun DownloadFileDetails(item: DownloadItem, directory: String, output: DownloadOutputDetails?) {
+internal fun DownloadFileDetails(item: DownloadItem, directory: String, output: DownloadOutputDetails?, onFeedback: () -> Unit = {}) {
     val context = LocalContext.current
     val mediaParams = item.mediaParams?.localized(context)
     val status = when (item.status) {
@@ -299,6 +305,13 @@ private fun DownloadFileDetails(item: DownloadItem, directory: String, output: D
                 stringResource(R.string.runtime_failure_reason), resolveFailureReason(item.localizedErrorMessage(context)),
                 valueColor = MaterialTheme.colorScheme.error,
             )
+            TextButton(
+                onClick = onFeedback,
+                contentPadding = PaddingValues(vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.diagnostic_feedback), modifier = Modifier.fillMaxWidth())
+            }
         }
         item.localizedStatusDetail(context)?.takeIf { item.status == DownloadStatus.Unavailable }?.let {
             DetailValue(stringResource(R.string.runtime_explanation), it, valueColor = statusColor)

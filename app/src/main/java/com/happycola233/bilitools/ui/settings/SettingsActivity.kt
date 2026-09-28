@@ -1,7 +1,6 @@
 package com.happycola233.bilitools.ui.settings
 
-import android.content.ActivityNotFoundException
-import android.content.Intent
+import com.happycola233.bilitools.core.AppLog
 import android.content.res.Configuration
 import android.net.Uri
 import android.os.Bundle
@@ -59,7 +58,6 @@ class SettingsActivity : AppCompatActivity() {
         applySettingsThemeOverlays()
         super.onCreate(savedInstanceState)
         selectedLanguage.value = AppLanguage.current()
-        viewModel.refreshIssueReportState()
         liveUpdateSupported.value = applicationContext.isLiveUpdateSupported()
 
         val composeView = ComposeView(this).apply {
@@ -70,7 +68,6 @@ class SettingsActivity : AppCompatActivity() {
 
         composeView.setContent {
             val settings by viewModel.settings.collectAsState()
-            val issueReportState by viewModel.issueReportState.collectAsState()
             val isLiveUpdateSupported by liveUpdateSupported.collectAsState()
             val currentLanguage by selectedLanguage.collectAsState()
             val updateRepository = remember { applicationContext.appContainer.updateRepository }
@@ -80,8 +77,7 @@ class SettingsActivity : AppCompatActivity() {
             // 设置页切换语言时保留窗口和操作状态，展示文案始终由当前资源重新生成。
             var updateCheckResult by remember { mutableStateOf<UpdateCheckResult?>(null) }
             var checkingUpdate by remember { mutableStateOf(false) }
-            var exportingIssueReport by remember { mutableStateOf(false) }
-            var clearingIssueReport by remember { mutableStateOf(false) }
+            var showDiagnosticReport by remember { mutableStateOf(false) }
             val checkedVersion = when (val result = updateCheckResult) {
                 is UpdateCheckResult.UpdateAvailable -> normalizeVersionLabel(result.currentVersion)
                 is UpdateCheckResult.UpToDate -> normalizeVersionLabel(result.currentVersion)
@@ -109,13 +105,10 @@ class SettingsActivity : AppCompatActivity() {
             BiliToolsSettingsContent(
                 settings = settings,
                 liveUpdateSupported = isLiveUpdateSupported,
-                issueReportState = issueReportState,
                 backStack = viewModel.backStack,
                 checkUpdateSummary = checkUpdateSummary,
                 versionName = versionName,
                 versionCode = versionCode,
-                issueReportExporting = exportingIssueReport,
-                issueReportClearing = clearingIssueReport,
                 onExit = ::finish,
                 onNavigate = viewModel::navigateTo,
                 onNavigateBack = viewModel::popDestination,
@@ -216,45 +209,20 @@ class SettingsActivity : AppCompatActivity() {
                 onLiquidBarWidthChange = viewModel::setLiquidBarWidthFraction,
                 onHapticFeedbackLevelChange = viewModel::setHapticFeedbackLevel,
                 onGlassDebugChange = viewModel::setDownloadsGlassDebugEnabled,
-                onIssueReportLoggingChange = viewModel::setIssueReportDetailedLoggingEnabled,
-                onExportIssueReport = {
-                    if (!exportingIssueReport) {
-                        exportingIssueReport = true
-                        scope.launch {
-                            val exportUri = viewModel.exportDetailedIssueLogs()
-                            if (exportUri != null) {
-                                Toast.makeText(
-                                    this@SettingsActivity,
-                                    getString(R.string.settings_issue_report_export_success),
-                                    Toast.LENGTH_SHORT,
-                                ).show()
-                                shareIssueReport(exportUri)
-                            } else {
-                                Toast.makeText(
-                                    this@SettingsActivity,
-                                    getString(R.string.settings_issue_report_export_failed),
-                                    Toast.LENGTH_SHORT,
-                                ).show()
-                            }
-                            exportingIssueReport = false
-                        }
-                    }
-                },
-                onClearIssueReport = {
-                    if (!clearingIssueReport) {
-                        clearingIssueReport = true
-                        scope.launch {
-                            viewModel.clearDetailedIssueLogs()
-                            Toast.makeText(
-                                this@SettingsActivity,
-                                getString(R.string.settings_issue_report_clear_success),
-                                Toast.LENGTH_SHORT,
-                            ).show()
-                            clearingIssueReport = false
+                onFeedback = { showDiagnosticReport = true },
+                onClearDiagnostics = {
+                    scope.launch {
+                        try {
+                            applicationContext.appContainer.diagnosticReportRepository.clear()
+                            Toast.makeText(this@SettingsActivity, R.string.diagnostic_cleared, Toast.LENGTH_SHORT).show()
+                        } catch (error: java.io.IOException) {
+                            AppLog.w(TAG, "[report] clear failed", error)
+                            Toast.makeText(this@SettingsActivity, R.string.diagnostic_failed, Toast.LENGTH_LONG).show()
                         }
                     }
                 },
             )
+            if (showDiagnosticReport) com.happycola233.bilitools.ui.diagnostics.DiagnosticReportHost(onDismiss = { showDiagnosticReport = false })
         }
     }
 
@@ -269,7 +237,6 @@ class SettingsActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         selectedLanguage.value = AppLanguage.current()
-        viewModel.refreshIssueReportState()
         liveUpdateSupported.value = applicationContext.isLiveUpdateSupported()
     }
 
@@ -303,30 +270,6 @@ class SettingsActivity : AppCompatActivity() {
         return runCatching {
             DocumentsContract.buildTreeDocumentUri(EXTERNAL_STORAGE_PROVIDER, treeId)
         }.getOrNull()
-    }
-
-    private fun shareIssueReport(uri: Uri) {
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        runCatching {
-            startActivity(
-                Intent.createChooser(
-                    intent,
-                    getString(R.string.settings_issue_report_export_title),
-                ),
-            )
-        }.onFailure {
-            if (it is ActivityNotFoundException) {
-                Toast.makeText(
-                    this,
-                    getString(R.string.settings_issue_report_share_failed),
-                    Toast.LENGTH_SHORT,
-                ).show()
-            }
-        }
     }
 
     private fun normalizeVersionLabel(version: String): String {

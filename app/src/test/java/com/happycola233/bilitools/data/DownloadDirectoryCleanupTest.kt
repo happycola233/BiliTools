@@ -12,8 +12,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [29, 35], shadows = [DirectoryRemovalLinuxShadow::class])
-class DownloadDirectoryCleanupTest {
+@Config(sdk = [29], shadows = [DirectoryRemovalLinuxShadow::class])
+open class DownloadDirectoryCleanupTest {
     @get:Rule val directoryRemoval = DirectoryRemovalLinuxShadow.Fixture()
     private lateinit var external: File
     private lateinit var cleanup: DownloadDirectoryCleanup
@@ -99,3 +99,7 @@ class DownloadDirectoryCleanupTest {
         assertTrue(File(target, "new.mp4").isFile)
     }
 }
+
+// 独立 SDK 沙箱，避免 Windows JVM 复用已打开的字体 JAR 文件系统。
+@Config(sdk = [35])
+class DownloadDirectoryCleanupApi35Test : DownloadDirectoryCleanupTest()

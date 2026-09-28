@@ -86,7 +86,7 @@ internal class EmbeddedContentWriter(
             throw error
         } catch (error: Exception) {
             issues += issue
-            AppLog.w(TAG, "$issue for task ${item.id}", error)
+            AppLog.w(TAG, "[embedding] issue=$issue taskId=${item.id}", error)
             null
         }
 

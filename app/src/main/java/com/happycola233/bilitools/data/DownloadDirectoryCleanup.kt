@@ -2,6 +2,9 @@ package com.happycola233.bilitools.data
 
 import android.os.Environment
 import android.system.Os
+import android.system.ErrnoException
+import android.system.OsConstants
+import com.happycola233.bilitools.core.AppLog
 import java.io.File
 
 /** 仅沿任务原目录向上清理空目录，不递归遍历或删除目录内容。 */
@@ -17,13 +20,27 @@ internal class DownloadDirectoryCleanup(
             val base = externalRoot.canonicalFile.toPath()
             while (path !in protected && DownloadPaths.contains(safeRoot, path)) {
                 val target = File(externalRoot, path)
-                if (target.canonicalFile.toPath() != base.resolve(path) || !target.isDirectory) return
+                if (target.canonicalFile.toPath() != base.resolve(path) || !target.isDirectory) {
+                    AppLog.d("DownloadDirectoryCleanup", "[cleanup] stopped path=$path reason=missing-or-replaced")
+                    return
+                }
                 // 保留末尾 /，让 Linux 系统调用只接受目录；路径被替换成文件时会失败。
                 // remove 由系统检查目录为空，不会递归删除内容。
                 // 非空、权限不足或已不存在时停止，不扩大清理范围。
-                if (runCatching { Os.remove(target.absolutePath + "/") }.isFailure) return
+                try {
+                    Os.remove(target.absolutePath + "/")
+                } catch (error: ErrnoException) {
+                    if (error.errno == OsConstants.ENOTEMPTY || error.errno == OsConstants.ENOENT) {
+                        AppLog.d("DownloadDirectoryCleanup", "[cleanup] stopped path=$path errno=${error.errno}")
+                    } else {
+                        AppLog.w("DownloadDirectoryCleanup", "[cleanup] stopped path=$path", error)
+                    }
+                    return
+                }
+                AppLog.i("DownloadDirectoryCleanup", "[cleanup] removed path=$path")
                 path = path.substringBeforeLast('/')
             }
-        }
+            AppLog.d("DownloadDirectoryCleanup", "[cleanup] stopped path=$path reason=protected-root")
+        }.onFailure { AppLog.w("DownloadDirectoryCleanup", "[cleanup] failed path=$path", it) }
     }
 }

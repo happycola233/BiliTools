@@ -247,6 +247,7 @@ object MediaProcessingEngine {
             cancel
         }
         if (ReturnCode.isCancel(completed.returnCode)) throw CancellationException("Media inspection cancelled")
+        if (!ReturnCode.isSuccess(completed.returnCode) || completed.mediaInformation == null) logSessionFailure(completed, "Media inspection")
         check(ReturnCode.isSuccess(completed.returnCode) && completed.mediaInformation != null) {
             "Media inspection failed"
         }
@@ -261,9 +262,18 @@ object MediaProcessingEngine {
         }
         val returnCode = completed.returnCode
         if (ReturnCode.isCancel(returnCode)) throw CancellationException("$operationName cancelled")
+        if (!ReturnCode.isSuccess(returnCode)) logSessionFailure(completed, operationName)
         check(ReturnCode.isSuccess(returnCode)) {
             val details = returnCode?.toString().orEmpty()
             if (details.isBlank()) "$operationName failed" else "$operationName failed ($details)"
         }
+    }
+
+    private fun logSessionFailure(session: com.arthenica.ffmpegkit.Session, operation: String) {
+        val safeArguments = session.arguments.map { if (File(it).isAbsolute) File(it).name else it }
+        // getLogsAsString 立即返回已送达的输出；getAllLogsAsString/getOutput 可能等待原生消息队列。
+        val tail = session.logsAsString.orEmpty().lineSequence().toList().takeLast(40).joinToString("\n")
+        val lastOutput = tail.lineSequence().lastOrNull { it.isNotBlank() }.orEmpty().take(512)
+        AppLog.e("MediaProcessingEngine", "[native] operation=$operation returnCode=${session.returnCode} lastOutput=$lastOutput args=$safeArguments\n$tail\n${session.failStackTrace.orEmpty()}")
     }
 }

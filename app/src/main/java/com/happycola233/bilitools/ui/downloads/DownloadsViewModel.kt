@@ -1,5 +1,6 @@
 package com.happycola233.bilitools.ui.downloads
 
+import com.happycola233.bilitools.core.AppLog
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.happycola233.bilitools.data.DownloadRepository
@@ -83,7 +84,8 @@ class DownloadsViewModel(
                 block()
             } catch (error: CancellationException) {
                 throw error
-            } catch (_: Exception) {
+            } catch (error: Exception) {
+                AppLog.w("DownloadsViewModel", "[delete] failed", error)
                 DownloadDeletionResult(failedFiles = 1)
             }
             deletionResults.send(result)

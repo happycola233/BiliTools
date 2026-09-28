@@ -1,5 +1,6 @@
 package com.happycola233.bilitools.data
 
+import com.happycola233.bilitools.core.AppLog
 import com.happycola233.bilitools.core.BiliHttpClient
 import com.happycola233.bilitools.core.CookieStore
 import com.happycola233.bilitools.core.OpusAssetPlanner
@@ -122,6 +123,7 @@ class OpusRepository(
 
         var response = requestArticle()
         if (response.code == RISK_CONTROL_CODE) {
+            AppLog.w("OpusRepository", "[opus] risk-control fallback code=${response.code}")
             bootstrapPublicPage("https://www.bilibili.com/read/cv$cvid")
             response = requestArticle()
         }
@@ -143,6 +145,7 @@ class OpusRepository(
 
         var response = requestDetail(opusId)
         if (response.code == RISK_CONTROL_CODE) {
+            AppLog.w("OpusRepository", "[opus] risk-control fallback code=${response.code}")
             bootstrapPublicPage(publicUrl)
             response = requestDetail(opusId)
         }

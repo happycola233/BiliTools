@@ -46,7 +46,7 @@ class PaginationTestEnvironment {
             .code(200).message("OK")
             .body(respond(url).toResponseBody("application/json".toMediaType())).build()
     }.build()
-    private val http = BiliHttpClient(cookies, settings, transport)
+    private val http = BiliHttpClient(cookies, transport)
     private val signer = WbiSigner(http)
     private val opus = OpusRepository(http, cookies)
     val media = MediaRepository(http, signer, cookies, opus)

@@ -10,6 +10,10 @@ object AppLog {
         diagnosticLogStore = store
     }
 
+    fun redact(text: String): String = (diagnosticLogStore?.redactor ?: LogRedactor()).redact(text)
+
+    fun describeUrl(url: String): String = (diagnosticLogStore?.redactor ?: LogRedactor()).describeUrl(url)
+
     fun startNewDiagnosticSession(reason: String? = null) {
         diagnosticLogStore?.startNewSession(reason)
     }

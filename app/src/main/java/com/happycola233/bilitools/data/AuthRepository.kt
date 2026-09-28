@@ -1,6 +1,8 @@
 package com.happycola233.bilitools.data
 
 import android.util.Base64
+import com.happycola233.bilitools.core.AppLog
+import kotlinx.coroutines.CancellationException
 import com.happycola233.bilitools.core.BiliHttpClient
 import com.happycola233.bilitools.core.BiliHttpException
 import com.happycola233.bilitools.core.CookieStore
@@ -21,6 +23,17 @@ class AuthRepository(
     private val cookieStore: CookieStore,
     private val wbiSigner: WbiSigner,
 ) {
+    private var lastQrCode: Int? = null
+    @Volatile private var cachedDiagnosticAccount: Map<String, String> = emptyMap()
+
+    fun diagnosticAccountSummary(): Map<String, String> = if (isLoggedIn()) cachedDiagnosticAccount else emptyMap()
+
+    private fun logLoginResult(operation: String, code: Int, status: Int? = null) {
+        val message = "[login] operation=$operation code=$code status=$status"
+        if (code == 0 && (status == null || status == 0)) AppLog.i("AuthRepository", message)
+        else AppLog.w("AuthRepository", message)
+    }
+
     suspend fun generateQr(): QrLoginInfo {
         val url = "https://passport.bilibili.com/x/passport-login/web/qrcode/generate"
             .toHttpUrl()
@@ -30,6 +43,8 @@ class AuthRepository(
         if (resp.code != 0 || resp.data == null) {
             throw BiliHttpException(resp.message, resp.code)
         }
+        lastQrCode = null
+        AppLog.i("AuthRepository", "[login] qr generated")
         return QrLoginInfo(resp.data.url, resp.data.qrcodeKey)
     }
 
@@ -43,7 +58,15 @@ class AuthRepository(
         val adapter = httpClient.adapter(QrPollResponse::class.java)
         val resp = adapter.fromJson(body) ?: throw BiliHttpException("Empty poll response", -1)
         if (resp.code != 0 || resp.data == null) {
+            AppLog.w("AuthRepository", "[login] qr failed code=${resp.code}")
             return QrLoginResult(QrLoginStatus.Error, resp.message)
+        }
+        if (lastQrCode != resp.data.code) {
+            lastQrCode = resp.data.code
+            val state = when (resp.data.code) { 86101 -> "waiting"; 86090 -> "scanned"; 0 -> "confirmed"; 86038 -> "expired"; else -> "failed" }
+            val message = "[login] qr code=${resp.data.code} state=$state"
+            if (state == "failed" || state == "expired") AppLog.w("AuthRepository", message)
+            else AppLog.i("AuthRepository", message)
         }
         return when (resp.data.code) {
             86101 -> QrLoginResult(QrLoginStatus.Waiting, resp.data.message)
@@ -114,6 +137,7 @@ class AuthRepository(
         val body = httpClient.postEmpty(url)
         val adapter = httpClient.adapter(SendSmsResponse::class.java)
         val resp = adapter.fromJson(body) ?: throw BiliHttpException("Empty SMS response", -1)
+        logLoginResult("sms-send", resp.code)
         val key = resp.data?.captchaKey
         if (resp.code != 0 || key.isNullOrBlank()) {
             throw BiliHttpException(resp.message, resp.code)
@@ -140,6 +164,7 @@ class AuthRepository(
         val body = httpClient.postEmpty(url)
         val adapter = httpClient.adapter(SmsLoginResponse::class.java)
         val resp = adapter.fromJson(body) ?: throw BiliHttpException("Empty login response", -1)
+        logLoginResult("sms-login", resp.code, resp.data?.status)
         val data = resp.data ?: throw BiliHttpException("SMS login failed", resp.code)
         if (data.status != 0) {
             throw BiliHttpException(data.message, data.status)
@@ -173,6 +198,7 @@ class AuthRepository(
         val body = httpClient.postForm(url, params)
         val adapter = httpClient.adapter(PwdLoginResponse::class.java)
         val resp = adapter.fromJson(body) ?: throw BiliHttpException("Empty login response", -1)
+        logLoginResult("password-login", resp.code, resp.data?.status)
         val data = resp.data ?: throw BiliHttpException(resp.message, resp.code)
         return when (data.status) {
             0 -> PasswordLoginResult.Success
@@ -296,8 +322,8 @@ class AuthRepository(
             return null
         }
         val mid = data.mid ?: return null
-        val accountInfo = runCatching { fetchAccountInfo(mid) }.getOrNull()
-        val stat = runCatching { fetchUserStat() }.getOrNull()
+        val accountInfo = runCatching { fetchAccountInfo(mid) }.onFailure { if (it is CancellationException) throw it; AppLog.w("AuthRepository", "[account] detail fallback error=${it.javaClass.simpleName}") }.getOrNull()
+        val stat = runCatching { fetchUserStat() }.onFailure { if (it is CancellationException) throw it; AppLog.w("AuthRepository", "[account] statistics unavailable error=${it.javaClass.simpleName}") }.getOrNull()
         return UserInfo(
             name = accountInfo?.name ?: data.uname.orEmpty(),
             mid = accountInfo?.mid ?: mid,
@@ -319,7 +345,10 @@ class AuthRepository(
             following = stat?.following,
             follower = stat?.follower,
             dynamic = stat?.dynamicCount,
-        )
+        ).also { user ->
+            cachedDiagnosticAccount = mapOf("vipStatus" to user.vipStatus.toString(), "vipType" to user.vipType.toString())
+            AppLog.i("AuthRepository", "[account] loggedIn=true vipStatus=${user.vipStatus} vipType=${user.vipType}")
+        }
     }
 
     fun logout() = cookieStore.clear()

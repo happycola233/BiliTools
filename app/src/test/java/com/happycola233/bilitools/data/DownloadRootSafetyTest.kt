@@ -14,8 +14,8 @@ import org.robolectric.annotation.Config
 import org.robolectric.util.ReflectionHelpers
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [29, 35])
-class DownloadRootSafetyTest {
+@Config(sdk = [29])
+open class DownloadRootSafetyTest {
     private lateinit var settings: SettingsRepository
     private val repositories = mutableListOf<SettingsRepository>()
 
@@ -47,3 +47,7 @@ class DownloadRootSafetyTest {
         assertEquals("Download/Old", settings.downloadRootRelativePath())
     }
 }
+
+// 独立 SDK 沙箱，避免 Windows JVM 复用已打开的字体 JAR 文件系统。
+@Config(sdk = [35])
+class DownloadRootSafetyApi35Test : DownloadRootSafetyTest()

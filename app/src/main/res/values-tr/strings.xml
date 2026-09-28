@@ -411,7 +411,7 @@
     <string name="settings_general_summary">Dil, dokunma teknolojisi, başlangıç animasyonu ve bildirimler</string>
     <string name="settings_download_summary">Konum, eşzamanlılık, kalite, meta veriler ve dosya formatları</string>
     <string name="settings_appearance_summary">Tema, renkler, saf siyah modu ve sıvı cam</string>
-    <string name="settings_about_summary">Sürüm, güncellemeler, günlükler, lisanslar ve sorumluluk reddi beyanı</string>
+    <string name="settings_about_summary">Sürüm, güncellemeler, sorun bildirimleri, lisanslar ve sorumluluk reddi beyanı</string>
     <string name="settings_add_metadata">İndirilenlere meta veriler ekleyin</string>
     <string name="settings_add_metadata_desc">Başlığı, sanatçıyı, albümü ve kaynağı ses veya video dosyalarına gömün.</string>
     <string name="settings_metadata_options">Meta veri seçenekleri</string>
@@ -557,23 +557,6 @@
     <string name="settings_license_title">Lisans</string>
     <string name="settings_opensource_licenses_title">Açık kaynak lisansları</string>
     <string name="settings_opensource_licenses_summary">BiliTools tarafından kullanılan üçüncü taraf kitaplıkları</string>
-    <string name="settings_issue_report_enabled_title">Ayrıntılı tanılama günlüğü</string>
-    <string name="settings_issue_report_enabled_desc">Günlükler yerel olarak depolanır. Dışa aktarmalar cihaz bilgilerini, mevcut ayarları ve ağ durumunu içerir. Cookie, Set-Cookie ve Yetkilendirme değerleri düzenlenmiştir.</string>
-    <string name="settings_issue_report_export_title">Günlükleri dışa aktarın ve paylaşın</string>
-    <string name="settings_issue_report_clear_title">Yerel günlükleri temizle</string>
-    <string name="settings_issue_report_clear_desc">Uygulamanın teşhis günlüklerini siler. Bir sonraki dışa aktarımın o soruna odaklanmasını sağlamak için, bir sorunu yeniden oluşturmadan önce bunları temizleyin.</string>
-    <string name="settings_issue_report_export_success">Günlükler dışa aktarıldı. Paylaşım sayfası açılıyor…</string>
-    <string name="settings_issue_report_export_failed">Günlükler dışa aktarılamadı. Daha sonra tekrar deneyin.</string>
-    <string name="settings_issue_report_share_failed">Günlükler dışa aktarıldı ancak paylaşım sayfası açılamadı.</string>
-    <string name="settings_issue_report_clear_success">Yerel günlükler temizlendi</string>
-    <string name="settings_issue_report_export_running">Günlüklerin hazırlanması ve dışa aktarılması…</string>
-    <string name="settings_issue_report_clear_running">Yerel günlükler temizleniyor…</string>
-    <string name="settings_issue_report_status_disabled">Ayrıntılı kayıt kapalıdır. Dışa aktarmalar esas olarak temel teşhis bilgilerini içerecektir.</string>
-    <string name="settings_issue_report_status_enabled">Ayrıntılı kayıt açıktır.</string>
-    <string name="settings_issue_report_status_enabled_since_suffix">%1$s\'den beri.</string>
-    <string name="settings_issue_report_status_files">Önbelleğe alınan günlükler: %1$d · Hakkında %2$s</string>
-    <string name="settings_issue_report_status_last_capture">Son kaydedilen: %1$s</string>
-    <string name="settings_issue_report_status_last_export">Son dışa aktarılan tarih: %1$s</string>
     <string name="settings_disclaimer_title">Sorumluluk reddi beyanı</string>
     <string name="settings_about_disclaimer">Bu uygulama tarafından kaydedilen tüm veriler, cihazınızda yerel olarak düz metin olarak depolanır.\nBu projeyi kullanmanın sonuçlarından siz sorumlusunuz. Geliştirici hiçbir sorumluluk kabul etmez.\n哔哩哔哩 ve Bilibili adları, logoları ve ilgili grafikleri, Shanghai Huandian Information Technology Co., Ltd. şirketinin ticari markaları veya tescilli ticari markalarıdır.\nBu proje, Bilibili veya bağlı kuruluşlarıyla bağlantılı değildir, onlar tarafından yetkilendirilmemiştir, onlar tarafından desteklenmemiştir veya onlarla ortak değildir.</string>
     <string name="update_dialog_title">Güncelleme mevcut</string>
@@ -583,4 +566,32 @@
     <string name="downloads_details_close">İndirme ayrıntılarını kapat</string>
     <string name="downloads_details_expand_path">Yolu genişlet</string>
     <string name="downloads_details_collapse_path">Yolu daralt</string>
+
+    <!-- Local diagnostic reports -->
+    <string name="diagnostic_feedback">Sorun bildir</string>
+    <string name="diagnostic_feedback_description">Geliştiriciyle paylaşmak için tanılama raporu dışa aktar</string>
+    <string name="diagnostic_clear">Tanılama günlüklerini temizle</string>
+    <string name="diagnostic_clear_description">Sorunları araştırmak için kullanılan uygulama etkinliği ve hata bilgilerini kaldır</string>
+    <string name="diagnostic_cleared">Tanılama günlükleri temizlendi</string>
+    <string name="diagnostic_title">Tanılama raporu</string>
+    <string name="diagnostic_description">Uygulama ve cihaz bilgileri, 7 günlük tanılama kayıtları (video kimlikleri ve indirilen dosya adları dahil), başarısız indirmeler, beklenmedik kapanmalar ve değiştirilen ayarlar bulunur.</string>
+    <string name="diagnostic_problem">Sorun açıklaması (isteğe bağlı)</string>
+    <string name="diagnostic_problem_hint">Ne oldu? Sorun nasıl tekrar oluşturulabilir?</string>
+    <string name="diagnostic_preview">Rapor içeriğini görüntüle</string>
+    <string name="diagnostic_hide_preview">Rapor içeriğini gizle</string>
+    <string name="diagnostic_log_summary">Tanılama günlükleri: %1$d satır\nZaman aralığı: %2$s</string>
+    <string name="diagnostic_share">Paylaş</string>
+    <string name="diagnostic_save">Kaydet</string>
+    <string name="diagnostic_github">GitHub üzerinden bildir</string>
+    <string name="diagnostic_attach_hint">Gönderirken kaydettiğiniz rapor dosyasını ekleyin</string>
+    <string name="diagnostic_crash_title">BiliTools son çalıştırmada bir sorunla karşılaştı</string>
+    <string name="diagnostic_crash_description">Tanılama raporunu dışa aktarıp geliştiriciyle paylaşmak sorunun çözülmesine yardımcı olabilir.</string>
+    <string name="diagnostic_export">Raporu dışa aktar</string>
+    <string name="diagnostic_ignore">Yoksay</string>
+    <string name="diagnostic_failed">İşlem tamamlanamadı. Lütfen daha sonra tekrar deneyin.</string>
+    <string name="diagnostic_saved">Rapor kaydedildi</string>
+    <string name="diagnostic_clear_explanation">Tanılama günlükleri, geliştiricilerin sorunları araştırmasına yardımcı olmak için uygulama çalışırken, videolar çözümlenirken ve dosyalar indirilirken oluşan olayları ve hataları kaydeder.\n\nTemizlendikten sonra kayıt yeniden başlar ve paylaşım için uygulamada oluşturulan geçici raporlar da silinir.</string>
+    <string name="diagnostic_clear_confirm">Temizle</string>
+    <string name="diagnostic_privacy">Cihazda saklanır; paylaşmak sizin seçiminizdir. Parolalar, çerezler ve diğer giriş bilgileri dahil edilmez. Hesap UID bilgisi gizlenir.</string>
+    <string name="diagnostic_close">Tanılama raporunu kapat</string>
 </resources>

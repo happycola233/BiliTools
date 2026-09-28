@@ -417,7 +417,7 @@
     <string name="settings_general_summary">Язык, тактильные ощущения, анимация запуска и уведомления</string>
     <string name="settings_download_summary">Местоположение, параллелизм, качество, метаданные и форматы файлов.</string>
     <string name="settings_appearance_summary">Тема, цвета, режим чистого черного цвета и жидкое стекло.</string>
-    <string name="settings_about_summary">Версия, обновления, журналы, лицензии и отказ от ответственности</string>
+    <string name="settings_about_summary">Версия, обновления, сообщения о проблемах, лицензии и отказ от ответственности</string>
     <string name="settings_add_metadata">Добавление метаданных к загрузкам</string>
     <string name="settings_add_metadata_desc">Встраивайте название, исполнителя, альбом и источник в аудио- или видеофайлы.</string>
     <string name="settings_metadata_options">Варианты метаданных</string>
@@ -563,23 +563,6 @@
     <string name="settings_license_title">Лицензия</string>
     <string name="settings_opensource_licenses_title">Лицензии с открытым исходным кодом</string>
     <string name="settings_opensource_licenses_summary">Сторонние библиотеки, используемые BiliTools</string>
-    <string name="settings_issue_report_enabled_title">Подробное ведение журнала диагностики.</string>
-    <string name="settings_issue_report_enabled_desc">Журналы хранятся локально. Экспорт включает информацию об устройстве, текущие настройки и состояние сети. Значения Cookie, Set-Cookie и Authorization отредактированы.</string>
-    <string name="settings_issue_report_export_title">Экспортируйте и делитесь журналами</string>
-    <string name="settings_issue_report_clear_title">Очистить локальные журналы</string>
-    <string name="settings_issue_report_clear_desc">Удаляет журналы диагностики приложения. Очистите их перед воспроизведением проблемы, чтобы следующий экспорт был сосредоточен на этой проблеме.</string>
-    <string name="settings_issue_report_export_success">Журналы экспортированы. Открываем общий лист…</string>
-    <string name="settings_issue_report_export_failed">Не удалось экспортировать журналы. Повторите попытку позже.</string>
-    <string name="settings_issue_report_share_failed">Журналы были экспортированы, но общий лист открыть не удалось.</string>
-    <string name="settings_issue_report_clear_success">Локальные журналы очищены.</string>
-    <string name="settings_issue_report_export_running">Подготовка и экспорт журналов…</string>
-    <string name="settings_issue_report_clear_running">Очистка локальных журналов…</string>
-    <string name="settings_issue_report_status_disabled">Подробное журналирование отключено. Экспорт будет в основном содержать базовую диагностическую информацию.</string>
-    <string name="settings_issue_report_status_enabled">Подробное журналирование включено.</string>
-    <string name="settings_issue_report_status_enabled_since_suffix">С %1$s.</string>
-    <string name="settings_issue_report_status_files">Кэшированные журналы: %1$d · О %2$s</string>
-    <string name="settings_issue_report_status_last_capture">Последняя запись: %1$s</string>
-    <string name="settings_issue_report_status_last_export">Последний экспорт: %1$s</string>
     <string name="settings_disclaimer_title">Отказ от ответственности</string>
     <string name="settings_about_disclaimer">Все данные, сохраненные этим приложением, хранятся локально на вашем устройстве в виде обычного текста.\nВы несете ответственность за последствия использования этого проекта. Разработчик не несет никакой ответственности.\nНазвания, логотипы и сопутствующие изображения 哔哩哔哩 и Bilibili являются товарными знаками или зарегистрированными товарными знаками Shanghai Huandian Information Technology Co., Ltd.\nЭтот проект не связан, не авторизован, не одобрен и не является партнером Bilibili или ее дочерних компаний.</string>
     <string name="update_dialog_title">Доступно обновление</string>
@@ -589,4 +572,32 @@
     <string name="downloads_details_close">Закрыть сведения о загрузке</string>
     <string name="downloads_details_expand_path">Развернуть путь</string>
     <string name="downloads_details_collapse_path">Свернуть путь</string>
+
+    <!-- Local diagnostic reports -->
+    <string name="diagnostic_feedback">Сообщить о проблеме</string>
+    <string name="diagnostic_feedback_description">Экспортировать диагностический отчёт для разработчика</string>
+    <string name="diagnostic_clear">Очистить журналы диагностики</string>
+    <string name="diagnostic_clear_description">Удалить сведения о работе приложения и ошибках для поиска причин неполадок</string>
+    <string name="diagnostic_cleared">Журналы диагностики очищены</string>
+    <string name="diagnostic_title">Диагностический отчёт</string>
+    <string name="diagnostic_description">Сведения о приложении и устройстве, журналы диагностики за 7 дней (с ID видео и именами скачанных файлов), неудачные загрузки, неожиданные завершения и изменённые настройки.</string>
+    <string name="diagnostic_problem">Описание проблемы (необязательно)</string>
+    <string name="diagnostic_problem_hint">Что произошло? Как воспроизвести проблему?</string>
+    <string name="diagnostic_preview">Показать содержимое отчёта</string>
+    <string name="diagnostic_hide_preview">Скрыть содержимое отчёта</string>
+    <string name="diagnostic_log_summary">Журналы диагностики: %1$d строк\nПериод: %2$s</string>
+    <string name="diagnostic_share">Поделиться</string>
+    <string name="diagnostic_save">Сохранить</string>
+    <string name="diagnostic_github">Сообщить на GitHub</string>
+    <string name="diagnostic_attach_hint">При отправке прикрепите сохранённый файл отчёта</string>
+    <string name="diagnostic_crash_title">При последнем запуске BiliTools возникла проблема</string>
+    <string name="diagnostic_crash_description">Экспортируйте диагностический отчёт и передайте его разработчику, чтобы помочь исправить проблему.</string>
+    <string name="diagnostic_export">Экспорт отчёта</string>
+    <string name="diagnostic_ignore">Игнорировать</string>
+    <string name="diagnostic_failed">Не удалось выполнить операцию. Повторите попытку позже.</string>
+    <string name="diagnostic_saved">Отчёт сохранён</string>
+    <string name="diagnostic_clear_explanation">Журналы диагностики сохраняют события и ошибки во время работы приложения, разбора видео и загрузки файлов, помогая разработчикам находить причины неполадок.\n\nПосле очистки запись начнётся заново. Временные отчёты, созданные в приложении для отправки, также будут удалены.</string>
+    <string name="diagnostic_clear_confirm">Очистить</string>
+    <string name="diagnostic_privacy">Хранится на устройстве; отправка — по вашему выбору. Пароли, cookie и другие данные для входа не включаются. UID аккаунта скрыт.</string>
+    <string name="diagnostic_close">Закрыть отчёт диагностики</string>
 </resources>

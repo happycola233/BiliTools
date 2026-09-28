@@ -1,31 +1,19 @@
 package com.happycola233.bilitools.core
 
 import android.content.Context
-import android.os.Process
-import com.happycola233.bilitools.data.SettingsRepository
+import android.os.Looper
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
-import java.io.PrintWriter
-import java.io.StringWriter
-import java.nio.charset.StandardCharsets
+import java.io.IOException
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-
-data class DiagnosticLogStats(
-    val fileCount: Int,
-    val totalBytes: Long,
-    val latestModifiedAtMillis: Long?,
-)
 
 data class DiagnosticLogSnapshot(
     val name: String,
@@ -34,335 +22,149 @@ data class DiagnosticLogSnapshot(
     val content: String,
 )
 
-class DiagnosticLogStore(
-    context: Context,
-    private val settingsRepository: SettingsRepository,
+/** 单写协程直接追加文件；Flush / Snapshot / Clear 与写入在同一队列中串行。 */
+class DiagnosticLogStore internal constructor(
+    private val directory: File,
+    val redactor: LogRedactor = LogRedactor(),
+    private val now: () -> Long = System::currentTimeMillis,
+    private val maxFileBytes: Int = 512 * 1024,
+    private val maxTotalBytes: Long = 3L * 1024 * 1024,
 ) {
-    private val appContext = context.applicationContext
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val commandChannel = Channel<Command>(Channel.UNLIMITED)
-    private val logDirectory = File(appContext.filesDir, LOG_DIRECTORY_NAME).apply { mkdirs() }
-    private val _stats = MutableStateFlow(computeStats(listLogFiles()))
-    val statsFlow: StateFlow<DiagnosticLogStats> = _stats.asStateFlow()
-    private val lineTimeFormatter = DateTimeFormatter.ofPattern(
-        "yyyy-MM-dd HH:mm:ss.SSS XXX",
-        Locale.ROOT,
-    )
-    private val fileTimeFormatter = DateTimeFormatter.ofPattern(
-        "yyyyMMdd-HHmmss",
-        Locale.ROOT,
-    )
+    constructor(context: Context, redactor: LogRedactor = LogRedactor()) : this(
+        File(context.filesDir, "diagnostics"), redactor,
+    ) {
+        // 旧日志可能含未脱敏的 CDN 查询参数，不迁移到新的存储。
+        File(context.filesDir, "issue-report-logs").deleteRecursively()
+    }
 
-    @Volatile
-    private var currentSessionId: String = createSessionId()
+    private val commands = Channel<Command>(Channel.UNLIMITED)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var activeFile: File? = null
+    private var sequence = 0L
+    private var writeFailure: IOException? = null
+    private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss.SSS", Locale.ROOT)
 
     init {
         scope.launch {
-            processCommands()
+            directory.mkdirs()
+            prune()
+            for (command in commands) {
+                try {
+                    when (command) {
+                        is Command.Write -> appendBlock(command.text)
+                        is Command.Flush -> {
+                            writeFailure?.let { throw it }
+                            files().forEach { file -> java.io.FileOutputStream(file, true).use { it.fd.sync() } }
+                            command.done.complete(Unit)
+                        }
+                        is Command.Snapshot -> {
+                            prune()
+                            command.done.complete(files().map { file ->
+                                DiagnosticLogSnapshot(file.name, file.length(), file.lastModified(), file.readText())
+                            })
+                        }
+                        is Command.Clear -> {
+                            files().forEach { if (!it.delete()) throw IOException("Unable to clear diagnostic log") }
+                            activeFile = null
+                            writeFailure = null
+                            command.done.complete(Unit)
+                        }
+                    }
+                } catch (error: IOException) {
+                    writeFailure = error
+                    // 存储边界失败不能杀死写入协程，也不能递归写回同一日志。
+                    android.util.Log.w("DiagnosticLogStore", "Diagnostic storage unavailable", error)
+                    when (command) {
+                        is Command.Flush -> command.done.completeExceptionally(error)
+                        is Command.Snapshot -> command.done.completeExceptionally(error)
+                        is Command.Clear -> command.done.completeExceptionally(error)
+                        is Command.Write -> Unit
+                    }
+                }
+            }
         }
-    }
-
-    fun currentSessionId(): String = currentSessionId
-
-    fun append(priority: Int, tag: String, message: String, throwable: Throwable?) {
-        if (!settingsRepository.currentSettings().issueReportDetailedLoggingEnabled) {
-            return
-        }
-
-        val sessionId = currentSessionId
-        commandChannel.trySend(
-            Command.Write(
-                formatLogLines(
-                    sessionId = sessionId,
-                    priority = priority,
-                    tag = tag,
-                    message = message,
-                    throwable = throwable,
-                ),
-            ),
-        )
     }
 
     fun startNewSession(reason: String? = null) {
-        val nextSessionId = createSessionId()
-        currentSessionId = nextSessionId
-        commandChannel.trySend(
-            Command.StartNewSession(
-                sessionId = nextSessionId,
-                reason = reason,
-            ),
-        )
+        commands.trySend(Command.Write(redactor.redact("=== Session ${Instant.ofEpochMilli(now()).atZone(ZoneId.systemDefault())} ${reason.orEmpty()} ===\n")))
+    }
+
+    fun append(priority: Int, tag: String, message: String, throwable: Throwable?) {
+        val thread = if (Thread.currentThread() === Looper.getMainLooper().thread) "main" else Thread.currentThread().name.take(24)
+        val prefix = "${timeFormatter.format(Instant.ofEpochMilli(now()).atZone(ZoneId.systemDefault()))} ${AppLog.priorityLabel(priority)} $tag [$thread] "
+        val content = buildString {
+            append(prefix)
+            appendLine(message.replace("\r\n", "\n").replace('\r', '\n'))
+            throwable?.let { appendLine(it.stackTraceToString()) }
+        }
+        // 在入队前脱敏，避免登录状态变化使排队中的文本漏掉自身 UID。
+        commands.trySend(Command.Write(redactor.redact(content)))
     }
 
     suspend fun flush() {
-        val completion = CompletableDeferred<Unit>()
-        commandChannel.send(Command.Flush(completion))
-        completion.await()
+        val done = CompletableDeferred<Unit>()
+        commands.send(Command.Flush(done))
+        done.await()
+    }
+
+    suspend fun snapshots(): List<DiagnosticLogSnapshot> {
+        val done = CompletableDeferred<List<DiagnosticLogSnapshot>>()
+        commands.send(Command.Snapshot(done))
+        return done.await()
     }
 
     suspend fun clear() {
-        val completion = CompletableDeferred<Unit>()
-        commandChannel.send(Command.Clear(completion))
-        completion.await()
+        val done = CompletableDeferred<Unit>()
+        commands.send(Command.Clear(done))
+        done.await()
     }
 
-    fun stats(): DiagnosticLogStats {
-        return _stats.value
-    }
-
-    fun snapshots(): List<DiagnosticLogSnapshot> {
-        return listLogFiles().map { file ->
-            DiagnosticLogSnapshot(
-                name = file.name,
-                sizeBytes = file.length(),
-                lastModifiedAtMillis = file.lastModified(),
-                content = runCatching {
-                    file.readText(StandardCharsets.UTF_8)
-                }.getOrElse { error ->
-                    "Unable to read ${file.name}: ${error.message}"
-                },
-            )
+    private fun appendBlock(text: String) {
+        prune()
+        // 超长异常按 UTF-8 字符边界切块，不能拆开 emoji 的代理对或多字节字符。
+        val encoded = text.toByteArray(Charsets.UTF_8)
+        var offset = 0
+        while (offset < encoded.size) {
+            var end = minOf(offset + maxFileBytes, encoded.size)
+            if (end < encoded.size) {
+                while (encoded[end].toInt() and 0xC0 == 0x80) end--
+            }
+            val bytes = encoded.copyOfRange(offset, end)
+            var target = activeFile
+            if (target == null || !target.exists() || target.length() + bytes.size > maxFileBytes) {
+                target = File(directory, "run-${now()}-${(sequence++).toString().padStart(6, '0')}.log")
+                activeFile = target
+            }
+            target.appendBytes(bytes)
+            target.setLastModified(now())
+            offset = end
         }
+        prune()
     }
 
-    private suspend fun processCommands() {
-        var writerState = WriterState(sessionId = currentSessionId)
+    private fun files() = directory.listFiles()?.filter { it.isFile && it.extension == "log" }
+        ?.sortedWith(compareBy<File> { it.lastModified() }.thenBy { it.name }).orEmpty()
 
-        for (command in commandChannel) {
-            when (command) {
-                is Command.Write -> {
-                    val result = writeBlock(writerState, command.textBlock)
-                    writerState = result.state
-                    _stats.value = result.stats
-                }
-
-                is Command.StartNewSession -> {
-                    writerState = writerState.copy(
-                        sessionId = command.sessionId,
-                        activeFile = null,
-                        partIndex = 0,
-                    )
-                    if (!command.reason.isNullOrBlank()) {
-                        val result = writeBlock(
-                            writerState,
-                            textBlock = formatSessionMarker(
-                                sessionId = command.sessionId,
-                                reason = command.reason,
-                            ),
-                        )
-                        writerState = result.state
-                        _stats.value = result.stats
-                    }
-                }
-
-                is Command.Flush -> {
-                    command.completion.complete(Unit)
-                }
-
-                is Command.Clear -> {
-                    logDirectory.deleteRecursively()
-                    logDirectory.mkdirs()
-                    writerState = WriterState(sessionId = currentSessionId)
-                    _stats.value = EMPTY_STATS
-                    command.completion.complete(Unit)
-                }
+    private fun prune() {
+        val files = files().toMutableList()
+        var total = files.sumOf { it.length() }
+        val cutoff = now() - RETENTION_MILLIS
+        for (file in files) {
+            if (file.lastModified() < cutoff || total > maxTotalBytes) {
+                val size = file.length()
+                if (file.delete()) total -= size
             }
         }
     }
-
-    private fun writeBlock(state: WriterState, textBlock: String): WriteResult {
-        var activeState = state
-        val bytes = textBlock.toByteArray(StandardCharsets.UTF_8)
-        val target = ensureWritableTarget(activeState, bytes.size)
-        if (target.file !== activeState.activeFile || target.partIndex != activeState.partIndex) {
-            activeState = activeState.copy(
-                activeFile = target.file,
-                partIndex = target.partIndex,
-            )
-        }
-        target.file.appendText(textBlock, StandardCharsets.UTF_8)
-        val files = pruneLogsIfNeeded()
-        return WriteResult(
-            state = activeState,
-            stats = computeStats(files),
-        )
-    }
-
-    private fun ensureWritableTarget(state: WriterState, incomingByteCount: Int): WriterTarget {
-        val currentFile = state.activeFile
-        if (currentFile == null) {
-            return WriterTarget(
-                file = createSessionFile(state.sessionId, 0),
-                partIndex = 0,
-            )
-        }
-        if (currentFile.length() + incomingByteCount <= MAX_FILE_BYTES) {
-            return WriterTarget(
-                file = currentFile,
-                partIndex = state.partIndex,
-            )
-        }
-        val nextPartIndex = state.partIndex + 1
-        return WriterTarget(
-            file = createSessionFile(state.sessionId, nextPartIndex),
-            partIndex = nextPartIndex,
-        )
-    }
-
-    private fun createSessionFile(sessionId: String, partIndex: Int): File {
-        val baseName = buildString {
-            append("issue-log-")
-            append(fileTimeFormatter.format(Instant.now().atZone(ZoneId.systemDefault())))
-            append('-')
-            append(sessionId)
-            if (partIndex > 0) {
-                append("-part")
-                append(partIndex + 1)
-            }
-            append(".log")
-        }
-        return File(logDirectory, baseName).apply {
-            parentFile?.mkdirs()
-            if (!exists()) {
-                createNewFile()
-            }
-        }
-    }
-
-    private fun pruneLogsIfNeeded(): List<File> {
-        val files = listLogFiles().toMutableList()
-        var totalBytes = files.sumOf(File::length)
-
-        while (files.size > MAX_FILE_COUNT || totalBytes > MAX_TOTAL_BYTES) {
-            val staleFile = files.removeFirstOrNull() ?: break
-            totalBytes -= staleFile.length()
-            staleFile.delete()
-        }
-        return files
-    }
-
-    private fun listLogFiles(): List<File> {
-        return logDirectory.listFiles()
-            ?.filter { it.isFile && it.extension.equals("log", ignoreCase = true) }
-            ?.sortedBy(File::lastModified)
-            .orEmpty()
-    }
-
-    private fun formatLogLines(
-        sessionId: String,
-        priority: Int,
-        tag: String,
-        message: String,
-        throwable: Throwable?,
-    ): String {
-        val prefix = buildPrefix(sessionId, priority, tag)
-        val body = normalizeMultiline(message)
-            .lineSequence()
-            .joinToString(separator = "\n") { line -> "$prefix$line" }
-
-        val throwableBlock = throwable?.let { error ->
-            val stacktraceWriter = StringWriter()
-            PrintWriter(stacktraceWriter).use { writer ->
-                error.printStackTrace(writer)
-            }
-            normalizeMultiline(stacktraceWriter.toString())
-                .lineSequence()
-                .joinToString(separator = "\n") { line -> "$prefix! $line" }
-        }
-
-        return buildString {
-            append(body)
-            append('\n')
-            if (!throwableBlock.isNullOrBlank()) {
-                append(throwableBlock)
-                append('\n')
-            }
-        }
-    }
-
-    private fun formatSessionMarker(sessionId: String, reason: String): String {
-        val prefix = buildPrefix(sessionId, android.util.Log.INFO, TAG)
-        return "$prefix[session] $reason\n"
-    }
-
-    private fun buildPrefix(sessionId: String, priority: Int, tag: String): String {
-        val timestamp = lineTimeFormatter.format(Instant.now().atZone(ZoneId.systemDefault()))
-        val thread = Thread.currentThread()
-        return buildString {
-            append(timestamp)
-            append(" | pid=")
-            append(Process.myPid())
-            append(" | thread=")
-            append(thread.name)
-            append(" | session=")
-            append(sessionId)
-            append(" | ")
-            append(AppLog.priorityLabel(priority))
-            append(" | ")
-            append(tag)
-            append(" | ")
-        }
-    }
-
-    private fun normalizeMultiline(rawValue: String): String {
-        return rawValue.replace("\r\n", "\n").replace('\r', '\n').trimEnd()
-    }
-
-    private fun createSessionId(): String {
-        return buildString {
-            append(fileTimeFormatter.format(Instant.now().atZone(ZoneId.systemDefault())))
-            append('-')
-            append(Integer.toHexString((System.nanoTime() and 0xFFFFFF).toInt()))
-        }
-    }
-
-    private fun computeStats(files: List<File>): DiagnosticLogStats {
-        return DiagnosticLogStats(
-            fileCount = files.size,
-            totalBytes = files.sumOf(File::length),
-            latestModifiedAtMillis = files.maxOfOrNull(File::lastModified)?.takeIf { it > 0L },
-        )
-    }
-
-    private data class WriterState(
-        val sessionId: String,
-        val activeFile: File? = null,
-        val partIndex: Int = 0,
-    )
-
-    private data class WriteResult(
-        val state: WriterState,
-        val stats: DiagnosticLogStats,
-    )
-
-    private data class WriterTarget(
-        val file: File,
-        val partIndex: Int,
-    )
 
     private sealed interface Command {
-        data class Write(val textBlock: String) : Command
-
-        data class StartNewSession(
-            val sessionId: String,
-            val reason: String?,
-        ) : Command
-
-        data class Flush(val completion: CompletableDeferred<Unit>) : Command
-
-        data class Clear(val completion: CompletableDeferred<Unit>) : Command
+        data class Write(val text: String) : Command
+        data class Flush(val done: CompletableDeferred<Unit>) : Command
+        data class Snapshot(val done: CompletableDeferred<List<DiagnosticLogSnapshot>>) : Command
+        data class Clear(val done: CompletableDeferred<Unit>) : Command
     }
 
     companion object {
-        private const val TAG = "DiagnosticLogStore"
-        private const val LOG_DIRECTORY_NAME = "issue-report-logs"
-        private const val MAX_FILE_COUNT = 8
-        private const val MAX_FILE_BYTES = 768 * 1024L
-        private const val MAX_TOTAL_BYTES = 4L * 1024L * 1024L
-        private val EMPTY_STATS = DiagnosticLogStats(
-            fileCount = 0,
-            totalBytes = 0L,
-            latestModifiedAtMillis = null,
-        )
+        const val RETENTION_MILLIS = 7L * 24 * 60 * 60 * 1000
     }
 }

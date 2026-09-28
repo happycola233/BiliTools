@@ -168,11 +168,11 @@ import com.happycola233.bilitools.data.DownloadMetadataSettings
 import com.happycola233.bilitools.data.DownloadPreferenceMemorySettings
 import com.happycola233.bilitools.data.DownloadQualityMode
 import com.happycola233.bilitools.data.HapticFeedbackLevel
-import com.happycola233.bilitools.data.IssueReportLogState
 import com.happycola233.bilitools.data.LiveUpdateIcon
 import com.happycola233.bilitools.data.SettingsRepository
 import com.happycola233.bilitools.data.TopLevelFolderMode
 import com.happycola233.bilitools.ui.AppAlertDialog
+import com.happycola233.bilitools.ui.diagnostics.ClearDiagnosticRecordsDialog
 import com.happycola233.bilitools.ui.BiliTvLaunchMotion
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import com.happycola233.bilitools.ui.displayNameRes
@@ -200,13 +200,10 @@ import kotlinx.coroutines.launch
 fun BiliToolsSettingsContent(
     settings: AppSettings,
     liveUpdateSupported: Boolean,
-    issueReportState: IssueReportLogState,
     backStack: SnapshotStateList<SettingsDestination>,
     checkUpdateSummary: String,
     versionName: String,
     versionCode: Long,
-    issueReportExporting: Boolean,
-    issueReportClearing: Boolean,
     onExit: () -> Unit,
     onNavigate: (SettingsDestination) -> Unit,
     onNavigateBack: () -> Unit,
@@ -242,9 +239,8 @@ fun BiliToolsSettingsContent(
     onLiquidBarWidthChange: (Float) -> Unit,
     onHapticFeedbackLevelChange: (HapticFeedbackLevel) -> Unit,
     onGlassDebugChange: (Boolean) -> Unit,
-    onIssueReportLoggingChange: (Boolean) -> Unit,
-    onExportIssueReport: () -> Unit,
-    onClearIssueReport: () -> Unit,
+    onFeedback: () -> Unit,
+    onClearDiagnostics: () -> Unit,
     selectedLanguage: AppLanguage,
     onLanguageChange: (AppLanguage) -> Unit,
     modifier: Modifier = Modifier,
@@ -385,16 +381,12 @@ fun BiliToolsSettingsContent(
                         versionName = versionName,
                         versionCode = versionCode,
                         checkUpdateSummary = checkUpdateSummary,
-                        issueReportState = issueReportState,
-                        issueReportExporting = issueReportExporting,
-                        issueReportClearing = issueReportClearing,
                         onCheckUpdate = onCheckUpdate,
                         onOpenSourceLicenses = {
                             onNavigate(SettingsDestination.OpenSourceLicenses)
                         },
-                        onIssueReportLoggingChange = onIssueReportLoggingChange,
-                        onExportIssueReport = onExportIssueReport,
-                        onClearIssueReport = onClearIssueReport,
+                        onFeedback = onFeedback,
+                        onClearDiagnostics = onClearDiagnostics,
                         onBack = onNavigateBack,
                         modifier = modifier,
                     )
@@ -2402,22 +2394,19 @@ private fun namingTokenPreviewLabel(token: NamingToken): String {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun AboutSettingsScreen(
+internal fun AboutSettingsScreen(
     versionName: String,
     versionCode: Long,
     checkUpdateSummary: String,
-    issueReportState: IssueReportLogState,
-    issueReportExporting: Boolean,
-    issueReportClearing: Boolean,
     onCheckUpdate: () -> Unit,
     onOpenSourceLicenses: () -> Unit,
-    onIssueReportLoggingChange: (Boolean) -> Unit,
-    onExportIssueReport: () -> Unit,
-    onClearIssueReport: () -> Unit,
+    onFeedback: () -> Unit,
+    onClearDiagnostics: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showLicense by rememberSaveable { mutableStateOf(false) }
+    var showClearDiagnostics by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
     val appIconPainter = painterResource(R.drawable.bilitools_app_icon)
@@ -2435,24 +2424,6 @@ private fun AboutSettingsScreen(
         ),
         label = "aboutIconBackgroundRotationValue",
     )
-    val issueReportActiveColor = MaterialTheme.colorScheme.error
-    val issueReportSummary = remember(
-        context,
-        LocalConfiguration.current,
-        issueReportState,
-        issueReportExporting,
-        issueReportClearing,
-        issueReportActiveColor,
-    ) {
-        buildIssueReportSummary(
-            context = context,
-            state = issueReportState,
-            exporting = issueReportExporting,
-            clearing = issueReportClearing,
-            activeColor = issueReportActiveColor,
-        )
-    }
-
     SettingsScaffold(
         title = stringResource(R.string.settings_about_title),
         subtitle = stringResource(R.string.app_name),
@@ -2486,7 +2457,7 @@ private fun AboutSettingsScreen(
                             backgroundRotation = iconBackgroundRotation,
                         )
                         Spacer(Modifier.width(16.dp))
-                        Column {
+                        Column(Modifier.weight(1f)) {
                             Text(
                                 text = stringResource(R.string.app_name),
                                 style = MaterialTheme.typography.titleLarge,
@@ -2495,16 +2466,18 @@ private fun AboutSettingsScreen(
                                 color = MaterialTheme.colorScheme.onSurface,
                             )
                             Text(
-                                text = "$versionName ($versionCode)",
+                                text = androidx.core.text.BidiFormatter.getInstance()
+                                    .unicodeWrap("$versionName ($versionCode)", androidx.core.text.TextDirectionHeuristicsCompat.LTR),
                                 style = MaterialTheme.typography.labelLarge,
                                 fontFamily = BiliToolsFonts.googleSansFlexRond100,
                                 color = MaterialTheme.colorScheme.primary,
                             )
                         }
-                        Spacer(Modifier.weight(1f))
+                        Spacer(Modifier.width(8.dp))
                         FilledTonalIconButton(
                             onClick = { uriHandler.openUri("https://github.com/happycola233/BiliTools") },
                             shapes = IconButtonDefaults.shapes(),
+                            modifier = Modifier.size(48.dp),
                         ) {
                             Icon(
                                 painter = painterResource(R.drawable.ic_github_invertocat_black),
@@ -2571,48 +2544,21 @@ private fun AboutSettingsScreen(
             item { Spacer(Modifier.height(12.dp)) }
 
             item {
-                ExpressiveSwitchListItem(
-                    checked = issueReportState.enabled,
-                    iconRes = R.drawable.ic_troubleshoot_24,
-                    title = stringResource(R.string.settings_issue_report_enabled_title),
-                    description = stringResource(R.string.settings_issue_report_enabled_desc),
-                    items = 3,
-                    index = 0,
-                    onCheckedChange = onIssueReportLoggingChange,
+                ClickableListItem(
+                    items = 2, index = 0,
+                    leadingContent = { SettingsItemIcon(R.drawable.ic_troubleshoot_24) },
+                    content = { SettingsItemTitle(stringResource(R.string.diagnostic_feedback)) },
+                    supportingContent = { Text(stringResource(R.string.diagnostic_feedback_description)) },
+                    onClick = onFeedback,
                 )
             }
-
             item {
                 ClickableListItem(
-                    items = 3,
-                    index = 1,
-                    leadingContent = { SettingsItemIcon(R.drawable.ic_save_alt_24) },
-                    content = {
-                        SettingsItemTitle(stringResource(R.string.settings_issue_report_export_title))
-                    },
-                    supportingContent = {
-                        Text(
-                            text = issueReportSummary,
-                            maxLines = 4,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    },
-                    onClick = onExportIssueReport,
-                )
-            }
-
-            item {
-                ClickableListItem(
-                    items = 3,
-                    index = 2,
+                    items = 2, index = 1,
                     leadingContent = { SettingsItemIcon(R.drawable.ic_delete_sweep_24) },
-                    content = {
-                        SettingsItemTitle(stringResource(R.string.settings_issue_report_clear_title))
-                    },
-                    supportingContent = {
-                        Text(stringResource(R.string.settings_issue_report_clear_desc))
-                    },
-                    onClick = onClearIssueReport,
+                    content = { SettingsItemTitle(stringResource(R.string.diagnostic_clear)) },
+                    supportingContent = { Text(stringResource(R.string.diagnostic_clear_description)) },
+                    onClick = { showClearDiagnostics = true },
                 )
             }
 
@@ -2649,6 +2595,15 @@ private fun AboutSettingsScreen(
 
     if (showLicense) {
         LicenseBottomSheet(onDismiss = { showLicense = false })
+    }
+    if (showClearDiagnostics) {
+        ClearDiagnosticRecordsDialog(
+            onConfirm = {
+                showClearDiagnostics = false
+                onClearDiagnostics()
+            },
+            onDismiss = { showClearDiagnostics = false },
+        )
     }
 }
 
@@ -3793,73 +3748,6 @@ private val licenseChipBaseColors = listOf(
     Color(0xFFF57C00),
     Color(0xFFD81B60),
 )
-
-private fun buildIssueReportSummary(
-    context: android.content.Context,
-    state: IssueReportLogState,
-    exporting: Boolean,
-    clearing: Boolean,
-    activeColor: Color,
-) = buildAnnotatedString {
-    if (exporting) {
-        append(context.getString(R.string.settings_issue_report_export_running))
-        return@buildAnnotatedString
-    }
-    if (clearing) {
-        append(context.getString(R.string.settings_issue_report_clear_running))
-        return@buildAnnotatedString
-    }
-
-    val sizeLabel = Formatter.formatShortFileSize(context, state.totalBytes)
-    if (state.enabled) {
-        val enabledSince = formatIssueReportTimestamp(context, state.loggingStartedAtMillis)
-        pushStyle(
-            SpanStyle(
-                color = activeColor,
-                fontWeight = FontWeight.Bold,
-            ),
-        )
-        append(context.getString(R.string.settings_issue_report_status_enabled))
-        pop()
-        if (enabledSince != null) {
-            append(
-                context.getString(
-                    R.string.settings_issue_report_status_enabled_since_suffix,
-                    enabledSince,
-                ),
-            )
-        }
-    } else {
-        append(context.getString(R.string.settings_issue_report_status_disabled))
-    }
-    append('\n')
-    append(
-        context.getString(
-            R.string.settings_issue_report_status_files,
-            state.fileCount,
-            sizeLabel,
-        ),
-    )
-    state.latestLogAtMillis?.let { latest ->
-        formatIssueReportTimestamp(context, latest)?.let { label ->
-            append('\n')
-            append(context.getString(R.string.settings_issue_report_status_last_capture, label))
-        }
-    }
-    state.lastExportedAtMillis?.let { exported ->
-        formatIssueReportTimestamp(context, exported)?.let { label ->
-            append('\n')
-            append(context.getString(R.string.settings_issue_report_status_last_export, label))
-        }
-    }
-}
-
-private fun formatIssueReportTimestamp(context: android.content.Context, epochMillis: Long?): String? {
-    if (epochMillis == null || epochMillis <= 0L) return null
-    return DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT)
-        .withLocale(context.resources.configuration.locales[0])
-        .format(Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()))
-}
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable

@@ -1,5 +1,6 @@
 package com.happycola233.bilitools.ui.update
 
+import com.happycola233.bilitools.core.AppLog
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -152,6 +153,7 @@ fun UpdateDialogContent(
             runCatching {
                 activity.startActivity(intent)
             }.onFailure {
+                AppLog.w("UpdateDialog", "[open-release] failed", it)
                 Toast.makeText(
                     activity,
                     activity.getString(R.string.update_dialog_open_release_failed),

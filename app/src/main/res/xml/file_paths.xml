@@ -3,4 +3,5 @@
     <files-path
         name="update_apk"
         path="updates/" />
+    <cache-path name="diagnostic_reports" path="diagnostic-reports/" />
 </paths>

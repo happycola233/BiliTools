@@ -57,7 +57,7 @@ class DownloadDeletionSafetyTest {
 
     private fun newRepository(): DownloadRepository {
         val cookies = CookieStore(context)
-        val bili = BiliHttpClient(cookies, settings)
+        val bili = BiliHttpClient(cookies)
         val signer = WbiSigner(bili)
         return DownloadRepository(context, cookies, settings,
             MediaRepository(bili, signer, cookies, OpusRepository(bili, cookies)),

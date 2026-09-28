@@ -408,7 +408,7 @@
     <string name="settings_general_summary">Ngôn ngữ, xúc giác, hoạt ảnh khởi động và thông báo</string>
     <string name="settings_download_summary">Vị trí, tính đồng thời, chất lượng, siêu dữ liệu và định dạng tệp</string>
     <string name="settings_appearance_summary">Chủ đề, màu sắc, chế độ đen tuyền và kính lỏng</string>
-    <string name="settings_about_summary">Phiên bản, cập nhật, nhật ký, giấy phép và tuyên bố từ chối trách nhiệm</string>
+    <string name="settings_about_summary">Phiên bản, cập nhật, báo cáo sự cố, giấy phép và tuyên bố từ chối trách nhiệm</string>
     <string name="settings_add_metadata">Thêm siêu dữ liệu vào các bản tải xuống</string>
     <string name="settings_add_metadata_desc">Nhúng tiêu đề, nghệ sĩ, album và nguồn vào tệp âm thanh hoặc video.</string>
     <string name="settings_metadata_options">Tùy chọn siêu dữ liệu</string>
@@ -554,23 +554,6 @@
     <string name="settings_license_title">Giấy phép</string>
     <string name="settings_opensource_licenses_title">Giấy phép nguồn mở</string>
     <string name="settings_opensource_licenses_summary">Thư viện của bên thứ ba được BiliTools sử dụng</string>
-    <string name="settings_issue_report_enabled_title">Ghi nhật ký chẩn đoán chi tiết</string>
-    <string name="settings_issue_report_enabled_desc">Nhật ký được lưu trữ cục bộ. Xuất bao gồm thông tin thiết bị, cài đặt hiện tại và trạng thái mạng. Các giá trị Cookie, Set-Cookie và Authorization được điều chỉnh lại.</string>
-    <string name="settings_issue_report_export_title">Xuất và chia sẻ nhật ký</string>
-    <string name="settings_issue_report_clear_title">Xóa nhật ký cục bộ</string>
-    <string name="settings_issue_report_clear_desc">Xóa nhật ký chẩn đoán của ứng dụng. Hãy xóa chúng trước khi tái tạo một vấn đề để lần xuất tiếp theo tập trung vào vấn đề đó.</string>
-    <string name="settings_issue_report_export_success">Nhật ký đã được xuất. Đang mở bảng chia sẻ…</string>
-    <string name="settings_issue_report_export_failed">Không thể xuất nhật ký. Hãy thử lại sau.</string>
-    <string name="settings_issue_report_share_failed">Nhật ký đã được xuất nhưng không thể mở được bảng chia sẻ.</string>
-    <string name="settings_issue_report_clear_success">Đã xóa nhật ký cục bộ</string>
-    <string name="settings_issue_report_export_running">Đang chuẩn bị và xuất nhật ký…</string>
-    <string name="settings_issue_report_clear_running">Đang xóa nhật ký cục bộ…</string>
-    <string name="settings_issue_report_status_disabled">Ghi nhật ký chi tiết bị tắt. Xuất khẩu chủ yếu sẽ chứa thông tin chẩn đoán cơ bản.</string>
-    <string name="settings_issue_report_status_enabled">Ghi nhật ký chi tiết được bật.</string>
-    <string name="settings_issue_report_status_enabled_since_suffix">Kể từ %1$s.</string>
-    <string name="settings_issue_report_status_files">Nhật ký được lưu trong bộ nhớ đệm: %1$d · Giới thiệu về %2$s</string>
-    <string name="settings_issue_report_status_last_capture">Ghi lần cuối: %1$s</string>
-    <string name="settings_issue_report_status_last_export">Xuất lần cuối: %1$s</string>
     <string name="settings_disclaimer_title">Tuyên bố từ chối trách nhiệm</string>
     <string name="settings_about_disclaimer">Tất cả dữ liệu được ứng dụng này lưu sẽ được lưu trữ cục bộ trên thiết bị của bạn ở dạng văn bản thuần túy.\nBạn chịu trách nhiệm về hậu quả của việc sử dụng dự án này. Nhà phát triển không chịu trách nhiệm pháp lý.\nTên, logo và đồ họa liên quan của 哔哩哔哩 và Bilibili là nhãn hiệu hoặc nhãn hiệu đã đăng ký của Shanghai Huandian Information Technology Co., Ltd.\nDự án này không được liên kết, ủy quyền, chứng thực hoặc hợp tác với Bilibili hoặc các chi nhánh của nó.</string>
     <string name="update_dialog_title">Đã có bản cập nhật</string>
@@ -580,4 +563,32 @@
     <string name="downloads_details_close">Đóng chi tiết tải xuống</string>
     <string name="downloads_details_expand_path">Mở rộng đường dẫn</string>
     <string name="downloads_details_collapse_path">Thu gọn đường dẫn</string>
+
+    <!-- Local diagnostic reports -->
+    <string name="diagnostic_feedback">Báo cáo sự cố</string>
+    <string name="diagnostic_feedback_description">Xuất báo cáo chẩn đoán để chia sẻ với nhà phát triển</string>
+    <string name="diagnostic_clear">Xóa nhật ký chẩn đoán</string>
+    <string name="diagnostic_clear_description">Xóa thông tin hoạt động và lỗi của ứng dụng dùng để tìm nguyên nhân sự cố</string>
+    <string name="diagnostic_cleared">Đã xóa nhật ký chẩn đoán</string>
+    <string name="diagnostic_title">Báo cáo chẩn đoán</string>
+    <string name="diagnostic_description">Gồm thông tin ứng dụng và thiết bị, nhật ký chẩn đoán 7 ngày (có ID video và tên tệp đã tải), lượt tải thất bại, lần thoát bất thường và cài đặt đã đổi.</string>
+    <string name="diagnostic_problem">Mô tả sự cố (không bắt buộc)</string>
+    <string name="diagnostic_problem_hint">Điều gì đã xảy ra? Làm thế nào để tái hiện sự cố?</string>
+    <string name="diagnostic_preview">Xem nội dung báo cáo</string>
+    <string name="diagnostic_hide_preview">Ẩn nội dung báo cáo</string>
+    <string name="diagnostic_log_summary">Nhật ký chẩn đoán: %1$d dòng\nKhoảng thời gian: %2$s</string>
+    <string name="diagnostic_share">Chia sẻ</string>
+    <string name="diagnostic_save">Lưu</string>
+    <string name="diagnostic_github">Báo cáo trên GitHub</string>
+    <string name="diagnostic_attach_hint">Đính kèm tệp báo cáo đã lưu khi gửi</string>
+    <string name="diagnostic_crash_title">BiliTools đã gặp sự cố trong lần chạy trước</string>
+    <string name="diagnostic_crash_description">Xuất báo cáo chẩn đoán và chia sẻ với nhà phát triển có thể giúp khắc phục sự cố.</string>
+    <string name="diagnostic_export">Xuất báo cáo</string>
+    <string name="diagnostic_ignore">Bỏ qua</string>
+    <string name="diagnostic_failed">Không thể hoàn tất thao tác. Vui lòng thử lại sau.</string>
+    <string name="diagnostic_saved">Đã lưu báo cáo</string>
+    <string name="diagnostic_clear_explanation">Nhật ký chẩn đoán ghi lại các sự kiện và lỗi khi ứng dụng chạy, phân tích video và tải tệp để giúp nhà phát triển tìm nguyên nhân sự cố.\n\nSau khi xóa, nhật ký sẽ được ghi lại từ đầu và các báo cáo tạm được tạo trong ứng dụng để chia sẻ cũng sẽ bị xóa.</string>
+    <string name="diagnostic_clear_confirm">Xóa</string>
+    <string name="diagnostic_privacy">Lưu trên thiết bị; bạn quyết định khi nào chia sẻ. Không gồm mật khẩu, cookie hay thông tin đăng nhập khác. UID tài khoản được ẩn.</string>
+    <string name="diagnostic_close">Đóng báo cáo chẩn đoán</string>
 </resources>

@@ -41,6 +41,7 @@ class WbiSigner(private val httpClient: BiliHttpClient) {
         if (cached != null && now - lastUpdateMs < TimeUnit.MINUTES.toMillis(10)) {
             return cached
         }
+        AppLog.d("WbiSigner", "[wbi] refreshing signing key")
         val url = "https://api.bilibili.com/x/web-interface/nav".toHttpUrl()
         val body = httpClient.get(url)
         val adapter = httpClient.adapter(NavResponse::class.java)

@@ -11,7 +11,7 @@ import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.AppLanguage
 import com.happycola233.bilitools.core.StringProvider
 import com.happycola233.bilitools.core.AppLog as Log
-import com.happycola233.bilitools.core.createHttpDiagnosticLoggingInterceptor
+import com.happycola233.bilitools.core.NetworkDiagnosticInterceptor
 import com.happycola233.bilitools.core.appContainer
 import okhttp3.Call
 import okhttp3.OkHttpClient
@@ -33,9 +33,8 @@ class UpdateDownloadService : Service() {
     private val httpClient by lazy {
         OkHttpClient.Builder()
             .addInterceptor(
-                createHttpDiagnosticLoggingInterceptor(
+                NetworkDiagnosticInterceptor(
                     tag = TAG,
-                    settingsRepository = applicationContext.appContainer.settingsRepository,
                 ),
             )
             .build()

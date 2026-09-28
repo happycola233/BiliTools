@@ -423,7 +423,7 @@
     <string name="settings_general_summary">اللغة والحس اللمسي والرسوم المتحركة لبدء التشغيل والإشعارات</string>
     <string name="settings_download_summary">الموقع والتزامن والجودة وبيانات التعريف وتنسيقات الملفات</string>
     <string name="settings_appearance_summary">المظهر والألوان ووضع اللون الأسود النقي والزجاج السائل</string>
-    <string name="settings_about_summary">الإصدار والتحديثات والسجلات والتراخيص وإخلاء المسؤولية</string>
+    <string name="settings_about_summary">الإصدار والتحديثات والإبلاغ عن المشكلات والتراخيص وإخلاء المسؤولية</string>
     <string name="settings_add_metadata">إضافة بيانات التعريف إلى التنزيلات</string>
     <string name="settings_add_metadata_desc">قم بتضمين العنوان والفنان والألبوم والمصدر في ملفات الصوت أو الفيديو.</string>
     <string name="settings_metadata_options">خيارات بيانات التعريف</string>
@@ -569,23 +569,6 @@
     <string name="settings_license_title">الترخيص</string>
     <string name="settings_opensource_licenses_title">تراخيص مفتوحة المصدر</string>
     <string name="settings_opensource_licenses_summary">مكتبات الجهات الخارجية المستخدمة بواسطة BiliTools</string>
-    <string name="settings_issue_report_enabled_title">التسجيل التشخيصي التفصيلي</string>
-    <string name="settings_issue_report_enabled_desc">يتم تخزين السجلات محليًا. تتضمن عمليات التصدير معلومات الجهاز والإعدادات الحالية وحالة الشبكة. يتم تنقيح قيم ملفات تعريف الارتباط ومجموعة ملفات تعريف الارتباط والتفويض.</string>
-    <string name="settings_issue_report_export_title">تصدير السجلات ومشاركتها</string>
-    <string name="settings_issue_report_clear_title">مسح السجلات المحلية</string>
-    <string name="settings_issue_report_clear_desc">حذف سجلات تشخيص التطبيق. قم بمسحها قبل إعادة إنشاء أي مشكلة للحفاظ على تركيز عملية التصدير التالية على هذه المشكلة.</string>
-    <string name="settings_issue_report_export_success">تم تصدير السجلات. جارٍ فتح ورقة المشاركة...</string>
-    <string name="settings_issue_report_export_failed">تعذر تصدير السجلات. حاول مرة أخرى لاحقًا.</string>
-    <string name="settings_issue_report_share_failed">تم تصدير السجلات، ولكن تعذر فتح ورقة المشاركة.</string>
-    <string name="settings_issue_report_clear_success">تم مسح السجلات المحلية</string>
-    <string name="settings_issue_report_export_running">تحضير السجلات وتصديرها...</string>
-    <string name="settings_issue_report_clear_running">مسح السجلات المحلية...</string>
-    <string name="settings_issue_report_status_disabled">تم إيقاف التسجيل التفصيلي. ستحتوي الصادرات بشكل أساسي على معلومات تشخيصية أساسية.</string>
-    <string name="settings_issue_report_status_enabled">التسجيل التفصيلي قيد التشغيل.</string>
-    <string name="settings_issue_report_status_enabled_since_suffix">منذ %1$s.</string>
-    <string name="settings_issue_report_status_files">السجلات المخزنة مؤقتًا: %1$d · حول %2$s</string>
-    <string name="settings_issue_report_status_last_capture">آخر تسجيل: %1$s</string>
-    <string name="settings_issue_report_status_last_export">آخر تصدير: %1$s</string>
     <string name="settings_disclaimer_title">إخلاء المسؤولية</string>
     <string name="settings_about_disclaimer">يتم تخزين جميع البيانات المحفوظة بواسطة هذا التطبيق محليًا على جهازك بنص عادي.\nأنت مسؤول عن عواقب استخدام هذا المشروع. المطور لا يقبل أي مسؤولية.\nالأسماء والشعارات والرسومات ذات الصلة بـ 哔哩哔哩 وBilibili هي علامات تجارية أو علامات تجارية مسجلة لشركة Shanghai Huandian Information Technology Co., Ltd.\nهذا المشروع ليس تابعًا أو مرخصًا أو معتمدًا أو شريكًا مع Bilibili أو الشركات التابعة لها.</string>
     <string name="update_dialog_title">التحديث متاح</string>
@@ -595,4 +578,32 @@
     <string name="downloads_details_close">إغلاق تفاصيل التنزيل</string>
     <string name="downloads_details_expand_path">توسيع المسار</string>
     <string name="downloads_details_collapse_path">طي المسار</string>
+
+    <!-- Local diagnostic reports -->
+    <string name="diagnostic_feedback">الإبلاغ عن مشكلة</string>
+    <string name="diagnostic_feedback_description">تصدير تقرير تشخيصي لمشاركته مع المطوّر</string>
+    <string name="diagnostic_clear">مسح سجلات التشخيص</string>
+    <string name="diagnostic_clear_description">إزالة تفاصيل نشاط التطبيق والأخطاء المستخدمة لتشخيص المشكلات</string>
+    <string name="diagnostic_cleared">تم مسح سجلات التشخيص</string>
+    <string name="diagnostic_title">تقرير تشخيصي</string>
+    <string name="diagnostic_description">يتضمن معلومات التطبيق والجهاز، وسجلات التشخيص لآخر 7 أيام (بما فيها معرّفات الفيديو وأسماء الملفات المنزّلة)، والتنزيلات الفاشلة، وحالات الإغلاق غير المتوقعة، والإعدادات المعدّلة.</string>
+    <string name="diagnostic_problem">وصف المشكلة (اختياري)</string>
+    <string name="diagnostic_problem_hint">ماذا حدث؟ كيف يمكن إعادة حدوث المشكلة؟</string>
+    <string name="diagnostic_preview">عرض محتوى التقرير</string>
+    <string name="diagnostic_hide_preview">إخفاء محتوى التقرير</string>
+    <string name="diagnostic_log_summary">سجلات التشخيص: %1$d سطرًا\nالفترة الزمنية: %2$s</string>
+    <string name="diagnostic_share">مشاركة</string>
+    <string name="diagnostic_save">حفظ</string>
+    <string name="diagnostic_github">الإبلاغ على GitHub</string>
+    <string name="diagnostic_attach_hint">أرفق ملف التقرير المحفوظ عند الإرسال</string>
+    <string name="diagnostic_crash_title">واجه BiliTools مشكلة في التشغيل السابق</string>
+    <string name="diagnostic_crash_description">يساعد تصدير تقرير تشخيصي ومشاركته مع المطوّر في إصلاح المشكلة.</string>
+    <string name="diagnostic_export">تصدير التقرير</string>
+    <string name="diagnostic_ignore">تجاهل</string>
+    <string name="diagnostic_failed">تعذّر إكمال العملية. حاول مجددًا لاحقًا.</string>
+    <string name="diagnostic_saved">تم حفظ التقرير</string>
+    <string name="diagnostic_clear_explanation">تسجّل سجلات التشخيص الأحداث والأخطاء أثناء تشغيل التطبيق وتحليل الفيديوهات وتنزيل الملفات لمساعدة المطورين على تشخيص المشكلات.\n\nيبدأ التسجيل من جديد بعد المسح، وتُحذف التقارير المؤقتة التي أُنشئت داخل التطبيق للمشاركة.</string>
+    <string name="diagnostic_clear_confirm">مسح</string>
+    <string name="diagnostic_privacy">يُحفظ محليًا وتختار أنت مشاركته. تُستبعد كلمات المرور وملفات تعريف الارتباط وبيانات الدخول، ويُخفى معرّف حسابك UID.</string>
+    <string name="diagnostic_close">إغلاق تقرير التشخيص</string>
 </resources>

@@ -408,7 +408,7 @@
     <string name="settings_general_summary">Bahasa, haptik, animasi permulaan dan pemberitahuan</string>
     <string name="settings_download_summary">Lokasi, konkurensi, kualiti, metadata dan format fail</string>
     <string name="settings_appearance_summary">Tema, warna, mod hitam tulen dan kaca cecair</string>
-    <string name="settings_about_summary">Versi, kemas kini, log, lesen dan penafian</string>
+    <string name="settings_about_summary">Versi, kemas kini, laporan masalah, lesen dan penafian</string>
     <string name="settings_add_metadata">Tambahkan metadata pada muat turun</string>
     <string name="settings_add_metadata_desc">Benamkan tajuk, artis, album dan sumber ke dalam fail audio atau video.</string>
     <string name="settings_metadata_options">Pilihan metadata</string>
@@ -554,23 +554,6 @@
     <string name="settings_license_title">Lesen</string>
     <string name="settings_opensource_licenses_title">Lesen sumber terbuka</string>
     <string name="settings_opensource_licenses_summary">Pustaka pihak ketiga yang digunakan oleh BiliTools</string>
-    <string name="settings_issue_report_enabled_title">Pengelogan diagnostik terperinci</string>
-    <string name="settings_issue_report_enabled_desc">Log disimpan secara setempat. Eksport termasuk maklumat peranti, tetapan semasa dan status rangkaian. Nilai Cookie, Set-Cookie dan Authorization disunting.</string>
-    <string name="settings_issue_report_export_title">Eksport dan kongsi log</string>
-    <string name="settings_issue_report_clear_title">Kosongkan log tempatan</string>
-    <string name="settings_issue_report_clear_desc">Memadamkan log diagnostik apl. Kosongkannya sebelum mengeluarkan semula isu untuk memastikan eksport seterusnya tertumpu pada isu itu.</string>
-    <string name="settings_issue_report_export_success">Log dieksport. Membuka helaian saham…</string>
-    <string name="settings_issue_report_export_failed">Tidak dapat mengeksport log. Cuba lagi nanti.</string>
-    <string name="settings_issue_report_share_failed">Log telah dieksport, tetapi helaian saham tidak dapat dibuka.</string>
-    <string name="settings_issue_report_clear_success">Log tempatan dikosongkan</string>
-    <string name="settings_issue_report_export_running">Menyediakan dan mengeksport log…</string>
-    <string name="settings_issue_report_clear_running">Mengosongkan log tempatan…</string>
-    <string name="settings_issue_report_status_disabled">Pengelogan terperinci dimatikan. Eksport terutamanya akan mengandungi maklumat diagnostik asas.</string>
-    <string name="settings_issue_report_status_enabled">Pengelogan terperinci dihidupkan.</string>
-    <string name="settings_issue_report_status_enabled_since_suffix">Sejak %1$s.</string>
-    <string name="settings_issue_report_status_files">Log dicache: %1$d · Kira-kira %2$s</string>
-    <string name="settings_issue_report_status_last_capture">Rakaman terakhir: %1$s</string>
-    <string name="settings_issue_report_status_last_export">Terakhir dieksport: %1$s</string>
     <string name="settings_disclaimer_title">Penafian</string>
     <string name="settings_about_disclaimer">Semua data yang disimpan oleh apl ini disimpan secara setempat pada peranti anda dalam teks biasa.\nAnda bertanggungjawab atas akibat menggunakan projek ini. Pembangun tidak menerima liabiliti.\nNama, logo dan grafik berkaitan 哔哩哔哩 danBilibiliialah tanda dagangan atau tanda dagangan berdaftar Shanghai Huandian Information Technology Co., Ltd.\nProjek ini tidak bergabung dengan, dibenarkan oleh, disokong oleh, atau bekerjasama denganBilibiliatau sekutunya.</string>
     <string name="update_dialog_title">Kemas kini tersedia</string>
@@ -580,4 +563,32 @@
     <string name="downloads_details_close">Tutup butiran muat turun</string>
     <string name="downloads_details_expand_path">Kembangkan laluan</string>
     <string name="downloads_details_collapse_path">Runtuhkan laluan</string>
+
+    <!-- Local diagnostic reports -->
+    <string name="diagnostic_feedback">Laporkan masalah</string>
+    <string name="diagnostic_feedback_description">Eksport laporan diagnostik untuk dikongsi dengan pembangun</string>
+    <string name="diagnostic_clear">Kosongkan log diagnostik</string>
+    <string name="diagnostic_clear_description">Alih keluar butiran aktiviti aplikasi dan ralat untuk penyelesaian masalah</string>
+    <string name="diagnostic_cleared">Log diagnostik dikosongkan</string>
+    <string name="diagnostic_title">Laporan diagnostik</string>
+    <string name="diagnostic_description">Mengandungi maklumat aplikasi dan peranti, log diagnostik 7 hari (termasuk ID video dan nama fail dimuat turun), muat turun gagal, penutupan tidak dijangka dan tetapan yang diubah.</string>
+    <string name="diagnostic_problem">Penerangan masalah (pilihan)</string>
+    <string name="diagnostic_problem_hint">Apakah yang berlaku? Bagaimanakah masalah ini boleh dihasilkan semula?</string>
+    <string name="diagnostic_preview">Lihat kandungan laporan</string>
+    <string name="diagnostic_hide_preview">Sembunyikan kandungan laporan</string>
+    <string name="diagnostic_log_summary">Log diagnostik: %1$d baris\nJulat masa: %2$s</string>
+    <string name="diagnostic_share">Kongsi</string>
+    <string name="diagnostic_save">Simpan</string>
+    <string name="diagnostic_github">Laporkan di GitHub</string>
+    <string name="diagnostic_attach_hint">Lampirkan fail laporan yang disimpan semasa menghantar</string>
+    <string name="diagnostic_crash_title">BiliTools mengalami masalah semasa penggunaan terakhir</string>
+    <string name="diagnostic_crash_description">Mengeksport laporan diagnostik dan berkongsinya dengan pembangun boleh membantu membaiki masalah ini.</string>
+    <string name="diagnostic_export">Eksport laporan</string>
+    <string name="diagnostic_ignore">Abaikan</string>
+    <string name="diagnostic_failed">Operasi tidak dapat diselesaikan. Cuba lagi kemudian.</string>
+    <string name="diagnostic_saved">Laporan disimpan</string>
+    <string name="diagnostic_clear_explanation">Log diagnostik merekodkan peristiwa dan ralat semasa aplikasi berjalan, menghuraikan video dan memuat turun fail untuk membantu pembangun menyiasat masalah.\n\nSelepas dikosongkan, log baharu dimulakan dan laporan sementara yang dijana dalam aplikasi untuk perkongsian turut dipadamkan.</string>
+    <string name="diagnostic_clear_confirm">Kosongkan</string>
+    <string name="diagnostic_privacy">Disimpan pada peranti; anda memilih bila untuk berkongsi. Kata laluan, kuki dan kelayakan log masuk dikecualikan. UID akaun disembunyikan.</string>
+    <string name="diagnostic_close">Tutup laporan diagnostik</string>
 </resources>

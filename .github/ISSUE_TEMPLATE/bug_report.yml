@@ -9,9 +9,9 @@ body:
 
         - **标题**：用一句话概括问题，例如「批量删除部分视频后，整个 UP 主文件夹被删除」。
         - **一个 issue 只反馈一个问题**，多个问题请分别提交。
-        - **诊断日志**：建议先按页面下方「诊断日志」中的步骤复现问题并导出日志，再回来填写。
+        - **诊断报告**：可直接导出已有运行记录；不必为收集日志再次执行有风险的操作。
 
-        Thanks for reporting! Please summarize the problem in the title, report one problem per issue, and attach the diagnostic log if possible.
+        Thanks for reporting! Please summarize the problem in the title, report one problem per issue, and attach a diagnostic report if possible. You do not need to repeat risky operations to collect logs.
 
   - type: checkboxes
     id: preflight
@@ -69,6 +69,11 @@ body:
     validations:
       required: true
 
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望结果 / Expected behavior
+
   - type: dropdown
     id: frequency
     attributes:
@@ -107,7 +112,7 @@ body:
       value: "### 运行环境 / Environment"
 
   - type: input
-    id: app-version
+    id: version
     attributes:
       label: BiliTools 版本 / App version
       description: 在「我 → 设置 → 关于」顶部查看。/ Shown at the top of Me → Settings → About.
@@ -118,7 +123,7 @@ body:
   - type: input
     id: device
     attributes:
-      label: 设备型号 / Device model
+      label: 设备与系统 / Device and Android version
       placeholder: 例如 Xiaomi 15、Pixel 9、Galaxy S25
     validations:
       required: true
@@ -152,17 +157,14 @@ body:
   - type: upload
     id: logs
     attributes:
-      label: 诊断日志 / Diagnostic log
+      label: 诊断报告 / Diagnostic report
       description: |
-        导出方法：
+        在「我 → 设置 → 关于 → 反馈问题」或失败下载详情中点击「保存」，将生成的 `BiliTools-report-*.txt` 文件拖到这里。异常退出后也可以从启动提示进入。
 
-        1. 打开「我 → 设置 → 关于」，开启「记录详细 issue 日志」，再点击「清空本地日志」。
-        2. 重新操作一遍，让问题再次出现。
-        3. 回到关于页，点击「导出并分享日志」，在此上传生成的 `BiliTools-issue-report-*.txt`（保存在 `Download/BiliTools/IssueReports`）。
+        报告包含最近 7 天内保留的运行记录、设备信息、下载状态和修改过的设置。登录凭据、IP 和当前账号 UID 会被隐藏。提交前可查看报告内容；无需重新复现问题，应用不会自动上传报告。
 
-        日志中的 Cookie 与登录凭证已自动隐藏，但仍可能包含解析过的链接、文件名、设备信息和当前设置。无法打开应用时可跳过此项。
+        Save a report from Me → Settings → About → Report a problem, a failed download, or the prompt after an unexpected exit. Attach the `BiliTools-report-*.txt` file here. The report includes locally retained activity from the last 7 days, device information, download status and changed settings. Credentials, IP addresses and your account UID are hidden. Review the report before submitting. You do not need to reproduce the problem again; reports are never uploaded automatically.
 
-        In Me → Settings → About, turn on "Detailed diagnostic logging" and tap "Clear local logs". Reproduce the problem, then tap "Export and share logs" and upload the file here.
     validations:
       accept: ".txt,.log,.zip"
 
@@ -171,6 +173,7 @@ body:
     attributes:
       label: 截图或录屏 / Screenshots or recording
       description: 界面显示异常或出现报错提示时请附上截图；操作过程较复杂时可以录屏。/ Attach screenshots for UI problems or error messages; a screen recording helps for complex steps.
+
     validations:
       accept: ".png,.jpg,.jpeg,.gif,.webp,.mp4,.mov,.webm"
 

@@ -22,7 +22,7 @@ import com.happycola233.bilitools.core.MediaProcessingEngine
 import com.happycola233.bilitools.core.naming.NamingRenderer
 import com.happycola233.bilitools.data.model.AudioStream
 import com.happycola233.bilitools.core.CookieStore
-import com.happycola233.bilitools.core.createHttpDiagnosticLoggingInterceptor
+import com.happycola233.bilitools.core.NetworkDiagnosticInterceptor
 import com.happycola233.bilitools.data.model.DownloadEmbeddedMetadata
 import com.happycola233.bilitools.data.model.DownloadEmbedding
 import com.happycola233.bilitools.data.model.DownloadExtraTaskOperation
@@ -124,9 +124,8 @@ class DownloadRepository(
                 response
             }
             .addInterceptor(
-                createHttpDiagnosticLoggingInterceptor(
+                NetworkDiagnosticInterceptor(
                     tag = TAG,
-                    settingsRepository = settingsRepository,
                 ),
             )
             .build()
@@ -2434,6 +2433,7 @@ class DownloadRepository(
                 startReadyManagedTasks()
                 startReadyExtraTasks()
             }
+            Log.i(TAG, "[delete] selected=${selected.size} deleteFiles=$deleteFile removed=$removed blocked=$blocked failed=$failed shared=$shared")
             DownloadDeletionResult(removed, blocked, failed, shared, deleteFile)
         }
     }
@@ -2514,6 +2514,7 @@ class DownloadRepository(
                 cleanupTaskResources(item)
                 throw CancellationException("Download group was removed")
             }
+            Log.i(TAG, "[task] created taskId=${normalizedItem.id} type=${normalizedItem.taskType} media=${normalizedItem.mediaParams} embedding=${normalizedItem.embedding} metadata=${normalizedItem.embeddedMetadata != null} relativePath=${groupInfo[normalizedItem.groupId]?.relativePath} file=${normalizedItem.fileName} convertMp3=${settingsRepository.currentSettings().convertAudioToMp3} convertMp4=${settingsRepository.currentSettings().convertVideoToMp4}")
             notificationSession.record(normalizedItem)
             tasks[normalizedItem.id] = normalizedItem
             val list = groupTaskIds.getOrPut(normalizedItem.groupId) { mutableListOf() }
@@ -2547,6 +2548,7 @@ class DownloadRepository(
         val shouldPersist = synchronized(lock) {
             val previous = tasks[normalizedItem.id] ?: return
             if (normalizedItem.id in deletingTaskIds) return
+            logTaskCompletion(previous, normalizedItem)
             notificationSession.record(normalizedItem, previous)
             tasks[normalizedItem.id] = normalizedItem
             shouldPersistTaskChange(previous, normalizedItem)
@@ -2571,6 +2573,7 @@ class DownloadRepository(
             if (!predicate(current)) return@synchronized
             beforeUpdate(current)
             val next = normalizeTask(transform(current))
+            logTaskCompletion(current, next)
             notificationSession.record(next, current)
             tasks[id] = next
             updated = true
@@ -2582,6 +2585,15 @@ class DownloadRepository(
             schedulePersist()
         }
         return true
+    }
+
+    private fun logTaskCompletion(previous: DownloadItem, task: DownloadItem) {
+        if (previous.status == task.status) return
+        when (task.status) {
+            DownloadStatus.Success -> Log.i(TAG, "[task] completed taskId=${task.id} bytes=${task.outputBytes ?: task.downloadedBytes} elapsedMs=${System.currentTimeMillis() - task.createdAt}")
+            DownloadStatus.Failed -> Log.w(TAG, "[task] failed taskId=${task.id} failure=${task.failureMessage} reason=${task.reason} message=${task.errorMessage}")
+            else -> Unit
+        }
     }
 
     private fun shouldPersistTaskChange(old: DownloadItem?, new: DownloadItem): Boolean {
@@ -2915,6 +2927,7 @@ class DownloadRepository(
             notificationSession.restore(store.notificationSession, tasks)
         }
         downloadStates.clear()
+        Log.i(TAG, "[restore] unfinished=${restoredTasks.values.count { it.status !in setOf(DownloadStatus.Success, DownloadStatus.Unavailable, DownloadStatus.Cancelled) }} total=${restoredTasks.size}")
         downloadStates.putAll(restoredStates)
         mergeTasks.clear()
         mergeTasks.putAll(restoredMerges)

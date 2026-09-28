@@ -408,7 +408,7 @@
     <string name="settings_general_summary">語言、觸感反饋、啟動動畫、實時活動通知</string>
     <string name="settings_download_summary">下載位置、併發數量、預設質量、後設資料、格式轉換、行動網路、系統相簿</string>
     <string name="settings_appearance_summary">主題、配色、純黑主題、液態玻璃</string>
-    <string name="settings_about_summary">版本、更新、日誌匯出、開源協議、免責宣告</string>
+    <string name="settings_about_summary">版本、更新、問題回報、開源授權、免責聲明</string>
     <string name="settings_add_metadata">為下載檔案新增後設資料</string>
     <string name="settings_add_metadata_desc">將標題、藝術家、專輯和來源嵌入到音訊或影片檔案中。</string>
     <string name="settings_metadata_options">後設資料選項</string>
@@ -554,23 +554,6 @@
     <string name="settings_license_title">開源協議</string>
     <string name="settings_opensource_licenses_title">開源許可證</string>
     <string name="settings_opensource_licenses_summary">本應用使用的第三方開源庫</string>
-    <string name="settings_issue_report_enabled_title">記錄詳細 issue 日誌</string>
-    <string name="settings_issue_report_enabled_desc">日誌僅儲存在本地，匯出時會附帶裝置資訊、當前設定和網路狀態摘要；Cookie、Set-Cookie 與 Authorization 已做脫敏。</string>
-    <string name="settings_issue_report_export_title">匯出並分享日誌</string>
-    <string name="settings_issue_report_clear_title">清空本地日誌</string>
-    <string name="settings_issue_report_clear_desc">刪除應用內已記錄的診斷日誌。建議在復現問題前先清空一次，便於只保留本次問題相關日誌。</string>
-    <string name="settings_issue_report_export_success">診斷日誌已匯出，正在開啟分享面板</string>
-    <string name="settings_issue_report_export_failed">匯出診斷日誌失敗，請稍後重試</string>
-    <string name="settings_issue_report_share_failed">日誌已匯出，但無法開啟分享面板</string>
-    <string name="settings_issue_report_clear_success">本地診斷日誌已清空</string>
-    <string name="settings_issue_report_export_running">正在生成並匯出診斷日誌…</string>
-    <string name="settings_issue_report_clear_running">正在清空本地診斷日誌…</string>
-    <string name="settings_issue_report_status_disabled">詳細日誌當前未開啟，匯出檔案將主要包含基礎診斷資訊。</string>
-    <string name="settings_issue_report_status_enabled">詳細日誌記錄中。</string>
-    <string name="settings_issue_report_status_enabled_since_suffix">自 %1$s 起。</string>
-    <string name="settings_issue_report_status_files">已快取 %1$d 個日誌檔案，約 %2$s。</string>
-    <string name="settings_issue_report_status_last_capture">最近寫入：%1$s</string>
-    <string name="settings_issue_report_status_last_export">最近匯出：%1$s</string>
     <string name="settings_disclaimer_title">免責宣告</string>
     <string name="settings_about_disclaimer">該應用用於持久化的所有資料均僅明文儲存於使用者本地！\n因使用本專案而產生的任何後果均由使用者個人承擔，與開發者無關，概不負責。\n“嗶哩嗶哩” 及 “Bilibili” 名稱、LOGO及相關圖形是上海幻電資訊科技有限公司的註冊商標或商標。\n本專案與嗶哩嗶哩及其關聯公司無任何關聯、合作、授權或背書等關係。</string>
     <string name="update_dialog_title">發現新版本</string>
@@ -580,4 +563,32 @@
     <string name="downloads_details_close">關閉下載詳情</string>
     <string name="downloads_details_expand_path">展開路徑</string>
     <string name="downloads_details_collapse_path">收起路徑</string>
+
+    <!-- Local diagnostic reports -->
+    <string name="diagnostic_feedback">回報問題</string>
+    <string name="diagnostic_feedback_description">匯出診斷報告並分享給開發者</string>
+    <string name="diagnostic_clear">清除診斷紀錄</string>
+    <string name="diagnostic_clear_description">清理用於排查問題的應用程式執行與錯誤資訊</string>
+    <string name="diagnostic_cleared">診斷紀錄已清除</string>
+    <string name="diagnostic_title">診斷報告</string>
+    <string name="diagnostic_description">報告包含應用程式與裝置資訊、近 7 天的診斷紀錄（含影片編號和下載檔案名稱）、下載失敗與異常結束情況，以及修改過的設定。</string>
+    <string name="diagnostic_problem">問題描述（選填）</string>
+    <string name="diagnostic_problem_hint">遇到了什麼問題？如何操作可以重現？</string>
+    <string name="diagnostic_preview">查看報告內容</string>
+    <string name="diagnostic_hide_preview">收起報告內容</string>
+    <string name="diagnostic_log_summary">診斷紀錄：%1$d 行\n時間範圍：%2$s</string>
+    <string name="diagnostic_share">分享</string>
+    <string name="diagnostic_save">儲存</string>
+    <string name="diagnostic_github">在 GitHub 提交問題</string>
+    <string name="diagnostic_attach_hint">提交時請附上儲存的報告檔案</string>
+    <string name="diagnostic_crash_title">BiliTools 上次執行時發生了問題</string>
+    <string name="diagnostic_crash_description">匯出診斷報告並回報給開發者，可以協助修復這個問題。</string>
+    <string name="diagnostic_export">匯出報告</string>
+    <string name="diagnostic_ignore">忽略</string>
+    <string name="diagnostic_failed">無法完成操作，請稍後再試</string>
+    <string name="diagnostic_saved">報告已儲存</string>
+    <string name="diagnostic_clear_explanation">診斷紀錄會保存應用程式執行、影片解析和下載過程中的事件與錯誤，協助開發者排查問題。\n\n清除後會從現在開始重新記錄，同時刪除應用程式內為分享而產生的暫存報告。</string>
+    <string name="diagnostic_clear_confirm">清除</string>
+    <string name="diagnostic_privacy">僅儲存在本機，由你選擇分享。不記錄密碼、Cookie 等登入憑證，帳號 UID 已隱藏。</string>
+    <string name="diagnostic_close">關閉診斷報告</string>
 </resources>

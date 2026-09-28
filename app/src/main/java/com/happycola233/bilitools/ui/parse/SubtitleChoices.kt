@@ -1,5 +1,6 @@
 package com.happycola233.bilitools.ui.parse
 
+import com.happycola233.bilitools.core.AppLog
 import com.happycola233.bilitools.data.model.DownloadEmbedding
 import com.happycola233.bilitools.data.model.LyricsEmbedding
 import com.happycola233.bilitools.data.model.MediaItem
@@ -199,7 +200,8 @@ internal class SubtitleCatalogLoader(
                         }
                     } catch (cancelled: CancellationException) {
                         throw cancelled
-                    } catch (_: Exception) {
+                    } catch (error: Exception) {
+                        AppLog.w("SubtitleChoices", "[subtitle] source resolution failed", error)
                         currentCoroutineContext().ensureActive()
                         null
                     }
@@ -240,7 +242,8 @@ internal class SubtitleCatalogLoader(
                         }
                     } catch (cancelled: CancellationException) {
                         throw cancelled
-                    } catch (_: Exception) {
+                    } catch (error: Exception) {
+                        AppLog.w("SubtitleChoices", "[subtitle] catalog failed aid=${target.aid} cid=${target.cid}", error)
                         currentCoroutineContext().ensureActive()
                         synchronized(lock) {
                             failed += target

@@ -1,5 +1,6 @@
 package com.happycola233.bilitools.ui.parse
 
+import com.happycola233.bilitools.core.AppLog
 import android.Manifest
 import android.app.Activity
 import android.content.ClipboardManager
@@ -352,6 +353,7 @@ private fun Context.copiedIdentifierName(content: String): String = when {
 private fun Context.openUpperSpace(mid: Long) {
     val intent = Intent(Intent.ACTION_VIEW, "https://space.bilibili.com/$mid".toUri())
     runCatching { startActivity(intent) }.onFailure {
+                AppLog.w("ParseRoute", "[open-space] failed", it)
         Toast.makeText(
             this,
             getString(R.string.common_open_link_failed),

@@ -408,7 +408,7 @@
     <string name="settings_general_summary">言語、触覚、起動アニメーションおよび通知</string>
     <string name="settings_download_summary">場所、同時実行性、品質、メタデータ、およびファイル形式</string>
     <string name="settings_appearance_summary">テーマ、色、ピュアブラックモードおよび液体ガラス</string>
-    <string name="settings_about_summary">バージョン、アップデート、ログ、ライセンスおよび免責事項</string>
+    <string name="settings_about_summary">バージョン、アップデート、問題報告、ライセンスおよび免責事項</string>
     <string name="settings_add_metadata">ダウンロードにメタデータを追加する</string>
     <string name="settings_add_metadata_desc">タイトル、アーティスト、アルバム、およびソースをオーディオまたはビデオファイルに埋め込む。</string>
     <string name="settings_metadata_options">メタデータオプション</string>
@@ -554,23 +554,6 @@
     <string name="settings_license_title">ライセンス</string>
     <string name="settings_opensource_licenses_title">オープンソースライセンス</string>
     <string name="settings_opensource_licenses_summary">BiliTools によって使用されるサードパーティ ライブラリ</string>
-    <string name="settings_issue_report_enabled_title">詳細な診断ログ</string>
-    <string name="settings_issue_report_enabled_desc">ログはローカルに保存される。エクスポートには、デバイス情報、現在の設定、ネットワーク ステータスが含まれます。 Cookie、Set-Cookie、および Authorization の値は編集されます。</string>
-    <string name="settings_issue_report_export_title">ログのエクスポートと共有</string>
-    <string name="settings_issue_report_clear_title">ローカルログをクリアする</string>
-    <string name="settings_issue_report_clear_desc">アプリの診断ログを削除します。問題を再現する前にそれらをクリアして、次回のエクスポートでその問題に焦点を当て続けます。</string>
-    <string name="settings_issue_report_export_success">ログはエクスポートされる。共有シートを開いています…</string>
-    <string name="settings_issue_report_export_failed">ログをエクスポートできませんでした。後でもう一度試してください。</string>
-    <string name="settings_issue_report_share_failed">ログはエクスポートされましたが、共有シートを開けませんでした。</string>
-    <string name="settings_issue_report_clear_success">ローカルログが消去されました</string>
-    <string name="settings_issue_report_export_running">ログを準備してエクスポートしています…</string>
-    <string name="settings_issue_report_clear_running">ローカルログをクリアしています…</string>
-    <string name="settings_issue_report_status_disabled">詳細なロギングはオフになっています。エクスポートには主に基本的な診断情報が含まれます。</string>
-    <string name="settings_issue_report_status_enabled">詳細なロギングがオンになっています。</string>
-    <string name="settings_issue_report_status_enabled_since_suffix">%1$s以降。</string>
-    <string name="settings_issue_report_status_files">キャッシュされたログ: %1$d · %2$s について</string>
-    <string name="settings_issue_report_status_last_capture">最終記録: %1$s</string>
-    <string name="settings_issue_report_status_last_export">最後にエクスポートされた: %1$s</string>
     <string name="settings_disclaimer_title">免責事項</string>
     <string name="settings_about_disclaimer">このアプリによって保存されたすべてのデータは、平文でデバイス上にローカルに保存されます。\nこのプロジェクトの使用による結果については、あなたが責任を負います。開発者は一切の責任を負いません。\n哔哩哔哩および Bilibili の名前、ロゴ、および関連グラフィックは、Shanghai Huandian Information Technology Co., Ltd. の商標または登録商標です。\nこのプロジェクトは、Bilibili またはその関連会社と提携、認可、承認、または提携していません。</string>
     <string name="update_dialog_title">アップデートが利用可能</string>
@@ -580,4 +563,32 @@
     <string name="downloads_details_close">ダウンロードの詳細を閉じる</string>
     <string name="downloads_details_expand_path">パスを展開</string>
     <string name="downloads_details_collapse_path">パスを折りたたむ</string>
+
+    <!-- Local diagnostic reports -->
+    <string name="diagnostic_feedback">問題を報告</string>
+    <string name="diagnostic_feedback_description">診断レポートを書き出して開発者に共有</string>
+    <string name="diagnostic_clear">診断ログを消去</string>
+    <string name="diagnostic_clear_description">問題の調査に使うアプリの動作・エラー情報を削除</string>
+    <string name="diagnostic_cleared">診断ログを消去しました</string>
+    <string name="diagnostic_title">診断レポート</string>
+    <string name="diagnostic_description">アプリと端末の情報、過去7日間の診断ログ（動画IDとダウンロードしたファイル名を含む）、ダウンロードの失敗、予期しない終了、変更した設定を含みます。</string>
+    <string name="diagnostic_problem">問題の説明（任意）</string>
+    <string name="diagnostic_problem_hint">どのような問題が発生しましたか？再現する手順を教えてください。</string>
+    <string name="diagnostic_preview">レポートの内容を表示</string>
+    <string name="diagnostic_hide_preview">レポートの内容を閉じる</string>
+    <string name="diagnostic_log_summary">診断ログ：%1$d 行\n期間：%2$s</string>
+    <string name="diagnostic_share">共有</string>
+    <string name="diagnostic_save">保存</string>
+    <string name="diagnostic_github">GitHubで問題を報告</string>
+    <string name="diagnostic_attach_hint">送信時に保存したレポートファイルを添付してください</string>
+    <string name="diagnostic_crash_title">前回のBiliToolsの動作中に問題が発生しました</string>
+    <string name="diagnostic_crash_description">診断レポートを書き出して開発者に共有すると、問題の修正に役立ちます。</string>
+    <string name="diagnostic_export">レポートを書き出す</string>
+    <string name="diagnostic_ignore">無視</string>
+    <string name="diagnostic_failed">操作を完了できませんでした。しばらくしてから再試行してください。</string>
+    <string name="diagnostic_saved">レポートを保存しました</string>
+    <string name="diagnostic_clear_explanation">診断ログには、アプリの動作、動画の解析、ダウンロード中のイベントやエラーが記録され、開発者による問題の調査に役立ちます。\n\n消去後は新たに記録を開始し、共有用にアプリ内で作成した一時レポートも削除します。</string>
+    <string name="diagnostic_clear_confirm">消去</string>
+    <string name="diagnostic_privacy">端末内に保存され、共有は自分で選べます。パスワードやCookieなどのログイン情報は含まれず、アカウントUIDは非表示です。</string>
+    <string name="diagnostic_close">診断レポートを閉じる</string>
 </resources>

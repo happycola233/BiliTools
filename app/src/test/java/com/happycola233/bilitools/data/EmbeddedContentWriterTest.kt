@@ -254,7 +254,7 @@ class EmbeddedContentWriterTest {
                 .build()
         }.build()
         val context = RuntimeEnvironment.getApplication()
-        val bili = BiliHttpClient(CookieStore(context), SettingsRepository(context))
+        val bili = BiliHttpClient(CookieStore(context))
         return EmbeddedContentWriter(client, ExtrasRepository(bili, WbiSigner(bili)), StringProvider(RuntimeEnvironment.getApplication()))
     }
 
@@ -274,7 +274,7 @@ class EmbeddedContentWriterTest {
                 .body(content.toResponseBody("application/json; charset=utf-8".toMediaType())).build()
         }.build()
         val context = RuntimeEnvironment.getApplication()
-        val bili = BiliHttpClient(CookieStore(context), SettingsRepository(context))
+        val bili = BiliHttpClient(CookieStore(context))
         ReflectionHelpers.setField(bili, "client\$delegate", lazyOf(client))
         val signer = WbiSigner(bili)
         ReflectionHelpers.setField(signer, "cachedMixinKey", "fixture")

@@ -408,7 +408,7 @@
     <string name="settings_general_summary">ภาษา ระบบสัมผัส ภาพเคลื่อนไหวเริ่มต้น และการแจ้งเตือน</string>
     <string name="settings_download_summary">ตำแหน่ง การทำงานพร้อมกัน คุณภาพ เมตาดาต้า และรูปแบบไฟล์</string>
     <string name="settings_appearance_summary">ธีม สี โหมดสีดำล้วน และกระจกเหลว</string>
-    <string name="settings_about_summary">เวอร์ชัน การอัปเดต บันทึก ใบอนุญาต และข้อจำกัดความรับผิดชอบ</string>
+    <string name="settings_about_summary">เวอร์ชัน การอัปเดต รายงานปัญหา ใบอนุญาต และข้อจำกัดความรับผิดชอบ</string>
     <string name="settings_add_metadata">เพิ่มข้อมูลเมตาลงในการดาวน์โหลด</string>
     <string name="settings_add_metadata_desc">ฝังชื่อ ศิลปิน อัลบั้ม และแหล่งที่มาลงในไฟล์เสียงหรือวิดีโอ</string>
     <string name="settings_metadata_options">ตัวเลือกข้อมูลเมตา</string>
@@ -554,23 +554,6 @@
     <string name="settings_license_title">ใบอนุญาต</string>
     <string name="settings_opensource_licenses_title">ใบอนุญาตโอเพ่นซอร์ส</string>
     <string name="settings_opensource_licenses_summary">ไลบรารีบุคคลที่สามใช้โดย BiliTools</string>
-    <string name="settings_issue_report_enabled_title">การบันทึกการวินิจฉัยโดยละเอียด</string>
-    <string name="settings_issue_report_enabled_desc">บันทึกจะถูกจัดเก็บไว้ในเครื่อง การส่งออกรวมถึงข้อมูลอุปกรณ์ การตั้งค่าปัจจุบัน และสถานะเครือข่าย ค่าคุกกี้ ชุดคุกกี้ และการอนุญาตจะถูกแก้ไข</string>
-    <string name="settings_issue_report_export_title">ส่งออกและแชร์บันทึก</string>
-    <string name="settings_issue_report_clear_title">ล้างบันทึกในเครื่อง</string>
-    <string name="settings_issue_report_clear_desc">ลบบันทึกการวินิจฉัยของแอป ล้างข้อมูลเหล่านั้นก่อนที่จะเกิดปัญหาซ้ำเพื่อให้การส่งออกครั้งถัดไปเน้นไปที่ปัญหานั้น</string>
-    <string name="settings_issue_report_export_success">บันทึกที่ส่งออก กำลังเปิดแผ่นแบ่งปัน...</string>
-    <string name="settings_issue_report_export_failed">ไม่สามารถส่งออกบันทึกได้ ลองอีกครั้งในภายหลัง</string>
-    <string name="settings_issue_report_share_failed">บันทึกถูกส่งออกแล้ว แต่ไม่สามารถเปิดแผ่นแบ่งปันได้</string>
-    <string name="settings_issue_report_clear_success">ล้างบันทึกในเครื่องแล้ว</string>
-    <string name="settings_issue_report_export_running">กำลังเตรียมและส่งออกบันทึก...</string>
-    <string name="settings_issue_report_clear_running">กำลังล้างบันทึกในเครื่อง...</string>
-    <string name="settings_issue_report_status_disabled">ปิดการบันทึกโดยละเอียดแล้ว การส่งออกจะมีข้อมูลการวินิจฉัยขั้นพื้นฐานเป็นหลัก</string>
-    <string name="settings_issue_report_status_enabled">การบันทึกโดยละเอียดเปิดอยู่</string>
-    <string name="settings_issue_report_status_enabled_since_suffix">ตั้งแต่ %1$s</string>
-    <string name="settings_issue_report_status_files">บันทึกแคช: %1$d · เกี่ยวกับ %2$s</string>
-    <string name="settings_issue_report_status_last_capture">บันทึกล่าสุด: %1$s</string>
-    <string name="settings_issue_report_status_last_export">ส่งออกครั้งล่าสุด: %1$s</string>
     <string name="settings_disclaimer_title">ข้อสงวนสิทธิ์</string>
     <string name="settings_about_disclaimer">ข้อมูลทั้งหมดที่แอปนี้บันทึกไว้จะถูกจัดเก็บไว้ในอุปกรณ์ของคุณในรูปแบบข้อความธรรมดา\nคุณต้องรับผิดชอบต่อผลที่ตามมาของการใช้โปรเจ็กต์นี้ นักพัฒนาไม่ยอมรับความรับผิด\nชื่อ โลโก้ และกราฟิกที่เกี่ยวข้องของ 哔哩哔哩 และ Bilibili เป็นเครื่องหมายการค้าหรือเครื่องหมายการค้าจดทะเบียนของ Shanghai Huandian Information Technology Co., Ltd.\nโครงการนี้ไม่มีส่วนเกี่ยวข้อง ได้รับอนุญาตจาก รับรองโดย หรือร่วมมือกับ Bilibili หรือบริษัทในเครือ</string>
     <string name="update_dialog_title">มีการอัปเดตแล้ว</string>
@@ -580,4 +563,32 @@
     <string name="downloads_details_close">ปิดรายละเอียดการดาวน์โหลด</string>
     <string name="downloads_details_expand_path">ขยายเส้นทาง</string>
     <string name="downloads_details_collapse_path">ย่อเส้นทาง</string>
+
+    <!-- Local diagnostic reports -->
+    <string name="diagnostic_feedback">รายงานปัญหา</string>
+    <string name="diagnostic_feedback_description">ส่งออกรายงานการวินิจฉัยเพื่อแชร์กับผู้พัฒนา</string>
+    <string name="diagnostic_clear">ล้างบันทึกการวินิจฉัย</string>
+    <string name="diagnostic_clear_description">ลบข้อมูลการทำงานและข้อผิดพลาดของแอปที่ใช้ตรวจสอบปัญหา</string>
+    <string name="diagnostic_cleared">ล้างบันทึกการวินิจฉัยแล้ว</string>
+    <string name="diagnostic_title">รายงานการวินิจฉัย</string>
+    <string name="diagnostic_description">ประกอบด้วยข้อมูลแอปและอุปกรณ์ บันทึกการวินิจฉัยย้อนหลัง 7 วัน (รวมรหัสวิดีโอและชื่อไฟล์ที่ดาวน์โหลด) การดาวน์โหลดที่ล้มเหลว การปิดแอปผิดปกติ และการตั้งค่าที่เปลี่ยน</string>
+    <string name="diagnostic_problem">คำอธิบายปัญหา (ไม่บังคับ)</string>
+    <string name="diagnostic_problem_hint">เกิดอะไรขึ้น? ต้องทำอย่างไรจึงจะเกิดปัญหาซ้ำ?</string>
+    <string name="diagnostic_preview">ดูเนื้อหารายงาน</string>
+    <string name="diagnostic_hide_preview">ซ่อนเนื้อหารายงาน</string>
+    <string name="diagnostic_log_summary">บันทึกการวินิจฉัย: %1$d บรรทัด\nช่วงเวลา: %2$s</string>
+    <string name="diagnostic_share">แชร์</string>
+    <string name="diagnostic_save">บันทึก</string>
+    <string name="diagnostic_github">รายงานบน GitHub</string>
+    <string name="diagnostic_attach_hint">แนบไฟล์รายงานที่บันทึกไว้เมื่อส่งปัญหา</string>
+    <string name="diagnostic_crash_title">BiliTools พบปัญหาในการทำงานครั้งก่อน</string>
+    <string name="diagnostic_crash_description">การส่งออกรายงานการวินิจฉัยและแชร์กับผู้พัฒนาจะช่วยแก้ไขปัญหานี้ได้</string>
+    <string name="diagnostic_export">ส่งออกรายงาน</string>
+    <string name="diagnostic_ignore">ละเว้น</string>
+    <string name="diagnostic_failed">ไม่สามารถดำเนินการได้ โปรดลองอีกครั้งภายหลัง</string>
+    <string name="diagnostic_saved">บันทึกรายงานแล้ว</string>
+    <string name="diagnostic_clear_explanation">บันทึกการวินิจฉัยเก็บเหตุการณ์และข้อผิดพลาดระหว่างการทำงานของแอป การวิเคราะห์วิดีโอ และการดาวน์โหลดไฟล์ เพื่อช่วยให้นักพัฒนาตรวจสอบปัญหาได้\n\nหลังจากล้าง ระบบจะเริ่มบันทึกใหม่และลบรายงานชั่วคราวที่สร้างในแอปเพื่อแชร์ด้วย</string>
+    <string name="diagnostic_clear_confirm">ล้าง</string>
+    <string name="diagnostic_privacy">เก็บในอุปกรณ์และแชร์เมื่อคุณเลือก ไม่รวมรหัสผ่าน คุกกี้ หรือข้อมูลเข้าสู่ระบบอื่น ๆ และซ่อน UID ของบัญชี</string>
+    <string name="diagnostic_close">ปิดรายงานการวินิจฉัย</string>
 </resources>

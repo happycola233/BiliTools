@@ -1,5 +1,6 @@
 package com.happycola233.bilitools.download
 
+import com.happycola233.bilitools.core.AppLog
 import android.app.Notification
 import android.app.Service
 import android.content.Context
@@ -34,12 +35,18 @@ class DownloadForegroundService : Service() {
         if (foregroundStarted) {
             notifications.notifyProgress(notification)
         } else {
-            startForeground(
-                DownloadNotificationManager.NOTIFICATION_ID_PROGRESS,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
-            )
+            try {
+                startForeground(
+                    DownloadNotificationManager.NOTIFICATION_ID_PROGRESS,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+                )
+            } catch (error: RuntimeException) {
+                AppLog.w("DownloadForegroundService", "[service] foreground start failed", error)
+                throw error
+            }
             foregroundStarted = true
+            AppLog.i("DownloadForegroundService", "[service] started")
         }
     }
 
@@ -58,6 +65,7 @@ class DownloadForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
+        AppLog.i("DownloadForegroundService", "[service] stopped")
         container.downloadNotifications.detach(this)
         super.onDestroy()
     }
@@ -67,10 +75,15 @@ class DownloadForegroundService : Service() {
         const val ACTION_RESUME = "com.happycola233.bilitools.download.RESUME_NOTIFICATION_TASKS"
 
         fun requestSync(context: Context) {
-            ContextCompat.startForegroundService(
-                context,
-                Intent(context, DownloadForegroundService::class.java).setAction(ACTION_SYNC),
-            )
+            try {
+                ContextCompat.startForegroundService(
+                    context,
+                    Intent(context, DownloadForegroundService::class.java).setAction(ACTION_SYNC),
+                )
+            } catch (error: RuntimeException) {
+                AppLog.w("DownloadForegroundService", "[service] start request failed", error)
+                throw error
+            }
         }
     }
 }

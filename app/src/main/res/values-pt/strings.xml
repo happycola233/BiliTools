@@ -411,7 +411,7 @@
     <string name="settings_general_summary">Idioma, sensação ao toque, animação de inicialização e notificações</string>
     <string name="settings_download_summary">Localização, simultaneidade, qualidade, metadados e formatos de arquivo</string>
     <string name="settings_appearance_summary">Tema, cores, modo preto puro e vidro líquido</string>
-    <string name="settings_about_summary">Versão, atualizações, logs, licenças e isenção de responsabilidade</string>
+    <string name="settings_about_summary">Versão, atualizações, relatos de problemas, licenças e isenção de responsabilidade</string>
     <string name="settings_add_metadata">Adicionar metadados aos downloads</string>
     <string name="settings_add_metadata_desc">Incorporar título, artista, álbum e fonte em arquivos de áudio ou vídeo.</string>
     <string name="settings_metadata_options">Opções de metadados</string>
@@ -557,23 +557,6 @@
     <string name="settings_license_title">Licença</string>
     <string name="settings_opensource_licenses_title">Licenças de código aberto</string>
     <string name="settings_opensource_licenses_summary">Bibliotecas de terceiros usadas por BiliTools</string>
-    <string name="settings_issue_report_enabled_title">Registro de diagnóstico detalhado</string>
-    <string name="settings_issue_report_enabled_desc">Os registros são armazenados localmente. As exportações incluem informações do dispositivo, configurações atuais e status da rede. Os valores Cookie, Set-Cookie e Authorization são editados.</string>
-    <string name="settings_issue_report_export_title">Exportar e compartilhar registros</string>
-    <string name="settings_issue_report_clear_title">Limpar logs locais</string>
-    <string name="settings_issue_report_clear_desc">Exclui os logs de diagnóstico do aplicativo. Limpe-os antes de reproduzir um problema para manter a próxima exportação focada nesse problema.</string>
-    <string name="settings_issue_report_export_success">Registros exportados. Abrindo a planilha de compartilhamento…</string>
-    <string name="settings_issue_report_export_failed">Não foi possível exportar logs. Tente novamente mais tarde.</string>
-    <string name="settings_issue_report_share_failed">Os logs foram exportados, mas a planilha de compartilhamento não pôde ser aberta.</string>
-    <string name="settings_issue_report_clear_success">Logs locais apagados</string>
-    <string name="settings_issue_report_export_running">Preparando e exportando logs…</string>
-    <string name="settings_issue_report_clear_running">Limpando logs locais…</string>
-    <string name="settings_issue_report_status_disabled">O registro detalhado está desativado. As exportações conterão principalmente informações básicas de diagnóstico.</string>
-    <string name="settings_issue_report_status_enabled">O registro detalhado está ativado.</string>
-    <string name="settings_issue_report_status_enabled_since_suffix">Desde %1$s.</string>
-    <string name="settings_issue_report_status_files">Logs armazenados em cache: %1$d · Sobre %2$s</string>
-    <string name="settings_issue_report_status_last_capture">Último registro: %1$s</string>
-    <string name="settings_issue_report_status_last_export">Última exportação: %1$s</string>
     <string name="settings_disclaimer_title">Isenção de responsabilidade</string>
     <string name="settings_about_disclaimer">Todos os dados salvos por este aplicativo são armazenados localmente no seu dispositivo em texto simples.\nVocê é responsável pelas consequências do uso deste projeto. O desenvolvedor não aceita nenhuma responsabilidade.\nOs nomes, logotipos e gráficos relacionados de 哔哩哔哩 e Bilibili são marcas comerciais ou marcas registradas da Shanghai Huandian Information Technology Co., Ltd.\nEste projeto não é afiliado, autorizado, endossado ou parceiro de Bilibili ou suas afiliadas.</string>
     <string name="update_dialog_title">Atualização disponível</string>
@@ -583,4 +566,32 @@
     <string name="downloads_details_close">Fechar detalhes do download</string>
     <string name="downloads_details_expand_path">Expandir caminho</string>
     <string name="downloads_details_collapse_path">Recolher caminho</string>
+
+    <!-- Local diagnostic reports -->
+    <string name="diagnostic_feedback">Relatar um problema</string>
+    <string name="diagnostic_feedback_description">Exportar um relatório de diagnóstico para compartilhar com o desenvolvedor</string>
+    <string name="diagnostic_clear">Limpar registros de diagnóstico</string>
+    <string name="diagnostic_clear_description">Remover detalhes de atividade e erros do app usados para investigar problemas</string>
+    <string name="diagnostic_cleared">Registros de diagnóstico limpos</string>
+    <string name="diagnostic_title">Relatório de diagnóstico</string>
+    <string name="diagnostic_description">Inclui informações do app e do dispositivo, registros de diagnóstico de 7 dias (com IDs de vídeos e nomes de arquivos baixados), downloads com falha, encerramentos inesperados e configurações alteradas.</string>
+    <string name="diagnostic_problem">Descrição do problema (opcional)</string>
+    <string name="diagnostic_problem_hint">O que aconteceu? Como reproduzir o problema?</string>
+    <string name="diagnostic_preview">Ver conteúdo do relatório</string>
+    <string name="diagnostic_hide_preview">Ocultar conteúdo do relatório</string>
+    <string name="diagnostic_log_summary">Registros de diagnóstico: %1$d linhas\nPeríodo: %2$s</string>
+    <string name="diagnostic_share">Compartilhar</string>
+    <string name="diagnostic_save">Salvar</string>
+    <string name="diagnostic_github">Relatar no GitHub</string>
+    <string name="diagnostic_attach_hint">Anexe o arquivo do relatório salvo ao enviar</string>
+    <string name="diagnostic_crash_title">O BiliTools teve um problema na última execução</string>
+    <string name="diagnostic_crash_description">Exportar um relatório de diagnóstico e compartilhá-lo com o desenvolvedor pode ajudar a corrigir o problema.</string>
+    <string name="diagnostic_export">Exportar relatório</string>
+    <string name="diagnostic_ignore">Ignorar</string>
+    <string name="diagnostic_failed">Não foi possível concluir a operação. Tente novamente mais tarde.</string>
+    <string name="diagnostic_saved">Relatório salvo</string>
+    <string name="diagnostic_clear_explanation">Os registros de diagnóstico capturam eventos e erros durante o uso do app, a análise de vídeos e os downloads para ajudar os desenvolvedores a investigar problemas.\n\nAo limpá-los, um novo registro é iniciado e os relatórios temporários criados no app para compartilhamento são removidos.</string>
+    <string name="diagnostic_clear_confirm">Limpar</string>
+    <string name="diagnostic_privacy">Salvo localmente; você decide quando compartilhar. Senhas, cookies e outras credenciais não são incluídos. O UID da conta fica oculto.</string>
+    <string name="diagnostic_close">Fechar relatório de diagnóstico</string>
 </resources>

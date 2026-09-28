@@ -124,7 +124,7 @@ class MetadataSettingsTest {
 
     private fun verifyDownloadEntryPoints(theme: AppThemeMode) {
         val container = (RuntimeEnvironment.getApplication() as BiliToolsApp).container
-        val viewModel = SettingsViewModel(container.settingsRepository, container.issueReportRepository)
+        val viewModel = SettingsViewModel(container.settingsRepository)
         viewModel.navigateTo(SettingsDestination.Download)
         compose.setContent {
             BiliToolsTheme(AppSettings(themeMode = theme)) {

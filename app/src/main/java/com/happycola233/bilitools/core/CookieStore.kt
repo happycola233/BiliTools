@@ -32,6 +32,7 @@ class CookieStore(context: Context) {
         ensureLoaded()
         val setCookies = headers.values("Set-Cookie")
         if (setCookies.isEmpty()) return
+        val wasLoggedIn = isLoggedIn()
         for (header in setCookies) {
             val nameValue = header.substringBefore(";").trim()
             val pair = nameValue.split("=", limit = 2)
@@ -46,6 +47,7 @@ class CookieStore(context: Context) {
             }
         }
         persist()
+        if (wasLoggedIn != isLoggedIn()) AppLog.i("CookieStore", "[account] loggedIn=${isLoggedIn()}")
     }
 
     fun cookieHeader(): String {
@@ -72,6 +74,7 @@ class CookieStore(context: Context) {
 
     fun clear() {
         ensureLoaded()
+        if (isLoggedIn()) AppLog.i("CookieStore", "[account] loggedIn=false")
         cookies.clear()
         prefs.edit().remove(KEY_COOKIE_RAW).apply()
     }

@@ -12,13 +12,6 @@ class ExportRepository(
 ) {
     internal val outputStorage = DownloadOutputStorage(context)
 
-    suspend fun saveText(
-        fileName: String,
-        mimeType: String?,
-        content: String,
-        relativePath: String = "${Environment.DIRECTORY_DOWNLOADS}/BiliTools",
-    ): Uri? = saveBytes(fileName, mimeType, content.toByteArray(Charsets.UTF_8), relativePath)
-
     suspend fun saveBytes(
         fileName: String,
         mimeType: String?,

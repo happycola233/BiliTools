@@ -1,5 +1,6 @@
 package com.happycola233.bilitools.ui.parse
 
+import com.happycola233.bilitools.core.AppLog
 import com.happycola233.bilitools.data.displayName
 import com.happycola233.bilitools.data.model.SubtitleInfo
 import com.happycola233.bilitools.data.subtitleLanguageDisplayName
@@ -26,6 +27,7 @@ internal suspend fun loadSubtitleCopyEntries(
     } catch (cancelled: CancellationException) {
         throw cancelled
     } catch (error: Exception) {
+        AppLog.w("SubtitleCopy", "[subtitle] copy failed", error)
         val message = errorMessage(error)
         return if (requestedLanguages.isEmpty()) {
             listOf(SubtitleCopyEntry(title, null, null, message))
@@ -50,6 +52,7 @@ internal suspend fun loadSubtitleCopyEntries(
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: Exception) {
+        AppLog.w("SubtitleCopy", "[subtitle] copy failed", error)
             SubtitleCopyEntry(title, subtitle.displayName, null, errorMessage(error))
         }
     }
