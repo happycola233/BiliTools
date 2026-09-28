@@ -1,0 +1,181 @@
+name: 问题反馈 / Bug report
+description: 解析、下载、界面显示等功能不正常，或应用闪退 / Something isn't working as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈！信息越具体，问题越容易定位和修复。
+
+        - **标题**：用一句话概括问题，例如「批量删除部分视频后，整个 UP 主文件夹被删除」。
+        - **一个 issue 只反馈一个问题**，多个问题请分别提交。
+        - **诊断日志**：建议先按页面下方「诊断日志」中的步骤复现问题并导出日志，再回来填写。
+
+        Thanks for reporting! Please summarize the problem in the title, report one problem per issue, and attach the diagnostic log if possible.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: 提交前确认 / Before submitting
+      options:
+        - label: 我已搜索[现有 issue](https://github.com/happycola233/BiliTools/issues?q=is%3Aissue)，没有找到相同的问题 / I have searched existing issues
+          required: true
+        - label: 我已更新到[最新版本](https://github.com/happycola233/BiliTools/releases/latest)，问题仍然存在 / I'm on the latest version and the problem still exists
+          required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: 问题类型 / Area
+      options:
+        - 解析：链接识别、解析结果、选集 / Parsing
+        - 下载：下载失败、速度、暂停与继续、合并与转码 / Downloading
+        - 下载文件：文件名、保存位置、元数据、字幕、弹幕、封面 / Downloaded files
+        - 下载管理：任务列表、删除、清除记录、打开与分享 / Download management
+        - 账号：登录、个人信息、收藏、稍后再看、历史记录 / Account
+        - 通知：下载通知、Live Update / Notifications
+        - 界面与交互：显示异常、动画、配色、触感反馈 / UI & interaction
+        - 语言与翻译 / Language & translation
+        - 设置与应用更新 / Settings & app update
+        - 闪退、卡死或无响应 / Crash or freeze
+        - 其他 / Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述 / What happened
+      description: |
+        实际发生了什么？你期望的结果是什么？如果出现了报错提示，请完整复制提示文字。
+
+        What happened, and what did you expect? Please copy any error message in full.
+      placeholder: 任务停在「正在合并音视频」，随后显示「下载失败」；期望能正常保存视频文件。
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤 / Steps to reproduce
+      description: |
+        从打开应用或分享到 BiliTools 开始，按顺序写出每一步操作。涉及下载时，请写明所选的输出类型、流媒体格式、分辨率、视频编码、音质和勾选的附加内容。
+
+        Step by step, starting from opening the app or sharing to BiliTools. For downloads, include the selected output type, stream format, resolution, codec, audio quality and extras.
+      placeholder: |
+        1. 在解析页粘贴链接并解析
+        2. 选择「音视频 / DASH / 1080P 高清 / AVC / 192K」，勾选弹幕和字幕
+        3. 点击下载，任务在合并音视频时失败
+    validations:
+      required: true
+
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: 出现频率 / Frequency
+      options:
+        - 每次都会出现 / Every time
+        - 有时出现 / Sometimes
+        - 只出现过一次 / Only once
+    validations:
+      required: true
+
+  - type: textarea
+    id: link
+    attributes:
+      label: 相关链接或编号 / Link or ID
+      description: |
+        解析、下载或下载文件相关的问题请务必填写，并确认该内容在 B 站 App 或网页中能正常播放。可填写完整链接、b23.tv 短链，或 BV、av、ep、ss、md、au、cv、UID 等编号，多个请换行。
+
+        Required for parsing or downloading issues. A full link, b23.tv short link, or an ID such as BV / ep / ss / au / cv.
+      placeholder: https://www.bilibili.com/video/BV1xx411c7mD
+
+  - type: dropdown
+    id: account
+    attributes:
+      label: 登录状态 / Account status
+      description: 可选画质、音质和部分附加内容与账号权限有关。/ Available qualities and some extras depend on your account.
+      options:
+        - 未登录 / Not logged in
+        - 已登录，非大会员 / Logged in, not VIP
+        - 已登录，大会员 / Logged in, VIP
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: "### 运行环境 / Environment"
+
+  - type: input
+    id: app-version
+    attributes:
+      label: BiliTools 版本 / App version
+      description: 在「我 → 设置 → 关于」顶部查看。/ Shown at the top of Me → Settings → About.
+      placeholder: 3.0 (14)
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: 设备型号 / Device model
+      placeholder: 例如 Xiaomi 15、Pixel 9、Galaxy S25
+    validations:
+      required: true
+
+  - type: dropdown
+    id: android-version
+    attributes:
+      label: Android 版本 / Android version
+      options:
+        - Android 17
+        - Android 16
+        - Android 15
+        - Android 14
+        - Android 13
+        - Android 12 / 12L
+        - Android 11
+        - Android 10
+        - 测试版或其他 / Beta or other
+    validations:
+      required: true
+
+  - type: input
+    id: rom
+    attributes:
+      label: 系统版本 / System version
+      description: 在系统设置的「关于手机」中查看。/ Found in system Settings → About phone.
+      placeholder: 例如 HyperOS 2.0.207、ColorOS 15、One UI 7、原生 Android
+    validations:
+      required: true
+
+  - type: upload
+    id: logs
+    attributes:
+      label: 诊断日志 / Diagnostic log
+      description: |
+        导出方法：
+
+        1. 打开「我 → 设置 → 关于」，开启「记录详细 issue 日志」，再点击「清空本地日志」。
+        2. 重新操作一遍，让问题再次出现。
+        3. 回到关于页，点击「导出并分享日志」，在此上传生成的 `BiliTools-issue-report-*.txt`（保存在 `Download/BiliTools/IssueReports`）。
+
+        日志中的 Cookie 与登录凭证已自动隐藏，但仍可能包含解析过的链接、文件名、设备信息和当前设置。无法打开应用时可跳过此项。
+
+        In Me → Settings → About, turn on "Detailed diagnostic logging" and tap "Clear local logs". Reproduce the problem, then tap "Export and share logs" and upload the file here.
+    validations:
+      accept: ".txt,.log,.zip"
+
+  - type: upload
+    id: media
+    attributes:
+      label: 截图或录屏 / Screenshots or recording
+      description: 界面显示异常或出现报错提示时请附上截图；操作过程较复杂时可以录屏。/ Attach screenshots for UI problems or error messages; a screen recording helps for complex steps.
+    validations:
+      accept: ".png,.jpg,.jpeg,.gif,.webp,.mp4,.mov,.webm"
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 补充说明 / Additional context
+      description: 例如是否使用代理或 VPN、是否在中国大陆以外地区、从哪个版本开始出现、修改过哪些设置等。/ E.g. proxy or VPN, region outside mainland China, the first version with this problem, or changed settings.

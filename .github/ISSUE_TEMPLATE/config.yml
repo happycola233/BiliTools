@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 下载最新版本 / Latest release
+    url: https://github.com/happycola233/BiliTools/releases/latest
+    about: 反馈前请先更新到最新版本，问题可能已经修复。/ The problem may already be fixed in the latest version.
+  - name: 使用说明 / User guide
+    url: https://github.com/happycola233/BiliTools#readme
+    about: 支持的链接格式、下载选项与命名模板说明。/ Supported links, download options and naming templates.

@@ -1,0 +1,68 @@
+name: 功能建议 / Feature request
+description: 提出新功能，或改进现有功能的想法 / Suggest a new feature or an improvement
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢你的建议！请先说明遇到的问题或使用场景，再描述期望的功能——了解「为什么需要」比「具体怎么做」更有助于找到合适的方案。一个 issue 只提一个建议。
+
+        Thanks for the suggestion! Please describe the problem or use case first, then the feature you'd like. One suggestion per issue.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: 提交前确认 / Before submitting
+      options:
+        - label: 我已搜索[现有 issue](https://github.com/happycola233/BiliTools/issues?q=is%3Aissue)，没有找到相同的建议 / I have searched existing issues
+          required: true
+        - label: 我已阅读[使用说明](https://github.com/happycola233/BiliTools#readme)并使用最新版本，确认该功能尚未提供 / I have read the README and confirmed this isn't available in the latest version
+          required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: 相关功能 / Area
+      options:
+        - 解析 / Parsing
+        - 下载与导出 / Downloading & exporting
+        - 下载文件与命名 / Downloaded files & naming
+        - 下载管理 / Download management
+        - 账号与个人内容 / Account
+        - 通知 / Notifications
+        - 界面与交互 / UI & interaction
+        - 语言与翻译 / Language & translation
+        - 设置 / Settings
+        - 其他 / Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: 使用场景 / Problem or use case
+      description: 你在什么情况下需要这个功能？目前遇到了什么不便？/ When would you use it, and what's inconvenient today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 期望的功能 / Proposed solution
+      description: 你希望 BiliTools 怎样解决？可以描述操作流程、入口位置或期望效果。/ How should BiliTools handle it? Describe the flow, where it lives, or the expected result.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 替代方案与参考 / Alternatives & references
+      description: 目前是否有替代做法？其他应用或 [BiliTools 桌面端](https://github.com/btjawa/BiliTools)中是否有类似实现？/ Any workaround today, or a similar feature in other apps or BiliTools Desktop?
+
+  - type: upload
+    id: mockups
+    attributes:
+      label: 参考图片 / Mockups or screenshots
+      description: 可以上传草图、效果图，或其他应用中类似功能的截图。/ Sketches, mockups, or screenshots of similar features in other apps.
+    validations:
+      accept: ".png,.jpg,.jpeg,.gif,.webp,.mp4,.mov,.webm"
