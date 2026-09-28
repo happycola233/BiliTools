@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -294,11 +293,6 @@ private fun DownloadsGroupProgressAction(
         MaterialTheme.motionScheme.fastSpatialSpec(),
         label = "downloadsGroupActionScale",
     )
-    val animatedCompletion by animateFloatAsState(
-        presentation.completionFraction,
-        WavyProgressIndicatorDefaults.ProgressAnimationSpec,
-        label = "downloadsGroupCompletion",
-    )
     val actionColor = WavyProgressIndicatorDefaults.indicatorColor
     val hasFailure = presentation.failedCount > 0
     val indicatorColor = if (hasFailure) {
@@ -329,18 +323,12 @@ private fun DownloadsGroupProgressAction(
         },
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            // 使用库的标准 48dp 波浪圆环及默认线宽、间距、波长、速度和随进度变化的振幅。
-            // 暂停、排队和失败时将振幅/速度归零，表达工作已停止。
-            val ringModifier = Modifier.size(WavyProgressIndicatorDefaults.CircularContainerSize).clearAndSetSemantics { }
-            if (presentation.awaitingFirstResult) {
-                CircularWavyProgressIndicator(modifier = ringModifier, color = indicatorColor, trackColor = trackColor)
-            } else {
-                CircularWavyProgressIndicator(
-                    progress = { animatedCompletion }, modifier = ringModifier, color = indicatorColor, trackColor = trackColor,
-                    amplitude = { if (presentation.executing) WavyProgressIndicatorDefaults.indicatorAmplitude(it) else 0f },
-                    waveSpeed = if (presentation.executing) WavyProgressIndicatorDefaults.CircularWavelength else 0.dp,
-                )
-            }
+            DownloadsGroupProgressIndicator(
+                presentation = presentation,
+                color = indicatorColor,
+                trackColor = trackColor,
+                modifier = Modifier.clearAndSetSemantics { },
+            )
             // 错误由外环提示；中心沿用主题色的继续图标，点击仍重试失败任务。
             Icon(
                 painterResource(when (presentation.action) {
