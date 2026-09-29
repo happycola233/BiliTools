@@ -18,8 +18,8 @@ plugins {
     alias(libs.plugins.aboutlibraries.android)
 }
 
-val appReleaseVersionCode = 14
-val appReleaseVersionName = "3.0"
+val appReleaseVersionCode = 15
+val appReleaseVersionName = "3.1"
 val releaseAbiSplits = listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
 
 abstract class RenameReleaseApksTask : DefaultTask() {
