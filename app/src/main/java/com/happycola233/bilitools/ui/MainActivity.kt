@@ -11,10 +11,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.doOnPreDraw
 import com.happycola233.bilitools.core.appContainer
+import com.happycola233.bilitools.ui.diagnostics.DiagnosticStartupPrompt
 import com.happycola233.bilitools.ui.downloads.DownloadsViewModel
 import com.happycola233.bilitools.ui.login.LoginViewModel
 import com.happycola233.bilitools.ui.parse.ParseViewModel
@@ -31,7 +33,7 @@ class MainActivity : AppCompatActivity() {
         AppViewModelFactory(applicationContext.appContainer)
     }
 
-    private val launchFinished = androidx.compose.runtime.mutableStateOf(false)
+    private val startupPromptReady = mutableStateOf(false)
     private val selectedTabIndex = mutableIntStateOf(MAIN_TAB_PARSE)
     private var mainContentView: View? = null
     private var launchFlashGuard: View? = null
@@ -49,12 +51,10 @@ class MainActivity : AppCompatActivity() {
                 MainLaunchSplashAnimator.play(
                     splashScreenView = splashScreenView,
                     contentView = mainContentView,
-                    onFinished = { launchFinished.value = true },
+                    onFinished = { startupPromptReady.value = true },
                 )
                 releaseLaunchFlashGuardAfterSplashDrawn()
             }
-        } else {
-            splashScreen.setOnExitAnimationListener { it.remove(); launchFinished.value = true }
         }
 
         enableBiliEdgeToEdge()
@@ -75,7 +75,7 @@ class MainActivity : AppCompatActivity() {
             val selectedTabIndexProvider = remember { { selectedTabIndex.intValue } }
             val selectTab = remember { { index: Int -> selectedTabIndex.intValue = index } }
             BiliToolsTheme(settings = settings) {
-                if (launchFinished.value) com.happycola233.bilitools.ui.diagnostics.DiagnosticStartupPrompt()
+                if (startupPromptReady.value) DiagnosticStartupPrompt()
                 MainScreen(
                     activity = this@MainActivity,
                     checkForUpdates = savedInstanceState == null,
@@ -89,10 +89,17 @@ class MainActivity : AppCompatActivity() {
                 )
             }
         }
-        mainContentView = findViewById<ViewGroup>(android.R.id.content).getChildAt(0)
+        val contentRoot = findViewById<ViewGroup>(android.R.id.content)
+        mainContentView = contentRoot.getChildAt(0)
 
         if (playLaunchSplashAnimation) {
             installLaunchFlashGuard(splashBackgroundColor)
+        } else {
+            // 关闭小电视动画或恢复 Activity 时，保留系统默认退场，不注册退场监听。
+            // 诊断提示在首页首帧绘制后就绪；这不代表系统退场动画已结束。
+            contentRoot.doOnPreDraw {
+                it.post { startupPromptReady.value = true }
+            }
         }
     }
 
