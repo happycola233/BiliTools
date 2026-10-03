@@ -574,8 +574,9 @@
     <string name="diagnostic_description">Gồm thông tin ứng dụng và thiết bị, nhật ký chẩn đoán 7 ngày (có ID video và tên tệp đã tải), lượt tải thất bại, lần thoát bất thường và cài đặt đã đổi.</string>
     <string name="diagnostic_problem">Mô tả sự cố (không bắt buộc)</string>
     <string name="diagnostic_problem_hint">Điều gì đã xảy ra? Làm thế nào để tái hiện sự cố?</string>
-    <string name="diagnostic_preview">Xem nội dung báo cáo</string>
-    <string name="diagnostic_hide_preview">Ẩn nội dung báo cáo</string>
+    <string name="diagnostic_preview">Xem tóm tắt báo cáo</string>
+    <string name="diagnostic_hide_preview">Ẩn tóm tắt báo cáo</string>
+    <string name="diagnostic_preview_hint">Để xem nhật ký đầy đủ, hãy mở tệp báo cáo đã chia sẻ hoặc lưu.</string>
     <string name="diagnostic_log_summary">Nhật ký chẩn đoán: %1$d dòng\nKhoảng thời gian: %2$s</string>
     <string name="diagnostic_share">Chia sẻ</string>
     <string name="diagnostic_save">Lưu</string>

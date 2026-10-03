@@ -577,8 +577,9 @@
     <string name="diagnostic_description">Uygulama ve cihaz bilgileri, 7 günlük tanılama kayıtları (video kimlikleri ve indirilen dosya adları dahil), başarısız indirmeler, beklenmedik kapanmalar ve değiştirilen ayarlar bulunur.</string>
     <string name="diagnostic_problem">Sorun açıklaması (isteğe bağlı)</string>
     <string name="diagnostic_problem_hint">Ne oldu? Sorun nasıl tekrar oluşturulabilir?</string>
-    <string name="diagnostic_preview">Rapor içeriğini görüntüle</string>
-    <string name="diagnostic_hide_preview">Rapor içeriğini gizle</string>
+    <string name="diagnostic_preview">Rapor özetini görüntüle</string>
+    <string name="diagnostic_hide_preview">Rapor özetini gizle</string>
+    <string name="diagnostic_preview_hint">Tüm günlükleri görmek için paylaşılan veya kaydedilen rapor dosyasını açın.</string>
     <string name="diagnostic_log_summary">Tanılama günlükleri: %1$d satır\nZaman aralığı: %2$s</string>
     <string name="diagnostic_share">Paylaş</string>
     <string name="diagnostic_save">Kaydet</string>

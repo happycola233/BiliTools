@@ -583,8 +583,9 @@
     <string name="diagnostic_description">Сведения о приложении и устройстве, журналы диагностики за 7 дней (с ID видео и именами скачанных файлов), неудачные загрузки, неожиданные завершения и изменённые настройки.</string>
     <string name="diagnostic_problem">Описание проблемы (необязательно)</string>
     <string name="diagnostic_problem_hint">Что произошло? Как воспроизвести проблему?</string>
-    <string name="diagnostic_preview">Показать содержимое отчёта</string>
-    <string name="diagnostic_hide_preview">Скрыть содержимое отчёта</string>
+    <string name="diagnostic_preview">Показать сводку отчёта</string>
+    <string name="diagnostic_hide_preview">Скрыть сводку отчёта</string>
+    <string name="diagnostic_preview_hint">Полные журналы доступны в отправленном или сохранённом файле отчёта.</string>
     <string name="diagnostic_log_summary">Журналы диагностики: %1$d строк\nПериод: %2$s</string>
     <string name="diagnostic_share">Поделиться</string>
     <string name="diagnostic_save">Сохранить</string>

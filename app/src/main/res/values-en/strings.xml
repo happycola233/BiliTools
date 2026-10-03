@@ -577,8 +577,9 @@
     <string name="diagnostic_description">Includes app and device information, 7 days of diagnostic logs (with video IDs and downloaded filenames), failed downloads, unexpected exits, and changed settings.</string>
     <string name="diagnostic_problem">Problem description (optional)</string>
     <string name="diagnostic_problem_hint">What happened? How can we reproduce it?</string>
-    <string name="diagnostic_preview">View report contents</string>
-    <string name="diagnostic_hide_preview">Hide report contents</string>
+    <string name="diagnostic_preview">View report summary</string>
+    <string name="diagnostic_hide_preview">Hide report summary</string>
+    <string name="diagnostic_preview_hint">For complete logs, view the shared or saved report file.</string>
     <string name="diagnostic_log_summary">Diagnostic logs: %1$d lines\nTime range: %2$s</string>
     <string name="diagnostic_share">Share</string>
     <string name="diagnostic_save">Save</string>

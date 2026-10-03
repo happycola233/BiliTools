@@ -284,10 +284,16 @@ private fun DiagnosticReportPreview(report: DiagnosticReport?, expanded: Boolean
             val timeRange = BidiFormatter.getInstance(LocalLayoutDirection.current == LayoutDirection.Rtl)
                 .unicodeWrap(report.logTimeRange, TextDirectionHeuristicsCompat.LTR)
             Text(
+                stringResource(R.string.diagnostic_preview_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 12.dp),
+            )
+            Text(
                 stringResource(R.string.diagnostic_log_summary, report.logLineCount, timeRange),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
+                modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
             )
         }
     }

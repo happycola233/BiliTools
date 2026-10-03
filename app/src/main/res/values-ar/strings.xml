@@ -589,8 +589,9 @@
     <string name="diagnostic_description">يتضمن معلومات التطبيق والجهاز، وسجلات التشخيص لآخر 7 أيام (بما فيها معرّفات الفيديو وأسماء الملفات المنزّلة)، والتنزيلات الفاشلة، وحالات الإغلاق غير المتوقعة، والإعدادات المعدّلة.</string>
     <string name="diagnostic_problem">وصف المشكلة (اختياري)</string>
     <string name="diagnostic_problem_hint">ماذا حدث؟ كيف يمكن إعادة حدوث المشكلة؟</string>
-    <string name="diagnostic_preview">عرض محتوى التقرير</string>
-    <string name="diagnostic_hide_preview">إخفاء محتوى التقرير</string>
+    <string name="diagnostic_preview">عرض ملخص التقرير</string>
+    <string name="diagnostic_hide_preview">إخفاء ملخص التقرير</string>
+    <string name="diagnostic_preview_hint">للاطلاع على السجلات الكاملة، افتح ملف التقرير الذي شاركته أو حفظته.</string>
     <string name="diagnostic_log_summary">سجلات التشخيص: %1$d سطرًا\nالفترة الزمنية: %2$s</string>
     <string name="diagnostic_share">مشاركة</string>
     <string name="diagnostic_save">حفظ</string>

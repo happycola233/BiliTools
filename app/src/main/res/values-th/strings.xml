@@ -574,8 +574,9 @@
     <string name="diagnostic_description">ประกอบด้วยข้อมูลแอปและอุปกรณ์ บันทึกการวินิจฉัยย้อนหลัง 7 วัน (รวมรหัสวิดีโอและชื่อไฟล์ที่ดาวน์โหลด) การดาวน์โหลดที่ล้มเหลว การปิดแอปผิดปกติ และการตั้งค่าที่เปลี่ยน</string>
     <string name="diagnostic_problem">คำอธิบายปัญหา (ไม่บังคับ)</string>
     <string name="diagnostic_problem_hint">เกิดอะไรขึ้น? ต้องทำอย่างไรจึงจะเกิดปัญหาซ้ำ?</string>
-    <string name="diagnostic_preview">ดูเนื้อหารายงาน</string>
-    <string name="diagnostic_hide_preview">ซ่อนเนื้อหารายงาน</string>
+    <string name="diagnostic_preview">ดูสรุปรายงาน</string>
+    <string name="diagnostic_hide_preview">ซ่อนสรุปรายงาน</string>
+    <string name="diagnostic_preview_hint">ดูบันทึกฉบับเต็มได้ในไฟล์รายงานที่แชร์หรือบันทึกไว้</string>
     <string name="diagnostic_log_summary">บันทึกการวินิจฉัย: %1$d บรรทัด\nช่วงเวลา: %2$s</string>
     <string name="diagnostic_share">แชร์</string>
     <string name="diagnostic_save">บันทึก</string>

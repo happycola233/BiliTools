@@ -574,8 +574,9 @@
     <string name="diagnostic_description">Mengandungi maklumat aplikasi dan peranti, log diagnostik 7 hari (termasuk ID video dan nama fail dimuat turun), muat turun gagal, penutupan tidak dijangka dan tetapan yang diubah.</string>
     <string name="diagnostic_problem">Penerangan masalah (pilihan)</string>
     <string name="diagnostic_problem_hint">Apakah yang berlaku? Bagaimanakah masalah ini boleh dihasilkan semula?</string>
-    <string name="diagnostic_preview">Lihat kandungan laporan</string>
-    <string name="diagnostic_hide_preview">Sembunyikan kandungan laporan</string>
+    <string name="diagnostic_preview">Lihat ringkasan laporan</string>
+    <string name="diagnostic_hide_preview">Sembunyikan ringkasan laporan</string>
+    <string name="diagnostic_preview_hint">Untuk log lengkap, buka fail laporan yang dikongsi atau disimpan.</string>
     <string name="diagnostic_log_summary">Log diagnostik: %1$d baris\nJulat masa: %2$s</string>
     <string name="diagnostic_share">Kongsi</string>
     <string name="diagnostic_save">Simpan</string>

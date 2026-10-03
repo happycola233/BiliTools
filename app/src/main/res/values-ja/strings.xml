@@ -574,8 +574,9 @@
     <string name="diagnostic_description">アプリと端末の情報、過去7日間の診断ログ（動画IDとダウンロードしたファイル名を含む）、ダウンロードの失敗、予期しない終了、変更した設定を含みます。</string>
     <string name="diagnostic_problem">問題の説明（任意）</string>
     <string name="diagnostic_problem_hint">どのような問題が発生しましたか？再現する手順を教えてください。</string>
-    <string name="diagnostic_preview">レポートの内容を表示</string>
-    <string name="diagnostic_hide_preview">レポートの内容を閉じる</string>
+    <string name="diagnostic_preview">レポートの概要を表示</string>
+    <string name="diagnostic_hide_preview">レポートの概要を閉じる</string>
+    <string name="diagnostic_preview_hint">ログの全文は、共有または保存したレポートファイルで確認できます。</string>
     <string name="diagnostic_log_summary">診断ログ：%1$d 行\n期間：%2$s</string>
     <string name="diagnostic_share">共有</string>
     <string name="diagnostic_save">保存</string>

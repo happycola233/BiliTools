@@ -619,8 +619,9 @@
     <string name="diagnostic_description">报告包含应用与设备信息、近 7 天的诊断记录（含视频编号和下载文件名）、下载失败与异常退出情况，以及修改过的设置。</string>
     <string name="diagnostic_problem">问题描述（选填）</string>
     <string name="diagnostic_problem_hint">遇到了什么问题？怎样操作可以重现？</string>
-    <string name="diagnostic_preview">查看报告内容</string>
-    <string name="diagnostic_hide_preview">收起报告内容</string>
+    <string name="diagnostic_preview">查看报告摘要</string>
+    <string name="diagnostic_hide_preview">收起报告摘要</string>
+    <string name="diagnostic_preview_hint">完整日志请查看分享或保存的报告文件。</string>
     <string name="diagnostic_log_summary">诊断记录：%1$d 行\n时间范围：%2$s</string>
     <string name="diagnostic_share">分享</string>
     <string name="diagnostic_save">保存</string>

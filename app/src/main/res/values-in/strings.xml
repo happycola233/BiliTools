@@ -574,8 +574,9 @@
     <string name="diagnostic_description">Berisi informasi aplikasi dan perangkat, log diagnostik 7 hari (termasuk ID video dan nama file unduhan), unduhan gagal, penghentian tak terduga, serta pengaturan yang diubah.</string>
     <string name="diagnostic_problem">Deskripsi masalah (opsional)</string>
     <string name="diagnostic_problem_hint">Apa yang terjadi? Bagaimana cara memunculkannya kembali?</string>
-    <string name="diagnostic_preview">Lihat isi laporan</string>
-    <string name="diagnostic_hide_preview">Sembunyikan isi laporan</string>
+    <string name="diagnostic_preview">Lihat ringkasan laporan</string>
+    <string name="diagnostic_hide_preview">Sembunyikan ringkasan laporan</string>
+    <string name="diagnostic_preview_hint">Untuk log lengkap, buka file laporan yang dibagikan atau disimpan.</string>
     <string name="diagnostic_log_summary">Log diagnostik: %1$d baris\nRentang waktu: %2$s</string>
     <string name="diagnostic_share">Bagikan</string>
     <string name="diagnostic_save">Simpan</string>

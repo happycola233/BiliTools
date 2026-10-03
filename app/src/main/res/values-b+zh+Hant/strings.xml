@@ -574,8 +574,9 @@
     <string name="diagnostic_description">報告包含應用程式與裝置資訊、近 7 天的診斷紀錄（含影片編號和下載檔案名稱）、下載失敗與異常結束情況，以及修改過的設定。</string>
     <string name="diagnostic_problem">問題描述（選填）</string>
     <string name="diagnostic_problem_hint">遇到了什麼問題？如何操作可以重現？</string>
-    <string name="diagnostic_preview">查看報告內容</string>
-    <string name="diagnostic_hide_preview">收起報告內容</string>
+    <string name="diagnostic_preview">查看報告摘要</string>
+    <string name="diagnostic_hide_preview">收起報告摘要</string>
+    <string name="diagnostic_preview_hint">完整日誌請查看分享或儲存的報告檔案。</string>
     <string name="diagnostic_log_summary">診斷紀錄：%1$d 行\n時間範圍：%2$s</string>
     <string name="diagnostic_share">分享</string>
     <string name="diagnostic_save">儲存</string>

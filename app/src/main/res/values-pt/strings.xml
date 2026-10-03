@@ -577,8 +577,9 @@
     <string name="diagnostic_description">Inclui informações do app e do dispositivo, registros de diagnóstico de 7 dias (com IDs de vídeos e nomes de arquivos baixados), downloads com falha, encerramentos inesperados e configurações alteradas.</string>
     <string name="diagnostic_problem">Descrição do problema (opcional)</string>
     <string name="diagnostic_problem_hint">O que aconteceu? Como reproduzir o problema?</string>
-    <string name="diagnostic_preview">Ver conteúdo do relatório</string>
-    <string name="diagnostic_hide_preview">Ocultar conteúdo do relatório</string>
+    <string name="diagnostic_preview">Ver resumo do relatório</string>
+    <string name="diagnostic_hide_preview">Ocultar resumo do relatório</string>
+    <string name="diagnostic_preview_hint">Para ver os registros completos, abra o arquivo do relatório compartilhado ou salvo.</string>
     <string name="diagnostic_log_summary">Registros de diagnóstico: %1$d linhas\nPeríodo: %2$s</string>
     <string name="diagnostic_share">Compartilhar</string>
     <string name="diagnostic_save">Salvar</string>
