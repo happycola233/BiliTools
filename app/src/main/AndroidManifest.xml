@@ -79,9 +79,10 @@
             android:exported="false"
             android:theme="@style/Theme.BiliTools" />
 
+        <!-- 小米 Android 17 首次切语言还会改变 screenLayout，仅接管 locale 会重建设置窗口。 -->
         <activity
             android:name=".ui.settings.SettingsActivity"
-            android:configChanges="locale|layoutDirection"
+            android:configChanges="locale|layoutDirection|screenLayout"
             android:exported="false"
             android:theme="@style/Theme.BiliTools"
             android:windowSoftInputMode="adjustResize" />

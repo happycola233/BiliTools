@@ -48,7 +48,12 @@ class SettingsLanguageChangeTest {
             val viewModel = activity.settingsViewModel()
             openLanguageSettings(activity)
 
-            selectLanguage(controller, AppLanguage.English, throughPicker = true)
+            selectLanguage(
+                controller,
+                AppLanguage.English,
+                throughPicker = true,
+                screenLayoutCompatibilityChanged = true,
+            )
             assertSameActivityAndContent(controller, activity, content)
             assertSame(viewModel, activity.settingsViewModel())
             compose.onNodeWithText("Language").assertIsDisplayed()
@@ -144,6 +149,7 @@ class SettingsLanguageChangeTest {
         controller: ActivityController<SettingsActivity>,
         language: AppLanguage,
         throughPicker: Boolean = false,
+        screenLayoutCompatibilityChanged: Boolean = false,
     ) {
         if (throughPicker) {
             val label = language.displayName(controller.get())
@@ -159,6 +165,11 @@ class SettingsLanguageChangeTest {
             compose.runOnIdle {
                 val configuration = Configuration(controller.get().resources.configuration).apply {
                     setLocale(Locale.forLanguageTag(language.languageTag.ifEmpty { "zh-CN" }))
+                    if (screenLayoutCompatibilityChanged) {
+                        // 小米 Android 17 首次切语言会改变隐藏标记 SCREENLAYOUT_COMPAT_NEEDED，
+                        // 即使尺寸不变，也会触发 screenLayout 配置变化。
+                        screenLayout = screenLayout xor 0x10000000
+                    }
                 }
                 controller.configurationChange(configuration)
             }
