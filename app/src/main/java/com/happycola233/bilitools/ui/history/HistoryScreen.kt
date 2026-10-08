@@ -31,6 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
@@ -78,6 +79,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -99,6 +101,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.AppSettings
@@ -922,34 +925,6 @@ private fun HistoryItemCard(
     val displayTitle = item.title.ifBlank {
         item.longTitle?.takeIf { it.isNotBlank() } ?: item.bvid.orEmpty()
     }
-    val duration = item.duration.coerceAtLeast(0)
-    val watched = when {
-        duration <= 0 -> 0
-        item.progress < 0 -> duration
-        else -> item.progress.coerceIn(0, duration)
-    }
-    val progressPercent = if (duration > 0) {
-        (watched * 100f / duration).coerceIn(0f, 100f)
-    } else {
-        0f
-    }
-    val showProgressBar = duration > 0 && watched < duration
-    val progressText = if (duration > 0) {
-        if (item.progress < 0) {
-            stringResource(
-                R.string.history_progress_completed,
-                formatHistoryDuration(duration),
-            )
-        } else {
-            stringResource(
-                R.string.history_progress_format,
-                formatHistoryDuration(watched),
-                formatHistoryDuration(duration),
-            )
-        }
-    } else {
-        null
-    }
     val canJumpDownload = !item.toParseUrl().isNullOrBlank()
     val authorClickable = item.authorMid != null
     val authorName = item.authorName.trim().takeIf { it.isNotEmpty() }
@@ -963,7 +938,7 @@ private fun HistoryItemCard(
     } else {
         null
     }
-    val viewAtText = formatHistoryTimestamp(item.viewAt)
+    val viewAtText = formatHistoryTimeOfDay(item.viewAt)
 
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -973,34 +948,10 @@ private fun HistoryItemCard(
                 .fillMaxWidth()
                 .padding(vertical = 10.dp),
         ) {
-            Box(
-                modifier = Modifier
-                    .width(114.dp)
-                    .aspectRatio(120f / 72f)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-            ) {
-                AsyncImage(
-                    model = item.displayCoverUrl,
-                    placeholder = painterResource(R.drawable.empty),
-                    error = painterResource(R.drawable.empty),
-                    fallback = painterResource(R.drawable.empty),
-                    contentDescription = stringResource(R.string.history_cover_desc),
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-
-                if (showProgressBar) {
-                    LinearProgressIndicator(
-                        progress = { progressPercent / 100f },
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .fillMaxWidth()
-                            .height(3.dp),
-                        drawStopIndicator = {},
-                    )
-                }
-            }
+            HistoryCover(
+                coverUrl = item.displayCoverUrl,
+                watchProgress = item.watchProgress(),
+            )
 
             Column(
                 verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -1026,7 +977,11 @@ private fun HistoryItemCard(
                     },
                 )
 
-                if (progressText != null) {
+                // 观看进度展示在封面一侧，各类记录的文字区统一为「标题 + UP 主与观看时刻」。
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
                     if (authorName != null) {
                         UserIdentityLabel(
                             name = authorName,
@@ -1034,45 +989,13 @@ private fun HistoryItemCard(
                             onClick = onAuthorClick,
                             onLongClickLabel = stringResource(R.string.common_copy_upper_name),
                             onLongClick = onAuthorLongClick,
-                        )
-                    }
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(
-                            text = progressText,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        HistoryViewAtText(text = viewAtText)
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
                     }
-                } else {
-                    // 直播、专栏、商品等没有播放进度，把 UP 与观看时间收进同一行。
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        if (authorName != null) {
-                            UserIdentityLabel(
-                                name = authorName,
-                                avatarUrl = item.authorAvatarUrl,
-                                onClick = onAuthorClick,
-                                onLongClickLabel = stringResource(R.string.common_copy_upper_name),
-                                onLongClick = onAuthorLongClick,
-                                modifier = Modifier.weight(1f),
-                            )
-                        } else {
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        HistoryViewAtText(text = viewAtText)
-                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    HistoryViewAtText(text = viewAtText)
                 }
             }
 
@@ -1102,6 +1025,110 @@ private fun HistoryItemCard(
             )
         }
     }
+}
+
+/** 稿件与剧集的观看进度，单位为秒。 */
+private data class HistoryWatchProgress(
+    val watchedSeconds: Int,
+    val durationSeconds: Int,
+    val finished: Boolean,
+) {
+    val fraction: Float
+        get() = watchedSeconds.toFloat() / durationSeconds
+}
+
+/** 直播、专栏等没有时长的记录返回 null。 */
+private fun HistoryItem.watchProgress(): HistoryWatchProgress? {
+    if (duration <= 0) return null
+    // 接口用 progress = -1 表示已看完；进度追平时长时同样按看完展示。
+    val finished = progress < 0 || progress >= duration
+    return HistoryWatchProgress(
+        watchedSeconds = if (finished) duration else progress,
+        durationSeconds = duration,
+        finished = finished,
+    )
+}
+
+/**
+ * 封面与观看进度：进度文字叠在封面右下角，进度条放在封面正下方，
+ * 不贴着封面底边被圆角裁切，也不受封面明暗影响。
+ */
+@Composable
+private fun HistoryCover(
+    coverUrl: String?,
+    watchProgress: HistoryWatchProgress?,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = modifier.width(114.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(120f / 72f)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+        ) {
+            AsyncImage(
+                model = coverUrl,
+                placeholder = painterResource(R.drawable.empty),
+                error = painterResource(R.drawable.empty),
+                fallback = painterResource(R.drawable.empty),
+                contentDescription = stringResource(R.string.history_cover_desc),
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+
+            if (watchProgress != null) {
+                HistoryCoverBadge(
+                    text = if (watchProgress.finished) {
+                        stringResource(R.string.history_progress_completed)
+                    } else {
+                        stringResource(
+                            R.string.history_progress_format,
+                            formatHistoryDuration(watchProgress.watchedSeconds),
+                            formatHistoryDuration(watchProgress.durationSeconds),
+                        )
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(4.dp),
+                )
+            }
+        }
+
+        if (watchProgress != null) {
+            LinearProgressIndicator(
+                progress = { watchProgress.fraction },
+                modifier = Modifier.fillMaxWidth(),
+                drawStopIndicator = {},
+            )
+        }
+    }
+}
+
+/** 叠在封面图上的标签：底图明暗不定，深浅模式统一用半透明黑底白字保证可读。 */
+@Composable
+private fun HistoryCoverBadge(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    val textStyle = MaterialTheme.typography.labelSmall.copy(fontFeatureSettings = "tnum")
+    Text(
+        text = text,
+        style = textStyle,
+        color = Color.White,
+        maxLines = 1,
+        // 封面宽度有限：小时级的「已看 / 总时长」在较宽的系统字体下可能放不下，此时缩小字号而不是截掉时长。
+        autoSize = TextAutoSize.StepBased(
+            minFontSize = 8.sp,
+            maxFontSize = textStyle.fontSize,
+        ),
+        modifier = modifier
+            .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.6f), CircleShape)
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+    )
 }
 
 @Composable
@@ -1392,14 +1419,15 @@ private fun formatHistoryRange(
     }
 }
 
+/** 条目只显示时刻，日期由所在分组的标题给出。 */
 @Composable
-private fun formatHistoryTimestamp(epochSeconds: Long): String {
+private fun formatHistoryTimeOfDay(epochSeconds: Long): String {
     val locale = LocalConfiguration.current.locales[0]
     if (epochSeconds <= 0L) return "--"
     return runCatching {
         Instant.ofEpochSecond(epochSeconds)
             .atZone(ZoneId.systemDefault())
-            .format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT).withLocale(locale))
+            .format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale))
     }.getOrDefault("--")
 }
 

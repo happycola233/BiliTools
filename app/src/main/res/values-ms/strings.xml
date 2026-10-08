@@ -351,7 +351,7 @@
     <string name="history_more_filters">Lebih banyak penapis</string>
     <string name="history_download">Muat turun</string>
     <string name="history_progress_format">%1$s / %2$s</string>
-    <string name="history_progress_completed">Selesai · %1$s</string>
+    <string name="history_progress_completed">Selesai</string>
     <string name="history_page_prev">Halaman sebelumnya</string>
     <string name="history_page_next">Halaman seterusnya</string>
     <string name="history_page_status">Halaman %1$d</string>

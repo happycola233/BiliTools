@@ -366,7 +366,7 @@
     <string name="history_more_filters">المزيد من المرشحات</string>
     <string name="history_download">تحميل</string>
     <string name="history_progress_format">%1$s / %2$s</string>
-    <string name="history_progress_completed">انتهى · %1$s</string>
+    <string name="history_progress_completed">انتهى</string>
     <string name="history_page_prev">الصفحة السابقة</string>
     <string name="history_page_next">الصفحة التالية</string>
     <string name="history_page_status">الصفحة %1$d</string>

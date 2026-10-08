@@ -351,7 +351,7 @@
     <string name="history_more_filters">ตัวกรองเพิ่มเติม</string>
     <string name="history_download">ดาวน์โหลด</string>
     <string name="history_progress_format">%1$s / %2$s</string>
-    <string name="history_progress_completed">เสร็จแล้ว · %1$s</string>
+    <string name="history_progress_completed">เสร็จแล้ว</string>
     <string name="history_page_prev">หน้าก่อนหน้า</string>
     <string name="history_page_next">หน้าถัดไป</string>
     <string name="history_page_status">หน้า %1$d</string>

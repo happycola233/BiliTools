@@ -351,7 +351,7 @@
     <string name="history_more_filters">更多篩選</string>
     <string name="history_download">跳轉下載</string>
     <string name="history_progress_format">%1$s / %2$s</string>
-    <string name="history_progress_completed">已看完 · %1$s</string>
+    <string name="history_progress_completed">已看完</string>
     <string name="history_page_prev">上一頁</string>
     <string name="history_page_next">下一頁</string>
     <string name="history_page_status">第 %1$d 頁</string>

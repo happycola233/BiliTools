@@ -354,7 +354,7 @@
     <string name="history_more_filters">Más filtros</string>
     <string name="history_download">Descargar</string>
     <string name="history_progress_format">%1$s / %2$s</string>
-    <string name="history_progress_completed">Finalizado · %1$s</string>
+    <string name="history_progress_completed">Finalizado</string>
     <string name="history_page_prev">Página anterior</string>
     <string name="history_page_next">Página siguiente</string>
     <string name="history_page_status">Página %1$d</string>

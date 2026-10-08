@@ -354,7 +354,7 @@
     <string name="history_more_filters">Daha fazla filtre</string>
     <string name="history_download">İndir</string>
     <string name="history_progress_format">%1$s / %2$s</string>
-    <string name="history_progress_completed">Bitti · %1$s</string>
+    <string name="history_progress_completed">Bitti</string>
     <string name="history_page_prev">Önceki sayfa</string>
     <string name="history_page_next">Sonraki sayfa</string>
     <string name="history_page_status">Sayfa %1$d</string>

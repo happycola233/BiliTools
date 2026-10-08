@@ -351,7 +351,7 @@
     <string name="history_more_filters">Thêm bộ lọc</string>
     <string name="history_download">Tải xuống</string>
     <string name="history_progress_format">%1$s / %2$s</string>
-    <string name="history_progress_completed">Đã hoàn thành · %1$s</string>
+    <string name="history_progress_completed">Đã hoàn thành</string>
     <string name="history_page_prev">Trang trước</string>
     <string name="history_page_next">Trang tiếp theo</string>
     <string name="history_page_status">Trang %1$d</string>

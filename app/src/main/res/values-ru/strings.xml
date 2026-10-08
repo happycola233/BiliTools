@@ -360,7 +360,7 @@
     <string name="history_more_filters">Дополнительные фильтры</string>
     <string name="history_download">Скачать</string>
     <string name="history_progress_format">%1$s / %2$s</string>
-    <string name="history_progress_completed">Завершено · %1$s</string>
+    <string name="history_progress_completed">Завершено</string>
     <string name="history_page_prev">Предыдущая страница</string>
     <string name="history_page_next">Следующая страница</string>
     <string name="history_page_status">Страница %1$d</string>
