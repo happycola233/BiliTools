@@ -9,13 +9,16 @@ import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
@@ -45,7 +48,7 @@ internal object AppDialogDefaults {
         get() = if (MaterialTheme.colorScheme.usesDarkSurfaces()) 0.48f else 0.32f
 }
 
-/** Material [AlertDialog] 的应用级入口，浅色沿用默认观感，深色统一提升模态层级。 */
+/** Material [AlertDialog] 的应用级入口，统一标题字重，并在深色模式提升模态层级。 */
 @Composable
 internal fun AppAlertDialog(
     onDismissRequest: () -> Unit,
@@ -67,7 +70,14 @@ internal fun AppAlertDialog(
         modifier = modifier.appDialogBorder(shape),
         dismissButton = dismissButton,
         icon = icon,
-        title = title,
+        title = title?.let { titleContent ->
+            {
+                // 保留 Material 标题的字号与行高，只在标题槽内加粗，避免影响正文和按钮。
+                ProvideTextStyle(LocalTextStyle.current.copy(fontWeight = FontWeight.Bold)) {
+                    titleContent()
+                }
+            }
+        },
         text = text,
         shape = shape,
         containerColor = AppDialogDefaults.containerColor,

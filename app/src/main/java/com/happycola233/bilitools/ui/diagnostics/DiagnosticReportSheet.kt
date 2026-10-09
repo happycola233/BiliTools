@@ -313,7 +313,7 @@ internal fun ClearDiagnosticRecordsDialog(onConfirm: () -> Unit, onDismiss: () -
 
 @Composable
 internal fun DiagnosticCrashDialog(onExport: () -> Unit, onIgnore: () -> Unit) {
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = onIgnore,
         title = { Text(stringResource(R.string.diagnostic_crash_title)) },
         text = { Text(stringResource(R.string.diagnostic_crash_description)) },

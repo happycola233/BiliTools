@@ -138,7 +138,7 @@ internal fun DownloadsDetailsSheet(group: DownloadGroup, onDismiss: () -> Unit) 
             Text(
                 stringResource(R.string.downloads_details_title),
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f).semantics { heading() },
             )
             IconButton(onClick = { scope.launch { sheetState.hide(); onDismiss() } }) {
