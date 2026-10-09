@@ -128,6 +128,40 @@ class LiquidBottomTabsTest {
         capture("cancel-external-page")
     }
 
+    @Test fun lightPullLiftsTheWholeBarAndSpringsBackWithoutCommitting() = verifyPull(dark = false)
+    @Test fun darkPullLiftsTheWholeBarAndSpringsBackWithoutCommitting() = verifyPull(dark = true)
+
+    private fun verifyPull(dark: Boolean) {
+        showTabs(dark = dark)
+        compose.mainClock.autoAdvance = false
+        val theme = if (dark) "dark" else "light"
+        var slop = 0f
+        tabs().performTouchInput {
+            slop = viewConfiguration.touchSlop
+            down(Offset(150f, 32f))
+        }
+        compose.mainClock.advanceTimeBy(160)
+        capture("$theme-pull-pressed")
+        // mdpi 下 1dp = 1px；越过阈值后再拉 3 个半程，对应录屏里拉到最远的形态。
+        val pullTravel = LiquidPullHalfTravel.value * 3
+        repeat(8) { step ->
+            tabs().performTouchInput {
+                moveTo(Offset(150f, 32f - slop - pullTravel * (step + 1) / 8))
+            }
+            compose.mainClock.advanceTimeBy(16)
+        }
+        capture("$theme-pull-peak")
+        tabs().performTouchInput { up() }
+        compose.mainClock.advanceTimeBy(224)
+        capture("$theme-pull-overshoot")
+        compose.mainClock.advanceTimeBy(1_000)
+        capture("$theme-pull-settled")
+        compose.runOnIdle {
+            assertTrue("纯竖向拖出底栏后松手按取消处理", selections.isEmpty())
+            assertEquals(0, selectedIndex)
+        }
+    }
+
     private fun verifyQuickTap(dark: Boolean) {
         showTabs(dark = dark)
         compose.mainClock.autoAdvance = false

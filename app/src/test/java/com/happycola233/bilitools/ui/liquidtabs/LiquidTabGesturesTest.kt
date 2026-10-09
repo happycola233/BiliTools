@@ -25,6 +25,7 @@ class LiquidTabGesturesTest {
     @get:Rule val compose = createComposeRule()
     private val presses = mutableListOf<Offset>()
     private val moves = mutableListOf<Float>()
+    private val pulls = mutableListOf<Float>()
     private val releases = mutableListOf<Boolean>()
     private var cancellations = 0
 
@@ -91,6 +92,21 @@ class LiquidTabGesturesTest {
         assertEquals(listOf(false), releases)
     }
 
+    @Test fun verticalPullStartsBeyondTheSlopWithoutJumpingAndPointsUpward() {
+        showInput()
+        var slop = 0f
+        input().performTouchInput {
+            slop = viewConfiguration.touchSlop
+            down(Offset(150f, 32f))
+            moveTo(Offset(152f, 32f - slop * 0.5f))
+            moveTo(Offset(154f, 32f - slop - 20f))
+            moveTo(Offset(154f, 32f + slop + 10f))
+        }
+        assertEquals(2, pulls.size)
+        assertEquals("越过阈值后从 0 起算，不能一下子跳出阈值那段", 20f, pulls[0], 0.001f)
+        assertEquals(-10f, pulls[1], 0.001f)
+    }
+
     @Test fun menuHitTestingIncludesPaddingAndMirrorsInRtl() {
         val samples = mapOf(0f to 0, 103f to 0, 104f to 1, 203f to 1, 204f to 2, 307f to 2)
         samples.forEach { (x, expected) ->
@@ -106,6 +122,7 @@ class LiquidTabGesturesTest {
                     detectLiquidTabGestures(
                         onPress = { presses += it },
                         onDrag = { moves += it },
+                        onPull = { pulls += it },
                         onRelease = { releases += it },
                         onCancel = { cancellations++ },
                     )

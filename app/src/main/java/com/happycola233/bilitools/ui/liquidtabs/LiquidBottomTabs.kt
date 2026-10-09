@@ -3,7 +3,8 @@
 // app/src/commonMain/kotlin/com/kyant/backdrop/catalog/components/LiquidBottomTab.kt
 // 改动：Capsule 形状换成 CircleShape；强调色与底色改为参数由主题注入；
 // 选中层染色改用 saveLayer + ColorFilter 实现（等价于原 graphicsLayer colorFilter）；
-// 选中状态由主壳单向驱动，整块底板统一处理按压、拖动与松手确认。
+// 选中状态由主壳单向驱动，整块底板统一处理按压、拖动与松手确认；
+// 新增竖向上拽时整体收紧上移的果冻跟随（见 LiquidPullAnimation）。
 package com.happycola233.bilitools.ui.liquidtabs
 
 import androidx.compose.animation.core.Animatable
@@ -156,6 +157,13 @@ internal fun LiquidBottomTabs(
                 }
         }
 
+        val pullAnimation = remember(animationScope, density) {
+            LiquidPullAnimation(
+                animationScope = animationScope,
+                halfPullTravel = with(density) { LiquidPullHalfTravel.toPx() },
+            )
+        }
+
         val interactiveHighlight = remember(dampedDragAnimation, tabWidth, isLtr) {
             InteractiveHighlight(
                 animationScope = animationScope,
@@ -198,6 +206,7 @@ internal fun LiquidBottomTabs(
                         val scale = lerp(1f, 1f + 16f.dp.toPx() / size.width, progress)
                         scaleX = scale
                         scaleY = scale
+                        applyLiquidPull(pullAnimation)
                     },
                     onDrawSurface = { drawRect(containerColor) },
                 )
@@ -246,6 +255,7 @@ internal fun LiquidBottomTabs(
                             val progress = dampedDragAnimation.pressProgress
                             Highlight.Default.copy(alpha = progress)
                         },
+                        layerBlock = { applyLiquidPull(pullAnimation) },
                         onDrawSurface = { drawRect(containerColor) },
                     )
                     .then(interactiveHighlight.modifier)
@@ -299,6 +309,11 @@ internal fun LiquidBottomTabs(
                         val velocity = dampedDragAnimation.velocity / 10f
                         scaleX /= 1f - (velocity * 0.75f).fastCoerceIn(-0.2f, 0.2f)
                         scaleY *= 1f - (velocity * 0.25f).fastCoerceIn(-0.2f, 0.2f)
+                        applyLiquidPull(
+                            pullAnimation,
+                            centerOffsetX = (dampedDragAnimation.value + 0.5f - tabsCount / 2f) *
+                                tabWidth * if (isLtr) 1f else -1f,
+                        )
                     },
                     onDrawSurface = {
                         val progress = dampedDragAnimation.pressProgress
@@ -314,17 +329,18 @@ internal fun LiquidBottomTabs(
                 .fillMaxWidth(1f / tabsCount),
         )
 
-        // 命中层固定在底板坐标系，不能跟着气泡平移/缩放，否则动画本身也会变成手指位移。
+        // 命中层固定在底板坐标系，不能跟着气泡或上拽形变平移/缩放，否则动画本身也会变成手指位移。
         // 下层 clickable 继续提供键盘与无障碍操作，普通触摸全部由这里仲裁。
         Box(
             Modifier
                 .height(64.dp)
                 .fillMaxWidth()
-                .pointerInput(dampedDragAnimation, interactiveHighlight, tabWidth, isLtr) {
+                .pointerInput(dampedDragAnimation, interactiveHighlight, pullAnimation, tabWidth, isLtr) {
                     var pressedTabIndex = 0
                     fun finishGesture(targetIndex: Int) {
                         dampedDragAnimation.finishGesture(targetIndex.toFloat())
                         interactiveHighlight.release()
+                        pullAnimation.release()
                         animationScope.launch(start = CoroutineStart.UNDISPATCHED) {
                             offsetAnimation.animateTo(0f, spring(1f, 300f, 0.5f))
                         }
@@ -343,6 +359,7 @@ internal fun LiquidBottomTabs(
                             }
                             dampedDragAnimation.pressAt(pressedTabIndex.toFloat())
                             interactiveHighlight.press()
+                            pullAnimation.press()
                         },
                         onDrag = { deltaX ->
                             dampedDragAnimation.dragBy(deltaX / tabWidth * if (isLtr) 1f else -1f)
@@ -350,6 +367,7 @@ internal fun LiquidBottomTabs(
                                 offsetAnimation.snapTo(offsetAnimation.value + deltaX)
                             }
                         },
+                        onPull = pullAnimation::pullTo,
                         onRelease = { dragged ->
                             val targetIndex = if (dragged) {
                                 dampedDragAnimation.targetValue.fastRoundToInt()
