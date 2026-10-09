@@ -292,7 +292,7 @@ private fun Modifier.tabPlacement(active: Boolean): Modifier = layout { measurab
  *
  * [heightOffset] 在布局阶段读取（取值为 0 到负的折叠区间），滚动时不会触发页面重组。
  */
-private fun Modifier.collapsingTopBarOffset(heightOffset: () -> Float): Modifier =
+internal fun Modifier.collapsingTopBarOffset(heightOffset: () -> Float): Modifier =
     layout { measurable, constraints ->
         val offset = heightOffset().roundToInt().coerceAtMost(0)
         val extraHeight = -offset

@@ -2,7 +2,8 @@ package com.happycola233.bilitools.ui.downloads
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.offset
@@ -137,19 +138,22 @@ internal fun DownloadsGroupSwipe(
         modifier.pointerInput(groupId, enabled, density.density, layoutDirection) {
             if (!enabled) return@pointerInput
             try {
-                detectHorizontalDragGestures(
-                    onDragStart = {
+                // 仅按横向阈值启动，但启动后同时消费纵向移动；否则停留时的纵向抖动
+                // 会被列表重新接管，带动列表滚动，并在顶部展开折叠栏。
+                detectDragGestures(
+                    orientationLock = Orientation.Horizontal,
+                    onDragStart = { _, _, _ ->
                         if (currentAnyGroupSwiped && !currentSwiped) currentOnSwipedGroupChange(null)
                         dragOffset = offset.value
                         stage = swipeStage(-dragOffset, clearThreshold, deleteThreshold)
                         dragging = true
                     },
-                    onHorizontalDrag = drag@{ change, amount ->
+                    onDrag = drag@{ change, dragAmount ->
                         change.consume()
                         if (!dragging) return@drag
                         // 位移始终存为逻辑方向；offset 与操作区的 end 对齐一起负责 RTL 镜像。
-                        val delta = if (layoutDirection == LayoutDirection.Rtl) -amount else amount
-                        dragOffset = (dragOffset + delta).coerceIn(-size.width.toFloat(), 0f)
+                        val horizontalDelta = if (layoutDirection == LayoutDirection.Rtl) -dragAmount.x else dragAmount.x
+                        dragOffset = (dragOffset + horizontalDelta).coerceIn(-size.width.toFloat(), 0f)
                         scope.launch(start = CoroutineStart.UNDISPATCHED) { offset.snapTo(dragOffset) }
                         val nextStage = swipeStage(-dragOffset, clearThreshold, deleteThreshold)
                         if (nextStage != stage) {
