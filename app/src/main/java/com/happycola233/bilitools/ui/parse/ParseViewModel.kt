@@ -100,6 +100,7 @@ data class AudioOption(
 data class ImageOption(
     val id: String,
     val label: String,
+    val url: String,
 )
 
 private data class ItemPresentationDetail(
@@ -2784,7 +2785,7 @@ class ParseViewModel(
         }
         val imageOptions = thumbs
             .distinctBy { it.id }
-            .map { thumb -> ImageOption(thumb.id, mapImageLabel(thumb.id)) }
+            .map { thumb -> ImageOption(thumb.id, mapImageLabel(thumb.id), thumb.url) }
         val imageOptionIds = imageOptions.map { it.id }
         val imageOptionIdSet = imageOptionIds.toSet()
         var applied = false

@@ -108,7 +108,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -162,6 +161,7 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.AudioQualities
+import com.happycola233.bilitools.core.BiliImageUrls
 import com.happycola233.bilitools.data.model.MediaCapabilities
 import com.happycola233.bilitools.data.model.MediaInfo
 import com.happycola233.bilitools.data.model.MediaItem
@@ -206,7 +206,18 @@ private val optionsCardSectionSpacing = 12.dp
 private val compactSelectionHeight = 58.dp
 private val checkOptionMinHeight = 48.dp
 private val actionButtonLoadingIndicatorSize = 26.dp
-private val imageOptionChipHeight = 36.dp
+private val imageOptionChipHeight = 48.dp
+private val imageOptionChipCornerRadius = 12.dp
+private val imageOptionChipThumbnailInset = 6.dp
+private val imageOptionThumbnailWidth = 48.dp
+private val imageOptionThumbnailHeight = imageOptionChipHeight - imageOptionChipThumbnailInset * 2
+
+/** 缩略图与芯片外框同心：外圆角减去缩略图到外框的间距。 */
+private val imageOptionThumbnailCornerRadius =
+    imageOptionChipCornerRadius - imageOptionChipThumbnailInset
+
+/** 勾选遮罩叠在图片而非主题表面上，浅色与深色模式统一用黑色，保证白色勾号在任意画面上都清晰。 */
+private const val imageOptionSelectedScrimAlpha = 0.4f
 private val pageSelectionHeaderActionHeight = 32.dp
 private val pageNavigatorFieldWidth = 76.dp
 private val pageNavigatorFieldHeight = 40.dp
@@ -3345,16 +3356,17 @@ private fun ParseOptionsCard(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             state.imageOptions.forEach { option ->
-                                ExpressiveFilterChip(
+                                ImageOptionChip(
+                                    text = option.label,
+                                    imageUrl = option.url,
                                     selected = option.id in state.selectedImageIds,
+                                    enabled = controlsEnabled,
                                     onClick = {
                                         onImageSelectionChange(
                                             option.id,
                                             option.id !in state.selectedImageIds,
                                         )
                                     },
-                                    enabled = controlsEnabled,
-                                    text = option.label,
                                 )
                             }
                         }
@@ -4088,16 +4100,34 @@ private fun MessageCard(
     }
 }
 
+/** 带缩略图的图像选项：左侧预览对应图片，选中时在预览上叠加勾选标记。 */
 @Composable
-private fun ExpressiveFilterChip(
+private fun ImageOptionChip(
     text: String,
+    imageUrl: String,
     selected: Boolean,
-    enabled: Boolean = true,
-    role: Role = Role.Checkbox,
+    enabled: Boolean,
     onClick: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val density = LocalDensity.current
     val haptics = rememberAppHaptics()
     val interactionSource = remember { MutableInteractionSource() }
+    // 按缩略图的实际像素请求服务端缩放后的小图，避免为几十 dp 的预览拉取原图。
+    val thumbnailRequest = remember(context, density, imageUrl) {
+        val thumbnailUrl = with(density) {
+            BiliImageUrls.thumbnail(
+                url = imageUrl,
+                widthPx = imageOptionThumbnailWidth.roundToPx(),
+                heightPx = imageOptionThumbnailHeight.roundToPx(),
+            )
+        }
+        ImageRequest.Builder(context)
+            .data(thumbnailUrl)
+            .crossfade(true)
+            .build()
+    }
+    var thumbnailFailed by remember(thumbnailRequest) { mutableStateOf(false) }
     val selectedProgress by animateFloatAsState(
         targetValue = if (selected) 1f else 0f,
         animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
@@ -4118,14 +4148,6 @@ private fun ExpressiveFilterChip(
         chipColors.primary.copy(alpha = 0.48f),
         selectedProgress,
     )
-    val leadingSlotWidth by animateDpAsState(
-        targetValue = if (selected) 24.dp else 0.dp,
-        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
-    )
-    val checkAlpha by animateFloatAsState(
-        targetValue = if (selected) 1f else 0f,
-        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
-    )
     val checkScale by animateFloatAsState(
         targetValue = if (selected) 1f else 0.72f,
         animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
@@ -4134,40 +4156,68 @@ private fun ExpressiveFilterChip(
     Surface(
         modifier = Modifier
             .height(imageOptionChipHeight)
-            // 选中状态进入语义树，读屏才会按复选框 / 单选项播报「已选中」。
+            // 选中状态进入语义树，读屏才会按复选框播报「已选中」。
             .selectable(
                 selected = selected,
                 enabled = enabled,
                 interactionSource = interactionSource,
                 indication = null,
-                role = role,
+                role = Role.Checkbox,
                 onClick = {
                     haptics.select()
                     onClick()
                 },
             ),
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(imageOptionChipCornerRadius),
         color = containerColor,
         border = BorderStroke(1.dp, borderColor),
     ) {
         Row(
-            modifier = Modifier.padding(start = 14.dp, end = 14.dp),
+            modifier = Modifier.padding(start = imageOptionChipThumbnailInset, end = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
                 modifier = Modifier
-                    .width(leadingSlotWidth)
-                    .clipToBounds(),
-                contentAlignment = Alignment.CenterStart,
+                    .size(imageOptionThumbnailWidth, imageOptionThumbnailHeight)
+                    .graphicsLayer { alpha = if (enabled) 1f else 0.48f }
+                    .clip(RoundedCornerShape(imageOptionThumbnailCornerRadius))
+                    .background(AppSurfaces.insetContainerColor),
+                contentAlignment = Alignment.Center,
             ) {
+                AsyncImage(
+                    model = thumbnailRequest,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    onSuccess = { thumbnailFailed = false },
+                    onError = { thumbnailFailed = true },
+                    modifier = Modifier.fillMaxSize(),
+                )
+                if (thumbnailFailed) {
+                    // 与勾选标记同处中心，选中时让位给勾号。
+                    Icon(
+                        painter = painterResource(R.drawable.ic_hide_image_24),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .graphicsLayer { alpha = 1f - selectedProgress },
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = selectedProgress }
+                        .background(Color.Black.copy(alpha = imageOptionSelectedScrimAlpha)),
+                )
                 Icon(
                     painter = painterResource(R.drawable.ic_check_24),
                     contentDescription = null,
-                    tint = contentColor,
+                    tint = Color.White,
                     modifier = Modifier
-                        .size(18.dp)
+                        .size(22.dp)
                         .graphicsLayer {
-                            alpha = checkAlpha
+                            alpha = selectedProgress
                             scaleX = checkScale
                             scaleY = checkScale
                         },
