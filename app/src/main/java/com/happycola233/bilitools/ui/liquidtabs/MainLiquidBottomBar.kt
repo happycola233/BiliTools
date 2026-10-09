@@ -5,10 +5,10 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -23,6 +23,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.happycola233.bilitools.R
+import com.happycola233.bilitools.ui.mainBottomBarWindowInsets
 import com.happycola233.bilitools.ui.theme.AppSurfaces
 import com.happycola233.bilitools.ui.theme.usesDarkSurfaces
 import com.kyant.backdrop.backdrops.LayerBackdrop
@@ -69,7 +70,7 @@ fun MainLiquidBottomBar(
             glassStyle = glassStyle,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .navigationBarsPadding()
+                .windowInsetsPadding(mainBottomBarWindowInsets())
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 8.dp)
                 .widthIn(max = 440.dp)
@@ -109,6 +110,7 @@ fun MainMaterialBottomBar(
         modifier = modifier.fillMaxWidth(),
         containerColor = AppSurfaces.pageContainerColor,
         tonalElevation = 0.dp,
+        windowInsets = mainBottomBarWindowInsets(),
     ) {
         MainTabs.forEachIndexed { index, tab ->
             NavigationBarItem(

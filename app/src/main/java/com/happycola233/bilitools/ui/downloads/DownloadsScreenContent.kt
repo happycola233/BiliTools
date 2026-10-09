@@ -19,12 +19,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -80,6 +78,7 @@ import com.happycola233.bilitools.ui.AppAlertDialog
 import com.happycola233.bilitools.ui.FloatingControlsDefaults
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import com.happycola233.bilitools.ui.mainBottomBarBottomInset
+import com.happycola233.bilitools.ui.mainBottomBarWindowInsets
 import com.happycola233.bilitools.ui.theme.AppAccents
 import com.happycola233.bilitools.ui.theme.AppSurfaces
 import com.kyant.backdrop.backdrops.layerBackdrop
@@ -182,11 +181,11 @@ fun DownloadsScreenContent(
     val backdrop = rememberLayerBackdrop()
     val selectionMotion = rememberDownloadsSelectionMotion(selectionMode)
     // 页面全出血绘制，内容从主界面底栏后方滚过，列表与底部悬浮控件均需预留底栏净空。
-    // 多选时主导航栏让位给工具栏，工具栏只需避开系统导航栏。
+    // 多选时主导航栏让位给工具栏，工具栏沿用相同的系统安全边距。
     val mainBarBottomInset = mainBottomBarBottomInset()
     val controlsBottomPadding = FloatingControlsDefaults.MainScreenBottomPadding + mainBarBottomInset
     val toolbarBottomPadding = FloatingControlsDefaults.EdgePadding +
-        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+        mainBottomBarWindowInsets().asPaddingValues().calculateBottomPadding()
     val listBottomPadding = lerp(
         FloatingControlsDefaults.DownloadsListBottomPadding + mainBarBottomInset,
         toolbarBottomPadding + FloatingToolbarDefaults.ContainerSize + FloatingControlsDefaults.EdgePadding,
