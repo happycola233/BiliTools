@@ -17,7 +17,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import com.happycola233.bilitools.ui.theme.AppSurfaces
@@ -101,22 +100,6 @@ internal fun AppDatePickerDialog(
         properties = properties,
         content = content,
     )
-}
-
-/** 保留 Compose [Dialog] 的自定义内容能力，只统一其窗口遮罩。 */
-@Composable
-internal fun AppDialog(
-    onDismissRequest: () -> Unit,
-    properties: DialogProperties = DialogProperties(),
-    content: @Composable () -> Unit,
-) {
-    Dialog(
-        onDismissRequest = onDismissRequest,
-        properties = properties,
-    ) {
-        ConfigureAppDialogWindow()
-        content()
-    }
 }
 
 /** 自定义对话框容器使用此修饰符，标准对话框已由 [AppAlertDialog] 自动应用。 */

@@ -100,7 +100,7 @@ fun ParseRoute(
 
     RefreshLoginStateOnStart(viewModel)
 
-    val copyDialog = state.copyDialog
+    val copyPreview = state.copyPreview
     ParseScreenContent(
         state = state,
         conversionSettings = ParseConversionSettings(
@@ -110,10 +110,10 @@ fun ParseRoute(
         inputText = state.inputText,
         contentTopPadding = contentTopPadding,
         externalMode = externalMode,
-        subtitleCopyDialogEntries =
-            (copyDialog as? ParseCopyDialogState.Subtitles)?.entries,
-        aiSummaryCopyDialogEntries =
-            (copyDialog as? ParseCopyDialogState.AiSummaries)?.entries,
+        subtitleCopyPreviewEntries =
+            (copyPreview as? ParseCopyPreviewState.Subtitles)?.entries,
+        aiSummaryCopyPreviewEntries =
+            (copyPreview as? ParseCopyPreviewState.AiSummaries)?.entries,
         onInputChange = viewModel::setInputText,
         onPaste = {
             context.readClipboardText()?.let(viewModel::setInputText)
@@ -181,8 +181,8 @@ fun ParseRoute(
         onImageSelectionChange = viewModel::setImageSelection,
         onOpusContentEnabledChange = viewModel::setOpusContentEnabled,
         onOpusImagesEnabledChange = viewModel::setOpusImagesEnabled,
-        onDismissSubtitleCopyDialog = viewModel::dismissCopyDialog,
-        onDismissAiSummaryCopyDialog = viewModel::dismissCopyDialog,
+        onDismissSubtitleCopyPreview = viewModel::dismissCopyPreview,
+        onDismissAiSummaryCopyPreview = viewModel::dismissCopyPreview,
         onCopyCurrentSubtitle = context::copyCurrentSubtitle,
         onCopyAllSubtitles = context::copyAllSubtitles,
         onCopyCurrentAiSummary = context::copyCurrentAiSummary,

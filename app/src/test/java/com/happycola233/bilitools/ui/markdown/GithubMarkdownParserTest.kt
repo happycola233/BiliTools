@@ -56,6 +56,17 @@ class GithubMarkdownParserTest {
     }
 
     @Test
+    fun documentsOutsideGitHubKeepReferencesAsPlainText() {
+        val text = (
+            GithubMarkdownParser.parse("感谢 @Painter 的第 #2 期投稿，[00:12](https://www.bilibili.com/video/BV17x411w7KC?t=12)")
+                .blocks.single() as MarkdownBlock.Paragraph
+            ).text
+        val links = text.spans.mapNotNull { (it.style as? MarkdownSpanStyle.Link)?.url }
+
+        assertEquals(listOf("https://www.bilibili.com/video/BV17x411w7KC?t=12"), links)
+    }
+
+    @Test
     fun pictureWithMediaSourcesBecomesStandaloneImage() {
         val markdown = """
             段落

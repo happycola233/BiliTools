@@ -7,28 +7,21 @@ import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.OverscrollEffect
-import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -44,25 +37,21 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberOverscrollEffect
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonGroup
@@ -101,14 +90,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Brush
@@ -116,19 +103,13 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.node.DelegatableNode
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -152,10 +133,8 @@ import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -166,14 +145,10 @@ import com.happycola233.bilitools.data.model.MediaCapabilities
 import com.happycola233.bilitools.data.model.MediaInfo
 import com.happycola233.bilitools.data.model.MediaItem
 import com.happycola233.bilitools.data.model.MediaStat
-import com.happycola233.bilitools.ui.AppDialog
-import com.happycola233.bilitools.ui.AppDialogDefaults
-import com.happycola233.bilitools.ui.appDialogBorder
 import com.happycola233.bilitools.data.model.MediaType
 import com.happycola233.bilitools.data.model.MediaUpper
 import com.happycola233.bilitools.data.model.OutputType
 import com.happycola233.bilitools.data.model.StreamFormat
-import com.happycola233.bilitools.data.model.SubtitleInfo
 import com.happycola233.bilitools.data.model.VideoCodec
 import com.happycola233.bilitools.data.model.capabilities
 import com.happycola233.bilitools.ui.FloatingControlsDefaults
@@ -183,13 +158,12 @@ import com.happycola233.bilitools.ui.TopErrorMessageHost
 import com.happycola233.bilitools.ui.UserIdentityLabel
 import com.happycola233.bilitools.ui.longPressAction
 import com.happycola233.bilitools.ui.mainBottomBarBottomInset
-import com.happycola233.bilitools.ui.haptics.HapticTicker
+import com.happycola233.bilitools.ui.rememberContainedScroll
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import com.happycola233.bilitools.ui.theme.AppAccents
 import com.happycola233.bilitools.ui.theme.AppSurfaces
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 private val screenHorizontalPadding = 16.dp
 private val controlCornerRadius = 18.dp
@@ -226,20 +200,6 @@ private val pageSelectionListMaxHeight = 286.dp
 private val pageSelectionScrollbarContentInset = 10.dp
 private const val pageSelectionNaturalItemLimit = 4
 private const val PARSE_APPEND_PREFETCH_DISTANCE = 4
-private val copyDialogCornerRadius = 32.dp
-private val copyDialogHorizontalMargin = 28.dp
-private val copyDialogContentPadding = 24.dp
-private val copyDialogMaxHeight = 720.dp
-private val copyDialogSectionSpacing = 16.dp
-private val copyDialogPreviewHeight = 340.dp
-private val copyDialogPreviewMinHeight = 220.dp
-private val copyDialogPreviewCornerRadius = 24.dp
-private val copyDialogPreviewScrollbarTouchWidth = 18.dp
-private val copyDialogPreviewScrollbarTrackWidth = 2.dp
-private val copyDialogPreviewScrollbarTrackWidthActive = 6.dp
-private val copyDialogPreviewScrollbarThumbWidth = 4.dp
-private val copyDialogPreviewScrollbarThumbWidthActive = 9.dp
-private val copyDialogPreviewScrollbarMinThumbHeight = 52.dp
 private val metadataSheetHorizontalPadding = 24.dp
 private val metadataSectionDividerSpacing = 18.dp
 private val metadataSectionHeaderSpacing = 12.dp
@@ -254,9 +214,6 @@ private val metadataRowLabelGap = 20.dp
 
 /** 键值表的字段名列最多占内容宽度的比例，超出则字段名换行，避免把取值挤得过窄。 */
 private const val metadataRowLabelMaxWidthFraction = 0.4f
-
-/** 复制预览是纯文本滚动，没有天然的离散档位，这里用固定滚动距离作为触感节拍。 */
-private val copyDialogPreviewScrollbarTickStep = 56.dp
 private const val optionsVisibilityAnimationDurationMillis = 180
 private const val optionsValueAnimationDurationMillis = 120
 private const val parseContentAnimationDurationMillis = 220
@@ -358,8 +315,8 @@ fun ParseScreenContent(
     inputText: String,
     contentTopPadding: Dp,
     externalMode: Boolean,
-    subtitleCopyDialogEntries: List<SubtitleCopyEntry>?,
-    aiSummaryCopyDialogEntries: List<AiSummaryCopyEntry>?,
+    subtitleCopyPreviewEntries: List<SubtitleCopyEntry>?,
+    aiSummaryCopyPreviewEntries: List<AiSummaryCopyEntry>?,
     onInputChange: (String) -> Unit,
     onPaste: () -> Unit,
     onParse: (String) -> Unit,
@@ -402,8 +359,8 @@ fun ParseScreenContent(
     onImageSelectionChange: (String, Boolean) -> Unit,
     onOpusContentEnabledChange: (Boolean) -> Unit,
     onOpusImagesEnabledChange: (Boolean) -> Unit,
-    onDismissSubtitleCopyDialog: () -> Unit,
-    onDismissAiSummaryCopyDialog: () -> Unit,
+    onDismissSubtitleCopyPreview: () -> Unit,
+    onDismissAiSummaryCopyPreview: () -> Unit,
     onCopyCurrentSubtitle: (SubtitleCopyEntry) -> Unit,
     onCopyAllSubtitles: (List<SubtitleCopyEntry>) -> Unit,
     onCopyCurrentAiSummary: (AiSummaryCopyEntry) -> Unit,
@@ -573,600 +530,24 @@ fun ParseScreenContent(
                 .padding(top = contentTopPadding + 4.dp),
         )
 
-        subtitleCopyDialogEntries?.let { entries ->
-            SubtitleCopyPreviewDialog(
+        subtitleCopyPreviewEntries?.let { entries ->
+            SubtitleCopyPreviewSheet(
                 entries = entries,
-                onDismiss = onDismissSubtitleCopyDialog,
+                onDismiss = onDismissSubtitleCopyPreview,
                 onCopyCurrent = onCopyCurrentSubtitle,
                 onCopyAll = onCopyAllSubtitles,
             )
         }
 
-        aiSummaryCopyDialogEntries?.let { entries ->
-            AiSummaryCopyPreviewDialog(
+        aiSummaryCopyPreviewEntries?.let { entries ->
+            AiSummaryCopyPreviewSheet(
                 entries = entries,
-                onDismiss = onDismissAiSummaryCopyDialog,
+                onDismiss = onDismissAiSummaryCopyPreview,
                 onCopyCurrent = onCopyCurrentAiSummary,
                 onCopyAll = onCopyAllAiSummaries,
             )
         }
     }
-}
-
-@Composable
-private fun SubtitleCopyPreviewDialog(
-    entries: List<SubtitleCopyEntry>,
-    onDismiss: () -> Unit,
-    onCopyCurrent: (SubtitleCopyEntry) -> Unit,
-    onCopyAll: (List<SubtitleCopyEntry>) -> Unit,
-) {
-    val resources = LocalResources.current
-    CopyPreviewDialog(
-        title = stringResource(R.string.parse_subtitle_copy_dialog_title),
-        subtitle = stringResource(R.string.parse_subtitle_copy_dialog_subtitle),
-        itemLabel = stringResource(R.string.parse_subtitle_copy_item_label),
-        currentActionText = stringResource(R.string.parse_subtitle_copy_current),
-        allActionText = stringResource(R.string.parse_subtitle_copy_all),
-        entries = entries,
-        previewUsesMonospace = true,
-        hasContent = { entry -> !entry.content.isNullOrBlank() },
-        labelForEntry = { entry ->
-            val subtitlePart = entry.subtitleName
-                ?.takeIf { it.isNotBlank() }
-                ?.let { " · $it" }
-                .orEmpty()
-            val base = "${entry.title}$subtitlePart"
-            if (entry.content.isNullOrBlank()) {
-                resources.getString(R.string.parse_subtitle_copy_item_unavailable, base)
-            } else {
-                base
-            }
-        },
-        statusForEntry = { entry ->
-            if (!entry.content.isNullOrBlank()) {
-                val subtitleName = entry.subtitleName
-                    ?.takeIf { it.isNotBlank() }
-                    ?: resources.getString(R.string.parse_subtitle_label)
-                resources.getString(R.string.parse_subtitle_copy_status_ready, subtitleName)
-            } else {
-                entry.error ?: resources.getString(R.string.parse_subtitle_copy_unavailable)
-            }
-        },
-        previewForEntry = { entry ->
-            entry.content?.takeIf { it.isNotBlank() }
-                ?: resources.getString(R.string.parse_subtitle_copy_preview_empty)
-        },
-        onDismiss = onDismiss,
-        onCopyCurrent = onCopyCurrent,
-        onCopyAll = onCopyAll,
-    )
-}
-
-@Composable
-private fun AiSummaryCopyPreviewDialog(
-    entries: List<AiSummaryCopyEntry>,
-    onDismiss: () -> Unit,
-    onCopyCurrent: (AiSummaryCopyEntry) -> Unit,
-    onCopyAll: (List<AiSummaryCopyEntry>) -> Unit,
-) {
-    val resources = LocalResources.current
-    CopyPreviewDialog(
-        title = stringResource(R.string.parse_ai_summary_copy_dialog_title),
-        subtitle = stringResource(R.string.parse_ai_summary_copy_dialog_subtitle),
-        itemLabel = stringResource(R.string.parse_ai_summary_copy_item_label),
-        currentActionText = stringResource(R.string.parse_ai_summary_copy_current),
-        allActionText = stringResource(R.string.parse_ai_summary_copy_all),
-        entries = entries,
-        previewUsesMonospace = false,
-        hasContent = { entry -> !entry.content.isNullOrBlank() },
-        labelForEntry = { entry ->
-            if (entry.content.isNullOrBlank()) {
-                resources.getString(R.string.parse_ai_summary_copy_item_unavailable, entry.title)
-            } else {
-                entry.title
-            }
-        },
-        statusForEntry = { entry ->
-            if (!entry.content.isNullOrBlank()) {
-                resources.getString(R.string.parse_ai_summary_copy_status_ready)
-            } else {
-                entry.error ?: resources.getString(R.string.parse_ai_summary_copy_unavailable)
-            }
-        },
-        previewForEntry = { entry ->
-            entry.content?.takeIf { it.isNotBlank() }
-                ?: resources.getString(R.string.parse_ai_summary_copy_preview_empty)
-        },
-        onDismiss = onDismiss,
-        onCopyCurrent = onCopyCurrent,
-        onCopyAll = onCopyAll,
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun <T> CopyPreviewDialog(
-    title: String,
-    subtitle: String,
-    itemLabel: String,
-    currentActionText: String,
-    allActionText: String,
-    entries: List<T>,
-    previewUsesMonospace: Boolean,
-    hasContent: (T) -> Boolean,
-    labelForEntry: (T) -> String,
-    statusForEntry: (T) -> String,
-    previewForEntry: (T) -> String,
-    onDismiss: () -> Unit,
-    onCopyCurrent: (T) -> Unit,
-    onCopyAll: (List<T>) -> Unit,
-) {
-    if (entries.isEmpty()) return
-
-    val initialIndex = remember(entries) { entries.indexOfFirst(hasContent).takeIf { it >= 0 } ?: 0 }
-    var selectedIndex by remember(entries) { mutableStateOf(initialIndex) }
-    val safeSelectedIndex = selectedIndex.coerceIn(entries.indices)
-    val selectedEntry = entries[safeSelectedIndex]
-    val selectedHasContent = hasContent(selectedEntry)
-    val labels = entries.map(labelForEntry)
-    val hasAnyContent = entries.any(hasContent)
-    val motionScheme = MaterialTheme.motionScheme
-    val visibleState = remember {
-        MutableTransitionState(false).apply {
-            targetState = true
-        }
-    }
-
-    LaunchedEffect(entries, selectedIndex) {
-        if (selectedIndex !in entries.indices) {
-            selectedIndex = initialIndex
-        }
-    }
-
-    AppDialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        AnimatedVisibility(
-            visibleState = visibleState,
-            enter =
-                fadeIn(animationSpec = motionScheme.fastEffectsSpec()) +
-                    scaleIn(
-                        initialScale = 0.92f,
-                        animationSpec = motionScheme.defaultSpatialSpec(),
-                    ),
-            exit =
-                fadeOut(animationSpec = motionScheme.fastEffectsSpec()) +
-                    scaleOut(
-                        targetScale = 0.92f,
-                        animationSpec = motionScheme.fastSpatialSpec(),
-                    ),
-        ) {
-            val dialogShape = RoundedCornerShape(copyDialogCornerRadius)
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = copyDialogHorizontalMargin)
-                    .appDialogBorder(dialogShape),
-                shape = dialogShape,
-                color = AppDialogDefaults.containerColor,
-                // 深色层次主要由模态表面、边缘与遮罩表达；投影仅保留为浅色模式的辅助。
-                shadowElevation = 18.dp,
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = copyDialogMaxHeight)
-                        .animateContentSize(animationSpec = motionScheme.defaultSpatialSpec())
-                        .padding(copyDialogContentPadding),
-                    verticalArrangement = Arrangement.spacedBy(copyDialogSectionSpacing),
-                ) {
-                    CopyDialogHeader(
-                        title = title,
-                        subtitle = subtitle,
-                    )
-                    CompactSelectionField(
-                        label = itemLabel,
-                        value = labels.getOrElse(safeSelectedIndex) { labels.firstOrNull().orEmpty() },
-                        enabled = labels.isNotEmpty(),
-                        options = labels.mapIndexed { index, label -> DropdownOption(label, index) },
-                        onOptionSelected = { option -> selectedIndex = option.value },
-                    )
-                    CopyDialogStatusPill(
-                        text = statusForEntry(selectedEntry),
-                        available = selectedHasContent,
-                    )
-                    CopyDialogPreviewPanel(
-                        entries = entries,
-                        selectedIndex = safeSelectedIndex,
-                        hasContent = hasContent,
-                        previewForEntry = previewForEntry,
-                        usesMonospace = previewUsesMonospace,
-                        modifier = Modifier
-                            .weight(1f, fill = true)
-                            .heightIn(
-                                min = copyDialogPreviewMinHeight,
-                                max = copyDialogPreviewHeight,
-                            ),
-                    )
-                    ExpressiveActionButton(
-                        text = currentActionText,
-                        iconRes = R.drawable.ic_content_copy_24,
-                        loading = false,
-                        enabled = selectedHasContent,
-                        onClick = { onCopyCurrent(selectedEntry) },
-                        modifier = Modifier.fillMaxWidth(),
-                        tonal = true,
-                        height = 52.dp,
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        TextButton(onClick = onDismiss) {
-                            Text(
-                                text = stringResource(android.R.string.cancel),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        ExpressiveActionButton(
-                            text = allActionText,
-                            iconRes = R.drawable.ic_content_copy_24,
-                            loading = false,
-                            enabled = hasAnyContent,
-                            onClick = {
-                                onCopyAll(entries)
-                                onDismiss()
-                            },
-                            tonal = true,
-                            height = 48.dp,
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CopyDialogHeader(
-    title: String,
-    subtitle: String,
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Text(
-            text = subtitle,
-            style = ParseTextStyles.supporting,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun CopyDialogStatusPill(
-    text: String,
-    available: Boolean,
-) {
-    val motionScheme = MaterialTheme.motionScheme
-    val containerColor by animateColorAsState(
-        targetValue = if (available) {
-            MaterialTheme.colorScheme.primaryContainer
-        } else {
-            MaterialTheme.colorScheme.errorContainer
-        },
-        animationSpec = motionScheme.fastEffectsSpec(),
-    )
-    val contentColor by animateColorAsState(
-        targetValue = if (available) {
-            MaterialTheme.colorScheme.onPrimaryContainer
-        } else {
-            MaterialTheme.colorScheme.onErrorContainer
-        },
-        animationSpec = motionScheme.fastEffectsSpec(),
-    )
-
-    AnimatedContent(
-        targetState = text to available,
-        transitionSpec = {
-            fadeIn(animationSpec = motionScheme.fastEffectsSpec()) togetherWith
-                fadeOut(animationSpec = motionScheme.fastEffectsSpec())
-        },
-        label = "CopyDialogStatus",
-    ) { (statusText, statusAvailable) ->
-        Row(
-            modifier = Modifier
-                .clip(RoundedCornerShape(percent = 50))
-                .background(containerColor)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                painter = painterResource(
-                    if (statusAvailable) R.drawable.ic_check_24 else R.drawable.ic_info_24,
-                ),
-                contentDescription = null,
-                tint = contentColor,
-                modifier = Modifier.size(16.dp),
-            )
-            Text(
-                text = statusText,
-                style = ParseTextStyles.supporting,
-                color = contentColor,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun <T> CopyDialogPreviewPanel(
-    entries: List<T>,
-    selectedIndex: Int,
-    hasContent: (T) -> Boolean,
-    previewForEntry: (T) -> String,
-    usesMonospace: Boolean,
-    modifier: Modifier = Modifier.height(copyDialogPreviewHeight),
-) {
-    val scrollState = rememberScrollState()
-    val motionScheme = MaterialTheme.motionScheme
-
-    LaunchedEffect(entries, selectedIndex) {
-        scrollState.scrollTo(0)
-    }
-
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(copyDialogPreviewCornerRadius),
-        color = MaterialTheme.colorScheme.surfaceContainerHighest,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-    ) {
-        Box(Modifier.fillMaxSize()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(end = copyDialogPreviewScrollbarTouchWidth)
-                    .verticalScroll(scrollState),
-            ) {
-                AnimatedContent(
-                    targetState = selectedIndex,
-                    transitionSpec = {
-                        fadeIn(animationSpec = motionScheme.fastEffectsSpec()) togetherWith
-                            fadeOut(animationSpec = motionScheme.fastEffectsSpec())
-                    },
-                    label = "CopyDialogPreview",
-                ) { index ->
-                    val entry = entries[index.coerceIn(entries.indices)]
-                    val entryHasContent = hasContent(entry)
-                    SelectionContainer {
-                        Text(
-                            text = previewForEntry(entry),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(start = 16.dp, top = 16.dp, end = 8.dp, bottom = 16.dp),
-                            style = ParseTextStyles.body.copy(
-                                fontFamily = if (usesMonospace) FontFamily.Monospace else null,
-                                lineHeight = 22.sp,
-                            ),
-                            color = if (entryHasContent) {
-                                MaterialTheme.colorScheme.onSurface
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                        )
-                    }
-                }
-            }
-            CopyPreviewScrollbar(
-                scrollState = scrollState,
-                modifier = Modifier.align(Alignment.CenterEnd),
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun CopyPreviewScrollbar(
-    scrollState: ScrollState,
-    modifier: Modifier = Modifier,
-) {
-    val density = LocalDensity.current
-    val hapticFeedback = rememberAppHaptics()
-    val dragTicker = remember { HapticTicker() }
-    val coroutineScope = rememberCoroutineScope()
-    val minThumbHeightPx = with(density) { copyDialogPreviewScrollbarMinThumbHeight.toPx() }
-    val tickStepPx = with(density) { copyDialogPreviewScrollbarTickStep.toPx() }
-    var trackHeightPx by remember { mutableStateOf(0) }
-    var dragActive by remember { mutableStateOf(false) }
-    val metrics = calculateCopyPreviewScrollbarMetrics(
-        scrollValuePx = scrollState.value,
-        maxScrollPx = scrollState.maxValue,
-        trackHeightPx = trackHeightPx,
-        minThumbHeightPx = minThumbHeightPx,
-    )
-    val trackWidth by animateDpAsState(
-        targetValue = if (dragActive) {
-            copyDialogPreviewScrollbarTrackWidthActive
-        } else {
-            copyDialogPreviewScrollbarTrackWidth
-        },
-        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
-    )
-    val thumbWidth by animateDpAsState(
-        targetValue = if (dragActive) {
-            copyDialogPreviewScrollbarThumbWidthActive
-        } else {
-            copyDialogPreviewScrollbarThumbWidth
-        },
-        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
-    )
-    val thumbTopTarget = with(density) { metrics.thumbOffsetPx.toDp() }
-    val thumbTopAnimated by animateDpAsState(
-        targetValue = thumbTopTarget,
-        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
-    )
-    val thumbTop = if (dragActive) thumbTopTarget else thumbTopAnimated
-    val thumbHeight = with(density) { metrics.thumbHeightPx.toDp() }
-    val trackColor by animateColorAsState(
-        targetValue = if (dragActive) {
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
-        } else {
-            MaterialTheme.colorScheme.primary.copy(alpha = 0f)
-        },
-        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
-    )
-    val thumbColor by animateColorAsState(
-        targetValue = if (dragActive) {
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.86f)
-        } else {
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.42f)
-        },
-        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
-    )
-
-    Box(
-        modifier = modifier
-            .fillMaxHeight()
-            .width(copyDialogPreviewScrollbarTouchWidth)
-            .pointerInput(scrollState, trackHeightPx, minThumbHeightPx) {
-                detectDragGesturesAfterLongPress(
-                    onDragStart = {
-                        val currentMetrics = calculateCopyPreviewScrollbarMetrics(
-                            scrollValuePx = scrollState.value,
-                            maxScrollPx = scrollState.maxValue,
-                            trackHeightPx = trackHeightPx,
-                            minThumbHeightPx = minThumbHeightPx,
-                        )
-                        if (currentMetrics.scrollable) {
-                            dragActive = true
-                            hapticFeedback.longPress()
-                        }
-                    },
-                    onDragEnd = {
-                        dragActive = false
-                        dragTicker.reset()
-                    },
-                    onDragCancel = {
-                        dragActive = false
-                        dragTicker.reset()
-                    },
-                    onDrag = { change, dragAmount ->
-                        val currentMetrics = calculateCopyPreviewScrollbarMetrics(
-                            scrollValuePx = scrollState.value,
-                            maxScrollPx = scrollState.maxValue,
-                            trackHeightPx = trackHeightPx,
-                            minThumbHeightPx = minThumbHeightPx,
-                        )
-                        if (currentMetrics.scrollable && currentMetrics.maxThumbOffsetPx > 0f) {
-                            change.consume()
-                            val scrollDelta = dragAmount.y *
-                                (currentMetrics.maxScrollPx / currentMetrics.maxThumbOffsetPx)
-                            coroutineScope.launch {
-                                scrollState.scrollBy(scrollDelta)
-                            }
-                            dragTicker.onStep((scrollState.value / tickStepPx).toInt()) {
-                                hapticFeedback.tick()
-                            }
-                        }
-                    },
-                )
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxHeight()
-                .padding(vertical = 10.dp)
-                .onSizeChanged { size -> trackHeightPx = size.height },
-            contentAlignment = Alignment.Center,
-        ) {
-            if (metrics.scrollable || dragActive) {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .width(trackWidth),
-                    shape = RoundedCornerShape(percent = 50),
-                    color = trackColor,
-                ) {}
-                Surface(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .offset(y = thumbTop)
-                        .width(thumbWidth)
-                        .height(thumbHeight),
-                    shape = RoundedCornerShape(percent = 50),
-                    color = thumbColor,
-                ) {}
-            }
-        }
-    }
-}
-
-private data class CopyPreviewScrollbarMetrics(
-    val scrollable: Boolean,
-    val thumbHeightPx: Float,
-    val thumbOffsetPx: Float,
-    val maxThumbOffsetPx: Float,
-    val maxScrollPx: Float,
-) {
-    companion object
-}
-
-private fun calculateCopyPreviewScrollbarMetrics(
-    scrollValuePx: Int,
-    maxScrollPx: Int,
-    trackHeightPx: Int,
-    minThumbHeightPx: Float,
-): CopyPreviewScrollbarMetrics {
-    if (trackHeightPx <= 0 || maxScrollPx <= 0) {
-        return CopyPreviewScrollbarMetrics.empty(trackHeightPx.toFloat())
-    }
-
-    val trackHeight = trackHeightPx.toFloat()
-    val maxScroll = maxScrollPx.toFloat()
-    val contentHeight = trackHeight + maxScroll
-    val thumbHeight = ((trackHeight * trackHeight) / contentHeight)
-        .coerceIn(minThumbHeightPx.coerceAtMost(trackHeight), trackHeight)
-    val maxThumbOffset = (trackHeight - thumbHeight).coerceAtLeast(0f)
-    val scrollFraction = (scrollValuePx.toFloat() / maxScroll).coerceIn(0f, 1f)
-
-    return CopyPreviewScrollbarMetrics(
-        scrollable = maxThumbOffset > 0f,
-        thumbHeightPx = thumbHeight,
-        thumbOffsetPx = scrollFraction * maxThumbOffset,
-        maxThumbOffsetPx = maxThumbOffset,
-        maxScrollPx = maxScroll,
-    )
-}
-
-private fun CopyPreviewScrollbarMetrics.Companion.empty(
-    trackHeightPx: Float = 0f,
-): CopyPreviewScrollbarMetrics {
-    return CopyPreviewScrollbarMetrics(
-        scrollable = false,
-        thumbHeightPx = trackHeightPx,
-        thumbOffsetPx = 0f,
-        maxThumbOffsetPx = 0f,
-        maxScrollPx = 0f,
-    )
 }
 
 @Composable
@@ -2393,9 +1774,7 @@ private fun PageSelectionList(
     }
 
     val listState = rememberLazyListState()
-    val boundaryConsumption = remember { ScrollBoundaryConsumption() }
-    val boundaryConnection = rememberScrollBoundaryNestedScrollConnection(boundaryConsumption)
-    val overscrollEffect = rememberBoundaryAwareOverscrollEffect(boundaryConsumption)
+    val containedScroll = rememberContainedScroll()
 
     val pagination = state.pagination
     val pageScroll = remember(pagination.generation, pagination.lastLoadedPage) { PageScrollState() }
@@ -2442,9 +1821,9 @@ private fun PageSelectionList(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(end = pageSelectionScrollbarContentInset)
-                .nestedScroll(boundaryConnection),
+                .nestedScroll(containedScroll.connection),
             state = listState,
-            overscrollEffect = overscrollEffect,
+            overscrollEffect = containedScroll.overscrollEffect,
             contentPadding = PaddingValues(bottom = bottomPadding),
             verticalArrangement = Arrangement.spacedBy(pageSelectionItemSpacing),
         ) {
@@ -2523,107 +1902,6 @@ private fun PageSelectionRow(
         onRowClick = { onItemClick(index) },
         onCheckedChange = { checked -> onItemSelectionChange(index, checked) },
     )
-}
-
-@Composable
-private fun rememberBoundaryAwareOverscrollEffect(
-    boundaryConsumption: ScrollBoundaryConsumption,
-): OverscrollEffect? {
-    val overscrollEffect = rememberOverscrollEffect() ?: return null
-    return remember(overscrollEffect, boundaryConsumption) {
-        BoundaryAwareOverscrollEffect(
-            delegate = overscrollEffect,
-            boundaryConsumption = boundaryConsumption,
-        )
-    }
-}
-
-@Composable
-private fun rememberScrollBoundaryNestedScrollConnection(
-    boundaryConsumption: ScrollBoundaryConsumption,
-): NestedScrollConnection {
-    return remember(boundaryConsumption) {
-        object : NestedScrollConnection {
-            override fun onPostScroll(
-                consumed: Offset,
-                available: Offset,
-                source: NestedScrollSource,
-            ): Offset {
-                val blocked = Offset(x = 0f, y = available.y)
-                boundaryConsumption.recordScroll(blocked)
-                return blocked
-            }
-
-            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                val blocked = Velocity(x = 0f, y = available.y)
-                boundaryConsumption.recordFling(blocked)
-                return blocked
-            }
-        }
-    }
-}
-
-private class BoundaryAwareOverscrollEffect(
-    private val delegate: OverscrollEffect,
-    private val boundaryConsumption: ScrollBoundaryConsumption,
-) : OverscrollEffect {
-    override val isInProgress: Boolean
-        get() = delegate.isInProgress
-
-    override val node: DelegatableNode
-        get() = delegate.node
-
-    override fun applyToScroll(
-        delta: Offset,
-        source: NestedScrollSource,
-        performScroll: (Offset) -> Offset,
-    ): Offset {
-        boundaryConsumption.resetScroll()
-        return delegate.applyToScroll(delta, source) { scrollDelta ->
-            boundaryConsumption.resetScroll()
-            val consumed = performScroll(scrollDelta)
-            // The boundary connection blocks parent scrolling by consuming leftover deltas. Hide that
-            // artificial consumption from the real overscroll effect so edge stretch still renders.
-            consumed - boundaryConsumption.scroll
-        }
-    }
-
-    override suspend fun applyToFling(
-        velocity: Velocity,
-        performFling: suspend (Velocity) -> Velocity,
-    ) {
-        boundaryConsumption.resetFling()
-        delegate.applyToFling(velocity) { flingVelocity ->
-            boundaryConsumption.resetFling()
-            val consumed = performFling(flingVelocity)
-            // Same accounting fix for velocity so a fling into the edge can be absorbed by overscroll.
-            consumed - boundaryConsumption.fling
-        }
-    }
-}
-
-private class ScrollBoundaryConsumption {
-    var scroll: Offset = Offset.Zero
-        private set
-
-    var fling: Velocity = Velocity.Zero
-        private set
-
-    fun recordScroll(value: Offset) {
-        scroll += value
-    }
-
-    fun recordFling(value: Velocity) {
-        fling += value
-    }
-
-    fun resetScroll() {
-        scroll = Offset.Zero
-    }
-
-    fun resetFling() {
-        fling = Velocity.Zero
-    }
 }
 
 private fun pageSelectionItemKey(index: Int, mediaItem: MediaItem): String {

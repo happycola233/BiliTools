@@ -40,7 +40,7 @@ object GithubMarkdownParser {
 
     /**
      * @param pageUrl 文档所在页面地址，用于补全相对链接；若是 GitHub 仓库下的页面，
-     * 正文里的 `#123` 会像 GitHub 一样链接到该仓库的议题。
+     * 正文里的 `@用户名` 与 `#123` 会像 GitHub 一样链接到个人主页与该仓库的议题，其他来源的文档保持原文。
      */
     fun parse(markdown: String, pageUrl: String? = null): MarkdownDocument {
         val html = htmlRenderer.render(parser.parse(markdown))
@@ -232,10 +232,16 @@ private class DomConverter(private val repositoryUrl: String?) {
         }
     }
 
-    /** GitHub 会把正文里的 `@用户名` 链接到个人主页，把 `#123` 链接到当前仓库的议题或拉取请求。 */
-    fun referenceUrl(reference: String): String? = when (reference.first()) {
-        '@' -> "https://github.com/${reference.drop(1)}"
-        else -> repositoryUrl?.let { "$it/issues/${reference.drop(1)}" }
+    /**
+     * GitHub 会把正文里的 `@用户名` 链接到个人主页，把 `#123` 链接到当前仓库的议题或拉取请求；
+     * 不是来自 GitHub 仓库页面的文档（如 B 站 AI 总结）不做这种转换。
+     */
+    fun referenceUrl(reference: String): String? {
+        val repository = repositoryUrl ?: return null
+        return when (reference.first()) {
+            '@' -> "https://github.com/${reference.drop(1)}"
+            else -> "$repository/issues/${reference.drop(1)}"
+        }
     }
 }
 

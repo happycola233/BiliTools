@@ -272,9 +272,9 @@ sealed class ParseEvent {
     data class DownloadQueued(val result: DownloadEnqueueResult) : ParseEvent()
 }
 
-sealed class ParseCopyDialogState {
-    data class Subtitles(val entries: List<SubtitleCopyEntry>) : ParseCopyDialogState()
-    data class AiSummaries(val entries: List<AiSummaryCopyEntry>) : ParseCopyDialogState()
+sealed class ParseCopyPreviewState {
+    data class Subtitles(val entries: List<SubtitleCopyEntry>) : ParseCopyPreviewState()
+    data class AiSummaries(val entries: List<AiSummaryCopyEntry>) : ParseCopyPreviewState()
 }
 
 data class DownloadEnqueueResult(
@@ -334,7 +334,7 @@ data class ParseUiState(
     // 输入框本身的校验提示：就地展示在输入框下方，不占用顶部错误横幅。
     val inputError: String? = null,
     val notice: String? = null,
-    val copyDialog: ParseCopyDialogState? = null,
+    val copyPreview: ParseCopyPreviewState? = null,
     val mediaInfo: MediaInfo? = null,
     val items: List<MediaItem> = emptyList(),
     val selectedItemIndex: Int = 0,
@@ -766,8 +766,8 @@ class ParseViewModel(
         _state.update { it.copy(error = null) }
     }
 
-    fun dismissCopyDialog() {
-        _state.update { it.copy(copyDialog = null) }
+    fun dismissCopyPreview() {
+        _state.update { it.copy(copyPreview = null) }
     }
 
     fun clearInputError() {
@@ -2302,7 +2302,7 @@ class ParseViewModel(
                 return@launch
             }
             _state.update {
-                it.copy(copyDialog = ParseCopyDialogState.Subtitles(entries))
+                it.copy(copyPreview = ParseCopyPreviewState.Subtitles(entries))
             }
         }
     }
@@ -2377,7 +2377,7 @@ class ParseViewModel(
                 return@launch
             }
             _state.update {
-                it.copy(copyDialog = ParseCopyDialogState.AiSummaries(entries))
+                it.copy(copyPreview = ParseCopyPreviewState.AiSummaries(entries))
             }
         }
     }
