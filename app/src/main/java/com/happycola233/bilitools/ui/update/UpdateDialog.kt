@@ -11,82 +11,80 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.core.content.ContextCompat
-import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LinearWavyProgressIndicator
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetState
 import androidx.compose.material3.SheetValue
-import androidx.compose.material3.SplitButtonLayout
-import androidx.compose.material3.SplitButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberBottomSheetState
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.TextLinkStyles
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withLink
-import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.appContainer
 import com.happycola233.bilitools.data.ReleaseInfo
+import com.happycola233.bilitools.ui.markdown.GithubMarkdownParser
+import com.happycola233.bilitools.ui.markdown.MarkdownContent
+import com.happycola233.bilitools.ui.markdown.MarkdownDocument
+import com.happycola233.bilitools.ui.theme.AppAccents
+import com.happycola233.bilitools.ui.theme.AppSurfaces
 import com.happycola233.bilitools.ui.theme.BiliToolsTheme
 import com.happycola233.bilitools.update.UpdateStartResult
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 object UpdateDialog {
     private const val HOST_VIEW_TAG = "biltools_update_dialog_host"
@@ -140,15 +138,19 @@ fun UpdateDialogContent(
     val gitHubRouteManager = remember(activity) {
         activity.applicationContext.appContainer.gitHubRouteManager
     }
+    val imageUrlCandidates = remember(gitHubRouteManager) {
+        gitHubRouteManager::releaseNotesMediaCandidates
+    }
     UpdateDialogHost(
         activity = activity,
         release = release,
         currentVersion = currentVersion,
+        imageUrlCandidates = imageUrlCandidates,
         onRemoveHost = onDismiss,
         onOpenRelease = {
             val intent = Intent(
                 Intent.ACTION_VIEW,
-                Uri.parse(gitHubRouteManager.resolveReleasePageUrl(release.htmlUrl)),
+                Uri.parse(release.htmlUrl),
             )
             runCatching {
                 activity.startActivity(intent)
@@ -237,20 +239,31 @@ private fun startUpdateDownload(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun UpdateDialogHost(
     activity: AppCompatActivity,
     release: ReleaseInfo,
     currentVersion: String,
+    imageUrlCandidates: (String) -> List<String>,
     onRemoveHost: () -> Unit,
     onOpenRelease: () -> Unit,
     onDownloadUpdateNow: () -> Boolean,
     onIgnoreUpdate: () -> Unit,
 ) {
     var isVisible by remember { mutableStateOf(true) }
-    val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
+    // 说明较长时面板直接全高展开，底部操作栏始终可见；不提供半展开态，避免操作区被推出屏幕。
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+    )
     val coroutineScope = rememberCoroutineScope()
+    // 首次解析会加载 HTML 实体表等，放到后台线程，完成后再弹出面板，避免展开动画中途改变高度。
+    val releaseNotes by produceState<MarkdownDocument?>(initialValue = null, release) {
+        value = withContext(Dispatchers.Default) {
+            GithubMarkdownParser.parse(release.bodyMarkdown, pageUrl = release.htmlUrl)
+        }
+    }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
@@ -282,293 +295,274 @@ private fun UpdateDialogHost(
         }
         return
     }
+    val notes = releaseNotes ?: return
 
-    if (isVisible || sheetState.isVisible) {
-        UpdateBottomSheet(
-            sheetState = sheetState,
-            release = release,
-            currentVersion = currentVersion,
-            onDismiss = { isVisible = false },
-            onOpenRelease = onOpenRelease,
-            onDownloadUpdate = {
-                if (shouldRequestNotificationPermission(activity)) {
-                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                } else if (onDownloadUpdateNow()) {
-                    dismissSheet()
-                }
-            },
-            onIgnoreUpdate = onIgnoreUpdate,
-        )
-    }
+    UpdateBottomSheet(
+        sheetState = sheetState,
+        release = release,
+        releaseNotes = notes,
+        currentVersion = currentVersion,
+        imageUrlCandidates = imageUrlCandidates,
+        onDismiss = { isVisible = false },
+        onOpenRelease = onOpenRelease,
+        onDownloadUpdate = {
+            if (shouldRequestNotificationPermission(activity)) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else if (onDownloadUpdateNow()) {
+                dismissSheet()
+            }
+        },
+        onIgnoreUpdate = {
+            onIgnoreUpdate()
+            dismissSheet()
+        },
+    )
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun UpdateBottomSheet(
-    sheetState: androidx.compose.material3.SheetState,
+    sheetState: SheetState,
     release: ReleaseInfo,
+    releaseNotes: MarkdownDocument,
     currentVersion: String,
+    imageUrlCandidates: (String) -> List<String>,
     onDismiss: () -> Unit,
     onOpenRelease: () -> Unit,
     onDownloadUpdate: () -> Unit,
     onIgnoreUpdate: () -> Unit,
 ) {
-    val scrollState = rememberScrollState()
-    val coroutineScope = rememberCoroutineScope()
-    val contentScrollEnabled by remember {
-        derivedStateOf {
-            !sheetState.isAnimationRunning
-        }
-    }
-    val markdown = remember(release.bodyMarkdown) { release.bodyMarkdown.takeIf { it.isNotBlank() } }
-
-    LaunchedEffect(sheetState.currentValue) {
-        if (sheetState.currentValue != SheetValue.Expanded && scrollState.value != 0) {
-            scrollState.scrollTo(0)
-        }
-    }
-
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        modifier = Modifier.fillMaxHeight(),
         sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        dragHandle = { BottomSheetDefaults.DragHandle() },
-        contentWindowInsets = { BottomSheetDefaults.modalWindowInsets },
+        containerColor = AppSurfaces.pageContainerColor,
     ) {
-        Column(
+        UpdateSheetHeader(
+            targetVersion = release.tagName,
+            currentVersion = currentVersion,
+            publishedAt = release.publishedAt,
+        )
+        // 只有说明区域滚动，标题与操作区留在原位：长说明读到哪里都能直接下载。
+        ReleaseNotesCard(
+            document = releaseNotes,
+            imageUrlCandidates = imageUrlCandidates,
+            // 面板展开或拖动收起的动画期间暂停内部滚动，避免手势同时驱动面板与说明区域。
+            scrollEnabled = !sheetState.isAnimationRunning,
             modifier = Modifier
-                .fillMaxWidth()
+                .weight(1f, fill = false)
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            UpdateSheetHeader(
-                release = release,
-                currentVersion = currentVersion,
-            )
-
-            UpdateActionButtons(
-                release = release,
-                onDownloadUpdate = onDownloadUpdate,
-                onIgnoreUpdate = {
-                    onIgnoreUpdate()
-                    coroutineScope.launch {
-                        sheetState.hide()
-                        onDismiss()
-                    }
-                },
-                onOpenRelease = onOpenRelease,
-            )
-
-            if (markdown != null) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f, fill = false),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    ),
-                    shape = RoundedCornerShape(20.dp),
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .verticalScroll(scrollState, enabled = contentScrollEnabled)
-                            .padding(horizontal = 18.dp, vertical = 20.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                    ) {
-                        MarkdownText(text = markdown)
-                    }
-                }
-            } else {
-                Text(
-                    text = stringResource(R.string.update_dialog_notes_empty),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 24.dp),
-                    textAlign = TextAlign.Center,
-                )
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun UpdateActionButtons(
-    release: ReleaseInfo,
-    onDownloadUpdate: () -> Unit,
-    onIgnoreUpdate: () -> Unit,
-    onOpenRelease: () -> Unit,
-) {
-    var ignoreMenuExpanded by remember { mutableStateOf(false) }
-    var primaryActionHeight by remember { mutableStateOf(0.dp) }
-    val canDownload = release.apkAsset != null
-    val density = LocalDensity.current
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                modifier = Modifier.onSizeChanged { size ->
-                    primaryActionHeight = with(density) { size.height.toDp() }
-                },
-            ) {
-                SplitButtonLayout(
-                    leadingButton = {
-                        SplitButtonDefaults.LeadingButton(
-                            onClick = onDownloadUpdate,
-                            enabled = canDownload,
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_download_for_offline_24),
-                                contentDescription = null,
-                                modifier = Modifier.size(SplitButtonDefaults.LeadingIconSize),
-                            )
-                            Text(
-                                text = stringResource(R.string.update_dialog_download),
-                                modifier = Modifier.padding(start = 8.dp),
-                            )
-                        }
-                    },
-                    trailingButton = {
-                        SplitButtonDefaults.TrailingButton(
-                            onClick = { ignoreMenuExpanded = true },
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_expand_more_24),
-                                contentDescription = null,
-                                modifier = Modifier.size(SplitButtonDefaults.TrailingIconSize),
-                            )
-                        }
-                    },
-                )
-
-                DropdownMenu(
-                    expanded = ignoreMenuExpanded,
-                    onDismissRequest = { ignoreMenuExpanded = false },
-                ) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.update_dialog_ignore_once)) },
-                        onClick = {
-                            ignoreMenuExpanded = false
-                            onIgnoreUpdate()
-                        },
-                    )
-                }
-            }
-
-            FilledTonalIconButton(
-                onClick = onOpenRelease,
-                modifier = Modifier.size(
-                    if (primaryActionHeight > 0.dp) {
-                        primaryActionHeight
-                    } else {
-                        IconButtonDefaults.smallContainerSize().height
-                    },
-                ),
-                shape = IconButtonDefaults.mediumRoundShape,
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_github_invertocat_black),
-                    contentDescription = stringResource(R.string.update_dialog_open_release),
-                    modifier = Modifier.size(24.dp),
-                )
-            }
-        }
+        )
+        UpdateActions(
+            canDownload = release.apkAsset != null,
+            onDownloadUpdate = onDownloadUpdate,
+            onIgnoreUpdate = onIgnoreUpdate,
+            onOpenRelease = onOpenRelease,
+        )
     }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun UpdateSheetHeader(
-    release: ReleaseInfo,
+    targetVersion: String,
     currentVersion: String,
+    publishedAt: Instant?,
 ) {
-    val currentVersionLabel = buildVersionTag(currentVersion)
-    val density = LocalDensity.current
-    val stroke = remember(density) {
-        Stroke(
-            width = with(density) { 3.dp.toPx() },
-            cap = StrokeCap.Round,
-        )
-    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 2.dp),
+            .padding(start = 24.dp, end = 24.dp, bottom = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Text(
-            text = stringResource(R.string.update_dialog_title),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center,
-        )
-
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
+                .size(56.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = MaterialShapes.Cookie9Sided.toShape(),
+                ),
+            contentAlignment = Alignment.Center,
         ) {
-            LinearWavyProgressIndicator(
-                progress = { 1f },
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .padding(horizontal = 32.dp)
-                    .graphicsLayer(scaleX = -1f),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = Color.Transparent,
-                stroke = stroke,
-                trackStroke = stroke,
-                amplitude = { 1f },
+            Icon(
+                painter = painterResource(R.drawable.ic_update_24),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(28.dp),
             )
+        }
+        Text(
+            text = stringResource(R.string.update_dialog_title),
+            // 比说明里的一级标题（headlineSmall）高一档，避免两个大标题并列争抢视觉焦点。
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .padding(top = 16.dp)
+                .semantics { heading() },
+        )
+        VersionTransition(
+            currentVersion = buildVersionTag(currentVersion),
+            targetVersion = targetVersion,
+            modifier = Modifier.padding(top = 12.dp),
+        )
+        if (publishedAt != null) {
+            Text(
+                text = stringResource(R.string.update_dialog_published_on, formatReleaseDate(publishedAt)),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
+    }
+}
 
-            Row(
+/** 按应用当前语言和本机时区显示发布日期（GitHub 返回的是 UTC 时间）。 */
+@Composable
+private fun formatReleaseDate(publishedAt: Instant): String {
+    val locale = LocalConfiguration.current.locales[0]
+    return remember(publishedAt, locale) {
+        DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
+            .withLocale(locale)
+            .format(publishedAt.atZone(ZoneId.systemDefault()))
+    }
+}
+
+@Composable
+private fun VersionTransition(
+    currentVersion: String,
+    targetVersion: String,
+    modifier: Modifier = Modifier,
+) {
+    // 整行合并为一次朗读（“当前版本 新版本”），箭头只是视觉连接，不单独朗读。
+    Row(
+        modifier = modifier.semantics(mergeDescendants = true) {},
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = currentVersion,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = if (LocalLayoutDirection.current == LayoutDirection.Rtl) "←" else "→",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.clearAndSetSemantics {},
+        )
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        ) {
+            Text(
+                text = targetVersion,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReleaseNotesCard(
+    document: MarkdownDocument,
+    imageUrlCandidates: (String) -> List<String>,
+    scrollEnabled: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.largeIncreased,
+        colors = CardDefaults.cardColors(containerColor = AppSurfaces.cardContainerColor),
+    ) {
+        if (document.blocks.isEmpty()) {
+            Text(
+                text = stringResource(R.string.update_dialog_notes_empty),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
                 modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(bottom = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = currentVersionLabel,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                    .fillMaxWidth()
+                    .padding(24.dp),
+            )
+        } else {
+            MarkdownContent(
+                document = document,
+                imageUrlCandidates = imageUrlCandidates,
+                modifier = Modifier
+                    .verticalScroll(rememberScrollState(), enabled = scrollEnabled)
+                    .padding(20.dp),
+            )
+        }
+    }
+}
 
-                Text(
-                    text = if (LocalLayoutDirection.current == LayoutDirection.Rtl) "←" else "→",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun UpdateActions(
+    canDownload: Boolean,
+    onDownloadUpdate: () -> Unit,
+    onIgnoreUpdate: () -> Unit,
+    onOpenRelease: () -> Unit,
+) {
+    val buttonHeight = ButtonDefaults.MediumContainerHeight
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Button(
+            onClick = onDownloadUpdate,
+            enabled = canDownload,
+            shapes = ButtonDefaults.shapesFor(buttonHeight),
+            colors = AppAccents.filledButtonColors(),
+            contentPadding = ButtonDefaults.contentPaddingFor(buttonHeight, hasStartIcon = true),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = buttonHeight),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_download_for_offline_24),
+                contentDescription = null,
+                modifier = Modifier.size(ButtonDefaults.iconSizeFor(buttonHeight)),
+            )
+            Spacer(Modifier.width(ButtonDefaults.iconSpacingFor(buttonHeight)))
+            Text(
+                text = stringResource(R.string.update_dialog_download),
+                style = ButtonDefaults.textStyleFor(buttonHeight),
+            )
+        }
+        if (!canDownload) {
+            Text(
+                text = stringResource(R.string.update_dialog_apk_missing),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
+        // 两个次要操作在较长的译文下自动换行，不会互相挤压。
+        FlowRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+        ) {
+            TextButton(onClick = onIgnoreUpdate) {
+                Text(stringResource(R.string.update_dialog_ignore_once))
+            }
+            TextButton(onClick = onOpenRelease) {
+                Text(stringResource(R.string.update_dialog_open_release))
+                Spacer(Modifier.width(8.dp))
+                Icon(
+                    painter = painterResource(R.drawable.ic_open_in_new_24),
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
                 )
-
-                Surface(
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    shape = RoundedCornerShape(18.dp),
-                ) {
-                    Text(
-                        text = release.tagName,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
             }
         }
     }
@@ -582,648 +576,3 @@ private fun buildVersionTag(version: String): String {
         .ifBlank { "0" }
     return "v$normalizedVersion"
 }
-
-@Composable
-private fun MarkdownText(
-    text: String,
-    modifier: Modifier = Modifier,
-) {
-    val blocks = remember(text) { parseMarkdownBlocks(text) }
-    val bodyStyle = MaterialTheme.typography.bodyMedium.copy(
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        lineHeight = 20.sp,
-    )
-
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        blocks.forEach { block ->
-            MarkdownBlockView(
-                block = block,
-                bodyStyle = bodyStyle,
-            )
-        }
-    }
-}
-
-@Composable
-private fun MarkdownBlockView(
-    block: MarkdownBlock,
-    bodyStyle: TextStyle,
-) {
-    when (block) {
-        MarkdownBlock.Divider -> HorizontalDivider(
-            thickness = 1.dp,
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
-        )
-
-        is MarkdownBlock.Heading -> {
-            val textStyle = when (block.level) {
-                1 -> MaterialTheme.typography.headlineSmall
-                2 -> MaterialTheme.typography.titleLarge
-                else -> MaterialTheme.typography.titleMedium
-            }.copy(
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                text = block.text,
-                style = textStyle,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-
-        is MarkdownBlock.Paragraph -> MarkdownInlineText(
-            inlines = block.inlines,
-            style = bodyStyle,
-        )
-
-        is MarkdownBlock.ListBlock -> MarkdownListView(
-            list = block.list,
-            bodyStyle = bodyStyle,
-        )
-
-        is MarkdownBlock.Quote -> Card(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            ),
-            shape = RoundedCornerShape(16.dp),
-        ) {
-            MarkdownInlineText(
-                inlines = block.inlines,
-                style = bodyStyle.copy(
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontStyle = FontStyle.Italic,
-                ),
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-            )
-        }
-
-        is MarkdownBlock.CodeFence -> Card(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-            ),
-            shape = RoundedCornerShape(16.dp),
-        ) {
-            Text(
-                text = block.code,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                style = bodyStyle.copy(
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontFamily = FontFamily.Monospace,
-                ),
-            )
-        }
-    }
-}
-
-@Composable
-private fun MarkdownListView(
-    list: MarkdownList,
-    bodyStyle: TextStyle,
-    modifier: Modifier = Modifier,
-    depth: Int = 0,
-) {
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(if (depth == 0) 10.dp else 8.dp),
-    ) {
-        list.items.forEachIndexed { index, item ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Top,
-            ) {
-                Text(
-                    text = list.markerText(index, item),
-                    style = bodyStyle.copy(
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.SemiBold,
-                    ),
-                    modifier = Modifier.padding(end = 10.dp),
-                )
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    MarkdownInlineText(
-                        inlines = item.inlines,
-                        style = bodyStyle,
-                    )
-                    item.children.forEach { child ->
-                        MarkdownListView(
-                            list = child,
-                            bodyStyle = bodyStyle,
-                            modifier = Modifier.padding(start = 14.dp, top = 2.dp),
-                            depth = depth + 1,
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-private fun MarkdownList.markerText(index: Int, item: MarkdownListItem): String {
-    return when (this) {
-        is MarkdownList.Bullet -> "•"
-        is MarkdownList.Ordered -> "${item.ordinal ?: index + 1}."
-    }
-}
-
-@Composable
-private fun MarkdownInlineText(
-    inlines: List<MarkdownInline>,
-    style: TextStyle,
-    modifier: Modifier = Modifier,
-) {
-    val linkColor = MaterialTheme.colorScheme.primary
-    val inlineCodeBackground = MaterialTheme.colorScheme.surfaceContainerHighest
-    val annotatedText = remember(inlines, linkColor, inlineCodeBackground) {
-        buildMarkdownAnnotatedString(
-            inlines = inlines,
-            linkColor = linkColor,
-            inlineCodeBackground = inlineCodeBackground,
-        )
-    }
-
-    Text(
-        text = annotatedText,
-        modifier = modifier,
-        style = style,
-    )
-}
-
-private fun parseMarkdownBlocks(text: String): List<MarkdownBlock> {
-    val lines = text.replace("\r\n", "\n").lines()
-    val blocks = mutableListOf<MarkdownBlock>()
-    var index = 0
-
-    while (index < lines.size) {
-        val line = lines[index]
-        val trimmed = line.trim()
-
-        if (trimmed.isBlank()) {
-            index += 1
-            continue
-        }
-
-        if (trimmed.startsWith("```")) {
-            val language = trimmed.removePrefix("```").trim().ifBlank { null }
-            index += 1
-            val codeLines = mutableListOf<String>()
-            while (index < lines.size && !lines[index].trimStart().startsWith("```")) {
-                codeLines += lines[index]
-                index += 1
-            }
-            if (index < lines.size) {
-                index += 1
-            }
-            blocks += MarkdownBlock.CodeFence(
-                language = language,
-                code = codeLines.joinToString("\n").trimEnd(),
-            )
-            continue
-        }
-
-        if (isMarkdownDivider(trimmed)) {
-            blocks += MarkdownBlock.Divider
-            index += 1
-            continue
-        }
-
-        val headingLevel = trimmed.takeWhile { it == '#' }.length
-        if (headingLevel in 1..6 && trimmed.getOrNull(headingLevel) == ' ') {
-            blocks += MarkdownBlock.Heading(
-                level = headingLevel,
-                text = trimmed.drop(headingLevel + 1).trim(),
-            )
-            index += 1
-            continue
-        }
-
-        if (parseMarkdownListMarker(line) != null) {
-            val (list, nextIndex) = parseMarkdownList(lines, index)
-            blocks += MarkdownBlock.ListBlock(list)
-            index = nextIndex
-            continue
-        }
-
-        if (trimmed.startsWith(">")) {
-            val quoteLines = mutableListOf<String>()
-            while (index < lines.size) {
-                val quoteLine = lines[index].trim()
-                if (!quoteLine.startsWith(">")) break
-                quoteLines += quoteLine.removePrefix(">").trimStart()
-                index += 1
-            }
-            blocks += MarkdownBlock.Quote(parseMarkdownInlines(quoteLines.joinToString("\n")))
-            continue
-        }
-
-        val paragraphLines = mutableListOf<String>()
-        while (index < lines.size) {
-            val paragraphLine = lines[index]
-            val paragraphTrimmed = paragraphLine.trim()
-            val paragraphHeadingLevel = paragraphTrimmed.takeWhile { it == '#' }.length
-            if (paragraphTrimmed.isBlank() ||
-                paragraphTrimmed.startsWith("```") ||
-                isMarkdownDivider(paragraphTrimmed) ||
-                (paragraphHeadingLevel in 1..6 && paragraphTrimmed.getOrNull(paragraphHeadingLevel) == ' ') ||
-                parseMarkdownListMarker(paragraphLine) != null ||
-                paragraphTrimmed.startsWith(">")
-            ) {
-                break
-            }
-            paragraphLines += paragraphLine.trimEnd()
-            index += 1
-        }
-        blocks += MarkdownBlock.Paragraph(parseMarkdownInlines(paragraphLines.joinToString("\n")))
-    }
-
-    return blocks
-}
-
-private fun buildMarkdownAnnotatedString(
-    inlines: List<MarkdownInline>,
-    linkColor: Color,
-    inlineCodeBackground: Color,
-): AnnotatedString {
-    return buildAnnotatedString {
-        appendMarkdownInlines(
-            inlines = inlines,
-            linkColor = linkColor,
-            inlineCodeBackground = inlineCodeBackground,
-        )
-    }
-}
-
-private fun AnnotatedString.Builder.appendMarkdownInlines(
-    inlines: List<MarkdownInline>,
-    linkColor: Color,
-    inlineCodeBackground: Color,
-) {
-    inlines.forEach { inline ->
-        when (inline) {
-            is MarkdownInline.Text -> append(inline.text)
-
-            is MarkdownInline.Bold -> withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                appendMarkdownInlines(inline.children, linkColor, inlineCodeBackground)
-            }
-
-            is MarkdownInline.Italic -> withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
-                appendMarkdownInlines(inline.children, linkColor, inlineCodeBackground)
-            }
-
-            is MarkdownInline.Code -> withStyle(
-                SpanStyle(
-                    fontFamily = FontFamily.Monospace,
-                    background = inlineCodeBackground,
-                ),
-            ) {
-                append(inline.text)
-            }
-
-            is MarkdownInline.Link -> withLink(
-                LinkAnnotation.Url(
-                    url = inline.url,
-                    styles = TextLinkStyles(
-                        style = SpanStyle(
-                            color = linkColor,
-                            fontWeight = if (inline.isMention) FontWeight.Bold else null,
-                        ),
-                    ),
-                ),
-            ) {
-                withStyle(
-                    SpanStyle(
-                        color = linkColor,
-                        fontWeight = if (inline.isMention) FontWeight.Bold else null,
-                    ),
-                ) {
-                    appendMarkdownInlines(inline.children, linkColor, inlineCodeBackground)
-                }
-            }
-        }
-    }
-}
-
-private fun parseMarkdownInlines(text: String): List<MarkdownInline> {
-    val result = mutableListOf<MarkdownInline>()
-    val plainText = StringBuilder()
-    var index = 0
-
-    fun flushPlainText() {
-        if (plainText.isNotEmpty()) {
-            result += MarkdownInline.Text(plainText.toString())
-            plainText.clear()
-        }
-    }
-
-    while (index < text.length) {
-        when {
-            text.startsWith("**", index) || text.startsWith("__", index) -> {
-                val delimiter = text.substring(index, index + 2)
-                val endIndex = text.indexOf(delimiter, startIndex = index + 2)
-                if (endIndex > index + 2) {
-                    flushPlainText()
-                    result += MarkdownInline.Bold(
-                        parseMarkdownInlines(text.substring(index + 2, endIndex)),
-                    )
-                    index = endIndex + 2
-                } else {
-                    plainText.append(delimiter)
-                    index += 2
-                }
-            }
-
-            text[index] == '*' || text[index] == '_' -> {
-                val delimiter = text[index]
-                val endIndex = text.indexOf(delimiter, startIndex = index + 1)
-                if (endIndex > index + 1) {
-                    flushPlainText()
-                    result += MarkdownInline.Italic(
-                        parseMarkdownInlines(text.substring(index + 1, endIndex)),
-                    )
-                    index = endIndex + 1
-                } else {
-                    plainText.append(delimiter)
-                    index += 1
-                }
-            }
-
-            text[index] == '`' -> {
-                val endIndex = text.indexOf('`', startIndex = index + 1)
-                if (endIndex > index + 1) {
-                    flushPlainText()
-                    result += MarkdownInline.Code(text.substring(index + 1, endIndex))
-                    index = endIndex + 1
-                } else {
-                    plainText.append('`')
-                    index += 1
-                }
-            }
-
-            text[index] == '[' -> {
-                val labelEnd = text.indexOf(']', startIndex = index + 1)
-                val hasUrlStart = text.getOrNull(labelEnd + 1) == '('
-                val urlEnd = if (hasUrlStart) text.indexOf(')', startIndex = labelEnd + 2) else -1
-                if (labelEnd > index && urlEnd > labelEnd + 2) {
-                    flushPlainText()
-                    result += MarkdownInline.Link(
-                        children = parseMarkdownInlines(text.substring(index + 1, labelEnd)),
-                        url = text.substring(labelEnd + 2, urlEnd).trim(),
-                    )
-                    index = urlEnd + 1
-                } else {
-                    plainText.append('[')
-                    index += 1
-                }
-            }
-
-            text.startsWith("https://", index) || text.startsWith("http://", index) -> {
-                val urlEnd = findUrlEnd(text, index)
-                flushPlainText()
-                val url = text.substring(index, urlEnd)
-                result += MarkdownInline.Link(
-                    children = listOf(MarkdownInline.Text(url)),
-                    url = url,
-                )
-                index = urlEnd
-            }
-
-            text[index] == '@' -> {
-                val mentionEnd = findGithubMentionEnd(text, index + 1)
-                val standaloneMention = mentionEnd > index + 1 &&
-                    !isMentionContinuation(text.getOrNull(index - 1))
-                if (standaloneMention) {
-                    flushPlainText()
-                    val username = text.substring(index + 1, mentionEnd)
-                    result += MarkdownInline.Link(
-                        children = listOf(MarkdownInline.Text("@$username")),
-                        url = "https://github.com/$username",
-                        isMention = true,
-                    )
-                    index = mentionEnd
-                } else {
-                    plainText.append('@')
-                    index += 1
-                }
-            }
-
-            else -> {
-                plainText.append(text[index])
-                index += 1
-            }
-        }
-    }
-
-    flushPlainText()
-    return result
-}
-
-private fun parseMarkdownList(
-    lines: List<String>,
-    startIndex: Int,
-): Pair<MarkdownList, Int> {
-    val firstMarker = parseMarkdownListMarker(lines[startIndex])
-        ?: error("Expected markdown list marker at line $startIndex")
-    val items = mutableListOf<MarkdownListItem>()
-    var index = startIndex
-
-    while (index < lines.size) {
-        val marker = parseMarkdownListMarker(lines[index]) ?: break
-        if (marker.indent != firstMarker.indent || marker.type != firstMarker.type) break
-
-        val contentLines = mutableListOf(marker.content)
-        val children = mutableListOf<MarkdownList>()
-        var itemIndex = index + 1
-        var pendingBlankLine = false
-
-        while (itemIndex < lines.size) {
-            val currentLine = lines[itemIndex]
-            val currentTrimmed = currentLine.trim()
-
-            if (currentTrimmed.isBlank()) {
-                pendingBlankLine = contentLines.isNotEmpty()
-                itemIndex += 1
-                continue
-            }
-
-            val currentMarker = parseMarkdownListMarker(currentLine)
-            if (currentMarker != null) {
-                when {
-                    currentMarker.indent < firstMarker.indent -> break
-                    currentMarker.indent == firstMarker.indent -> break
-                    currentMarker.indent > firstMarker.indent -> {
-                        val (childList, nextIndex) = parseMarkdownList(lines, itemIndex)
-                        children += childList
-                        itemIndex = nextIndex
-                        pendingBlankLine = false
-                        continue
-                    }
-                }
-            }
-
-            val lineIndent = countMarkdownIndent(currentLine)
-            if (lineIndent > firstMarker.indent) {
-                if (pendingBlankLine && contentLines.isNotEmpty()) {
-                    contentLines += ""
-                }
-                contentLines += currentTrimmed
-                itemIndex += 1
-                pendingBlankLine = false
-                continue
-            }
-
-            break
-        }
-
-        items += MarkdownListItem(
-            inlines = parseMarkdownInlines(contentLines.joinToString("\n").trim()),
-            ordinal = marker.ordinal,
-            children = children,
-        )
-        index = itemIndex
-    }
-
-    val list = when (firstMarker.type) {
-        MarkdownListType.Bullet -> MarkdownList.Bullet(items)
-        MarkdownListType.Ordered -> MarkdownList.Ordered(items)
-    }
-    return list to index
-}
-
-private fun findUrlEnd(text: String, startIndex: Int): Int {
-    var endIndex = startIndex
-    while (endIndex < text.length && !text[endIndex].isWhitespace()) {
-        endIndex += 1
-    }
-    while (endIndex > startIndex && text[endIndex - 1] in MarkdownTrailingUrlPunctuation) {
-        endIndex -= 1
-    }
-    return endIndex
-}
-
-private fun findGithubMentionEnd(text: String, startIndex: Int): Int {
-    var endIndex = startIndex
-    while (endIndex < text.length && isGithubMentionChar(text[endIndex])) {
-        endIndex += 1
-    }
-    return endIndex
-}
-
-private fun isGithubMentionChar(char: Char): Boolean {
-    return char.isLetterOrDigit() || char == '_' || char == '-'
-}
-
-private fun isMentionContinuation(char: Char?): Boolean {
-    return char?.let {
-        it.isLetterOrDigit() || it == '_' || it == '`' || it == '['
-    } == true
-}
-
-private fun isMarkdownDivider(line: String): Boolean {
-    if (line.length < 3) return false
-    val dividerChar = line.first()
-    if (dividerChar != '-' && dividerChar != '*' && dividerChar != '_') return false
-    return line.all { it == dividerChar }
-}
-
-private fun countMarkdownIndent(line: String): Int {
-    var indent = 0
-    line.forEach { char ->
-        when (char) {
-            ' ' -> indent += 1
-            '\t' -> indent += 4
-            else -> return indent
-        }
-    }
-    return indent
-}
-
-private fun parseMarkdownListMarker(line: String): MarkdownListMarker? {
-    val indent = countMarkdownIndent(line)
-    var index = 0
-    while (index < line.length && (line[index] == ' ' || line[index] == '\t')) {
-        index += 1
-    }
-
-    when (line.getOrNull(index)) {
-        '-', '*', '+' -> {
-            if (line.getOrNull(index + 1) != ' ') return null
-            return MarkdownListMarker(
-                indent = indent,
-                type = MarkdownListType.Bullet,
-                content = line.substring(index + 2).trim(),
-            )
-        }
-    }
-
-    var numberEnd = index
-    while (numberEnd < line.length && line[numberEnd].isDigit()) {
-        numberEnd += 1
-    }
-    if (numberEnd == index || line.getOrNull(numberEnd) != '.' || line.getOrNull(numberEnd + 1) != ' ') {
-        return null
-    }
-
-    return MarkdownListMarker(
-        indent = indent,
-        type = MarkdownListType.Ordered,
-        content = line.substring(numberEnd + 2).trim(),
-        ordinal = line.substring(index, numberEnd).toIntOrNull(),
-    )
-}
-
-private sealed interface MarkdownBlock {
-    data object Divider : MarkdownBlock
-    data class Heading(val level: Int, val text: String) : MarkdownBlock
-    data class Paragraph(val inlines: List<MarkdownInline>) : MarkdownBlock
-    data class ListBlock(val list: MarkdownList) : MarkdownBlock
-    data class Quote(val inlines: List<MarkdownInline>) : MarkdownBlock
-    data class CodeFence(val language: String?, val code: String) : MarkdownBlock
-}
-
-private enum class MarkdownListType {
-    Bullet,
-    Ordered,
-}
-
-private data class MarkdownListMarker(
-    val indent: Int,
-    val type: MarkdownListType,
-    val content: String,
-    val ordinal: Int? = null,
-)
-
-private data class MarkdownListItem(
-    val inlines: List<MarkdownInline>,
-    val ordinal: Int? = null,
-    val children: List<MarkdownList> = emptyList(),
-)
-
-private sealed interface MarkdownList {
-    val items: List<MarkdownListItem>
-
-    data class Bullet(override val items: List<MarkdownListItem>) : MarkdownList
-
-    data class Ordered(override val items: List<MarkdownListItem>) : MarkdownList
-}
-
-private sealed interface MarkdownInline {
-    data class Text(val text: String) : MarkdownInline
-    data class Bold(val children: List<MarkdownInline>) : MarkdownInline
-    data class Italic(val children: List<MarkdownInline>) : MarkdownInline
-    data class Code(val text: String) : MarkdownInline
-    data class Link(
-        val children: List<MarkdownInline>,
-        val url: String,
-        val isMention: Boolean = false,
-    ) : MarkdownInline
-}
-
-private val MarkdownTrailingUrlPunctuation = charArrayOf('.', ',', ';', ':', '!', '?', ')')

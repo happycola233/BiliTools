@@ -18,6 +18,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.IOException
+import java.time.Instant
 import kotlin.math.max
 
 data class ReleaseInfo(
@@ -25,7 +26,12 @@ data class ReleaseInfo(
     val versionName: String,
     val title: String?,
     val bodyMarkdown: String,
+    /**
+     * GitHub 发布页的原始地址。发布页是给浏览器看的网页，始终直接打开：下载镜像只代理文件，
+     * 不能用来浏览网页（gh-proxy.com 会直接拒绝网页请求）。
+     */
     val htmlUrl: String,
+    val publishedAt: Instant?,
     val apkAsset: ReleaseAssetInfo?,
 )
 
@@ -153,6 +159,8 @@ class UpdateRepository(
                         title = parsed.name?.trim()?.takeIf { it.isNotBlank() },
                         bodyMarkdown = parsed.body.orEmpty(),
                         htmlUrl = htmlUrl,
+                        // 发布时间只用于展示，格式异常时不影响更新流程。
+                        publishedAt = parsed.publishedAt?.let { runCatching { Instant.parse(it) }.getOrNull() },
                         apkAsset = UpdateApkAssetSelector.selectBestAsset(
                             releaseVersionName = releaseVersionName,
                             assets = releaseAssets,
@@ -231,6 +239,7 @@ private data class GitHubReleaseResponse(
     @Json(name = "name") val name: String?,
     @Json(name = "body") val body: String?,
     @Json(name = "html_url") val htmlUrl: String?,
+    @Json(name = "published_at") val publishedAt: String?,
     @Json(name = "assets") val assets: List<GitHubReleaseAssetResponse>?,
 )
 

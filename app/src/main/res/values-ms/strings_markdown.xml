@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="markdown_alert_note">Nota</string>
+    <string name="markdown_alert_tip">Petua</string>
+    <string name="markdown_alert_important">Penting</string>
+    <string name="markdown_alert_warning">Amaran</string>
+    <string name="markdown_alert_caution">Awas</string>
+    <string name="markdown_details_summary">Butiran</string>
+    <string name="markdown_details_expanded">Dikembangkan</string>
+    <string name="markdown_details_collapsed">Dikuncupkan</string>
+    <string name="markdown_task_done">Selesai</string>
+    <string name="markdown_task_todo">Belum selesai</string>
+    <string name="markdown_image_failed">Tidak dapat memuatkan imej. Ketik untuk mencuba semula.</string>
+</resources>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="markdown_alert_note">ملاحظة</string>
+    <string name="markdown_alert_tip">نصيحة</string>
+    <string name="markdown_alert_important">مهم</string>
+    <string name="markdown_alert_warning">تحذير</string>
+    <string name="markdown_alert_caution">تنبيه</string>
+    <string name="markdown_details_summary">التفاصيل</string>
+    <string name="markdown_details_expanded">موسّع</string>
+    <string name="markdown_details_collapsed">مطوي</string>
+    <string name="markdown_task_done">مكتملة</string>
+    <string name="markdown_task_todo">غير مكتملة</string>
+    <string name="markdown_image_failed">تعذر تحميل الصورة. انقر لإعادة المحاولة.</string>
+</resources>

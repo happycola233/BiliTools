@@ -7,6 +7,7 @@
     <string name="update_dialog_download_failed">ไม่สามารถเริ่มการดาวน์โหลดอัปเดต: %1$s</string>
     <string name="update_dialog_apk_missing">ไม่มีแพ็คเกจการอัปเดตสำหรับอุปกรณ์นี้</string>
     <string name="update_dialog_ignore_saved">การแจ้งเตือนการอัปเดตสำหรับ %1$s ถูกซ่อนไว้แล้ว</string>
+    <string name="update_dialog_published_on">เผยแพร่เมื่อ %1$s</string>
     <string name="update_install_file_missing">แพ็คเกจอัพเดตหายไปหรือถูกลบไปแล้ว</string>
     <string name="update_install_launch_failed">ไม่สามารถเปิดตัวติดตั้งได้</string>
     <string name="update_notification_channel_progress_name">ดาวน์โหลดอัปเดตแอป</string>

@@ -1,6 +1,7 @@
 package com.happycola233.bilitools.update
 
 import android.content.Context
+import java.net.URI
 
 enum class GitHubRoutePurpose(val prefsKey: String) {
     ReleaseApi("release_api"),
@@ -130,13 +131,30 @@ internal object GitHubRoutePlanner {
         )
     }
 
-    fun resolveReleasePageUrl(
+    /**
+     * 发布说明中图片的候选地址。GitHub 托管的图片沿用发布信息接口的线路偏好（刚取到说明的线路最可能可用），
+     * 其余线路依次兜底；镜像并不支持所有 GitHub 地址（例如 `user-attachments`），由调用方在失败时换下一个。
+     * 其他站点的图片只能直接访问。
+     */
+    fun releaseNotesMediaCandidates(
         url: String,
         preferredRouteId: String? = null,
-    ): String {
-        val normalized = normalizeGitHubUrl(url)
-        val route = routes.firstOrNull { it.id == preferredRouteId }
-        return route?.resolve(normalized) ?: normalized
+        failedRouteIds: Set<String> = emptySet(),
+    ): List<String> {
+        val normalizedUrl = normalizeGitHubUrl(url)
+        if (!isGitHubHostedUrl(normalizedUrl)) return listOf(normalizedUrl)
+        return routes
+            .sortedWith(
+                compareBy<GitHubRouteDefinition> { if (it.id in failedRouteIds) 1 else 0 }
+                    .thenBy { if (it.id == preferredRouteId) 0 else 1 }
+                    .thenBy { it.releaseApiPriority ?: Int.MAX_VALUE },
+            )
+            .map { it.resolve(normalizedUrl) }
+    }
+
+    private fun isGitHubHostedUrl(url: String): Boolean {
+        val host = runCatching { URI(url).host }.getOrNull()?.lowercase() ?: return false
+        return host == "github.com" || host.endsWith(".githubusercontent.com")
     }
 
     private fun buildCandidates(
@@ -187,10 +205,11 @@ class GitHubRouteManager(context: Context) {
         )
     }
 
-    fun resolveReleasePageUrl(url: String): String {
-        return GitHubRoutePlanner.resolveReleasePageUrl(
+    fun releaseNotesMediaCandidates(url: String): List<String> {
+        return GitHubRoutePlanner.releaseNotesMediaCandidates(
             url = url,
             preferredRouteId = preferredRouteId(GitHubRoutePurpose.ReleaseApi),
+            failedRouteIds = failedRouteIds(GitHubRoutePurpose.ReleaseApi),
         )
     }
 

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="markdown_alert_note">หมายเหตุ</string>
+    <string name="markdown_alert_tip">เคล็ดลับ</string>
+    <string name="markdown_alert_important">สำคัญ</string>
+    <string name="markdown_alert_warning">คำเตือน</string>
+    <string name="markdown_alert_caution">ข้อควรระวัง</string>
+    <string name="markdown_details_summary">รายละเอียด</string>
+    <string name="markdown_details_expanded">ขยายอยู่</string>
+    <string name="markdown_details_collapsed">ยุบอยู่</string>
+    <string name="markdown_task_done">เสร็จแล้ว</string>
+    <string name="markdown_task_todo">ยังไม่เสร็จ</string>
+    <string name="markdown_image_failed">โหลดรูปภาพไม่ได้ แตะเพื่อลองอีกครั้ง</string>
+</resources>

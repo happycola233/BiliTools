@@ -7,6 +7,7 @@
     <string name="update_dialog_download_failed">فشل بدء تنزيل التحديث: %1$s</string>
     <string name="update_dialog_apk_missing">لا تتوفر حزمة تحديث لهذا الجهاز.</string>
     <string name="update_dialog_ignore_saved">أصبحت الآن تذكيرات التحديث لـ %1$s مخفية</string>
+    <string name="update_dialog_published_on">نُشر في %1$s</string>
     <string name="update_install_file_missing">حزمة التحديث مفقودة أو تم حذفها</string>
     <string name="update_install_launch_failed">غير قادر على فتح المثبت</string>
     <string name="update_notification_channel_progress_name">تنزيلات تحديث التطبيق</string>

@@ -7,6 +7,7 @@
     <string name="update_dialog_download_failed">No se pudo iniciar la descarga de la actualización: %1$s</string>
     <string name="update_dialog_apk_missing">No hay ningún paquete de actualización disponible para este dispositivo.</string>
     <string name="update_dialog_ignore_saved">Los recordatorios de actualización para %1$s ahora están ocultos</string>
+    <string name="update_dialog_published_on">Publicado el %1$s</string>
     <string name="update_install_file_missing">El paquete de actualización falta o ha sido eliminado</string>
     <string name="update_install_launch_failed">No se puede abrir el instalador</string>
     <string name="update_notification_channel_progress_name">Descargas de actualizaciones de aplicaciones</string>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="markdown_alert_note">Note</string>
+    <string name="markdown_alert_tip">Tip</string>
+    <string name="markdown_alert_important">Important</string>
+    <string name="markdown_alert_warning">Warning</string>
+    <string name="markdown_alert_caution">Caution</string>
+    <string name="markdown_details_summary">Details</string>
+    <string name="markdown_details_expanded">Expanded</string>
+    <string name="markdown_details_collapsed">Collapsed</string>
+    <string name="markdown_task_done">Completed</string>
+    <string name="markdown_task_todo">Not completed</string>
+    <string name="markdown_image_failed">Couldn\'t load image. Tap to retry.</string>
+</resources>

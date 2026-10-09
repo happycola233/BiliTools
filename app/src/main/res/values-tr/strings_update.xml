@@ -7,6 +7,7 @@
     <string name="update_dialog_download_failed">Güncelleme indirme işlemi başlatılamadı: %1$s</string>
     <string name="update_dialog_apk_missing">Bu cihaz için güncelleme paketi mevcut değil.</string>
     <string name="update_dialog_ignore_saved">%1$s için güncelleme hatırlatıcıları artık gizlendi</string>
+    <string name="update_dialog_published_on">%1$s tarihinde yayınlandı</string>
     <string name="update_install_file_missing">Güncelleme paketi eksik veya silinmiş</string>
     <string name="update_install_launch_failed">Yükleyici açılamıyor</string>
     <string name="update_notification_channel_progress_name">Uygulama güncelleme indirmeleri</string>

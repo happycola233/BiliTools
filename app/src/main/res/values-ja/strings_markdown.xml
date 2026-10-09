@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="markdown_alert_note">注記</string>
+    <string name="markdown_alert_tip">ヒント</string>
+    <string name="markdown_alert_important">重要</string>
+    <string name="markdown_alert_warning">警告</string>
+    <string name="markdown_alert_caution">注意</string>
+    <string name="markdown_details_summary">詳細</string>
+    <string name="markdown_details_expanded">展開</string>
+    <string name="markdown_details_collapsed">折りたたみ</string>
+    <string name="markdown_task_done">完了</string>
+    <string name="markdown_task_todo">未完了</string>
+    <string name="markdown_image_failed">画像を読み込めませんでした。タップして再試行します。</string>
+</resources>

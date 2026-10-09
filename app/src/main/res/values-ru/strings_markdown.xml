@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="markdown_alert_note">Примечание</string>
+    <string name="markdown_alert_tip">Совет</string>
+    <string name="markdown_alert_important">Важно</string>
+    <string name="markdown_alert_warning">Предупреждение</string>
+    <string name="markdown_alert_caution">Осторожно</string>
+    <string name="markdown_details_summary">Подробности</string>
+    <string name="markdown_details_expanded">Развёрнуто</string>
+    <string name="markdown_details_collapsed">Свёрнуто</string>
+    <string name="markdown_task_done">Выполнено</string>
+    <string name="markdown_task_todo">Не выполнено</string>
+    <string name="markdown_image_failed">Не удалось загрузить изображение. Нажмите, чтобы повторить попытку.</string>
+</resources>

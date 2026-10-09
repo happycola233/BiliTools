@@ -32,10 +32,7 @@ class AppUpdateManager(context: Context) {
             putExtra(UpdateDownloadService.EXTRA_VERSION_NAME, release.versionName)
             putExtra(UpdateDownloadService.EXTRA_TAG_NAME, release.tagName)
             putExtra(UpdateDownloadService.EXTRA_RELEASE_TITLE, release.title ?: release.tagName)
-            putExtra(
-                UpdateDownloadService.EXTRA_RELEASE_URL,
-                gitHubRouteManager.resolveReleasePageUrl(release.htmlUrl),
-            )
+            putExtra(UpdateDownloadService.EXTRA_RELEASE_URL, release.htmlUrl)
             putExtra(
                 UpdateDownloadService.EXTRA_APK_DOWNLOAD_URL,
                 gitHubRouteManager.normalizeGitHubUrl(asset.downloadUrl),

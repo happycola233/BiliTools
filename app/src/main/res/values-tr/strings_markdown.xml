@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="markdown_alert_note">Not</string>
+    <string name="markdown_alert_tip">İpucu</string>
+    <string name="markdown_alert_important">Önemli</string>
+    <string name="markdown_alert_warning">Uyarı</string>
+    <string name="markdown_alert_caution">Dikkat</string>
+    <string name="markdown_details_summary">Ayrıntılar</string>
+    <string name="markdown_details_expanded">Genişletildi</string>
+    <string name="markdown_details_collapsed">Daraltıldı</string>
+    <string name="markdown_task_done">Tamamlandı</string>
+    <string name="markdown_task_todo">Tamamlanmadı</string>
+    <string name="markdown_image_failed">Görsel yüklenemedi. Yeniden denemek için dokunun.</string>
+</resources>

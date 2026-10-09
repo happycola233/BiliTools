@@ -7,6 +7,7 @@
     <string name="update_dialog_download_failed">Не удалось начать загрузку обновления: %1$s</string>
     <string name="update_dialog_apk_missing">Для этого устройства не доступен пакет обновлений.</string>
     <string name="update_dialog_ignore_saved">Напоминания об обновлении для %1$s теперь скрыты.</string>
+    <string name="update_dialog_published_on">Опубликовано %1$s</string>
     <string name="update_install_file_missing">Пакет обновлений отсутствует или был удален</string>
     <string name="update_install_launch_failed">Невозможно открыть установщик</string>
     <string name="update_notification_channel_progress_name">Загрузка обновлений приложения</string>

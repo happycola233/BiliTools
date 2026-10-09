@@ -67,13 +67,34 @@ class GitHubRoutePlannerTest {
     }
 
     @Test
-    fun resolveReleasePageUrl_usesPreferredMirrorWhenAvailable() {
+    fun releaseNotesMediaCandidates_followReleaseApiPreferenceAndKeepDirectFallback() {
+        val image = "https://github.com/user-attachments/assets/17f60089-dbb7-4161-b79c-c6f100f96449"
+
         assertEquals(
-            "https://gh-proxy.com/https://github.com/happycola233/BiliTools/releases/tag/v1.5",
-            GitHubRoutePlanner.resolveReleasePageUrl(
-                url = "https://github.com/happycola233/BiliTools/releases/tag/v1.5",
-                preferredRouteId = GitHubRoutePlanner.ROUTE_GH_PROXY,
+            listOf(
+                image,
+                "https://gh-proxy.com/$image",
+                "https://ghproxy.net/$image",
+            ),
+            GitHubRoutePlanner.releaseNotesMediaCandidates(
+                url = image,
+                preferredRouteId = GitHubRoutePlanner.ROUTE_GITHUB,
             ),
         )
+        assertEquals(
+            listOf(
+                "https://gh-proxy.com/$image",
+                image,
+                "https://ghproxy.net/$image",
+            ),
+            GitHubRoutePlanner.releaseNotesMediaCandidates(url = "https://ghproxy.net/$image"),
+        )
+    }
+
+    @Test
+    fun releaseNotesMediaCandidates_loadOtherHostsDirectly() {
+        val image = "https://img.shields.io/badge/BiliTools-v3.1-blue"
+
+        assertEquals(listOf(image), GitHubRoutePlanner.releaseNotesMediaCandidates(url = image))
     }
 }

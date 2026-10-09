@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="markdown_alert_note">Ghi chú</string>
+    <string name="markdown_alert_tip">Mẹo</string>
+    <string name="markdown_alert_important">Quan trọng</string>
+    <string name="markdown_alert_warning">Cảnh báo</string>
+    <string name="markdown_alert_caution">Thận trọng</string>
+    <string name="markdown_details_summary">Chi tiết</string>
+    <string name="markdown_details_expanded">Đã mở rộng</string>
+    <string name="markdown_details_collapsed">Đã thu gọn</string>
+    <string name="markdown_task_done">Đã hoàn thành</string>
+    <string name="markdown_task_todo">Chưa hoàn thành</string>
+    <string name="markdown_image_failed">Không thể tải hình ảnh. Nhấn để thử lại.</string>
+</resources>

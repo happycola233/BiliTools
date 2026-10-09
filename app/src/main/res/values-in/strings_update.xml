@@ -7,6 +7,7 @@
     <string name="update_dialog_download_failed">Gagal memulai pengunduhan pembaruan: %1$s</string>
     <string name="update_dialog_apk_missing">Tidak ada paket pembaruan yang tersedia untuk perangkat ini.</string>
     <string name="update_dialog_ignore_saved">Pengingat pembaruan untuk %1$s kini disembunyikan</string>
+    <string name="update_dialog_published_on">Diterbitkan pada %1$s</string>
     <string name="update_install_file_missing">Paket pembaruan hilang atau telah dihapus</string>
     <string name="update_install_launch_failed">Tidak dapat membuka pemasang</string>
     <string name="update_notification_channel_progress_name">Unduhan pembaruan aplikasi</string>

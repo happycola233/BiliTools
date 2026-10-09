@@ -7,6 +7,7 @@
     <string name="update_dialog_download_failed">アップデートのダウンロードの開始に失敗しました: %1$s</string>
     <string name="update_dialog_apk_missing">このデバイスには利用可能な更新パッケージがありません。</string>
     <string name="update_dialog_ignore_saved">%1$s の更新リマインダーが非表示になりました</string>
+    <string name="update_dialog_published_on">公開日: %1$s</string>
     <string name="update_install_file_missing">アップデートパッケージが見つからないか、削除されています</string>
     <string name="update_install_launch_failed">インストーラーを開けません</string>
     <string name="update_notification_channel_progress_name">アプリのアップデートのダウンロード</string>
