@@ -2,6 +2,7 @@ package com.happycola233.bilitools.ui.downloads
 
 import android.graphics.Bitmap
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.WavyProgressIndicatorDefaults
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -31,31 +32,34 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "zh-rCN-w411dp-h891dp")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class DownloadsGroupProgressColorsTest {
     @get:Rule val compose = createComposeRule()
-    @Test fun lightFailureRingPreservesProgressAndThemeAction() = verifyColors(AppThemeMode.Light)
-    @Test fun darkFailureRingPreservesProgressAndThemeAction() = verifyColors(AppThemeMode.Dark)
+    @Test fun lightFailureUsesErrorRetryButtonAndPlainRing() = verifyColors(AppThemeMode.Light)
+    @Test fun darkFailureUsesErrorRetryButtonAndPlainRing() = verifyColors(AppThemeMode.Dark)
 
     private fun verifyColors(mode: AppThemeMode) {
         val failed = DownloadItem(1, 1, DownloadTaskType.Video, "视频", "video.mp4", "", status = DownloadStatus.Failed, progress = 0)
         var tasks by mutableStateOf(listOf(failed, failed.copy(id = 2, status = DownloadStatus.Success)))
         var actionColor = Color.Unspecified
-        var errorColor = Color.Unspecified
-        var errorTrackColor = Color.Unspecified
+        var trackColor = Color.Unspecified
+        var retryContainerColor = Color.Unspecified
+        var oldErrorTrackColor = Color.Unspecified
         compose.setContent {
             BiliToolsTheme(AppSettings(themeMode = mode)) {
                 actionColor = MaterialTheme.colorScheme.primary
-                errorColor = MaterialTheme.colorScheme.error
-                errorTrackColor = errorColor.copy(alpha = 0.2f).compositeOver(AppSurfaces.cardContainerColor)
+                trackColor = WavyProgressIndicatorDefaults.trackColor
+                retryContainerColor = MaterialTheme.colorScheme.error.copy(alpha = RetryContainerAlpha).compositeOver(AppSurfaces.cardContainerColor)
+                oldErrorTrackColor = MaterialTheme.colorScheme.error.copy(alpha = 0.2f).compositeOver(AppSurfaces.cardContainerColor)
                 DownloadsGroupCard(
                     group = DownloadGroup(1, "失败进度的下载组", null, createdAt = 0, tasks = tasks),
                     selectionMode = false, selected = false, expanded = false, swiped = false, anyGroupSwiped = false,
                     onSwipedGroupChange = {}, onToggleSelection = {}, onToggleExpanded = {}, onDelete = {},
                     onPauseGroup = {}, onResumeGroup = {}, onReparse = {}, onShowDetails = {}, onTaskPauseResume = {},
-                    onTaskRetry = {}, onTaskDelete = {}, onTaskClick = { _, _ -> },
+                    onTaskRetry = {}, onTaskClick = { _, _ -> },
                 )
             }
         }
@@ -70,20 +74,18 @@ class DownloadsGroupProgressColorsTest {
         }
         fun image(label: String) = compose.onNodeWithContentDescription(label).captureToImage().asAndroidBitmap()
         val partial = image("重试失败项")
-        assertTrue("已完成弧使用清晰错误色", pixels(partial, errorColor) > 5)
-        assertTrue("未完成底轨使用淡错误色", pixels(partial, errorTrackColor) > 5)
-        assertTrue("中心图标保持主题色", pixels(partial, actionColor) > 5)
+        assertTrue("只剩失败项时使用淡错误色的实心重试按钮", pixels(partial, retryContainerColor) > partial.width * partial.height / 3)
+        assertEquals("重试按钮不再叠加主题色进度弧", 0, pixels(partial, actionColor))
         compose.runOnIdle { tasks = tasks.map { it.copy(status = DownloadStatus.Failed) } }
         val zero = image("重试失败项")
-        assertTrue("零进度仍有淡红色错误底轨", pixels(zero, errorTrackColor) > 5)
-        assertEquals("全部失败不应画成完成的实色弧", 0, pixels(zero, errorColor))
-        assertTrue("零进度仍保留主题色继续图标", pixels(zero, actionColor) > 5)
+        assertTrue("全部失败同样显示实心重试按钮", pixels(zero, retryContainerColor) > zero.width * zero.height / 3)
         val output = File("../.tmp/downloads-ui/failure-zero-${mode.name}.png")
         output.parentFile!!.mkdirs()
         output.outputStream().use { compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it) }
         compose.runOnIdle { tasks = listOf(failed, failed.copy(id = 2, status = DownloadStatus.Paused, userPaused = true)) }
-        assertTrue("混合状态不能丢失错误底轨", pixels(image("继续该组"), errorTrackColor) > 5)
-        compose.runOnIdle { tasks = tasks.map { it.copy(status = DownloadStatus.Paused, userPaused = true) } }
-        assertEquals("失败解除后恢复正常底轨", 0, pixels(image("继续该组"), errorTrackColor))
+        val mixed = image("继续该组")
+        assertTrue("仍可继续时保留进度环", pixels(mixed, trackColor) > 5)
+        assertEquals("进度环不混入错误色底轨，失败由底部文案说明", 0, pixels(mixed, oldErrorTrackColor))
+        assertEquals(0, pixels(mixed, retryContainerColor))
     }
 }

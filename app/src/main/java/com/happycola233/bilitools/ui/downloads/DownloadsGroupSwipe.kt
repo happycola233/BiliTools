@@ -21,7 +21,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathOperation
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -29,16 +38,47 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
+import com.happycola233.bilitools.ui.theme.SegmentedListShapes
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 internal enum class DownloadsSwipeStage { RevealRecords, ClearRecords, DeleteFiles }
+
+/**
+ * 操作底层的可见区域：图层范围减去滑动后卡片整体的圆角轮廓。
+ * 卡片外圆角让出的角落与单张卡片时一样能看到底下的按钮；分段之间的间隙落在轮廓内，
+ * 不会透出来，也点不到（图层裁剪同时作用于命中测试）。
+ */
+private class SwipeRevealShape(
+    private val shift: Float,
+    private val cardCorner: Float,
+) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        if (shift <= 0f) return Outline.Rectangle(Rect.Zero)
+        // 位移按逻辑方向保存，RTL 下卡片向右滑开，操作区在左侧。
+        val cardLeft = if (layoutDirection == LayoutDirection.Rtl) shift else -shift
+        val layer = Path().apply { addRect(Rect(0f, 0f, size.width, size.height)) }
+        val card = Path().apply {
+            addRoundRect(
+                RoundRect(
+                    left = cardLeft,
+                    top = 0f,
+                    right = cardLeft + size.width,
+                    bottom = size.height,
+                    cornerRadius = CornerRadius(cardCorner),
+                ),
+            )
+        }
+        return Outline.Generic(Path.combine(PathOperation.Difference, layer, card))
+    }
+}
 
 private val SwipeActionRestingWidth = 80.dp
 private val SwipeActionGap = 8.dp
@@ -158,7 +198,19 @@ internal fun DownloadsGroupSwipe(
                     DownloadsSwipeStage.DeleteFiles -> R.string.downloads_multi_delete_files
                 },
             )
-            Box(Modifier.matchParentSize(), contentAlignment = Alignment.CenterEnd) {
+            // 展开后的分段卡片之间有间隙，藏在卡片后方的按钮只在卡片轮廓之外可见。
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .graphicsLayer {
+                        clip = true
+                        shape = SwipeRevealShape(
+                            shift = -offset.value,
+                            cardCorner = SegmentedListShapes.OuterCorner.toPx(),
+                        )
+                    },
+                contentAlignment = Alignment.CenterEnd,
+            ) {
                 Surface(
                     enabled = actionVisible,
                     onClick = {

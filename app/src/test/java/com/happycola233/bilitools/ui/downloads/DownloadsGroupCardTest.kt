@@ -139,7 +139,7 @@ class DownloadsGroupCardTest {
                             onSwipedGroupChange = {}, onToggleSelection = { selectionMode = !selectionMode },
                             onToggleExpanded = { expanded = !expanded }, onDelete = {}, onPauseGroup = {}, onResumeGroup = {},
                             onReparse = { reparsed++ }, onShowDetails = { detailsOpened++ },
-                            onTaskPauseResume = {}, onTaskRetry = {}, onTaskDelete = {}, onTaskClick = { _, _ -> },
+                            onTaskPauseResume = {}, onTaskRetry = {}, onTaskClick = { _, _ -> },
                         )
                     }
                 }
@@ -238,6 +238,8 @@ class DownloadsGroupCardTest {
             downloadedBytes = 67_000_000, speedBytesPerSec = 2_000_000, etaSeconds = 17,
         )
         var cardGroup by mutableStateOf(group.copy(tasks = listOf(running) + group.tasks.drop(1)))
+        // 圆环按预计耗时加权，语义取值与界面使用同一估算，具体权重由 DownloadsGroupPresentationTest 覆盖。
+        fun groupProgress() = estimateGroupProgress(cardGroup.tasks)
         var expanded by mutableStateOf(false)
         var selection by mutableStateOf(false)
         var pauses = 0
@@ -257,7 +259,7 @@ class DownloadsGroupCardTest {
                             onToggleExpanded = { expanded = !expanded }, onDelete = {},
                             onPauseGroup = { pauses++ }, onResumeGroup = { resumes++ },
                             onReparse = {}, onShowDetails = {}, onTaskPauseResume = {},
-                            onTaskRetry = { retried.add(it.id) }, onTaskDelete = {}, onTaskClick = { _, _ -> },
+                            onTaskRetry = { retried.add(it.id) }, onTaskClick = { _, _ -> },
                         )
                     }
                 }
@@ -270,17 +272,20 @@ class DownloadsGroupCardTest {
             compose.waitForIdle()
             capture("$name-${mode.name}-$fontScale", compose.onNodeWithText(cardGroup.title))
         }
-        fun verifyCircularPressFeedback(label: String, name: String) {
+        fun verifyPressFeedback(label: String, name: String, ring: Boolean = true) {
             val button = compose.onNodeWithContentDescription(label)
             val normal = button.captureToImage().asAndroidBitmap()
             compose.mainClock.autoAdvance = false
             button.performTouchInput { down(center) }
             compose.mainClock.advanceTimeBy(180)
             val pressed = button.captureToImage().asAndroidBitmap()
-            val inset = normal.width / 8
-            for (x in listOf(inset, normal.width - 1 - inset)) {
-                for (y in listOf(inset, normal.height - 1 - inset)) {
-                    assertEquals("圆形外侧不应出现方形按压阴影", normal.getPixel(x, y), pressed.getPixel(x, y))
+            // 进度环按钮只在圆内反馈；实心重试按钮按 Expressive 规范按下时变形，不做此检查。
+            if (ring) {
+                val inset = normal.width / 8
+                for (x in listOf(inset, normal.width - 1 - inset)) {
+                    for (y in listOf(inset, normal.height - 1 - inset)) {
+                        assertEquals("圆形外侧不应出现方形按压阴影", normal.getPixel(x, y), pressed.getPixel(x, y))
+                    }
                 }
             }
             assertFalse("按压应有可见反馈", normal.sameAs(pressed))
@@ -289,7 +294,7 @@ class DownloadsGroupCardTest {
             compose.mainClock.autoAdvance = true
         }
         val pause = compose.onNodeWithContentDescription("暂停该组")
-        pause.assert(SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo, ProgressBarRangeInfo(0.8f, 0f..1f)))
+        pause.assert(SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo, ProgressBarRangeInfo(groupProgress(), 0f..1f)))
         val ring = pause.getUnclippedBoundsInRoot()
         val cover = compose.onNodeWithContentDescription("视频封面", useUnmergedTree = true).getUnclippedBoundsInRoot()
         assertEquals(56f, (ring.right - ring.left).value, 0.5f)
@@ -312,7 +317,7 @@ class DownloadsGroupCardTest {
         assertEquals("多选时速度与剩余时间从封面左侧开始", selectedCover.left.value, selectedFooter.left.value, 0.5f)
         captureProgress("selection-running")
         compose.runOnIdle { selection = false }
-        verifyCircularPressFeedback("暂停该组", "pause")
+        verifyPressFeedback("暂停该组", "pause")
         compose.runOnIdle { cardGroup = cardGroup.copy(title = "绘画练习") }
         val shortTitle = compose.onNodeWithText(cardGroup.title, useUnmergedTree = true).getUnclippedBoundsInRoot()
         val shortSummary = compose.onNodeWithText("4 / 5 项已完成", useUnmergedTree = true).getUnclippedBoundsInRoot()
@@ -324,11 +329,11 @@ class DownloadsGroupCardTest {
         compose.onNodeWithContentDescription("继续该组").performClick()
         compose.runOnIdle { assertEquals(1, resumes); assertFalse(expanded) }
         captureProgress("paused")
-        verifyCircularPressFeedback("继续该组", "resume")
+        verifyPressFeedback("继续该组", "resume")
         for (status in listOf(DownloadStatus.Pending, DownloadStatus.Merging, DownloadStatus.Running)) {
             compose.runOnIdle { cardGroup = cardGroup.copy(tasks = listOf(running.copy(status = status, progressIndeterminate = true, speedBytesPerSec = 0)) + group.tasks.drop(1)) }
             compose.onNodeWithContentDescription("暂停该组").assert(
-                SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo, ProgressBarRangeInfo(0.8f, 0f..1f)),
+                SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo, ProgressBarRangeInfo(groupProgress(), 0f..1f)),
             )
             compose.onNodeWithText("67%", substring = true).assertDoesNotExist()
             captureProgress("unfinished-${status.name}")
@@ -346,7 +351,7 @@ class DownloadsGroupCardTest {
             })
         }
         compose.onNodeWithContentDescription("重试失败项").assert(
-            SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo, ProgressBarRangeInfo(4f / 6f, 0f..1f)),
+            SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo, ProgressBarRangeInfo(groupProgress(), 0f..1f)),
         )
         compose.onNodeWithText("4 / 6 项已完成").assertIsDisplayed()
         compose.onNodeWithText("99%", substring = true).assertDoesNotExist()
@@ -354,7 +359,7 @@ class DownloadsGroupCardTest {
         compose.runOnIdle { assertEquals(listOf(1L, 2L), retried); assertFalse(expanded) }
         compose.onNodeWithText("2 项失败").assertIsDisplayed()
         captureProgress("failed")
-        verifyCircularPressFeedback("重试失败项", "retry")
+        verifyPressFeedback("重试失败项", "retry", ring = false)
         compose.runOnIdle { cardGroup = group }
         compose.onNodeWithText(formatDownloadCreatedAt(context, group.createdAt)).assertIsDisplayed()
         compose.onNodeWithText("已保存", substring = true).assertDoesNotExist()

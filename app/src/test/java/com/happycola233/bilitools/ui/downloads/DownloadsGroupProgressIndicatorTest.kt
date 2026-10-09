@@ -71,19 +71,19 @@ class DownloadsGroupProgressIndicatorTest {
                             val trackColor = WavyProgressIndicatorDefaults.trackColor
                             when (tag) {
                                 "subject" -> DownloadsGroupProgressIndicator(current, color, trackColor)
-                                "running" -> if (running.awaitingFirstResult) {
+                                "running" -> if (running.progressUnknown) {
                                     CircularWavyProgressIndicator(color = color, trackColor = trackColor)
                                 } else {
                                     CircularWavyProgressIndicator(
-                                        progress = { running.completionFraction }, color = color, trackColor = trackColor,
+                                        progress = { running.progressFraction }, color = color, trackColor = trackColor,
                                     )
                                 }
                                 "native-morph" -> CircularWavyProgressIndicator(
-                                    progress = { running.completionFraction }, color = color, trackColor = trackColor,
+                                    progress = { running.progressFraction }, color = color, trackColor = trackColor,
                                     amplitude = { if (current.executing) WavyProgressIndicatorDefaults.indicatorAmplitude(it) else 0f },
                                 )
                                 else -> CircularWavyProgressIndicator(
-                                    progress = { paused.completionFraction }, color = color, trackColor = trackColor,
+                                    progress = { paused.progressFraction }, color = color, trackColor = trackColor,
                                     amplitude = { 0f },
                                 )
                             }
@@ -180,7 +180,7 @@ class DownloadsGroupProgressIndicatorTest {
 
     private fun presentation(resolvedCount: Int) = DownloadsGroupPresentation(
         action = DownloadsGroupAction.Pause, completed = false, executing = true,
-        completionFraction = resolvedCount / 4f, resolvedCount = resolvedCount,
+        progressFraction = resolvedCount / 4f, resolvedCount = resolvedCount,
         skippedCount = 0, failedCount = 0, missingCount = 0, speedBytesPerSec = 1_000, etaSeconds = 10,
     )
 

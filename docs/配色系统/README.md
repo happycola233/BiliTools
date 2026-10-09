@@ -150,7 +150,7 @@ M3 的 **fixed 色组**正是为这种场景设计的：它的定义就是「不
 
 ### 悬浮元素为什么要按模式取色
 
-浅色模式下，快捷下载按钮、下载页操作菜单的主按钮与展开后的操作项都使用 `secondaryContainer`，和「复制字幕」等次级操作保持同一强调层级（M3 的 FAB 菜单默认也是主按钮与菜单项同色）。不要给菜单项换成 `primaryFixed`：它是 C14 的低彩度档，在浅色页面上读作灰块。深色模式下 `secondaryContainer`（T25）与 `primaryContainer`（T35）都容易糊进 T9 的页面底，因此悬浮主按钮和菜单项均切回深浅同值的 `primaryFixedDim`，对页面底 9.73:1。
+浅色模式下，快捷下载按钮、下载页操作菜单收起时的主按钮与展开后的操作项都使用 `secondaryContainer`，和「复制字幕」等次级操作保持同一强调层级（M3 的 FAB 菜单默认也是主按钮与菜单项同色）；菜单展开时主按钮按 Expressive 规范过渡到 `primary` 并切换为关闭图标。不要给菜单项换成 `primaryFixed`：它是 C14 的低彩度档，在浅色页面上读作灰块。深色模式下 `secondaryContainer`（T25）与 `primaryContainer`（T35）都容易糊进 T9 的页面底，因此悬浮主按钮和菜单项均切回深浅同值的 `primaryFixedDim`，对页面底 9.73:1。
 
 这组模式分支集中在 `AppAccents.floatingActionContainer` / `onFloatingActionContainer`，界面组件不要自行判断系统深浅模式。
 
@@ -233,7 +233,7 @@ M3 的 **fixed 色组**正是为这种场景设计的：它的定义就是「不
 | 档位 | 角色 | 浅色 | 例子 |
 |---|---|---|---|
 | 主操作 | `primaryFixedDim` | 约 T80 C30（顶格） | 解析、登录、确定 |
-| 次级操作 | `secondaryContainer` | T90 C16（官方） | 复制字幕、浅色悬浮按钮、批量面板里的清除记录 |
+| 次级操作 | `secondaryContainer` | T90 C16（官方） | 复制字幕、浅色悬浮按钮、多选工具栏里的清除记录 |
 | 中性 | `surfaceContainer` | T94 Δ8 | 未选中的分段按钮（M3 当前默认） |
 | 中性强调 | `AppAccents.inactiveTrackColor` | T90（浅色 `surfaceContainerHighest`） | 关闭态开关轨道、滑条未选段；深色取 `surfaceContainerHigh` T12 |
 

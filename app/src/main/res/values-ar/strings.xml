@@ -219,6 +219,10 @@
     <string name="common_error_unknown">حدث خطأ غير معروف</string>
     <string name="downloads_title">التنزيلات</string>
     <string name="downloads_empty">لم يتم التنزيل بعد</string>
+    <string name="downloads_empty_action">انتقل إلى التحليل</string>
+    <plurals name="downloads_selection_title">
+        <item quantity="other">تم تحديد %1$d</item>
+    </plurals>
     <string name="downloads_clear_completed">مسح التنزيلات المكتملة</string>
     <string name="downloads_clear_all">مسح كافة التنزيلات</string>
     <string name="downloads_actions_menu">تنزيل الإجراءات</string>
@@ -226,15 +230,11 @@
     <string name="downloads_multi_select_all">اختر الكل</string>
     <string name="downloads_multi_unselect_all">قم بإلغاء تحديد الكل</string>
     <string name="downloads_multi_exit">خروج</string>
-    <string name="downloads_multi_status">%1$d / %2$d تم التحديد</string>
     <string name="downloads_multi_clear_records">مسح السجلات</string>
     <string name="downloads_multi_delete_files">حذف الملفات</string>
     <string name="downloads_multi_no_task">لا توجد تنزيلات متاحة</string>
-    <string name="downloads_multi_confirm_clear_message">تم التحديد:&lt;b&gt;%1$d&lt;/b&gt;</string>
-    <string name="downloads_multi_confirm_delete_message">تم التحديد:&lt;b&gt;%1$d&lt;/b&gt;</string>
-    <string name="downloads_multi_hint_default">حدد مجموعات التنزيل لإدارة سجلاتها وملفاتها معًا.</string>
-    <string name="downloads_multi_hint_running">&lt;b&gt;مسح السجلات&lt;/b&gt;&lt;br/&gt;يحتفظ بالملفات المكتملة. يوقف التنزيلات النشطة ويزيل مهامها وملفاتها المؤقتة.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;حذف الملفات&lt;/b&gt;&lt;br/&gt;إزالة المهام والسجلات والملفات.</string>
-    <string name="downloads_multi_hint_has_file">&lt;b&gt;مسح السجلات&lt;/b&gt;&lt;br/&gt;يحتفظ بالملفات المكتملة. يوقف التنزيلات النشطة ويزيل مهامها وملفاتها المؤقتة.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;حذف الملفات&lt;/b&gt;&lt;br/&gt;إزالة المهام والسجلات والملفات.</string>
+    <string name="downloads_multi_confirm_clear_message">ستتم إزالة &lt;b&gt;%1$d&lt;/b&gt; من العناصر المحددة من القائمة مع الاحتفاظ بالملفات التي تم تنزيلها؛ وستتوقف المهام غير المكتملة وتُحذف ملفاتها المؤقتة.</string>
+    <string name="downloads_multi_confirm_delete_message">ستتم إزالة &lt;b&gt;%1$d&lt;/b&gt; من العناصر المحددة وحذف ملفاتها التي تم تنزيلها. لا يمكن التراجع عن هذا الإجراء.</string>
     <string name="downloads_multi_done_clear">تم مسح السجلات: %1$d</string>
     <string name="downloads_multi_done_delete">المهام التي تمت معالجتها: %1$d</string>
     <string name="downloads_group_progress_unavailable">تم تخطي: %1$d</string>

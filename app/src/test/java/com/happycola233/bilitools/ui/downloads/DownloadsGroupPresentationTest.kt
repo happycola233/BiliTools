@@ -19,13 +19,44 @@ class DownloadsGroupPresentationTest {
     private fun group(vararg tasks: DownloadItem) = DownloadGroup(1, "测试", null, createdAt = 0, tasks = tasks.toList())
     private fun present(vararg tasks: DownloadItem) = resolveDownloadsGroupPresentation(group(*tasks))
 
-    @Test fun groupCompletionIsIndependentOfTransferredBytes() {
+    @Test fun mediaBytesDominateProgressWhileAuxiliaryTasksShareASmallPart() {
         val state = present(video, cover)
-        assertEquals(0.5f, state.completionFraction, 0f)
+        // 媒体占 90%，按传输进度计入（后处理前最多 95%）；附属任务平分其余 10%。
+        assertEquals(0.9f * 0.2f * 0.95f + 0.1f, state.progressFraction, 1e-4f)
         assertEquals(1, state.resolvedCount)
         assertEquals(8L, state.etaSeconds)
         assertEquals(DownloadsGroupAction.Pause, state.action)
-        assertEquals(state.completionFraction, present(video.copy(downloadedBytes = 1_000, progress = 100), cover).completionFraction)
+        assertTrue(present(video.copy(downloadedBytes = 900, progress = 90), cover).progressFraction > state.progressFraction)
+    }
+
+    @Test fun largeVideoBarelyStartedIsNotOutweighedByFinishedAttachments() {
+        val gigabyte = 1L shl 30
+        val audioVideo = video.copy(taskType = DownloadTaskType.AudioVideo, progress = 7, totalBytes = gigabyte, downloadedBytes = gigabyte * 7 / 100)
+        val summary = cover.copy(id = 3, taskType = DownloadTaskType.AiSummary)
+        val danmaku = cover.copy(id = 4, taskType = DownloadTaskType.DanmakuHistory)
+        val state = present(audioVideo, summary, danmaku)
+        assertEquals("文字仍按项数", 2, state.resolvedCount)
+        assertTrue("2 / 3 项已完成时圆环应接近视频实际进度而非 2/3：${state.progressFraction}", state.progressFraction < 0.2f)
+    }
+
+    @Test fun mediaWeightsFollowFileSizes() {
+        val small = video.copy(id = 3, totalBytes = 100, downloadedBytes = 0, progress = 0)
+        val large = video.copy(id = 4, totalBytes = 900, downloadedBytes = 900, progress = 100, status = DownloadStatus.Success)
+        assertEquals(0.9f, present(small, large).progressFraction, 1e-4f)
+        // 大小未知的媒体按已知任务的平均大小计。
+        val unknown = small.copy(totalBytes = 0)
+        assertEquals(0.5f, present(unknown, large).progressFraction, 1e-4f)
+    }
+
+    @Test fun postProcessingCountsAsNearlyDoneButNeverFull() {
+        assertEquals(0.95f, present(video.copy(status = DownloadStatus.Merging)).progressFraction, 1e-4f)
+        assertTrue("传输完毕但尚未后处理时低于合并阶段", present(video.copy(progress = 100, downloadedBytes = 1_000)).progressFraction < 0.95f)
+        assertTrue(present(video.copy(status = DownloadStatus.Merging), cover).progressFraction < 1f)
+    }
+
+    @Test fun groupsWithoutMediaFallBackToTaskCount() {
+        val subtitle = cover.copy(id = 3, taskType = DownloadTaskType.Subtitle, status = DownloadStatus.Running)
+        assertEquals(0.5f, present(subtitle, cover).progressFraction, 0f)
     }
 
     @Test fun twoFailedTasksWithAllBytesPresentLeaveOneThirdOfSixTaskRingEmpty() {
@@ -34,7 +65,7 @@ class DownloadsGroupPresentationTest {
                 downloadedBytes = 1_000, progress = 100)
         }
         val state = present(*tasks.toTypedArray())
-        assertEquals(4f / 6f, state.completionFraction, 0f)
+        assertEquals("同样大小的媒体任务按完成数平分", 4f / 6f, state.progressFraction, 1e-4f)
         assertEquals(4, state.resolvedCount)
         assertEquals(2, state.failedCount)
         assertEquals(DownloadsGroupAction.Retry, state.action)
@@ -42,20 +73,26 @@ class DownloadsGroupPresentationTest {
         assertNull(state.etaSeconds)
     }
 
-    @Test fun onlySuccessfulAndUnavailableTasksCountAsResolved() {
+    @Test fun onlySuccessfulAndUnavailableTasksFillTheRing() {
         for (status in DownloadStatus.entries) {
             val state = present(video.copy(status = status, progress = 100, downloadedBytes = 1_000), cover)
-            val expected = if (status == DownloadStatus.Success || status == DownloadStatus.Unavailable) 1f else 0.5f
-            assertEquals("$status 不应被字节进度误判为完成", expected, state.completionFraction, 0f)
+            val resolved = status == DownloadStatus.Success || status == DownloadStatus.Unavailable
+            if (resolved) assertEquals(1f, state.progressFraction, 0f)
+            else assertTrue("$status 不应被字节进度误判为完成", state.progressFraction < 1f)
+            assertEquals(if (resolved) 2 else 1, state.resolvedCount)
         }
+        // 失败与取消不计已传输量，重试从头开始时圆环不会倒退。
+        assertEquals(0.1f, present(video.copy(status = DownloadStatus.Failed, progress = 100), cover).progressFraction, 1e-4f)
+        assertEquals(0.1f, present(video.copy(status = DownloadStatus.Cancelled, progress = 100), cover).progressFraction, 1e-4f)
     }
 
-    @Test fun waitingForFirstResultAnimatesOnlyWhileWorkIsActuallyExecuting() {
+    @Test fun unknownProgressAnimatesOnlyWhileWorkIsExecutingWithoutAnyMeasurableProgress() {
         for (status in DownloadStatus.entries) {
             val state = present(video.copy(status = status, progressIndeterminate = true))
-            assertEquals(status == DownloadStatus.Running || status == DownloadStatus.Merging, state.awaitingFirstResult)
+            // 合并中已有可计的进度（下载已完成），不再显示不定进度。
+            assertEquals("$status", status == DownloadStatus.Running, state.progressUnknown)
         }
-        assertFalse(present(video.copy(progressIndeterminate = true), cover).awaitingFirstResult)
+        assertFalse(present(video.copy(progressIndeterminate = true), cover).progressUnknown)
     }
 
     @Test fun pauseAndResumeFollowRepositoryCapabilities() {
@@ -72,7 +109,7 @@ class DownloadsGroupPresentationTest {
         val failed = cover.copy(status = DownloadStatus.Failed)
         val mixed = present(video, failed, cover.copy(id = 3))
         assertEquals(DownloadsGroupAction.Pause, mixed.action)
-        assertEquals(1f / 3f, mixed.completionFraction, 0f)
+        assertEquals(0.9f * 0.2f * 0.95f + 0.1f * 0.5f, mixed.progressFraction, 1e-4f)
         assertEquals(1, mixed.failedCount)
         assertNull(mixed.etaSeconds)
         assertEquals(DownloadsGroupAction.Resume, present(video.copy(status = DownloadStatus.Paused, userPaused = true), failed).action)
@@ -82,8 +119,8 @@ class DownloadsGroupPresentationTest {
     @Test fun retryCannotIncreaseCompletionUntilTaskActuallyFinishes() {
         val failed = video.copy(status = DownloadStatus.Failed, progress = 100, downloadedBytes = 1_000)
         val pending = failed.copy(status = DownloadStatus.Pending, progress = 0, downloadedBytes = 0)
-        assertEquals(present(failed, cover).completionFraction, present(pending, cover).completionFraction)
-        assertEquals(1f, present(pending.copy(status = DownloadStatus.Success), cover).completionFraction, 0f)
+        assertEquals(present(failed, cover).progressFraction, present(pending, cover).progressFraction)
+        assertEquals(1f, present(pending.copy(status = DownloadStatus.Success), cover).progressFraction, 0f)
     }
 
     @Test fun resolvedSkippedAndMissingFilesStayDistinct() {
@@ -92,16 +129,16 @@ class DownloadsGroupPresentationTest {
         assertEquals(DownloadsGroupAction.Expand, state.action)
         assertEquals(1, state.skippedCount)
         assertEquals(2, state.resolvedCount)
-        assertEquals(1f, state.completionFraction, 0f)
+        assertEquals(1f, state.progressFraction, 0f)
         val missing = present(cover.copy(outputMissing = true))
         assertEquals(1, missing.missingCount)
         assertTrue(missing.completed)
     }
 
     @Test fun allFailedOrCancelledTasksNeverLookComplete() {
-        assertEquals(0f, present(video.copy(status = DownloadStatus.Failed, progress = 100)).completionFraction, 0f)
-        assertEquals(0f, present(video.copy(status = DownloadStatus.Cancelled, progress = 100)).completionFraction, 0f)
-        assertEquals(0f, present().completionFraction, 0f)
+        assertEquals(0f, present(video.copy(status = DownloadStatus.Failed, progress = 100)).progressFraction, 0f)
+        assertEquals(0f, present(video.copy(status = DownloadStatus.Cancelled, progress = 100)).progressFraction, 0f)
+        assertEquals(0f, present().progressFraction, 0f)
     }
 
     @Test fun unknownRemainingSizeDoesNotProduceMisleadingEta() {

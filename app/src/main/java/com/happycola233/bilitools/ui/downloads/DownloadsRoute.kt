@@ -22,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.AppLog as Log
@@ -39,17 +38,19 @@ import java.util.Locale
  * 下载页的 Compose 路由。
  *
  * [viewModel] 由 Activity 创建并传入；本页首次进入后常驻主壳组合，切走只是不再绘制，
- * 列表展开、批量选择等纯 UI 状态另由 [rememberSaveable] 保存以跨进程重建恢复。
+ * 列表展开、批量选择等纯 UI 状态集中在 [DownloadsRouteUiState]，由主壳以 rememberSaveable 保存，跨进程重建后恢复。
  *
  * 任务操作菜单需要位于主壳最上层才能覆盖底栏并采样完整背景，因此本路由只向
  * [taskActionsOverlayState] 提交请求；主壳负责在内容和底栏之后组合
- * [DownloadsTaskActionsOverlay]。
+ * [DownloadsTaskActionsOverlay]。多选时顶栏与底栏也随之切换，所以 [routeState] 同样由主壳持有。
  */
 @Composable
 internal fun DownloadsRoute(
     viewModel: DownloadsViewModel,
+    routeState: DownloadsRouteUiState,
     contentTopPadding: Dp,
     taskActionsOverlayState: DownloadsTaskActionsOverlayState,
+    onOpenParse: () -> Unit,
     onOpenParseUrl: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -58,9 +59,6 @@ internal fun DownloadsRoute(
     val settingsRepository = context.appContainer.settingsRepository
     val groups by viewModel.groups.collectAsState()
     val settings by settingsRepository.settings.collectAsState()
-    val routeState = rememberSaveable(saver = DownloadsRouteUiState.Saver) {
-        DownloadsRouteUiState()
-    }
     var detailsGroupId by rememberSaveable { mutableStateOf<Long?>(null) }
 
     LaunchedEffect(viewModel) {
@@ -104,15 +102,6 @@ internal fun DownloadsRoute(
 
     val manageState = calculateGlobalManageState(groups)
     val selectedGroups = groups.filter { it.id in routeState.selectedGroupIds }
-    val selectedCount = routeState.selectedGroupIds.size
-    val allSelected = groups.isNotEmpty() && selectedCount == groups.size
-    val hasSelection = selectedCount > 0
-    val hasRunningTask = selectedGroups.any(::hasInProgressTask)
-    val batchHintRes = when {
-        !hasSelection -> R.string.downloads_multi_hint_default
-        hasRunningTask -> R.string.downloads_multi_hint_running
-        else -> R.string.downloads_multi_hint_has_file
-    }
 
     fun showUnavailable() {
         Log.w(TAG, "[ui-locate] show unavailable toast")
@@ -121,28 +110,6 @@ internal fun DownloadsRoute(
             resources.getString(R.string.download_action_unavailable),
             Toast.LENGTH_SHORT,
         ).show()
-    }
-
-    fun showTaskActions(item: DownloadItem, anchorInWindow: Rect) {
-        if (!canShowTaskActionsDialog(context, viewModel, item, ::showUnavailable)) return
-        taskActionsOverlayState.show(
-            request = DownloadsTaskActionsOverlayRequest(
-                itemId = item.id,
-                title = item.fileName.ifBlank { item.title },
-                anchorInWindow = anchorInWindow,
-                glassStyle = settings.toDownloadsGlassStyle(),
-            ),
-            onActionSelected = { action ->
-                performTaskAction(
-                    context = context,
-                    viewModel = viewModel,
-                    groups = groups,
-                    itemId = item.id,
-                    action = action,
-                    onUnavailable = ::showUnavailable,
-                )
-            },
-        )
     }
 
     fun executeDeletion(request: DownloadsDialogState) {
@@ -160,6 +127,35 @@ internal fun DownloadsRoute(
 
     fun requestDeletion(request: DownloadsDialogState) {
         routeState.requestDelete(request, settings, ::executeDeletion)
+    }
+
+    fun showTaskActions(item: DownloadItem, anchorInWindow: Rect) {
+        taskActionsOverlayState.show(
+            request = DownloadsTaskActionsOverlayRequest(
+                itemId = item.id,
+                title = item.fileName.ifBlank { item.title },
+                anchorInWindow = anchorInWindow,
+                glassStyle = settings.toDownloadsGlassStyle(),
+                actions = resolveTaskMenuActions(context, viewModel, item),
+            ),
+            onActionSelected = { action ->
+                if (action == DownloadsTaskAction.Delete) {
+                    requestDeletion(DownloadsDialogState.DeleteTask(
+                        itemId = item.id,
+                        deleteFiles = !item.localUri.isNullOrBlank(),
+                    ))
+                } else {
+                    performFileAction(
+                        context = context,
+                        viewModel = viewModel,
+                        groups = groups,
+                        itemId = item.id,
+                        action = action,
+                        onUnavailable = ::showUnavailable,
+                    )
+                }
+            },
+        )
     }
 
     fun requestBatchDeletion(deleteFiles: Boolean) {
@@ -180,26 +176,11 @@ internal fun DownloadsRoute(
         expandedGroupIds = routeState.expandedGroupIds,
         collapsedSections = routeState.collapsedSections,
         swipedGroupId = routeState.swipedGroupId,
-        emptyStateVisible = groups.isEmpty(),
-        batchStatusText = stringResource(
-            R.string.downloads_multi_status,
-            selectedCount,
-            groups.size,
-        ),
-        batchSelectAllText = stringResource(
-            if (allSelected) {
-                R.string.downloads_multi_unselect_all
-            } else {
-                R.string.downloads_multi_select_all
-            },
-        ),
-        batchHintHtml = stringResource(batchHintRes),
-        batchClearEnabled = hasSelection,
-        batchDeleteEnabled = hasSelection,
         dialogState = routeState.dialogState,
         contentTopPadding = contentTopPadding,
         resumeAllCount = manageState.startableCount,
         pauseAllCount = manageState.pausableCount,
+        completedGroupCount = groups.count { it.isCompleted },
         liquidGlassPanelsEnabled = settings.liquidGlassPanelsEnabled,
         glassDebugEnabled = settings.downloadsGlassDebugEnabled,
         glassCornerRadiusDp = settings.downloadsGlassCornerRadiusDp,
@@ -213,6 +194,7 @@ internal fun DownloadsRoute(
         barGlassRefractionAmountFrac = settings.liquidBarGlassRefractionAmountFrac,
         barGlassChromaticAberration = settings.liquidBarGlassChromaticAberration,
         barGlassSurfaceAlpha = settings.liquidBarGlassSurfaceAlpha,
+        onOpenParse = onOpenParse,
         onBatchManage = {
             if (!routeState.enterSelectionMode(groups)) {
                 Toast.makeText(
@@ -226,8 +208,6 @@ internal fun DownloadsRoute(
         onPauseAll = { performPauseAll(context, viewModel, manageState) },
         onClearCompleted = viewModel::clearCompleted,
         onClearAll = viewModel::clearAll,
-        onExitSelection = routeState::exitSelectionMode,
-        onSelectAll = { routeState.toggleSelectAll(groups) },
         onClearRecords = { requestBatchDeletion(deleteFiles = false) },
         onDeleteFiles = { requestBatchDeletion(deleteFiles = true) },
         onDialogDismiss = routeState::dismissDialog,
@@ -267,13 +247,10 @@ internal fun DownloadsRoute(
         onTaskRetry = { item ->
             if (item.status == DownloadStatus.Failed) viewModel.retry(item.id)
         },
-        onTaskDelete = { item ->
-            requestDeletion(DownloadsDialogState.DeleteTask(
-                itemId = item.id,
-                deleteFiles = !item.localUri.isNullOrBlank(),
-            ))
-        },
         onTaskClick = ::showTaskActions,
+        onDragSelectionStart = { groupId -> routeState.startDragSelection(groups, groupId) },
+        onDragSelectionRange = routeState::updateDragSelection,
+        onDragSelectionEnd = routeState::finishDragSelection,
         onGlassCornerRadiusChange = settingsRepository::setDownloadsGlassCornerRadiusDp,
         onGlassBlurRadiusChange = settingsRepository::setDownloadsGlassBlurRadiusDp,
         onGlassRefractionHeightChange = settingsRepository::setDownloadsGlassRefractionHeightDp,
@@ -313,8 +290,10 @@ internal class DownloadsRouteUiState(
     var swipedGroupId by mutableStateOf(swipedGroupId)
     var dialogState by mutableStateOf<DownloadsDialogState?>(null)
 
+    /** 拖动多选开始前的选中集合；为空表示当前没有拖动多选。 */
+    private var dragSelectionBase: Set<Long>? = null
+
     fun toggleSection(type: DownloadSectionType) {
-        if (selectionMode) return
         collapsedSections = collapsedSections.toMutableSet().apply {
             if (!add(type)) remove(type)
         }
@@ -350,6 +329,7 @@ internal class DownloadsRouteUiState(
     fun exitSelectionMode() {
         selectionMode = false
         selectedGroupIds = emptySet()
+        dragSelectionBase = null
     }
 
     fun toggleGroupSelection(groups: List<DownloadGroup>, groupId: Long) {
@@ -372,6 +352,26 @@ internal class DownloadsRouteUiState(
         } else {
             allIds
         }
+    }
+
+    /**
+     * 长按卡片开始拖动多选：未在多选时先进入多选。无论起点原本是否选中，拖过的范围都选中，
+     * 已选中的组保持不变；取消选择通过往回拖或单击完成。
+     */
+    fun startDragSelection(groups: List<DownloadGroup>, anchorGroupId: Long) {
+        if (!selectionMode && !enterSelectionMode(groups)) return
+        dragSelectionBase = selectedGroupIds
+        updateDragSelection(setOf(anchorGroupId))
+    }
+
+    /** [range] 为起点到手指当前所在卡片之间的组；退出范围的组恢复拖动开始前的状态。 */
+    fun updateDragSelection(range: Set<Long>) {
+        val base = dragSelectionBase ?: return
+        selectedGroupIds = base + range
+    }
+
+    fun finishDragSelection() {
+        dragSelectionBase = null
     }
 
     fun requestDelete(
@@ -529,48 +529,33 @@ private fun performPauseAll(
     ).show()
 }
 
-private fun hasInProgressTask(group: DownloadGroup): Boolean = group.tasks.any { task ->
-    when (task.status) {
-        DownloadStatus.Pending,
-        DownloadStatus.Running,
-        DownloadStatus.Paused,
-        DownloadStatus.Merging,
-        -> true
-        else -> false
-    }
-}
-
-private fun canShowTaskActionsDialog(
+/**
+ * 任务菜单的可用操作：文件已保存且可读时提供打开与分享；删除对所有任务可用，
+ * 包括文件已丢失或尚未下载完成的任务。
+ */
+private fun resolveTaskMenuActions(
     context: Context,
     viewModel: DownloadsViewModel,
     item: DownloadItem,
-    onUnavailable: () -> Unit,
-): Boolean {
-    if (item.status == DownloadStatus.Success && item.outputMissing) {
-        Log.w(
-            TAG,
-            "[ui-locate] block actions: success item marked missing, taskId=${item.id}, file=${item.fileName}, localUri=${item.localUri}",
-        )
-        return false
-    }
+): List<DownloadsTaskAction> {
     val uri = if (item.outputMissing) null else item.localUri?.let(Uri::parse)
     Log.d(
         TAG,
         "[ui-locate] show actions, taskId=${item.id}, file=${item.fileName}, status=${item.status}, outputMissing=${item.outputMissing}, localUri=${item.localUri}, parsedUri=$uri",
     )
-    if (uri != null && !isUriReadyForUserAction(context, uri)) {
-        Log.w(
-            TAG,
-            "[ui-locate] block actions: uri not ready, taskId=${item.id}, file=${item.fileName}, uri=$uri",
-        )
+    val fileReady = uri != null && isUriReadyForUserAction(context, uri)
+    if (uri != null && !fileReady) {
+        Log.w(TAG, "[ui-locate] file actions hidden: uri not ready, taskId=${item.id}, file=${item.fileName}, uri=$uri")
         viewModel.refreshOutputAvailability()
-        onUnavailable()
-        return false
     }
-    return true
+    return if (fileReady) {
+        listOf(DownloadsTaskAction.Open, DownloadsTaskAction.Share, DownloadsTaskAction.Delete)
+    } else {
+        listOf(DownloadsTaskAction.Delete)
+    }
 }
 
-private fun performTaskAction(
+private fun performFileAction(
     context: Context,
     viewModel: DownloadsViewModel,
     groups: List<DownloadGroup>,
@@ -591,6 +576,7 @@ private fun performTaskAction(
     when (action) {
         DownloadsTaskAction.Open -> openWith(context, uri, item.fileName)
         DownloadsTaskAction.Share -> shareWith(context, uri, item.fileName)
+        DownloadsTaskAction.Delete -> Unit
     }
 }
 
@@ -623,6 +609,7 @@ private val DownloadsTaskAction.logName: String
     get() = when (this) {
         DownloadsTaskAction.Open -> "open"
         DownloadsTaskAction.Share -> "share"
+        DownloadsTaskAction.Delete -> "delete"
     }
 
 private fun openWith(context: Context, uri: Uri, fileName: String) {

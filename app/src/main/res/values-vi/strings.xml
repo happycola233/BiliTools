@@ -219,6 +219,10 @@
     <string name="common_error_unknown">Đã xảy ra lỗi không xác định</string>
     <string name="downloads_title">Tải xuống</string>
     <string name="downloads_empty">Chưa có lượt tải xuống nào</string>
+    <string name="downloads_empty_action">Đến Phân tích</string>
+    <plurals name="downloads_selection_title">
+        <item quantity="other">Đã chọn %1$d</item>
+    </plurals>
     <string name="downloads_clear_completed">Xóa các bản tải xuống đã hoàn tất</string>
     <string name="downloads_clear_all">Xóa tất cả các bản tải xuống</string>
     <string name="downloads_actions_menu">Hành động tải xuống</string>
@@ -226,15 +230,11 @@
     <string name="downloads_multi_select_all">Chọn tất cả</string>
     <string name="downloads_multi_unselect_all">Bỏ chọn tất cả</string>
     <string name="downloads_multi_exit">Thoát</string>
-    <string name="downloads_multi_status">%1$d / %2$d đã chọn</string>
     <string name="downloads_multi_clear_records">Xóa hồ sơ</string>
     <string name="downloads_multi_delete_files">Xóa tập tin</string>
     <string name="downloads_multi_no_task">Không có bản tải xuống nào</string>
-    <string name="downloads_multi_confirm_clear_message">Đã chọn:&lt;b&gt;%1$d&lt;/b&gt;</string>
-    <string name="downloads_multi_confirm_delete_message">Đã chọn:&lt;b&gt;%1$d&lt;/b&gt;</string>
-    <string name="downloads_multi_hint_default">Chọn các nhóm tải xuống để quản lý các bản ghi và tệp của chúng cùng nhau.</string>
-    <string name="downloads_multi_hint_running">&lt;b&gt;Xóa bản ghi&lt;/b&gt;&lt;br/&gt;Giữ các tệp đã hoàn thành. Dừng tải xuống đang hoạt động và xóa các tác vụ cũng như tệp tạm thời của chúng.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Xóa tệp&lt;/b&gt;&lt;br/&gt;Xóa tác vụ, bản ghi và tệp.</string>
-    <string name="downloads_multi_hint_has_file">&lt;b&gt;Xóa bản ghi&lt;/b&gt;&lt;br/&gt;Giữ các tệp đã hoàn thành. Dừng tải xuống đang hoạt động và xóa các tác vụ cũng như tệp tạm thời của chúng.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Xóa tệp&lt;/b&gt;&lt;br/&gt;Xóa tác vụ, bản ghi và tệp.</string>
+    <string name="downloads_multi_confirm_clear_message">Sẽ xóa &lt;b&gt;%1$d&lt;/b&gt; mục đã chọn khỏi danh sách. Tệp đã tải xuống được giữ lại; tác vụ chưa xong sẽ dừng và xóa tệp tạm.</string>
+    <string name="downloads_multi_confirm_delete_message">Sẽ xóa &lt;b&gt;%1$d&lt;/b&gt; mục đã chọn cùng các tệp đã tải xuống. Không thể hoàn tác thao tác này.</string>
     <string name="downloads_multi_done_clear">Đã xóa bản ghi: %1$d</string>
     <string name="downloads_multi_done_delete">Nhiệm vụ được xử lý: %1$d</string>
     <string name="downloads_group_progress_unavailable">Đã bỏ qua: %1$d</string>

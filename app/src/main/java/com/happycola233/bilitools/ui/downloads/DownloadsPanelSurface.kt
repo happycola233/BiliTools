@@ -9,6 +9,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.GraphicsLayerScope
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -57,7 +58,8 @@ private val modalGlassShadowValue = Shadow(radius = 24.dp, color = Color.Black.c
 internal val modalGlassShadow: () -> Shadow = { modalGlassShadowValue }
 
 /**
- * 批量管理与任务菜单共用的面板表面。两种风格只替换绘制，不改变内容测量、圆角和触摸区域。
+ * 多选工具栏与任务菜单共用的面板表面。两种风格只替换绘制，不改变内容测量、圆角和触摸区域。
+ * 默认圆角取自玻璃参数；胶囊形工具栏等需要固定形状时由 [shape] 指定。
  *
  * [layerBlock] 用于缩放/淡入等浮窗自身的变换：交给 Backdrop 处理后，采样背景会被反向变换抵消，
  * 折射内容始终与真实页面对齐，不会出现背景跟着一起缩放的割裂感。
@@ -67,10 +69,10 @@ internal fun Modifier.downloadsPanelSurface(
     backdrop: Backdrop,
     style: DownloadsGlassStyle,
     liquidGlassEnabled: Boolean,
+    shape: Shape = RoundedCornerShape(style.cornerRadiusDp.dp),
     shadow: () -> Shadow = defaultGlassShadow,
     layerBlock: (GraphicsLayerScope.() -> Unit)? = null,
 ): Modifier {
-    val shape = RoundedCornerShape(style.cornerRadiusDp.dp)
     if (!liquidGlassEnabled || !isLiquidGlassSupported()) {
         // Material 背景完全不透明，不读取玻璃透明度或采样底层内容；边缘沿用应用对话框的配方。
         // 保留同一层缩放和淡入淡出，让背景、投影、描边与文字一起运动。

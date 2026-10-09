@@ -2,6 +2,7 @@ package com.happycola233.bilitools.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TopAppBarState
 import androidx.compose.material3.rememberTopAppBarState
@@ -154,6 +155,40 @@ class MainTopBarTest {
                 measuredHeights.first(),
             )
             assertEquals(if (initiallyCollapsed) 1f else 0f, barState.collapsedFraction, 0f)
+        }
+    }
+
+    @Test fun navigationIconShiftsTitleAndIconsFollowTitleCenterInLightTheme() = verifyContextSlots(AppThemeMode.Light)
+
+    @Test fun navigationIconShiftsTitleAndIconsFollowTitleCenterInDarkTheme() = verifyContextSlots(AppThemeMode.Dark)
+
+    private fun verifyContextSlots(mode: AppThemeMode) {
+        lateinit var barState: TopAppBarState
+        var titleStartPx = 0f
+        compose.setContent {
+            BiliToolsTheme(AppSettings(themeMode = mode)) {
+                titleStartPx = with(LocalDensity.current) { 56.dp.toPx() }
+                barState = rememberTopAppBarState()
+                Box(Modifier.fillMaxWidth().testTag("top-bar-container")) {
+                    MainCollapsingTopBar(
+                        title = "已选择 2 项",
+                        state = barState,
+                        navigationIcon = { Box(Modifier.size(48.dp).testTag("navigation")) },
+                        actions = { Box(Modifier.size(48.dp).testTag("actions")) },
+                    )
+                }
+            }
+        }
+        for (fraction in listOf(0f, 0.5f, 1f)) {
+            compose.runOnIdle { barState.heightOffset = barState.heightOffsetLimit * fraction }
+            val container = compose.onNodeWithTag("top-bar-container").fetchSemanticsNode().boundsInRoot
+            val title = compose.onNodeWithText("已选择 2 项").fetchSemanticsNode().boundsInRoot
+            val navigation = compose.onNodeWithTag("navigation").fetchSemanticsNode().boundsInRoot
+            val actions = compose.onNodeWithTag("actions").fetchSemanticsNode().boundsInRoot
+            assertEquals("有导航图标时标题从 56dp 起排", titleStartPx, title.left - container.left, 1f)
+            assertEquals("导航图标与标题视觉中线对齐（折叠进度 $fraction）", title.center.y, navigation.center.y, 1.5f)
+            assertEquals("操作区与标题视觉中线对齐（折叠进度 $fraction）", title.center.y, actions.center.y, 1.5f)
+            assertTrue("标题不与操作区重叠", title.right <= actions.left + 0.5f)
         }
     }
 }

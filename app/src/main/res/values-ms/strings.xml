@@ -219,6 +219,10 @@
     <string name="common_error_unknown">Ralat tidak diketahui berlaku</string>
     <string name="downloads_title">Muat Turun</string>
     <string name="downloads_empty">Tiada muat turun lagi</string>
+    <string name="downloads_empty_action">Pergi ke Analisis</string>
+    <plurals name="downloads_selection_title">
+        <item quantity="other">%1$d dipilih</item>
+    </plurals>
     <string name="downloads_clear_completed">Kosongkan muat turun yang telah selesai</string>
     <string name="downloads_clear_all">Kosongkan semua muat turun</string>
     <string name="downloads_actions_menu">Muat turun tindakan</string>
@@ -226,15 +230,11 @@
     <string name="downloads_multi_select_all">Pilih semua</string>
     <string name="downloads_multi_unselect_all">Nyahpilih semua</string>
     <string name="downloads_multi_exit">Keluar</string>
-    <string name="downloads_multi_status">%1$d / %2$d dipilih</string>
     <string name="downloads_multi_clear_records">Kosongkan rekod</string>
     <string name="downloads_multi_delete_files">Padam fail</string>
     <string name="downloads_multi_no_task">Tiada muat turun tersedia</string>
-    <string name="downloads_multi_confirm_clear_message">Dipilih:&lt;b&gt;%1$d&lt;/b&gt;</string>
-    <string name="downloads_multi_confirm_delete_message">Dipilih:&lt;b&gt;%1$d&lt;/b&gt;</string>
-    <string name="downloads_multi_hint_default">Pilih kumpulan muat turun untuk mengurus rekod dan fail mereka bersama-sama.</string>
-    <string name="downloads_multi_hint_running">&lt;b&gt;Kosongkan rekod&lt;/b&gt;&lt;br/&gt;Menyimpan fail yang lengkap. Menghentikan muat turun aktif dan mengalih keluar tugas dan fail sementara mereka.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Padam fail&lt;/b&gt;&lt;br/&gt;Alih keluar tugas, rekod dan fail.</string>
-    <string name="downloads_multi_hint_has_file">&lt;b&gt;Kosongkan rekod&lt;/b&gt;&lt;br/&gt;Menyimpan fail yang lengkap. Menghentikan muat turun aktif dan mengalih keluar tugas dan fail sementara mereka.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Padam fail&lt;/b&gt;&lt;br/&gt;Alih keluar tugas, rekod dan fail.</string>
+    <string name="downloads_multi_confirm_clear_message">&lt;b&gt;%1$d&lt;/b&gt; item terpilih akan dialih keluar daripada senarai. Fail yang dimuat turun dikekalkan; tugas yang belum selesai dihentikan dan fail sementaranya dipadam.</string>
+    <string name="downloads_multi_confirm_delete_message">&lt;b&gt;%1$d&lt;/b&gt; item terpilih akan dialih keluar dan fail yang dimuat turun dipadam. Tindakan ini tidak boleh dibuat asal.</string>
     <string name="downloads_multi_done_clear">Rekod dibersihkan: %1$d</string>
     <string name="downloads_multi_done_delete">Tugasan diproses: %1$d</string>
     <string name="downloads_group_progress_unavailable">Dilangkau: %1$d</string>

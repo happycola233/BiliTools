@@ -219,6 +219,10 @@
     <string name="common_error_unknown">發生未知錯誤</string>
     <string name="downloads_title">下載任務</string>
     <string name="downloads_empty">空空如也~</string>
+    <string name="downloads_empty_action">去解析</string>
+    <plurals name="downloads_selection_title">
+        <item quantity="other">已選擇 %1$d 項</item>
+    </plurals>
     <string name="downloads_clear_completed">清除已完成記錄</string>
     <string name="downloads_clear_all">清除全部記錄</string>
     <string name="downloads_actions_menu">下載管理操作</string>
@@ -226,15 +230,11 @@
     <string name="downloads_multi_select_all">全選</string>
     <string name="downloads_multi_unselect_all">取消全選</string>
     <string name="downloads_multi_exit">退出</string>
-    <string name="downloads_multi_status">已選擇 %1$d/%2$d</string>
     <string name="downloads_multi_clear_records">清除記錄</string>
     <string name="downloads_multi_delete_files">刪除檔案</string>
     <string name="downloads_multi_no_task">暫無可操作任務</string>
-    <string name="downloads_multi_confirm_clear_message">已選擇 &lt;b&gt;%1$d&lt;/b&gt; 項，確認執行“清除記錄”？</string>
-    <string name="downloads_multi_confirm_delete_message">已選擇 &lt;b&gt;%1$d&lt;/b&gt; 項，確認執行“刪除檔案”？</string>
-    <string name="downloads_multi_hint_default">選擇專案組後可批次處理記錄和檔案。</string>
-    <string name="downloads_multi_hint_running">\n&lt;b&gt;清除記錄&lt;/b&gt;\n&lt;br/&gt;已完成專案僅刪記錄\n&lt;br/&gt;進行中專案會停止並刪除任務及臨時檔案\n&lt;br/&gt;\n&lt;br/&gt;\n&lt;b&gt;刪除檔案&lt;/b&gt;\n&lt;br/&gt;刪除任務、記錄和檔案\n</string>
-    <string name="downloads_multi_hint_has_file">\n&lt;b&gt;清除記錄&lt;/b&gt;\n&lt;br/&gt;已完成專案僅刪記錄\n&lt;br/&gt;進行中專案會停止並刪除任務及臨時檔案\n&lt;br/&gt;\n&lt;br/&gt;\n&lt;b&gt;刪除檔案&lt;/b&gt;\n&lt;br/&gt;刪除任務、記錄和檔案\n</string>
+    <string name="downloads_multi_confirm_clear_message">將從下載列表移除所選的 &lt;b&gt;%1$d&lt;/b&gt; 項，已下載的檔案會保留；未完成的任務會停止，並刪除暫存檔案。</string>
+    <string name="downloads_multi_confirm_delete_message">將移除所選的 &lt;b&gt;%1$d&lt;/b&gt; 項，並刪除已下載的檔案，此操作無法復原。</string>
     <string name="downloads_multi_done_clear">已清除 %1$d 項記錄</string>
     <string name="downloads_multi_done_delete">已處理 %1$d 項任務</string>
     <string name="downloads_group_progress_unavailable">跳過 %1$d 項</string>

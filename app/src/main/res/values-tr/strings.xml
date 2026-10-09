@@ -219,6 +219,10 @@
     <string name="common_error_unknown">Bilinmeyen bir hata oluştu</string>
     <string name="downloads_title">İndirilenler</string>
     <string name="downloads_empty">Henüz indirme yok</string>
+    <string name="downloads_empty_action">Ayrıştır\'a git</string>
+    <plurals name="downloads_selection_title">
+        <item quantity="other">%1$d seçildi</item>
+    </plurals>
     <string name="downloads_clear_completed">Tamamlanan indirmeleri temizle</string>
     <string name="downloads_clear_all">Tüm indirmeleri temizle</string>
     <string name="downloads_actions_menu">İndirme işlemleri</string>
@@ -226,15 +230,11 @@
     <string name="downloads_multi_select_all">Tümünü seç</string>
     <string name="downloads_multi_unselect_all">Tümünün seçimini kaldır</string>
     <string name="downloads_multi_exit">Çıkış</string>
-    <string name="downloads_multi_status">%1$d / %2$d seçildi</string>
     <string name="downloads_multi_clear_records">Kayıtları temizle</string>
     <string name="downloads_multi_delete_files">Dosyaları sil</string>
     <string name="downloads_multi_no_task">İndirme mevcut değil</string>
-    <string name="downloads_multi_confirm_clear_message">Seçilen:&lt;b&gt;%1$d&lt;/b&gt;</string>
-    <string name="downloads_multi_confirm_delete_message">Seçilen:&lt;b&gt;%1$d&lt;/b&gt;</string>
-    <string name="downloads_multi_hint_default">Kayıtlarını ve dosyalarını birlikte yönetmek için indirme gruplarını seçin.</string>
-    <string name="downloads_multi_hint_running">&lt;b&gt;Kayıtları temizle&lt;/b&gt;&lt;br/&gt;Tamamlanan dosyaları tutar. Etkin indirmeleri durdurur ve görevlerini ve geçici dosyalarını kaldırır.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Dosyaları sil&lt;/b&gt;&lt;br/&gt;Görevleri, kayıtları ve dosyaları kaldırır.</string>
-    <string name="downloads_multi_hint_has_file">&lt;b&gt;Kayıtları temizle&lt;/b&gt;&lt;br/&gt;Tamamlanan dosyaları tutar. Etkin indirmeleri durdurur ve görevlerini ve geçici dosyalarını kaldırır.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Dosyaları sil&lt;/b&gt;&lt;br/&gt;Görevleri, kayıtları ve dosyaları kaldırır.</string>
+    <string name="downloads_multi_confirm_clear_message">Seçilen &lt;b&gt;%1$d&lt;/b&gt; öğe listeden kaldırılacak. İndirilen dosyalar korunur; tamamlanmamış görevler durdurulur ve geçici dosyaları silinir.</string>
+    <string name="downloads_multi_confirm_delete_message">Seçilen &lt;b&gt;%1$d&lt;/b&gt; öğe ve indirilen dosyaları silinecek. Bu işlem geri alınamaz.</string>
     <string name="downloads_multi_done_clear">Kayıtlar temizlendi: %1$d</string>
     <string name="downloads_multi_done_delete">İşlenen görevler: %1$d</string>
     <string name="downloads_group_progress_unavailable">Atlandı: %1$d</string>

@@ -219,6 +219,10 @@
     <string name="common_error_unknown">เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ</string>
     <string name="downloads_title">ดาวน์โหลด</string>
     <string name="downloads_empty">ยังไม่มีการดาวน์โหลด</string>
+    <string name="downloads_empty_action">ไปที่วิเคราะห์</string>
+    <plurals name="downloads_selection_title">
+        <item quantity="other">เลือกแล้ว %1$d รายการ</item>
+    </plurals>
     <string name="downloads_clear_completed">ล้างการดาวน์โหลดที่เสร็จสมบูรณ์</string>
     <string name="downloads_clear_all">ล้างการดาวน์โหลดทั้งหมด</string>
     <string name="downloads_actions_menu">ดาวน์โหลดการดำเนินการ</string>
@@ -226,15 +230,11 @@
     <string name="downloads_multi_select_all">เลือกทั้งหมด</string>
     <string name="downloads_multi_unselect_all">ยกเลิกการเลือกทั้งหมด</string>
     <string name="downloads_multi_exit">ออก</string>
-    <string name="downloads_multi_status">%1$d / %2$d เลือกแล้ว</string>
     <string name="downloads_multi_clear_records">ล้างบันทึก</string>
     <string name="downloads_multi_delete_files">ลบไฟล์</string>
     <string name="downloads_multi_no_task">ไม่มีการดาวน์โหลด</string>
-    <string name="downloads_multi_confirm_clear_message">ที่เลือก:&lt;b&gt;%1$d&lt;/b&gt;</string>
-    <string name="downloads_multi_confirm_delete_message">ที่เลือก:&lt;b&gt;%1$d&lt;/b&gt;</string>
-    <string name="downloads_multi_hint_default">เลือกกลุ่มดาวน์โหลดเพื่อจัดการบันทึกและไฟล์ร่วมกัน</string>
-    <string name="downloads_multi_hint_running">&lt;b&gt;ล้างบันทึก&lt;/b&gt;&lt;br/&gt;เก็บไฟล์ที่เสร็จสมบูรณ์ หยุดการดาวน์โหลดที่ใช้งานอยู่และลบงานและไฟล์ชั่วคราวออก&lt;br/&gt;&lt;br/&gt;&lt;b&gt;ลบไฟล์&lt;/b&gt;&lt;br/&gt;ลบงาน บันทึก และไฟล์</string>
-    <string name="downloads_multi_hint_has_file">&lt;b&gt;ล้างบันทึก&lt;/b&gt;&lt;br/&gt;เก็บไฟล์ที่เสร็จสมบูรณ์ หยุดการดาวน์โหลดที่ใช้งานอยู่และลบงานและไฟล์ชั่วคราวออก&lt;br/&gt;&lt;br/&gt;&lt;b&gt;ลบไฟล์&lt;/b&gt;&lt;br/&gt;ลบงาน บันทึก และไฟล์</string>
+    <string name="downloads_multi_confirm_clear_message">จะนำ &lt;b&gt;%1$d&lt;/b&gt; รายการที่เลือกออกจากรายการ โดยเก็บไฟล์ที่ดาวน์โหลดแล้วไว้ งานที่ยังไม่เสร็จจะหยุดและลบไฟล์ชั่วคราว</string>
+    <string name="downloads_multi_confirm_delete_message">จะนำ &lt;b&gt;%1$d&lt;/b&gt; รายการที่เลือกออกและลบไฟล์ที่ดาวน์โหลดแล้ว การดำเนินการนี้ไม่สามารถย้อนกลับได้</string>
     <string name="downloads_multi_done_clear">ล้างบันทึกแล้ว: %1$d</string>
     <string name="downloads_multi_done_delete">งานที่ประมวลผลแล้ว: %1$d</string>
     <string name="downloads_group_progress_unavailable">ข้าม: %1$d</string>

@@ -12,9 +12,14 @@ import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -23,8 +28,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Constraints
 import androidx.appcompat.app.AppCompatActivity
 import com.happycola233.bilitools.R
@@ -33,6 +41,9 @@ import com.happycola233.bilitools.data.AppSettings
 import com.happycola233.bilitools.data.ReleaseInfo
 import com.happycola233.bilitools.data.UpdateCheckResult
 import com.happycola233.bilitools.ui.downloads.DownloadsRoute
+import com.happycola233.bilitools.ui.downloads.DownloadsRouteUiState
+import com.happycola233.bilitools.ui.downloads.DownloadsSelectAllButton
+import com.happycola233.bilitools.ui.downloads.DownloadsSelectionCloseButton
 import com.happycola233.bilitools.ui.downloads.DownloadsTaskActionsOverlay
 import com.happycola233.bilitools.ui.downloads.DownloadsTaskActionsOverlayState
 import com.happycola233.bilitools.ui.downloads.DownloadsViewModel
@@ -74,6 +85,10 @@ fun MainScreen(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(topAppBarState)
     val contentBackdrop = rememberLayerBackdrop()
     val taskActionsOverlayState = remember { DownloadsTaskActionsOverlayState() }
+    // 下载页多选会接管顶栏与底栏，状态由主壳持有。
+    val downloadsRouteState = rememberSaveable(saver = DownloadsRouteUiState.Saver) {
+        DownloadsRouteUiState()
+    }
     val haptics = rememberAppHaptics()
     val currentSelectedTabIndex = rememberUpdatedState(selectedTabIndex)
     val currentOnTabSelected = rememberUpdatedState(onTabSelected)
@@ -95,9 +110,11 @@ fun MainScreen(
             scrollBehavior = scrollBehavior,
             contentBackdrop = contentBackdrop,
             taskActionsOverlayState = taskActionsOverlayState,
+            downloadsRouteState = downloadsRouteState,
             parseViewModel = parseViewModel,
             downloadsViewModel = downloadsViewModel,
             loginViewModel = loginViewModel,
+            onOpenParse = { selectTab(TAB_PARSE) },
             onOpenParseUrl = onOpenParseUrl,
         )
 
@@ -106,6 +123,8 @@ fun MainScreen(
             selectedTabIndex = selectedTabIndex,
             onTabSelected = selectTab,
             contentBackdrop = contentBackdrop,
+            // 多选期间底栏让位给下载页的批量工具栏。
+            hidden = { selectedTabIndex() == TAB_DOWNLOADS && downloadsRouteState.selectionMode },
         )
 
         MainUpdatePromptHost(
@@ -134,19 +153,24 @@ private fun MainContentLayer(
     scrollBehavior: TopAppBarScrollBehavior,
     contentBackdrop: LayerBackdrop,
     taskActionsOverlayState: DownloadsTaskActionsOverlayState,
+    downloadsRouteState: DownloadsRouteUiState,
     parseViewModel: ParseViewModel,
     downloadsViewModel: DownloadsViewModel,
     loginViewModel: LoginViewModel,
+    onOpenParse: () -> Unit,
     onOpenParseUrl: (String) -> Unit,
 ) {
     val selectedIndex = selectedTabIndex()
     val focusManager = LocalFocusManager.current
+    val downloadsSelecting = selectedIndex == TAB_DOWNLOADS && downloadsRouteState.selectionMode
 
     LaunchedEffect(selectedIndex) {
         // 页面常驻组合，切走时输入焦点不会自动释放，这里主动收起键盘
         focusManager.clearFocus()
         if (selectedIndex != TAB_DOWNLOADS) {
             taskActionsOverlayState.dismissImmediately()
+            // 多选会隐藏底栏，从其他入口切走时一并退出，回到下载页时底栏完整。
+            downloadsRouteState.exitSelectionMode()
         }
     }
 
@@ -172,8 +196,10 @@ private fun MainContentLayer(
             MainTabHost(active = selectedIndex == TAB_DOWNLOADS) {
                 DownloadsRoute(
                     viewModel = downloadsViewModel,
+                    routeState = downloadsRouteState,
                     contentTopPadding = MainTopBarExpandedHeight,
                     taskActionsOverlayState = taskActionsOverlayState,
+                    onOpenParse = onOpenParse,
                     onOpenParseUrl = onOpenParseUrl,
                     modifier = Modifier.fillMaxSize(),
                 )
@@ -189,16 +215,33 @@ private fun MainContentLayer(
             }
         }
 
+        val selectedCount = downloadsRouteState.selectedGroupIds.size
         MainCollapsingTopBar(
-            title = when (selectedIndex) {
-                TAB_DOWNLOADS -> stringResource(R.string.nav_downloads)
-                TAB_ME -> stringResource(R.string.nav_me)
+            title = when {
+                downloadsSelecting -> pluralStringResource(R.plurals.downloads_selection_title, selectedCount, selectedCount)
+                selectedIndex == TAB_DOWNLOADS -> stringResource(R.string.nav_downloads)
+                selectedIndex == TAB_ME -> stringResource(R.string.nav_me)
                 else -> stringResource(R.string.app_name)
             },
             state = scrollBehavior.state,
             // 解析页标题延续旧壳的品牌字形，其他页面使用系统标题字体
             titleFontFamily = BiliToolsFonts.googleSansFlexRond100
                 .takeIf { selectedIndex == TAB_PARSE },
+            titleKey = downloadsSelecting,
+            navigationIcon = {
+                DownloadsSelectionCloseButton(
+                    visible = downloadsSelecting,
+                    onClick = downloadsRouteState::exitSelectionMode,
+                )
+            },
+            actions = {
+                DownloadsSelectAllButton(
+                    visible = downloadsSelecting,
+                    selectedGroupIds = downloadsRouteState.selectedGroupIds,
+                    groups = downloadsViewModel.groups,
+                    onToggleSelectAll = downloadsRouteState::toggleSelectAll,
+                )
+            },
         )
     }
 }
@@ -268,13 +311,33 @@ private fun Modifier.collapsingTopBarOffset(heightOffset: () -> Float): Modifier
         }
     }
 
+/**
+ * 主导航栏。[hidden] 为真时整体沉到屏幕下沿之外；位移在布局阶段读取，
+ * 动画过程中底栏不重组，玻璃采样也按实际位置进行。
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun BoxScope.MainBottomBarOverlay(
     settings: AppSettings,
     selectedTabIndex: () -> Int,
     onTabSelected: (Int) -> Unit,
     contentBackdrop: LayerBackdrop,
+    hidden: () -> Boolean,
 ) {
+    val hiddenTarget by remember(hidden) { derivedStateOf(hidden) }
+    val hideProgress by animateFloatAsState(
+        targetValue = if (hiddenTarget) 1f else 0f,
+        animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+        label = "mainBottomBarHide",
+    )
+    val hideDistancePx = with(LocalDensity.current) { (mainBottomBarBottomInset() + 16.dp).toPx() }
+    val hideModifier = Modifier.layout { measurable, constraints ->
+        val placeable = measurable.measure(constraints)
+        layout(placeable.width, placeable.height) {
+            // 完全收起后不再放置，避免屏幕外的底栏仍参与无障碍与触摸。
+            if (hideProgress < 1f) placeable.place(0, (hideDistancePx * hideProgress).roundToInt())
+        }
+    }
     if (settings.liquidBottomTabsEnabled && isLiquidGlassSupported()) {
         MainLiquidBottomBar(
             selectedTabIndex = selectedTabIndex,
@@ -288,13 +351,13 @@ private fun BoxScope.MainBottomBarOverlay(
             ),
             surfaceAlpha = settings.liquidBarGlassSurfaceAlpha,
             widthFraction = settings.liquidBarWidthFraction,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().then(hideModifier),
         )
     } else {
         MainMaterialBottomBar(
             selectedTabIndex = selectedTabIndex,
             onTabSelected = onTabSelected,
-            modifier = Modifier.align(Alignment.BottomCenter),
+            modifier = Modifier.align(Alignment.BottomCenter).then(hideModifier),
         )
     }
 }

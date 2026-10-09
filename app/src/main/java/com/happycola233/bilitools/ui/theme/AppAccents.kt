@@ -38,7 +38,8 @@ import androidx.compose.ui.graphics.Color
  *
  * 悬浮按钮（FAB）浅色模式使用 [floatingActionContainer]，与次级操作保持同一强调层级；
  * 深色模式则回到 [fill]，避免 `secondaryContainer` 或 `primaryContainer` 这类暗色容器
- * 糊进深色页面里（对页面底达不到 3:1）。下载页 FAB 菜单展开后的操作项与主菜单按钮同色，
+ * 糊进深色页面里（对页面底达不到 3:1）。下载页 FAB 菜单展开后的操作项与收起时的主菜单按钮同色
+ * （主按钮展开时按 Expressive 规范过渡到 `primary`），
  * 不要换成 `primaryFixed`：那是 C14 的低彩度档，在浅色页面上读作灰块。
  *
  * 完整的参数取值、色域约束与实测对比度见 `docs/配色系统/README.md`。

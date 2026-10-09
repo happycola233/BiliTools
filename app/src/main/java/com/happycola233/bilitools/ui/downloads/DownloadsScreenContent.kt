@@ -4,10 +4,7 @@ import android.graphics.Typeface
 import android.text.style.ForegroundColorSpan
 import android.text.style.StyleSpan
 import android.text.style.UnderlineSpan
-import android.widget.TextView
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -17,27 +14,39 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.TextButton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FloatingActionButtonMenu
+import androidx.compose.material3.FloatingActionButtonMenuItem
+import androidx.compose.material3.FloatingActionButtonMenuScope
+import androidx.compose.material3.FloatingToolbarDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.ToggleFloatingActionButton
+import androidx.compose.material3.ToggleFloatingActionButtonDefaults
+import androidx.compose.material3.ToggleFloatingActionButtonDefaults.animateIcon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,11 +57,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -60,20 +65,14 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.text.HtmlCompat
-import androidx.compose.material3.FloatingActionButtonMenu
-import androidx.compose.material3.FloatingActionButtonMenuItem
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
-import androidx.compose.material3.ToggleFloatingActionButton
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.model.DownloadGroup
 import com.happycola233.bilitools.data.model.DownloadItem
@@ -110,6 +109,7 @@ sealed interface DownloadsDialogState {
 enum class DownloadsTaskAction {
     Open,
     Share,
+    Delete,
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -121,16 +121,11 @@ fun DownloadsScreenContent(
     expandedGroupIds: Set<Long>,
     collapsedSections: Set<DownloadSectionType>,
     swipedGroupId: Long?,
-    emptyStateVisible: Boolean,
-    batchStatusText: String,
-    batchSelectAllText: String,
-    batchHintHtml: String,
-    batchClearEnabled: Boolean,
-    batchDeleteEnabled: Boolean,
     dialogState: DownloadsDialogState?,
     contentTopPadding: Dp,
     resumeAllCount: Int,
     pauseAllCount: Int,
+    completedGroupCount: Int,
     liquidGlassPanelsEnabled: Boolean,
     glassDebugEnabled: Boolean,
     glassCornerRadiusDp: Float,
@@ -144,13 +139,12 @@ fun DownloadsScreenContent(
     barGlassRefractionAmountFrac: Float,
     barGlassChromaticAberration: Boolean,
     barGlassSurfaceAlpha: Float,
+    onOpenParse: () -> Unit,
     onBatchManage: () -> Unit,
     onResumeAll: () -> Unit,
     onPauseAll: () -> Unit,
     onClearCompleted: () -> Unit,
     onClearAll: () -> Unit,
-    onExitSelection: () -> Unit,
-    onSelectAll: () -> Unit,
     onClearRecords: () -> Unit,
     onDeleteFiles: () -> Unit,
     onDialogDismiss: () -> Unit,
@@ -166,8 +160,10 @@ fun DownloadsScreenContent(
     onGroupDelete: (group: DownloadGroup, deleteFiles: Boolean) -> Unit,
     onTaskPauseResume: (DownloadItem) -> Unit,
     onTaskRetry: (DownloadItem) -> Unit,
-    onTaskDelete: (DownloadItem) -> Unit,
     onTaskClick: (DownloadItem, Rect) -> Unit,
+    onDragSelectionStart: (anchorGroupId: Long) -> Unit,
+    onDragSelectionRange: (Set<Long>) -> Unit,
+    onDragSelectionEnd: () -> Unit,
     onGlassCornerRadiusChange: (Float) -> Unit,
     onGlassBlurRadiusChange: (Float) -> Unit,
     onGlassRefractionHeightChange: (Float) -> Unit,
@@ -184,21 +180,18 @@ fun DownloadsScreenContent(
     modifier: Modifier = Modifier,
 ) {
     val backdrop = rememberLayerBackdrop()
-    val density = LocalDensity.current
     val selectionMotion = rememberDownloadsSelectionMotion(selectionMode)
-    // 页面全出血绘制，内容从主界面底栏后方滚过，列表与底部悬浮控件均需预留底栏净空
+    // 页面全出血绘制，内容从主界面底栏后方滚过，列表与底部悬浮控件均需预留底栏净空。
+    // 多选时主导航栏让位给工具栏，工具栏只需避开系统导航栏。
     val mainBarBottomInset = mainBottomBarBottomInset()
     val controlsBottomPadding = FloatingControlsDefaults.MainScreenBottomPadding + mainBarBottomInset
-    val panelBottomPadding = controlsBottomPadding + 8.dp
-    var panelHeightPx by remember { mutableStateOf(0) }
-    val baseBottomPaddingPx =
-        with(density) {
-            (FloatingControlsDefaults.DownloadsListBottomPadding + mainBarBottomInset).roundToPx()
-        }
-    // 面板本身的高度变化已经有动画，列表留白直接跟随它与全页多选进度，不再嵌套另一条弹簧。
-    val listBottomPaddingDp = with(density) {
-        baseBottomPaddingPx.toDp() + (panelHeightPx.toDp() + 20.dp) * selectionMotion.layoutProgress
-    }
+    val toolbarBottomPadding = FloatingControlsDefaults.EdgePadding +
+        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val listBottomPadding = lerp(
+        FloatingControlsDefaults.DownloadsListBottomPadding + mainBarBottomInset,
+        toolbarBottomPadding + FloatingToolbarDefaults.ContainerSize + FloatingControlsDefaults.EdgePadding,
+        selectionMotion.layoutProgress,
+    )
     val motionScheme = MaterialTheme.motionScheme
     val downloadsGlassStyle = DownloadsGlassStyle(
         cornerRadiusDp = glassCornerRadiusDp,
@@ -226,7 +219,7 @@ fun DownloadsScreenContent(
                 collapsedSections = collapsedSections,
                 swipedGroupId = swipedGroupId,
                 contentTopPadding = contentTopPadding,
-                listBottomPadding = listBottomPaddingDp,
+                listBottomPadding = listBottomPadding,
                 onToggleSection = onToggleSection,
                 onToggleGroupExpanded = onToggleGroupExpanded,
                 onSwipedGroupChange = onSwipedGroupChange,
@@ -238,59 +231,55 @@ fun DownloadsScreenContent(
                 onGroupShowDetails = onGroupShowDetails,
                 onTaskPauseResume = onTaskPauseResume,
                 onTaskRetry = onTaskRetry,
-                onTaskDelete = onTaskDelete,
                 onTaskClick = onTaskClick,
+                onDragSelectionStart = onDragSelectionStart,
+                onDragSelectionRange = onDragSelectionRange,
+                onDragSelectionEnd = onDragSelectionEnd,
                 modifier = Modifier.fillMaxSize(),
             )
         }
 
-        if (emptyStateVisible) {
+        if (groups.isEmpty()) {
             DownloadsEmptyState(
+                onOpenParse = onOpenParse,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(top = contentTopPadding, bottom = listBottomPaddingDp),
+                    .padding(top = contentTopPadding, bottom = listBottomPadding),
             )
         }
 
         selectionMotion.transition.AnimatedVisibility(
             visible = { it },
             modifier = Modifier.align(Alignment.BottomCenter),
-            // 面板内容会自行执行高度动画。这里若再使用从底部展开的尺寸动画，首次快速全选时
-            // 两层裁剪边界会短暂不同步，横向截断刚变高的内容。
+            // 与让位的主导航栏反向运动：导航栏沉到屏幕外，工具栏从同一位置升起。
             enter =
                 fadeIn(animationSpec = motionScheme.fastEffectsSpec()) +
                     slideInVertically(
-                        initialOffsetY = { with(density) { 32.dp.roundToPx() } },
+                        initialOffsetY = { it },
                         animationSpec = downloadsSelectionControlsSpec(),
                     ),
             exit =
                 fadeOut(animationSpec = motionScheme.fastEffectsSpec()) +
                     slideOutVertically(
-                        targetOffsetY = { with(density) { 32.dp.roundToPx() } },
+                        targetOffsetY = { it },
                         animationSpec = downloadsSelectionControlsSpec(),
                     ),
         ) {
-            DownloadsBatchPanel(
-                modifier = Modifier,
+            DownloadsSelectionToolbar(
                 backdrop = backdrop,
-                statusText = batchStatusText,
-                selectAllText = batchSelectAllText,
-                hintHtml = batchHintHtml,
-                clearEnabled = batchClearEnabled,
-                deleteEnabled = batchDeleteEnabled,
-                bottomPadding = panelBottomPadding,
                 glassStyle = downloadsGlassStyle,
                 liquidGlassEnabled = liquidGlassPanelsEnabled,
-                onExitSelection = onExitSelection,
-                onSelectAll = onSelectAll,
+                actionsEnabled = selectedGroupIds.isNotEmpty(),
                 onClearRecords = onClearRecords,
                 onDeleteFiles = onDeleteFiles,
-                onHeightChanged = { panelHeightPx = it },
+                modifier = Modifier
+                    .padding(horizontal = FloatingControlsDefaults.EdgePadding)
+                    .padding(bottom = toolbarBottomPadding),
             )
         }
 
-        selectionMotion.transition.AnimatedVisibility(
-            visible = { !it },
+        AnimatedVisibility(
+            visible = !selectionMode && groups.isNotEmpty(),
             modifier = Modifier.align(Alignment.BottomEnd),
             enter =
                 fadeIn(animationSpec = motionScheme.fastEffectsSpec()) +
@@ -306,10 +295,10 @@ fun DownloadsScreenContent(
                     ),
         ) {
             DownloadsManageFab(
-                modifier = Modifier,
                 bottomPadding = controlsBottomPadding,
                 resumeAllCount = resumeAllCount,
                 pauseAllCount = pauseAllCount,
+                completedGroupCount = completedGroupCount,
                 onBatchManage = onBatchManage,
                 onResumeAll = onResumeAll,
                 onPauseAll = onPauseAll,
@@ -359,24 +348,40 @@ fun DownloadsScreenContent(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun DownloadsEmptyState(modifier: Modifier = Modifier) {
-    val textColor = MaterialTheme.colorScheme.onSurfaceVariant
+private fun DownloadsEmptyState(
+    onOpenParse: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val haptics = rememberAppHaptics()
     Column(
-        modifier = modifier,
+        modifier = modifier.padding(horizontal = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
         Image(
             painter = painterResource(R.drawable.empty),
             contentDescription = null,
-            modifier = Modifier.size(280.dp),
+            modifier = Modifier.size(240.dp),
         )
-        BasicText(
+        Text(
             text = stringResource(R.string.downloads_empty),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 16.dp),
-            style = TextStyle(color = textColor, fontSize = 17.sp),
         )
+        FilledTonalButton(
+            onClick = { haptics.tap(); onOpenParse() },
+            shapes = ButtonDefaults.shapes(),
+            contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+            modifier = Modifier.padding(top = 24.dp).heightIn(min = ButtonDefaults.MinHeight),
+        ) {
+            Icon(painterResource(R.drawable.ic_home_rounded_24), null, Modifier.size(ButtonDefaults.IconSize))
+            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+            Text(stringResource(R.string.downloads_empty_action))
+        }
     }
 }
 
@@ -464,29 +469,48 @@ private fun DownloadsDeleteDialogButtons(onDismiss: () -> Unit, onConfirm: (Bool
     }
 }
 
+/**
+ * 页面级批量操作菜单。只列出当前可执行的项；展开时按钮按 Expressive 规范由容器色过渡到 `primary`，
+ * 图标同步变色、变小并切换为关闭。
+ */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun DownloadsManageFab(
-    modifier: Modifier = Modifier,
     bottomPadding: Dp,
     resumeAllCount: Int,
     pauseAllCount: Int,
+    completedGroupCount: Int,
     onBatchManage: () -> Unit,
     onResumeAll: () -> Unit,
     onPauseAll: () -> Unit,
     onClearCompleted: () -> Unit,
     onClearAll: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val haptics = rememberAppHaptics()
     var expanded by remember { mutableStateOf(false) }
-    // 图标的 tint 必须显式给：ToggleFloatingActionButton 只做了加阴影、画容器、调 content()
-    // 三件事，既不提供 LocalContentColor，也不会自动套 animateIcon，不写 tint 的 Icon 会
-    // 回落到 Compose 库默认的纯黑，与配色方案彻底脱钩。
-    val menuButtonContainerColor = AppAccents.floatingActionContainer
-    val menuButtonContentColor = AppAccents.onFloatingActionContainer
-    // 展开的操作项与主菜单按钮同色
-    val menuItemContainerColor = menuButtonContainerColor
-    val menuItemContentColor = menuButtonContentColor
+    // 展开的操作项与收起态的主按钮同色，见 AppAccents.floatingActionContainer。
+    val menuItemContainerColor = AppAccents.floatingActionContainer
+    val menuItemContentColor = AppAccents.onFloatingActionContainer
+    val buttonContainerColor = ToggleFloatingActionButtonDefaults.containerColor(
+        initialColor = menuItemContainerColor,
+        finalColor = MaterialTheme.colorScheme.primary,
+    )
+    val iconColor = ToggleFloatingActionButtonDefaults.iconColor(
+        initialColor = menuItemContentColor,
+        finalColor = MaterialTheme.colorScheme.onPrimary,
+    )
+
+    @Composable
+    fun FloatingActionButtonMenuScope.MenuItem(iconRes: Int, text: String, onClick: () -> Unit) {
+        FloatingActionButtonMenuItem(
+            onClick = { expanded = false; haptics.confirm(); onClick() },
+            icon = { Icon(painter = painterResource(iconRes), contentDescription = null) },
+            text = { Text(text = text) },
+            containerColor = menuItemContainerColor,
+            contentColor = menuItemContentColor,
+        )
+    }
 
     FloatingActionButtonMenu(
         expanded = expanded,
@@ -497,165 +521,32 @@ private fun DownloadsManageFab(
                     haptics.toggle(next)
                     expanded = next
                 },
-                containerColor = { menuButtonContainerColor },
+                containerColor = buttonContainerColor,
             ) {
-                val imageVector = if (checkedProgress > 0.5f) {
-                    R.drawable.ic_close_rounded_24
-                } else {
-                    R.drawable.ic_menu_24
-                }
                 Icon(
-                    painter = painterResource(imageVector),
+                    painter = painterResource(
+                        if (checkedProgress > 0.5f) R.drawable.ic_close_rounded_24 else R.drawable.ic_more_horiz_24,
+                    ),
                     contentDescription = stringResource(R.string.downloads_actions_menu),
-                    tint = menuButtonContentColor,
+                    // 颜色与尺寸由 animateIcon 的着色层随展开进度统一决定，覆盖图标自身的 tint。
+                    modifier = Modifier.animateIcon({ checkedProgress }, color = iconColor),
                 )
             }
         },
         modifier = modifier
             .padding(bottom = FloatingControlsDefaults.menuFabBottomPadding(bottomPadding)),
     ) {
-        FloatingActionButtonMenuItem(
-            onClick = { expanded = false; haptics.confirm(); onClearAll() },
-            icon = { Icon(painter = painterResource(R.drawable.ic_delete_outline_rounded_24), contentDescription = null) },
-            text = { Text(text = stringResource(R.string.downloads_clear_all)) },
-            containerColor = menuItemContainerColor,
-            contentColor = menuItemContentColor,
-        )
-        FloatingActionButtonMenuItem(
-            onClick = { expanded = false; haptics.confirm(); onClearCompleted() },
-            icon = { Icon(painter = painterResource(R.drawable.ic_playlist_remove_rounded_24), contentDescription = null) },
-            text = { Text(text = stringResource(R.string.downloads_clear_completed)) },
-            containerColor = menuItemContainerColor,
-            contentColor = menuItemContentColor,
-        )
-        FloatingActionButtonMenuItem(
-            onClick = { expanded = false; haptics.confirm(); onPauseAll() },
-            icon = { Icon(painter = painterResource(R.drawable.ic_pause_24), contentDescription = null) },
-            text = { Text(text = stringResource(R.string.downloads_pause_all_with_count, pauseAllCount)) },
-            containerColor = menuItemContainerColor,
-            contentColor = menuItemContentColor,
-        )
-        FloatingActionButtonMenuItem(
-            onClick = { expanded = false; haptics.confirm(); onResumeAll() },
-            icon = { Icon(painter = painterResource(R.drawable.ic_play_arrow_24), contentDescription = null) },
-            text = { Text(text = stringResource(R.string.downloads_resume_all_with_count, resumeAllCount)) },
-            containerColor = menuItemContainerColor,
-            contentColor = menuItemContentColor,
-        )
-        FloatingActionButtonMenuItem(
-            onClick = { expanded = false; haptics.confirm(); onBatchManage() },
-            icon = { Icon(painter = painterResource(R.drawable.ic_checklist_rounded_24), contentDescription = null) },
-            text = { Text(text = stringResource(R.string.downloads_multi_manage)) },
-            containerColor = menuItemContainerColor,
-            contentColor = menuItemContentColor,
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-internal fun DownloadsBatchPanel(
-    modifier: Modifier = Modifier,
-    backdrop: com.kyant.backdrop.backdrops.LayerBackdrop,
-    statusText: String,
-    selectAllText: String,
-    hintHtml: String,
-    clearEnabled: Boolean,
-    deleteEnabled: Boolean,
-    bottomPadding: Dp,
-    glassStyle: DownloadsGlassStyle,
-    liquidGlassEnabled: Boolean,
-    onExitSelection: () -> Unit,
-    onSelectAll: () -> Unit,
-    onClearRecords: () -> Unit,
-    onDeleteFiles: () -> Unit,
-    onHeightChanged: (Int) -> Unit,
-) {
-    val panelTextColor = MaterialTheme.colorScheme.onSurface
-    val actionTextColor = MaterialTheme.colorScheme.primary
-    val panelSubTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-
-    Column(
-        modifier = modifier
-            .padding(horizontal = 16.dp)
-            .padding(bottom = bottomPadding)
-            .blockTouchThrough()
-            .onSizeChanged { onHeightChanged(it.height) }
-            .downloadsPanelSurface(
-                backdrop = backdrop,
-                style = glassStyle,
-                liquidGlassEnabled = liquidGlassEnabled,
-            )
-            .padding(horizontal = 20.dp, vertical = 16.dp)
-            .animateContentSize(
-                animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
-            ),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            BasicText(
-                text = statusText,
-                modifier = Modifier.weight(1f),
-                style = TextStyle(
-                    color = panelTextColor,
-                    fontSize = 17.sp,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                ),
-            )
-            BatchTextAction(text = selectAllText, color = actionTextColor, onClick = onSelectAll)
-            BatchTextAction(
-                text = stringResource(R.string.downloads_multi_exit),
-                color = actionTextColor,
-                onClick = onExitSelection,
-            )
+        MenuItem(R.drawable.ic_delete_outline_rounded_24, stringResource(R.string.downloads_clear_all), onClearAll)
+        if (completedGroupCount > 0) {
+            MenuItem(R.drawable.ic_playlist_remove_rounded_24, stringResource(R.string.downloads_clear_completed), onClearCompleted)
         }
-
-        AndroidView(
-            modifier = Modifier.fillMaxWidth(),
-            factory = { context ->
-                TextView(context).apply {
-                    textSize = 12.5f
-                    setLineSpacing(0f, 1.2f)
-                }
-            },
-            update = { textView ->
-                textView.text = HtmlCompat.fromHtml(hintHtml, HtmlCompat.FROM_HTML_MODE_LEGACY)
-                textView.setTextColor(panelSubTextColor.toArgb())
-            },
-        )
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            BatchActionButton(
-                iconRes = R.drawable.ic_playlist_remove_rounded_24,
-                text = stringResource(R.string.downloads_multi_clear_records),
-                enabled = clearEnabled,
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                onClick = onClearRecords,
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(),
-            )
-            BatchActionButton(
-                iconRes = R.drawable.ic_delete_outline_rounded_24,
-                text = stringResource(R.string.downloads_multi_delete_files),
-                enabled = deleteEnabled,
-                containerColor = MaterialTheme.colorScheme.errorContainer,
-                contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                onClick = onDeleteFiles,
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(),
-            )
+        if (pauseAllCount > 0) {
+            MenuItem(R.drawable.ic_pause_24, stringResource(R.string.downloads_pause_all_with_count, pauseAllCount), onPauseAll)
         }
+        if (resumeAllCount > 0) {
+            MenuItem(R.drawable.ic_play_arrow_24, stringResource(R.string.downloads_resume_all_with_count, resumeAllCount), onResumeAll)
+        }
+        MenuItem(R.drawable.ic_checklist_rounded_24, stringResource(R.string.downloads_multi_manage), onBatchManage)
     }
 }
 
@@ -915,89 +806,6 @@ private fun DebugSmallButton(
             text = text,
             style = TextStyle(color = colorScheme.onSurface, fontSize = 12.sp),
         )
-    }
-}
-
-@Composable
-private fun BatchTextAction(
-    text: String,
-    color: Color,
-    onClick: () -> Unit,
-) {
-    val haptics = rememberAppHaptics()
-    Box(
-        modifier = Modifier
-            .padding(start = 4.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .clickable {
-                haptics.tap()
-                onClick()
-            }
-            .padding(horizontal = 8.dp, vertical = 6.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        BasicText(
-            text = text,
-            style = TextStyle(
-                color = color,
-                fontSize = 14.sp,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
-            ),
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun BatchActionButton(
-    iconRes: Int,
-    text: String,
-    enabled: Boolean,
-    containerColor: Color,
-    contentColor: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val haptics = rememberAppHaptics()
-    val resolvedContainerColor by animateColorAsState(
-        targetValue = if (enabled) containerColor else containerColor.copy(alpha = 0.88f),
-        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
-    )
-    val resolvedContentColor by animateColorAsState(
-        targetValue = if (enabled) contentColor else contentColor.copy(alpha = 0.62f),
-        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
-    )
-
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(18.dp))
-            .background(resolvedContainerColor)
-            .clickable(enabled = enabled) {
-                haptics.tap()
-                onClick()
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Image(
-                painter = painterResource(iconRes),
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-                colorFilter = ColorFilter.tint(resolvedContentColor),
-            )
-            BasicText(
-                text = text,
-                style = TextStyle(
-                    color = resolvedContentColor,
-                    fontSize = 13.5f.sp,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
-                ),
-            )
-        }
     }
 }
 

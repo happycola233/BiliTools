@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -23,7 +24,6 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -32,7 +32,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
-import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.AppSettings
 import com.happycola233.bilitools.data.AppThemeColor
 import com.happycola233.bilitools.data.AppThemeMode
@@ -116,7 +115,6 @@ class DownloadsPanelsTest {
         var clearCount = 0
         var deleteCount = 0
         var supported = false
-        var batchHeight = 0
         var outline = Color.Transparent
         compose.setContent {
             // 模拟硬件加速宿主，保留 Compose 的真实 Owner，AndroidView 文本仍走正常测量。
@@ -130,33 +128,25 @@ class DownloadsPanelsTest {
                     Column(Modifier.fillMaxSize().layerBackdrop(backdrop).background(AppSurfaces.pageContainerColor)) {
                         repeat(12) { Text("正在下载　已完成　底层文字", color = MaterialTheme.colorScheme.onSurface) }
                     }
-                    DownloadsBatchPanel(
-                        modifier = Modifier.align(Alignment.BottomCenter),
+                    DownloadsSelectionToolbar(
                         backdrop = backdrop,
-                        statusText = "已选择 1/1",
-                        selectAllText = "取消全选",
-                        hintHtml = stringResource(R.string.downloads_multi_hint_has_file),
-                        clearEnabled = true,
-                        deleteEnabled = true,
-                        bottomPadding = 24.dp,
                         glassStyle = settings.toDownloadsGlassStyle(),
                         liquidGlassEnabled = glassEnabled,
-                        onExitSelection = {},
-                        onSelectAll = {},
+                        actionsEnabled = true,
                         onClearRecords = { clearCount++ },
                         onDeleteFiles = { deleteCount++ },
-                        onHeightChanged = { batchHeight = it },
+                        modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp).testTag("toolbar"),
                     )
                     DownloadsTaskActionsOverlay(state, backdrop, liquidGlassEnabled = glassEnabled)
                 }
             }
         }
         compose.runOnIdle { assertTrue("布局对照必须覆盖真实玻璃分支", supported) }
-        val glassStatusBounds = compose.onNodeWithText("已选择 1/1").getUnclippedBoundsInRoot()
-        val glassBatchHeight = batchHeight
+        val glassToolbarBounds = compose.onNodeWithTag("toolbar").getUnclippedBoundsInRoot()
+        val glassClearBounds = compose.onNodeWithText("清除记录").getUnclippedBoundsInRoot()
         compose.runOnIdle { glassEnabled = false }
-        assertEquals(glassStatusBounds, compose.onNodeWithText("已选择 1/1").getUnclippedBoundsInRoot())
-        assertEquals(glassBatchHeight, batchHeight)
+        assertEquals(glassToolbarBounds, compose.onNodeWithTag("toolbar").getUnclippedBoundsInRoot())
+        assertEquals(glassClearBounds, compose.onNodeWithText("清除记录").getUnclippedBoundsInRoot())
         if (mode == AppThemeMode.Dark) assertTrue("深色面板需要可见描边", outline.alpha > 0f)
         capture("batch-${mode.name.lowercase()}-$pureBlack")
         compose.onNodeWithText("清除记录").performClick()
@@ -166,12 +156,16 @@ class DownloadsPanelsTest {
             assertEquals(1, deleteCount)
             glassEnabled = true
             state.show(
-                DownloadsTaskActionsOverlayRequest(1, title, Rect(28f, 240f, 720f, 340f), settings.toDownloadsGlassStyle()),
+                DownloadsTaskActionsOverlayRequest(
+                    1, title, Rect(28f, 240f, 720f, 340f), settings.toDownloadsGlassStyle(),
+                    listOf(DownloadsTaskAction.Open, DownloadsTaskAction.Share, DownloadsTaskAction.Delete),
+                ),
             ) { selectedAction = it }
         }
         val glassTitleBounds = compose.onNodeWithText(title).getUnclippedBoundsInRoot()
         val glassOpenBounds = compose.onNodeWithText("打开方式").getUnclippedBoundsInRoot()
         val glassShareBounds = compose.onNodeWithText("分享").getUnclippedBoundsInRoot()
+        compose.onNodeWithText("删除").assertExists()
         compose.runOnIdle { glassEnabled = false }
         assertEquals(glassTitleBounds, compose.onNodeWithText(title).getUnclippedBoundsInRoot())
         assertEquals(glassOpenBounds, compose.onNodeWithText("打开方式").getUnclippedBoundsInRoot())

@@ -92,8 +92,9 @@ class DownloadsSelectionMotionTest {
                             listBottomPadding = 24.dp + 180.dp * motion.layoutProgress,
                             onToggleSection = {}, onToggleGroupExpanded = {}, onSwipedGroupChange = {},
                             onGroupSelectionToggle = { selection = true }, onGroupDelete = { _, _ -> }, onGroupPause = {}, onGroupResume = {},
-                            onGroupReparse = {}, onGroupShowDetails = {}, onTaskPauseResume = {}, onTaskRetry = {}, onTaskDelete = {},
-                            onTaskClick = { _, _ -> }, modifier = Modifier.fillMaxSize(),
+                            onGroupReparse = {}, onGroupShowDetails = {}, onTaskPauseResume = {}, onTaskRetry = {},
+                            onTaskClick = { _, _ -> }, onDragSelectionStart = {}, onDragSelectionRange = {}, onDragSelectionEnd = {},
+                            modifier = Modifier.fillMaxSize(),
                         )
                     }
                 }

@@ -219,6 +219,10 @@
     <string name="common_error_unknown">Ocorreu um erro desconhecido</string>
     <string name="downloads_title">Transferências</string>
     <string name="downloads_empty">Nenhum download ainda</string>
+    <string name="downloads_empty_action">Ir para Analisar</string>
+    <plurals name="downloads_selection_title">
+        <item quantity="other">%1$d selecionados</item>
+    </plurals>
     <string name="downloads_clear_completed">Limpar downloads concluídos</string>
     <string name="downloads_clear_all">Limpar todos os downloads</string>
     <string name="downloads_actions_menu">Ações de download</string>
@@ -226,15 +230,11 @@
     <string name="downloads_multi_select_all">Selecionar tudo</string>
     <string name="downloads_multi_unselect_all">Desmarcar tudo</string>
     <string name="downloads_multi_exit">Sair</string>
-    <string name="downloads_multi_status">%1$d / %2$d selecionado</string>
     <string name="downloads_multi_clear_records">Limpar registros</string>
     <string name="downloads_multi_delete_files">Excluir arquivos</string>
     <string name="downloads_multi_no_task">Nenhum download disponível</string>
-    <string name="downloads_multi_confirm_clear_message">Selecionado:&lt;b&gt;%1$d&lt;/b&gt;</string>
-    <string name="downloads_multi_confirm_delete_message">Selecionado:&lt;b&gt;%1$d&lt;/b&gt;</string>
-    <string name="downloads_multi_hint_default">Selecione grupos de download para gerenciar seus registros e arquivos juntos.</string>
-    <string name="downloads_multi_hint_running">&lt;b&gt;Limpa registros&lt;/b&gt;&lt;br/&gt;Mantém arquivos concluídos. Interrompe downloads ativos e remove suas tarefas e arquivos temporários.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Excluir arquivos&lt;/b&gt;&lt;br/&gt;Remove tarefas, registros e arquivos.</string>
-    <string name="downloads_multi_hint_has_file">&lt;b&gt;Limpa registros&lt;/b&gt;&lt;br/&gt;Mantém arquivos concluídos. Interrompe downloads ativos e remove suas tarefas e arquivos temporários.&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Excluir arquivos&lt;/b&gt;&lt;br/&gt;Remove tarefas, registros e arquivos.</string>
+    <string name="downloads_multi_confirm_clear_message">Remover &lt;b&gt;%1$d&lt;/b&gt; itens da lista. Os arquivos baixados são mantidos; tarefas não concluídas param e seus arquivos temporários são excluídos.</string>
+    <string name="downloads_multi_confirm_delete_message">Remover &lt;b&gt;%1$d&lt;/b&gt; itens e excluir os arquivos baixados. Esta ação não pode ser desfeita.</string>
     <string name="downloads_multi_done_clear">Registros apagados: %1$d</string>
     <string name="downloads_multi_done_delete">Tarefas processadas: %1$d</string>
     <string name="downloads_group_progress_unavailable">Ignorado: %1$d</string>

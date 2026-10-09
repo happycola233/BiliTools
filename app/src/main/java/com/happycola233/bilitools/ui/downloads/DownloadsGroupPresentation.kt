@@ -6,6 +6,8 @@ import com.happycola233.bilitools.core.formatEstimatedTime
 import com.happycola233.bilitools.core.localizedStatusDetail
 import com.happycola233.bilitools.data.DownloadTransferEstimate
 import com.happycola233.bilitools.data.model.DownloadGroup
+import com.happycola233.bilitools.data.model.DownloadItem
+import com.happycola233.bilitools.data.model.DownloadProgressRules
 import com.happycola233.bilitools.data.model.DownloadStatus
 import com.happycola233.bilitools.data.model.isManagedTransfer
 import com.happycola233.bilitools.data.model.isResolvedWithoutFailure
@@ -16,7 +18,9 @@ internal data class DownloadsGroupPresentation(
     val action: DownloadsGroupAction,
     val completed: Boolean,
     val executing: Boolean,
-    val completionFraction: Float,
+    /** 组进度圆环的比例，按预计耗时加权，见 [estimateGroupProgress]。 */
+    val progressFraction: Float,
+    /** 「x / y 项已完成」中的 x：保存成功或确认无资源的任务数。 */
     val resolvedCount: Int,
     val skippedCount: Int,
     val failedCount: Int,
@@ -24,13 +28,73 @@ internal data class DownloadsGroupPresentation(
     val speedBytesPerSec: Long,
     val etaSeconds: Long?,
 ) {
-    // 尚无任务产出结果时只表示正在工作，不用传输字节冒充整组任务的完成比例。
-    val awaitingFirstResult: Boolean get() = executing && resolvedCount == 0
+    // 正在工作却还没有任何可计的进度（准备中、总量未知）时，圆环只表示忙碌。
+    val progressUnknown: Boolean get() = executing && progressFraction == 0f
 }
+
+/** 组进度中媒体传输所占的比重；字幕、封面、弹幕等附属任务平分其余部分。 */
+private const val MEDIA_PROGRESS_SHARE = 0.9f
+
+/** 媒体传输结束、进入合并或转码等后处理时计入的比例；保存完成才算满。 */
+private const val MEDIA_POST_PROCESS_PROGRESS = 0.95f
+
+/** 仍有任务未处理完时圆环不画满。 */
+private const val MAX_UNFINISHED_PROGRESS = 0.99f
+
+/**
+ * 按预计耗时加权估算组进度。耗时主要花在音视频等媒体传输上，按字节计入；
+ * 字幕、封面、AI 总结等附属任务体积小、耗时与字节无关，只按是否完成平分一小份。
+ * 没有媒体任务时退回按项数计算。
+ *
+ * 失败与取消的媒体任务不计已传输量：重试可能从头开始，圆环不能因此倒退。
+ * 已确认无资源的任务属于正常处理完毕，与保存成功同样计满。
+ */
+internal fun estimateGroupProgress(tasks: List<DownloadItem>): Float {
+    if (tasks.isEmpty()) return 0f
+    if (tasks.all { it.status.isResolvedWithoutFailure }) return 1f
+    val (media, auxiliary) = tasks.partition { it.taskType.isManagedTransfer }
+    val auxiliaryProgress = if (auxiliary.isEmpty()) 0f
+        else auxiliary.count { it.status.isResolvedWithoutFailure }.toFloat() / auxiliary.size
+    if (media.isEmpty()) return auxiliaryProgress.coerceAtMost(MAX_UNFINISHED_PROGRESS)
+
+    val knownWeights = media.mapNotNull { it.progressWeightBytes }
+    // 大小未知的媒体任务按已知任务的平均大小计；全部未知时各占一份。
+    val fallbackWeight = if (knownWeights.isEmpty()) 1.0 else knownWeights.average()
+    var weightedProgress = 0.0
+    var totalWeight = 0.0
+    media.forEach { task ->
+        val weight = task.progressWeightBytes?.toDouble() ?: fallbackWeight
+        weightedProgress += weight * task.mediaProgress()
+        totalWeight += weight
+    }
+    val mediaProgress = (weightedProgress / totalWeight).toFloat()
+    val estimate = if (auxiliary.isEmpty()) mediaProgress
+        else MEDIA_PROGRESS_SHARE * mediaProgress + (1f - MEDIA_PROGRESS_SHARE) * auxiliaryProgress
+    return estimate.coerceIn(0f, MAX_UNFINISHED_PROGRESS)
+}
+
+private val DownloadItem.progressWeightBytes: Long?
+    get() = totalBytes.takeIf { it > 0L } ?: outputBytes?.takeIf { it > 0L }
+
+private fun DownloadItem.mediaProgress(): Float = when (status) {
+    DownloadStatus.Success,
+    DownloadStatus.Unavailable -> 1f
+    DownloadStatus.Merging -> MEDIA_POST_PROCESS_PROGRESS
+    DownloadStatus.Pending,
+    DownloadStatus.Running,
+    DownloadStatus.Paused -> if (progressIndeterminate) 0f
+        else DownloadProgressRules.normalizeTaskProgress(status, progress) / 100f * MEDIA_POST_PROCESS_PROGRESS
+    DownloadStatus.Failed,
+    DownloadStatus.Cancelled -> 0f
+}
+
+/** 所有任务都已保存或确认无资源；决定该组归入「已完成」分区。 */
+internal val DownloadGroup.isCompleted: Boolean
+    get() = tasks.isNotEmpty() && tasks.all { it.status.isResolvedWithoutFailure }
 
 internal fun resolveDownloadsGroupPresentation(group: DownloadGroup): DownloadsGroupPresentation {
     val tasks = group.tasks
-    val completed = tasks.isNotEmpty() && tasks.all { it.status.isResolvedWithoutFailure }
+    val completed = group.isCompleted
     val executing = tasks.any {
         it.status == DownloadStatus.Running || it.status == DownloadStatus.Merging
     }
@@ -52,9 +116,7 @@ internal fun resolveDownloadsGroupPresentation(group: DownloadGroup): DownloadsG
         },
         completed = completed,
         executing = executing,
-        // 圆环与「已完成 x/y 项」使用同一口径；失败、取消、暂停和合并中的任务均不提前计入。
-        // 已确认无资源的任务属于正常处理完毕，额外以「跳过」说明。
-        completionFraction = if (tasks.isEmpty()) 0f else resolvedCount.toFloat() / tasks.size,
+        progressFraction = estimateGroupProgress(tasks),
         resolvedCount = resolvedCount,
         skippedCount = tasks.count { it.status == DownloadStatus.Unavailable },
         failedCount = failedCount,

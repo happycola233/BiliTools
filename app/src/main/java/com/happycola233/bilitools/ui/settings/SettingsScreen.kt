@@ -19,7 +19,6 @@ import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
@@ -183,6 +182,8 @@ import com.happycola233.bilitools.ui.theme.AppAccents
 import com.happycola233.bilitools.ui.theme.AppSurfaces
 import com.happycola233.bilitools.ui.theme.BiliToolsFonts
 import com.happycola233.bilitools.ui.theme.BiliToolsTheme
+import com.happycola233.bilitools.ui.theme.SegmentedListShapes
+import com.happycola233.bilitools.ui.theme.animateSegmentShape
 import com.mikepenz.aboutlibraries.Libs
 import com.mikepenz.aboutlibraries.entity.Library
 import java.time.Instant
@@ -3576,15 +3577,10 @@ private fun ClickableListItem(
     val haptics = rememberAppHaptics()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-    val top by animateDpAsState(
-        targetValue = if (isPressed) 40.dp else if (items == 1 || index == 0) 20.dp else 4.dp,
-        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
-        label = "settingsListItemTop",
-    )
-    val bottom by animateDpAsState(
-        targetValue = if (isPressed) 40.dp else if (items == 1 || index == items - 1) 20.dp else 4.dp,
-        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
-        label = "settingsListItemBottom",
+    val shape = animateSegmentShape(
+        topCorner = SegmentedListShapes.edgeCorner(items == 1 || index == 0),
+        bottomCorner = SegmentedListShapes.edgeCorner(items == 1 || index == items - 1),
+        pressed = isPressed,
     )
 
     ListItem(
@@ -3595,14 +3591,7 @@ private fun ClickableListItem(
         trailingContent = trailingContent,
         colors = colors,
         modifier = modifier
-            .clip(
-                RoundedCornerShape(
-                    topStart = top,
-                    topEnd = top,
-                    bottomStart = bottom,
-                    bottomEnd = bottom,
-                )
-            )
+            .clip(shape)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,

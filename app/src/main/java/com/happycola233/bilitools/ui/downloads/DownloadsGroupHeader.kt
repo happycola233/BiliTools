@@ -17,9 +17,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -174,7 +174,7 @@ internal fun DownloadsGroupHeader(
                             lerp(normalCoverWidth, 72.dp, selectionMotion.layoutProgress),
                             lerp(if (compact) 50.dp else 56.dp, 50.dp, selectionMotion.layoutProgress),
                         )
-                        .clip(RoundedCornerShape(12.dp)).background(coverPlaceholderColor),
+                        .clip(MaterialTheme.shapes.medium).background(coverPlaceholderColor),
                 )
                 Column(Modifier.weight(1f).padding(start = titleSpacing, end = 8.dp * selectionMotion.actionFraction)) {
                     Text(
@@ -278,6 +278,9 @@ private fun DownloadsGroupExpandButton(
     }
 }
 
+/** 失败重试按钮的底色浓度：浅色下接近 errorContainer，深色下仍是轻微的红色倾向。 */
+internal const val RetryContainerAlpha = 0.14f
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun DownloadsGroupProgressAction(
@@ -286,6 +289,38 @@ private fun DownloadsGroupProgressAction(
     completionDescription: String,
     onClick: () -> Unit,
 ) {
+    val actionLabel = when (presentation.action) {
+        DownloadsGroupAction.Pause -> stringResource(R.string.downloads_group_pause)
+        DownloadsGroupAction.Resume -> stringResource(R.string.downloads_group_resume)
+        DownloadsGroupAction.Retry -> stringResource(R.string.downloads_group_retry)
+        DownloadsGroupAction.Expand -> expandAction
+    }
+    val progressSemantics = Modifier.semantics {
+        contentDescription = actionLabel
+        stateDescription = completionDescription
+        progressBarRangeInfo = if (presentation.progressUnknown) ProgressBarRangeInfo.Indeterminate
+            else ProgressBarRangeInfo(presentation.progressFraction, 0f..1f)
+    }
+    if (presentation.action == DownloadsGroupAction.Retry) {
+        // 只剩失败项可处理时不再画进度环：已完成弧、失败底轨与重试图标挤在一个小环里难以辨认。
+        // 换成与进度环同尺寸的淡错误色实心按钮；用半透明错误色而非 errorContainer，
+        // 深色下不会成为一块浓重的暗红色。完成比例由标题下的「x / y 项已完成」给出。
+        Box(Modifier.size(56.dp), contentAlignment = Alignment.Center) {
+            FilledTonalIconButton(
+                onClick = onClick,
+                shapes = IconButtonDefaults.shapes(),
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.error.copy(alpha = RetryContainerAlpha),
+                    contentColor = MaterialTheme.colorScheme.error,
+                ),
+                modifier = Modifier.size(WavyProgressIndicatorDefaults.CircularContainerSize).then(progressSemantics),
+            ) {
+                Icon(painterResource(R.drawable.ic_retry_24), contentDescription = null)
+            }
+        }
+        return
+    }
+
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val iconScale by animateFloatAsState(
@@ -294,42 +329,22 @@ private fun DownloadsGroupProgressAction(
         label = "downloadsGroupActionScale",
     )
     val actionColor = WavyProgressIndicatorDefaults.indicatorColor
-    val hasFailure = presentation.failedCount > 0
-    val indicatorColor = if (hasFailure) {
-        MaterialTheme.colorScheme.error
-    } else {
-        actionColor
-    }
-    // 零进度没有已完成弧，仍用淡错误色底轨表达失败；深浅两种色阶不会把失败画成完成。
-    val trackColor = if (hasFailure) MaterialTheme.colorScheme.error.copy(alpha = 0.2f)
-        else WavyProgressIndicatorDefaults.trackColor
-    val actionLabel = when (presentation.action) {
-        DownloadsGroupAction.Pause -> stringResource(R.string.downloads_group_pause)
-        DownloadsGroupAction.Resume -> stringResource(R.string.downloads_group_resume)
-        DownloadsGroupAction.Retry -> stringResource(R.string.downloads_group_retry)
-        DownloadsGroupAction.Expand -> expandAction
-    }
     IconButton(
         onClick = onClick,
         shape = CircleShape,
         colors = IconButtonDefaults.iconButtonColors(contentColor = actionColor),
         interactionSource = interactionSource,
         // 外圈与中心共用一个圆形触控面和涟漪裁切，不叠加实心内按钮或另一种按压形状。
-        modifier = Modifier.size(56.dp).semantics {
-            contentDescription = actionLabel
-            stateDescription = completionDescription
-            progressBarRangeInfo = if (presentation.awaitingFirstResult) ProgressBarRangeInfo.Indeterminate
-                else ProgressBarRangeInfo(presentation.completionFraction, 0f..1f)
-        },
+        modifier = Modifier.size(56.dp).then(progressSemantics),
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            // 失败项由卡片底部的错误色文案说明，进度环保持统一配色，不再混入第三种颜色。
             DownloadsGroupProgressIndicator(
                 presentation = presentation,
-                color = indicatorColor,
-                trackColor = trackColor,
+                color = actionColor,
+                trackColor = WavyProgressIndicatorDefaults.trackColor,
                 modifier = Modifier.clearAndSetSemantics { },
             )
-            // 错误由外环提示；中心沿用主题色的继续图标，点击仍重试失败任务。
             Icon(
                 painterResource(when (presentation.action) {
                     DownloadsGroupAction.Pause -> R.drawable.ic_pause_24

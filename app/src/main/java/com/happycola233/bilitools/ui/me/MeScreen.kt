@@ -7,7 +7,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -116,6 +115,8 @@ import com.happycola233.bilitools.ui.login.LoginUiState
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import com.happycola233.bilitools.ui.theme.AppAccents
 import com.happycola233.bilitools.ui.theme.AppSurfaces
+import com.happycola233.bilitools.ui.theme.SegmentedListShapes
+import com.happycola233.bilitools.ui.theme.animateSegmentShape
 import com.happycola233.bilitools.ui.theme.BiliToolsFonts
 import com.happycola233.bilitools.ui.theme.BiliToolsTheme
 import kotlin.math.abs
@@ -1563,27 +1564,10 @@ private fun MeClickableListItem(
     val haptics = rememberAppHaptics()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-    val top by animateDpAsState(
-        targetValue = if (enabled && isPressed) {
-            40.dp
-        } else if (items == 1 || index == 0) {
-            20.dp
-        } else {
-            4.dp
-        },
-        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
-        label = "meListItemTop",
-    )
-    val bottom by animateDpAsState(
-        targetValue = if (enabled && isPressed) {
-            40.dp
-        } else if (items == 1 || index == items - 1) {
-            20.dp
-        } else {
-            4.dp
-        },
-        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
-        label = "meListItemBottom",
+    val shape = animateSegmentShape(
+        topCorner = SegmentedListShapes.edgeCorner(items == 1 || index == 0),
+        bottomCorner = SegmentedListShapes.edgeCorner(items == 1 || index == items - 1),
+        pressed = enabled && isPressed,
     )
 
     ListItem(
@@ -1595,14 +1579,7 @@ private fun MeClickableListItem(
             containerColor = AppSurfaces.cardContainerColor,
         ),
         modifier = modifier
-            .clip(
-                RoundedCornerShape(
-                    topStart = top,
-                    topEnd = top,
-                    bottomStart = bottom,
-                    bottomEnd = bottom,
-                ),
-            )
+            .clip(shape)
             .alpha(if (enabled) 1f else 0.52f)
             .clickable(
                 enabled = enabled,

@@ -17,7 +17,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -66,7 +66,6 @@ private val taskActionsMaxWidth = 240.dp
 private val taskActionsPanelPadding = 8.dp
 private val taskActionsItemHorizontalPadding = 16.dp
 private val taskActionsIconTextSpacing = 12.dp
-private val taskActionsItemShape = RoundedCornerShape(14.dp)
 
 /** 弹窗出现时的起始缩放：只做一点点收缩，避免玻璃折射出现夸张的呼吸感。 */
 private const val TASK_ACTIONS_ENTER_SCALE = 0.92f
@@ -82,6 +81,8 @@ internal data class DownloadsTaskActionsOverlayRequest(
     val title: String,
     val anchorInWindow: Rect,
     val glassStyle: DownloadsGlassStyle,
+    /** 文件可用时含打开与分享；删除始终可用，排在最后。 */
+    val actions: List<DownloadsTaskAction>,
 )
 
 /** 主壳持有的任务菜单状态；退场动画结束后才派发所选操作。 */
@@ -235,16 +236,19 @@ internal fun DownloadsTaskActionsOverlay(
                         bottom = 12.dp,
                     ),
                 )
-                TaskActionRow(
-                    iconRes = R.drawable.ic_open_in_new_24,
-                    text = stringResource(R.string.download_action_open),
-                    onClick = { state.requestClose(DownloadsTaskAction.Open) },
-                )
-                TaskActionRow(
-                    iconRes = R.drawable.ic_share_24,
-                    text = stringResource(R.string.download_action_share),
-                    onClick = { state.requestClose(DownloadsTaskAction.Share) },
-                )
+                request.actions.forEach { action ->
+                    if (action == DownloadsTaskAction.Delete && request.actions.size > 1) {
+                        // 破坏性操作与文件操作分组，避免误触。
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant,
+                            modifier = Modifier.padding(horizontal = taskActionsItemHorizontalPadding, vertical = 4.dp),
+                        )
+                    }
+                    TaskActionRow(
+                        action = action,
+                        onClick = { state.requestClose(action) },
+                    )
+                }
             }
         }
     }
@@ -300,16 +304,16 @@ private fun TaskActionsAnchoredLayout(
 
 @Composable
 private fun TaskActionRow(
-    iconRes: Int,
-    text: String,
+    action: DownloadsTaskAction,
     onClick: () -> Unit,
 ) {
     val haptics = rememberAppHaptics()
+    val destructive = action == DownloadsTaskAction.Delete
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .clip(taskActionsItemShape)
+            .clip(MaterialTheme.shapes.medium)
             .clickable {
                 haptics.tap()
                 onClick()
@@ -318,15 +322,27 @@ private fun TaskActionRow(
             .padding(horizontal = taskActionsItemHorizontalPadding, vertical = 12.dp),
     ) {
         Icon(
-            painter = painterResource(iconRes),
+            painter = painterResource(
+                when (action) {
+                    DownloadsTaskAction.Open -> R.drawable.ic_open_in_new_24
+                    DownloadsTaskAction.Share -> R.drawable.ic_share_24
+                    DownloadsTaskAction.Delete -> R.drawable.ic_delete_outline_rounded_24
+                },
+            ),
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(24.dp),
         )
         Text(
-            text = text,
+            text = stringResource(
+                when (action) {
+                    DownloadsTaskAction.Open -> R.string.download_action_open
+                    DownloadsTaskAction.Share -> R.string.download_action_share
+                    DownloadsTaskAction.Delete -> R.string.download_delete
+                },
+            ),
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(start = taskActionsIconTextSpacing),

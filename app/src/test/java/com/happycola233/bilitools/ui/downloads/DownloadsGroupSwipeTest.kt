@@ -110,7 +110,7 @@ class DownloadsGroupSwipeTest {
                         onSwipedGroupChange = { swiped = it == group.id },
                         onToggleSelection = {}, onToggleExpanded = {}, onDelete = { deleteRequests++ },
                         onPauseGroup = {}, onResumeGroup = {}, onReparse = {}, onShowDetails = {},
-                        onTaskPauseResume = {}, onTaskRetry = {}, onTaskDelete = {}, onTaskClick = { _, _ -> },
+                        onTaskPauseResume = {}, onTaskRetry = {}, onTaskClick = { _, _ -> },
                         modifier = Modifier.testTag("swipe-card"),
                     )
                 }
@@ -162,7 +162,7 @@ class DownloadsGroupSwipeTest {
                                 onSwipedGroupChange = { swipedGroupId = it },
                                 onToggleSelection = {}, onToggleExpanded = {}, onDelete = { deleteRequests++ },
                                 onPauseGroup = {}, onResumeGroup = {}, onReparse = {}, onShowDetails = {},
-                                onTaskPauseResume = {}, onTaskRetry = {}, onTaskDelete = {}, onTaskClick = { _, _ -> },
+                                onTaskPauseResume = {}, onTaskRetry = {}, onTaskClick = { _, _ -> },
                             )
                         }
                     }
@@ -248,7 +248,7 @@ class DownloadsGroupSwipeTest {
                             onToggleSelection = {}, onToggleExpanded = {},
                             onDelete = { requestedFileDeletion += it },
                             onPauseGroup = {}, onResumeGroup = {}, onReparse = {}, onShowDetails = {},
-                            onTaskPauseResume = {}, onTaskRetry = {}, onTaskDelete = {}, onTaskClick = { _, _ -> },
+                            onTaskPauseResume = {}, onTaskRetry = {}, onTaskClick = { _, _ -> },
                             modifier = Modifier.testTag("swipe-card"),
                         )
                         Surface(

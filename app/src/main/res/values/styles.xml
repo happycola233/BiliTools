@@ -3,16 +3,6 @@
         <item name="cornerSize">12dp</item>
     </style>
 
-    <style name="Widget.BiliTools.DownloadProgress"
-        parent="Widget.Material3Expressive.LinearProgressIndicator.Wavy">
-        <item name="trackThickness">4dp</item>
-        <item name="trackCornerRadius">2dp</item>
-        <item name="indicatorColor">?attr/colorPrimary</item>
-        <item name="trackColor">?attr/colorSurfaceVariant</item>
-        <item name="waveSpeed">40dp</item>
-        <item name="trackStopIndicatorSize">0dp</item>
-    </style>
-
     <style name="TextAppearance.BiliTools.Settings.Section" parent="TextAppearance.Material3.TitleMedium">
         <item name="android:textSize">15sp</item>
     </style>
