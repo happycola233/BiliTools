@@ -518,8 +518,8 @@
     <string name="settings_downloads_glass_debug_desc">在下载页显示液态玻璃调试悬浮窗，可分别调节下载页玻璃浮窗与底部导航栏的玻璃参数并实时预览（需要调参时可临时启用，参数将持久化保存）。</string>
     <string name="settings_liquid_bottom_tabs">液态玻璃底栏</string>
     <string name="settings_liquid_glass_panels">液态玻璃面板</string>
-    <string name="settings_liquid_glass_panels_desc">下载任务菜单和批量管理面板使用液态玻璃效果；关闭后使用 Material 风格面板。</string>
-    <string name="settings_liquid_glass_panels_unavailable_desc">当前设备暂不支持液态玻璃，已自动使用 Material 风格面板。</string>
+    <string name="settings_liquid_glass_panels_desc">下载任务菜单和批量管理操作栏使用液态玻璃效果；关闭后使用 Material 风格。</string>
+    <string name="settings_liquid_glass_panels_unavailable_desc">当前设备暂不支持液态玻璃，已自动使用 Material 风格。</string>
     <string name="settings_liquid_bottom_tabs_unavailable_desc">当前设备暂不支持液态玻璃，已自动使用 Material 风格底栏。</string>
     <string name="settings_liquid_bar_width">液态底栏宽度</string>
     <string name="settings_liquid_bar_width_desc">调整底栏胶囊占屏幕可用宽度的比例。</string>

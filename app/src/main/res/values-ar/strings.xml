@@ -507,8 +507,8 @@
     <string name="settings_downloads_glass_debug_desc">يظهر عناصر التحكم في صفحة التنزيلات لضبط ومعاينة التأثيرات الزجاجية للوحات العائمة والتنقل السفلي. يتم حفظ التعديلات الخاصة بك.</string>
     <string name="settings_liquid_bottom_tabs">الملاحة الزجاجية السائلة</string>
     <string name="settings_liquid_glass_panels">الألواح الزجاجية السائلة</string>
-    <string name="settings_liquid_glass_panels_desc">يستخدم الزجاج السائل لتنزيل القوائم والإجراءات الدفعية. قم بإيقاف تشغيله لاستخدام لوحات المواد.</string>
-    <string name="settings_liquid_glass_panels_unavailable_desc">الزجاج السائل غير متوفر في هذا الجهاز. يتم استخدام ألواح المواد.</string>
+    <string name="settings_liquid_glass_panels_desc">يطبّق الزجاج السائل على قوائم مهام التنزيل وشريط أدوات التحديد. أوقفه لاستخدام نمط Material.</string>
+    <string name="settings_liquid_glass_panels_unavailable_desc">الزجاج السائل غير متاح على هذا الجهاز. يُستخدم نمط Material.</string>
     <string name="settings_liquid_bottom_tabs_unavailable_desc">الزجاج السائل غير متوفر في هذا الجهاز. يتم استخدام التنقل المادي.</string>
     <string name="settings_liquid_bar_width">عرض شريط التنقل</string>
     <string name="settings_liquid_bar_width_desc">يضبط مقدار عرض الشاشة الذي تشغله لوحة التنقل.</string>

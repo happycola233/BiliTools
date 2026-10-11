@@ -495,8 +495,8 @@
     <string name="settings_downloads_glass_debug_desc">Shows controls on the Downloads page to adjust and preview the glass effects of floating panels and bottom navigation. Your adjustments are saved.</string>
     <string name="settings_liquid_bottom_tabs">Liquid glass navigation</string>
     <string name="settings_liquid_glass_panels">Liquid glass panels</string>
-    <string name="settings_liquid_glass_panels_desc">Applies liquid glass to download menus and batch actions. Turn off to use Material panels.</string>
-    <string name="settings_liquid_glass_panels_unavailable_desc">Liquid glass is unavailable on this device. Material panels are used.</string>
+    <string name="settings_liquid_glass_panels_desc">Applies liquid glass to download task menus and the selection toolbar. Turn off to use Material style.</string>
+    <string name="settings_liquid_glass_panels_unavailable_desc">Liquid glass is unavailable on this device. Material style is used instead.</string>
     <string name="settings_liquid_bottom_tabs_unavailable_desc">Liquid glass is unavailable on this device. Material navigation is used.</string>
     <string name="settings_liquid_bar_width">Navigation bar width</string>
     <string name="settings_liquid_bar_width_desc">Adjusts how much of the screen width the navigation pill occupies.</string>

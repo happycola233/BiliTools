@@ -495,8 +495,8 @@
     <string name="settings_downloads_glass_debug_desc">Yüzen panellerin ve alt gezinmenin cam efektlerini ayarlamak ve önizlemek için İndirilenler sayfasındaki kontrolleri gösterir. Düzenlemeleriniz kaydedildi.</string>
     <string name="settings_liquid_bottom_tabs">Sıvı cam navigasyonu</string>
     <string name="settings_liquid_glass_panels">Sıvı cam paneller</string>
-    <string name="settings_liquid_glass_panels_desc">Menüleri indirmek ve toplu işlemler için sıvı cam uygular. Malzeme panellerini kullanmak için kapatın.</string>
-    <string name="settings_liquid_glass_panels_unavailable_desc">Bu cihazda sıvı cam mevcut değildir. Malzeme panelleri kullanılmaktadır.</string>
+    <string name="settings_liquid_glass_panels_desc">İndirme görevi menülerine ve seçim araç çubuğuna sıvı cam uygular. Material stilini kullanmak için kapatın.</string>
+    <string name="settings_liquid_glass_panels_unavailable_desc">Bu cihazda sıvı cam kullanılamıyor. Material stili kullanılıyor.</string>
     <string name="settings_liquid_bottom_tabs_unavailable_desc">Bu cihazda sıvı cam mevcut değildir. Malzeme navigasyonu kullanılır.</string>
     <string name="settings_liquid_bar_width">Gezinme çubuğu genişliği</string>
     <string name="settings_liquid_bar_width_desc">Gezinme hapının ekran genişliğinin ne kadarını kaplayacağını ayarlar.</string>

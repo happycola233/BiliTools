@@ -501,8 +501,8 @@
     <string name="settings_downloads_glass_debug_desc">Показывает элементы управления на странице «Загрузки» для настройки и предварительного просмотра стеклянных эффектов плавающих панелей и нижней навигации. Ваши настройки сохранены.</string>
     <string name="settings_liquid_bottom_tabs">Навигация по жидкому стеклу</string>
     <string name="settings_liquid_glass_panels">Панели из жидкого стекла</string>
-    <string name="settings_liquid_glass_panels_desc">Применяет жидкое стекло для загрузки меню и пакетных действий. Выключите, чтобы использовать панели материалов.</string>
-    <string name="settings_liquid_glass_panels_unavailable_desc">Жидкое стекло недоступно в этом устройстве. Используются панели из материала.</string>
+    <string name="settings_liquid_glass_panels_desc">Применяет жидкое стекло к меню задач загрузки и панели выбора. Отключите, чтобы использовать стиль Material.</string>
+    <string name="settings_liquid_glass_panels_unavailable_desc">Жидкое стекло недоступно на этом устройстве. Используется стиль Material.</string>
     <string name="settings_liquid_bottom_tabs_unavailable_desc">Жидкое стекло недоступно в этом устройстве. Используется навигация по материалам.</string>
     <string name="settings_liquid_bar_width">Ширина панели навигации</string>
     <string name="settings_liquid_bar_width_desc">Регулирует, какую часть ширины экрана занимает навигационная таблетка.</string>

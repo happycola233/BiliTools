@@ -492,8 +492,8 @@
     <string name="settings_downloads_glass_debug_desc">フローティングパネルおよびボトムナビゲーションのガラス効果を調整およびプレビューするためのコントロールをダウンロードページに表示する。調整が保存されます。</string>
     <string name="settings_liquid_bottom_tabs">液体ガラスナビゲーション</string>
     <string name="settings_liquid_glass_panels">液体ガラスパネル</string>
-    <string name="settings_liquid_glass_panels_desc">液体ガラスをダウンロード メニューとバッチ アクションに適用します。マテリアル パネルを使用するにはオフにします。</string>
-    <string name="settings_liquid_glass_panels_unavailable_desc">このデバイスでは液体ガラスは使用できません。素材パネルを使用しております。</string>
+    <string name="settings_liquid_glass_panels_desc">ダウンロードタスクのメニューと選択時のツールバーに液体ガラスを適用します。オフにすると Material スタイルになります。</string>
+    <string name="settings_liquid_glass_panels_unavailable_desc">このデバイスでは液体ガラスを利用できないため、Material スタイルを使用しています。</string>
     <string name="settings_liquid_bottom_tabs_unavailable_desc">このデバイスでは液体ガラスは使用できません。マテリアルナビゲーションを使用します。</string>
     <string name="settings_liquid_bar_width">ナビゲーションバーの幅</string>
     <string name="settings_liquid_bar_width_desc">ナビゲーション ピルが画面幅のどのくらいを占めるかを調整します。</string>

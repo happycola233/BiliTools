@@ -492,8 +492,8 @@
     <string name="settings_downloads_glass_debug_desc">Menampilkan kontrol pada halaman Unduhan untuk menyesuaikan dan mempratinjau efek kaca panel mengambang dan navigasi bawah. Penyesuaian Anda disimpan.</string>
     <string name="settings_liquid_bottom_tabs">Navigasi kaca cair</string>
     <string name="settings_liquid_glass_panels">Panel kaca cair</string>
-    <string name="settings_liquid_glass_panels_desc">Menerapkan kaca cair untuk mengunduh menu dan tindakan batch. Matikan untuk menggunakan panel Material.</string>
-    <string name="settings_liquid_glass_panels_unavailable_desc">Kaca cair tidak tersedia pada perangkat ini. Panel material digunakan.</string>
+    <string name="settings_liquid_glass_panels_desc">Menerapkan kaca cair pada menu tugas unduhan dan bilah alat pilihan. Matikan untuk menggunakan gaya Material.</string>
+    <string name="settings_liquid_glass_panels_unavailable_desc">Kaca cair tidak tersedia di perangkat ini. Gaya Material digunakan.</string>
     <string name="settings_liquid_bottom_tabs_unavailable_desc">Kaca cair tidak tersedia pada perangkat ini. Navigasi material digunakan.</string>
     <string name="settings_liquid_bar_width">Lebar bilah navigasi</string>
     <string name="settings_liquid_bar_width_desc">Menyesuaikan seberapa besar lebar layar yang ditempati pil navigasi.</string>

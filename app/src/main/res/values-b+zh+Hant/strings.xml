@@ -492,8 +492,8 @@
     <string name="settings_downloads_glass_debug_desc">在下載頁顯示液態玻璃除錯懸浮窗，可分別調節下載頁玻璃浮窗與底部導航欄的玻璃引數並實時預覽（需要調參時可臨時啟用，引數將持久化儲存）。</string>
     <string name="settings_liquid_bottom_tabs">液態玻璃底欄</string>
     <string name="settings_liquid_glass_panels">液態玻璃面板</string>
-    <string name="settings_liquid_glass_panels_desc">下載任務選單和批次管理面板使用液態玻璃效果；關閉後使用 Material 風格面板。</string>
-    <string name="settings_liquid_glass_panels_unavailable_desc">當前裝置暫不支援液態玻璃，已自動使用 Material 風格面板。</string>
+    <string name="settings_liquid_glass_panels_desc">下載任務選單和批次管理操作欄使用液態玻璃效果；關閉後使用 Material 風格。</string>
+    <string name="settings_liquid_glass_panels_unavailable_desc">當前裝置暫不支援液態玻璃，已自動使用 Material 風格。</string>
     <string name="settings_liquid_bottom_tabs_unavailable_desc">當前裝置暫不支援液態玻璃，已自動使用 Material 風格底欄。</string>
     <string name="settings_liquid_bar_width">液態底欄寬度</string>
     <string name="settings_liquid_bar_width_desc">調整底欄膠囊佔螢幕可用寬度的比例。</string>

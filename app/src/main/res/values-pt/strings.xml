@@ -495,8 +495,8 @@
     <string name="settings_downloads_glass_debug_desc">Mostra controles na página de Downloads para ajustar e visualizar os efeitos de vidro dos painéis flutuantes e da navegação inferior. Seus ajustes são salvos.</string>
     <string name="settings_liquid_bottom_tabs">Navegação em vidro líquido</string>
     <string name="settings_liquid_glass_panels">Painéis de vidro líquido</string>
-    <string name="settings_liquid_glass_panels_desc">Aplica vidro líquido para download de menus e ações em lote. Desligue para usar painéis de materiais.</string>
-    <string name="settings_liquid_glass_panels_unavailable_desc">O vidro líquido não está disponível neste dispositivo. Painéis de materiais são usados.</string>
+    <string name="settings_liquid_glass_panels_desc">Aplica vidro líquido aos menus das tarefas de download e à barra de seleção. Desative para usar o estilo Material.</string>
+    <string name="settings_liquid_glass_panels_unavailable_desc">O vidro líquido não está disponível neste dispositivo. O estilo Material é usado.</string>
     <string name="settings_liquid_bottom_tabs_unavailable_desc">O vidro líquido não está disponível neste dispositivo. A navegação de materiais é usada.</string>
     <string name="settings_liquid_bar_width">Largura da barra de navegação</string>
     <string name="settings_liquid_bar_width_desc">Ajusta quanto da largura da tela o painel de navegação ocupa.</string>

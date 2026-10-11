@@ -492,8 +492,8 @@
     <string name="settings_downloads_glass_debug_desc">Hiển thị các điều khiển trên trang Tải xuống để điều chỉnh và xem trước hiệu ứng kính của bảng nổi và điều hướng phía dưới. Điều chỉnh của bạn đã được lưu.</string>
     <string name="settings_liquid_bottom_tabs">Điều hướng bằng kính lỏng</string>
     <string name="settings_liquid_glass_panels">Tấm kính lỏng</string>
-    <string name="settings_liquid_glass_panels_desc">Áp dụng kính lỏng cho các menu tải xuống và các hành động hàng loạt. Tắt để sử dụng bảng Material.</string>
-    <string name="settings_liquid_glass_panels_unavailable_desc">Kính lỏng không có sẵn trên thiết bị này. Tấm vật liệu được sử dụng.</string>
+    <string name="settings_liquid_glass_panels_desc">Áp dụng kính lỏng cho menu tác vụ tải xuống và thanh công cụ chọn. Tắt để dùng kiểu Material.</string>
+    <string name="settings_liquid_glass_panels_unavailable_desc">Kính lỏng không khả dụng trên thiết bị này. Đang dùng kiểu Material.</string>
     <string name="settings_liquid_bottom_tabs_unavailable_desc">Kính lỏng không có sẵn trên thiết bị này. Điều hướng vật liệu được sử dụng.</string>
     <string name="settings_liquid_bar_width">Chiều rộng thanh điều hướng</string>
     <string name="settings_liquid_bar_width_desc">Điều chỉnh độ rộng màn hình của viên điều hướng.</string>

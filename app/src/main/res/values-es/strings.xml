@@ -495,8 +495,8 @@
     <string name="settings_downloads_glass_debug_desc">Muestra controles en la página de Descargas para ajustar y obtener una vista previa de los efectos de vidrio de los paneles flotantes y la navegación inferior. Sus ajustes se guardan.</string>
     <string name="settings_liquid_bottom_tabs">Navegación de vidrio líquido</string>
     <string name="settings_liquid_glass_panels">Paneles de vidrio líquido</string>
-    <string name="settings_liquid_glass_panels_desc">Aplica vidrio líquido para descargar menús y acciones por lotes. Desactívelo para usar paneles de Material.</string>
-    <string name="settings_liquid_glass_panels_unavailable_desc">El vidrio líquido no está disponible en este dispositivo. Se utilizan paneles de material.</string>
+    <string name="settings_liquid_glass_panels_desc">Aplica vidrio líquido a los menús de las tareas de descarga y a la barra de selección. Desactívelo para usar el estilo Material.</string>
+    <string name="settings_liquid_glass_panels_unavailable_desc">El vidrio líquido no está disponible en este dispositivo. Se usa el estilo Material.</string>
     <string name="settings_liquid_bottom_tabs_unavailable_desc">El vidrio líquido no está disponible en este dispositivo. Se utiliza la navegación de materiales.</string>
     <string name="settings_liquid_bar_width">Ancho de la barra de navegación</string>
     <string name="settings_liquid_bar_width_desc">Ajusta la cantidad de ancho de pantalla que ocupa la píldora de navegación.</string>
