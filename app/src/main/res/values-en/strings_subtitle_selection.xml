@@ -13,7 +13,7 @@
     <string name="subtitle_source_cancel">Cancel</string>
     <string name="subtitle_source_done">Done</string>
     <string name="subtitle_source_coverage">Available: %1$d / %2$d</string>
-    <string name="subtitle_source_coverage_pending">Confirmed: %1$d / %2$d</string>
+    <string name="subtitle_source_coverage_pending">Confirmed available: %1$d / %2$d</string>
     <string name="subtitle_source_unconfirmed">Availability not yet confirmed</string>
     <string name="subtitle_source_unavailable">Unavailable for this item</string>
     <string name="subtitle_source_loading">Loading subtitles…</string>

@@ -210,7 +210,7 @@
     <string name="download_unavailable_video">ไม่มีวิดีโอสำหรับรายการนี้</string>
     <string name="download_unavailable_audio_video">รายการนี้ขาดเสียงหรือวิดีโอที่จำเป็นสำหรับการรวม</string>
     <string name="download_unavailable_image">รูปภาพที่เลือกไม่สามารถใช้ได้สำหรับรายการนี้</string>
-    <string name="download_unavailable_opus_images">โพสต์นี้ไม่มีรูปภาพ</string>
+    <string name="download_unavailable_opus_images">เนื้อหาของโพสต์นี้ไม่มีรูปภาพ</string>
     <string name="parse_error_opus_risk_control">คำขอรายละเอียดโพสต์ถูกจำกัดชั่วคราว ลองอีกครั้งในภายหลัง</string>
     <string name="parse_error_opus_login_required">เข้าสู่ระบบเพื่อดูโพสต์นี้</string>
     <string name="parse_error_opus_permission_denied">บัญชีของคุณไม่สามารถเข้าถึงโพสต์นี้ได้</string>
@@ -223,8 +223,8 @@
     <plurals name="downloads_selection_title">
         <item quantity="other">เลือกแล้ว %1$d รายการ</item>
     </plurals>
-    <string name="downloads_clear_completed">ล้างการดาวน์โหลดที่เสร็จสมบูรณ์</string>
-    <string name="downloads_clear_all">ล้างการดาวน์โหลดทั้งหมด</string>
+    <string name="downloads_clear_completed">ล้างบันทึกการดาวน์โหลดที่เสร็จแล้ว</string>
+    <string name="downloads_clear_all">ล้างบันทึกการดาวน์โหลดทั้งหมด</string>
     <string name="downloads_actions_menu">การดำเนินการดาวน์โหลด</string>
     <string name="downloads_multi_manage">จัดการการดาวน์โหลด</string>
     <string name="downloads_multi_select_all">เลือกทั้งหมด</string>
@@ -327,7 +327,7 @@
     <string name="login_entry_favorite_title">รายการโปรด</string>
     <string name="login_entry_favorite_desc">ดาวน์โหลดวิดีโอที่คุณบันทึกไว้</string>
     <string name="login_entry_watch_later_title">ดูภายหลัง</string>
-    <string name="login_entry_watch_later_desc">ดำเนินการต่อจากจุดที่คุณค้างไว้</string>
+    <string name="login_entry_watch_later_desc">ไว้ดูคราวหน้าแน่นะ?</string>
     <string name="login_entry_settings_title">การตั้งค่า</string>
     <string name="login_entry_settings_desc">ปรับแต่ง BiliTools</string>
     <string name="history_cover_desc">ปกรายการประวัติ</string>
@@ -336,7 +336,7 @@
     <string name="history_error_load">ไม่สามารถโหลดประวัติการดูได้ ลองอีกครั้งในภายหลัง</string>
     <string name="history_refresh">รีเฟรช</string>
     <string name="history_more_filters">ตัวกรองเพิ่มเติม</string>
-    <string name="history_download">ดาวน์โหลด</string>
+    <string name="history_download">เปิดตัวเลือกการดาวน์โหลด</string>
     <string name="history_progress_format">%1$s / %2$s</string>
     <string name="history_progress_completed">ดูจบแล้ว</string>
     <string name="history_page_prev">หน้าก่อนหน้า</string>
@@ -392,8 +392,8 @@
     <string name="settings_general_title">ทั่วไป</string>
     <string name="settings_download_title">ดาวน์โหลด</string>
     <string name="settings_appearance_title">ลักษณะที่ปรากฏ</string>
-    <string name="settings_general_summary">ภาษา การตอบสนองแบบสัมผัส ภาพเคลื่อนไหวเริ่มต้น และการแจ้งเตือน</string>
-    <string name="settings_download_summary">ตำแหน่งดาวน์โหลด จำนวนดาวน์โหลดพร้อมกัน คุณภาพ เมตาดาต้า และรูปแบบไฟล์</string>
+    <string name="settings_general_summary">ภาษา การตอบสนองแบบสัมผัส ภาพเคลื่อนไหวเริ่มต้น และการแจ้งเตือน Live Update</string>
+    <string name="settings_download_summary">ตำแหน่งดาวน์โหลด จำนวนดาวน์โหลดพร้อมกัน คุณภาพเริ่มต้น เมตาดาต้า การแปลงรูปแบบ ข้อมูลมือถือ และการแสดงในแกลเลอรี</string>
     <string name="settings_appearance_summary">ธีม สี โหมดสีดำล้วน และกระจกเหลว</string>
     <string name="settings_about_summary">เวอร์ชัน การอัปเดต รายงานปัญหา ใบอนุญาต และข้อจำกัดความรับผิดชอบ</string>
     <string name="settings_add_metadata">เพิ่มข้อมูลเมตาลงในการดาวน์โหลด</string>
@@ -425,11 +425,11 @@
     <string name="settings_download_preference_group_audio_quality">อัตราบิตของเสียง</string>
     <string name="settings_download_preference_group_audio_quality_desc">ใช้บิตเรตเสียงที่เลือกซ้ำ มิฉะนั้นจะใช้คุณภาพการดาวน์โหลดเริ่มต้น</string>
     <string name="settings_download_preference_group_embedding">คำบรรยายและเนื้อเพลงที่ฝังไว้</string>
-    <string name="settings_download_preference_group_embedding_desc">จดจำว่าจะฝังคำบรรยายและเนื้อเพลงหรือไม่ ส่วนภาษาคำบรรยายต้องเลือกใหม่ทุกครั้งที่ดาวน์โหลด</string>
+    <string name="settings_download_preference_group_embedding_desc">จดจำว่าจะฝังคำบรรยายหรือเนื้อเพลงหรือไม่ โดยต้องเลือกภาษาใหม่ทุกครั้งที่วิเคราะห์เนื้อหา</string>
     <string name="settings_download_preference_group_misc_exports">ไฟล์คำบรรยายและข้อมูลสรุป AI</string>
-    <string name="settings_download_preference_group_misc_exports_desc">จดจำว่าจะส่งออกคำบรรยายและข้อมูลสรุป AI หรือไม่ ส่วนภาษาคำบรรยายต้องเลือกใหม่ทุกครั้งที่ดาวน์โหลด</string>
+    <string name="settings_download_preference_group_misc_exports_desc">จดจำว่าจะบันทึกไฟล์คำบรรยายและส่งออกสรุป AI หรือไม่ โดยต้องเลือกภาษาคำบรรยายใหม่ทุกครั้งที่วิเคราะห์เนื้อหา</string>
     <string name="settings_download_preference_group_nfo">ข้อมูลเมตา NFO</string>
-    <string name="settings_download_preference_group_nfo_desc">ข้อมูลเมตาของคอลเลกชันและข้อมูลเมตาของแต่ละตอน</string>
+    <string name="settings_download_preference_group_nfo_desc">เมตาดาต้าของคอลเลกชันหรือซีรีส์และของแต่ละตอน</string>
     <string name="settings_download_preference_group_danmaku">ดันมาคุ</string>
     <string name="settings_download_preference_group_danmaku_desc">จดจำการเลือกดันมาคุปัจจุบันและในอดีต ไม่จดจำวันที่และชั่วโมง</string>
     <string name="settings_download_preference_group_images">รูปภาพ</string>
@@ -451,7 +451,7 @@
     <string name="download_embed_write_failed">การฝังล้มเหลว ไฟล์ที่ดาวน์โหลดถูกเก็บไว้</string>
     <string name="download_embed_unsupported">รูปแบบไฟล์นี้ไม่สามารถฝังเนื้อหาที่เลือกได้</string>
     <string name="settings_max_concurrent_downloads">ดาวน์โหลดพร้อมกัน</string>
-    <string name="settings_max_concurrent_downloads_desc">จำกัดการดาวน์โหลดวิดีโอ เสียง และรูปภาพโพสต์พร้อมกัน การดาวน์โหลดเพิ่มเติมอยู่ในคิว ขีดจำกัดที่สูงขึ้นอาจทำให้เกิดข้อจำกัด Bilibili คำบรรยาย ดันมาคุ หน้าปก ข้อมูลเมตา ข้อมูลสรุป AI และข้อความในโพสต์จะถูกดาวน์โหลดแยกต่างหาก</string>
+    <string name="settings_max_concurrent_downloads_desc">จำกัดจำนวนวิดีโอ เสียง และรูปภาพในโพสต์ที่ดาวน์โหลดพร้อมกัน ส่วนที่เกินจะรอในคิว การตั้งค่าที่สูงเกินไปอาจทำให้ Bilibili จำกัดการใช้งาน คำบรรยาย ดันมาคุ ภาพปก เมตาดาต้า NFO สรุป AI และข้อความในโพสต์ไม่อยู่ภายใต้ข้อจำกัดนี้</string>
     <string name="settings_convert_xml_danmaku_to_ass">แปลงดันมาคุเป็น ASS</string>
     <string name="settings_convert_xml_danmaku_to_ass_desc">แปลงไฟล์ดันมาคุ XML ที่ดาวน์โหลดเป็นคำบรรยาย ASS</string>
     <string name="settings_convert_audio_to_mp3">แปลงเสียงเป็น MP3</string>
@@ -476,12 +476,12 @@
     <string name="settings_default_quality_resolution_highest">ความละเอียดสูงสุด</string>
     <string name="settings_default_quality_resolution_lowest">ความละเอียดต่ำสุด</string>
     <string name="settings_default_quality_resolution_fixed_label">ความละเอียดคงที่</string>
-    <string name="settings_default_quality_resolution_fixed_desc">หากไม่พร้อมใช้งาน ให้ใช้ความละเอียดสูงสุดที่วิดีโอรองรับ</string>
+    <string name="settings_default_quality_resolution_fixed_desc">หากไม่มีความละเอียดที่เลือก แอปจะใช้ความละเอียดสูงสุดที่มีสำหรับวิดีโอนั้นโดยอัตโนมัติ</string>
     <string name="settings_default_quality_audio_highest">บิตเรตเสียงสูงสุด</string>
     <string name="settings_default_quality_audio_lowest">บิตเรตเสียงต่ำสุด</string>
     <string name="settings_default_quality_audio_fixed_label">บิตเรตเสียงคงที่</string>
-    <string name="settings_default_quality_audio_fixed_desc">หากไม่พร้อมใช้งาน ให้ใช้บิตเรตเสียงสูงสุดที่วิดีโอรองรับ</string>
-    <string name="settings_default_quality_codec_desc">หากไม่พร้อมใช้งาน ให้ใช้ตัวแปลงสัญญาณที่วิดีโอรองรับ</string>
+    <string name="settings_default_quality_audio_fixed_desc">หากไม่มีบิตเรตเสียงที่เลือก แอปจะใช้บิตเรตเสียงสูงสุดที่มีสำหรับวิดีโอนั้นโดยอัตโนมัติ</string>
+    <string name="settings_default_quality_codec_desc">หากไม่มีตัวแปลงสัญญาณที่เลือก แอปจะใช้ตัวแปลงสัญญาณที่มีสำหรับวิดีโอนั้นโดยอัตโนมัติ</string>
     <string name="settings_theme">ธีม</string>
     <string name="settings_theme_system">ค่าเริ่มต้นของระบบ</string>
     <string name="settings_theme_light">สว่าง</string>
@@ -542,7 +542,7 @@
     <string name="settings_opensource_licenses_title">ใบอนุญาตโอเพ่นซอร์ส</string>
     <string name="settings_opensource_licenses_summary">ไลบรารีบุคคลที่สามใช้โดย BiliTools</string>
     <string name="settings_disclaimer_title">ข้อสงวนสิทธิ์</string>
-    <string name="settings_about_disclaimer">ข้อมูลทั้งหมดที่แอปนี้บันทึกไว้จะถูกจัดเก็บไว้ในอุปกรณ์ของคุณในรูปแบบข้อความธรรมดา\nคุณต้องรับผิดชอบต่อผลที่ตามมาของการใช้โปรเจ็กต์นี้ นักพัฒนาไม่ยอมรับความรับผิด\nชื่อ โลโก้ และกราฟิกที่เกี่ยวข้องของ 哔哩哔哩 และ Bilibili เป็นเครื่องหมายการค้าหรือเครื่องหมายการค้าจดทะเบียนของ Shanghai Huandian Information Technology Co., Ltd.\nโครงการนี้ไม่มีส่วนเกี่ยวข้อง ได้รับอนุญาตจาก รับรองโดย หรือร่วมมือกับ Bilibili หรือบริษัทในเครือ</string>
+    <string name="settings_about_disclaimer">ข้อมูลทั้งหมดที่แอปนี้บันทึกไว้จะถูกจัดเก็บไว้ในอุปกรณ์ของคุณในรูปแบบข้อความธรรมดา\nคุณต้องรับผิดชอบต่อผลที่ตามมาของการใช้โปรเจ็กต์นี้ นักพัฒนาไม่รับผิดชอบต่อผลดังกล่าว\nชื่อ โลโก้ และกราฟิกที่เกี่ยวข้องของ 哔哩哔哩 และ Bilibili เป็นเครื่องหมายการค้าหรือเครื่องหมายการค้าจดทะเบียนของ Shanghai Huandian Information Technology Co., Ltd.\nโครงการนี้ไม่มีความเกี่ยวข้องหรือความร่วมมือกับ Bilibili หรือบริษัทในเครือ และไม่ได้รับการอนุญาตหรือรับรองจากบริษัทดังกล่าว</string>
     <string name="update_dialog_title">มีการอัปเดตแล้ว</string>
     <string name="update_dialog_notes_empty">ไม่มีบันทึกประจำรุ่นสำหรับเวอร์ชันนี้</string>
     <string name="update_dialog_open_release">ดูหน้าเผยแพร่</string>

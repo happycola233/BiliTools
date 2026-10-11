@@ -12,7 +12,7 @@
     <string name="media_access_available">Có thể xem</string>
     <string name="media_access_purchase">Cần mua</string>
     <string name="media_access_unavailable">Tạm thời không thể xem</string>
-    <string name="download_saved_file_unavailable">Tệp đã lưu không còn tồn tại</string>
+    <string name="download_saved_file_unavailable">Không thể truy cập tệp đã lưu</string>
     <string name="export_author">Tác giả: %1$s</string>
     <string name="export_published_at">Thời gian đăng: %1$s</string>
     <string name="export_statistics">Thống kê: %1$s</string>

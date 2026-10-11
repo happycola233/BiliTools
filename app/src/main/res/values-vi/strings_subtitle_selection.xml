@@ -13,7 +13,7 @@
     <string name="subtitle_source_cancel">Hủy</string>
     <string name="subtitle_source_done">Xong</string>
     <string name="subtitle_source_coverage">Có sẵn: %1$d / %2$d</string>
-    <string name="subtitle_source_coverage_pending">Đã xác nhận: %1$d / %2$d</string>
+    <string name="subtitle_source_coverage_pending">Đã xác nhận có phụ đề: %1$d / %2$d mục</string>
     <string name="subtitle_source_unconfirmed">Tính khả dụng chưa được xác nhận</string>
     <string name="subtitle_source_unavailable">Không khả dụng cho mục này</string>
     <string name="subtitle_source_loading">Đang tải phụ đề…</string>

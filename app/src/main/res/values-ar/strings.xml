@@ -164,7 +164,7 @@
     <string name="parse_ai_summary_copy_single_done">تم نسخ ملخص AI إلى الحافظة</string>
     <string name="parse_ai_summary_copy_current_done">تم نسخ ملخص AI الحالي</string>
     <string name="parse_ai_summary_copy_all_done">تم نسخ كافة ملخصات الذكاء الاصطناعي</string>
-    <string name="parse_copy_preview_available_count">%1$d من %2$d متاح</string>
+    <string name="parse_copy_preview_available_count">العناصر القابلة للنسخ: %1$d من أصل %2$d</string>
     <string name="parse_ai_summary_label">ملخص الذكاء الاصطناعي</string>
     <string name="parse_nfo_label">بيانات تعريف NFO</string>
     <string name="parse_nfo_collection">بيانات تعريف المجموعة أو السلسلة</string>
@@ -210,7 +210,7 @@
     <string name="download_unavailable_video">لا يتوفر فيديو لهذا العنصر</string>
     <string name="download_unavailable_audio_video">يفتقد هذا العنصر الصوت أو الفيديو المطلوب للدمج</string>
     <string name="download_unavailable_image">الصورة المحددة غير متوفرة لهذا العنصر</string>
-    <string name="download_unavailable_opus_images">هذا المنشور لا يحتوي على صور</string>
+    <string name="download_unavailable_opus_images">لا يحتوي متن هذا المنشور على صور</string>
     <string name="parse_error_opus_risk_control">طلبات الحصول على تفاصيل المنشورات محدودة مؤقتًا. حاول مرة أخرى لاحقًا.</string>
     <string name="parse_error_opus_login_required">سجّل الدخول لعرض هذا المنشور</string>
     <string name="parse_error_opus_permission_denied">لا يمكن لحسابك الوصول إلى هذا المنشور</string>
@@ -223,8 +223,8 @@
     <plurals name="downloads_selection_title">
         <item quantity="other">تم تحديد %1$d</item>
     </plurals>
-    <string name="downloads_clear_completed">مسح التنزيلات المكتملة</string>
-    <string name="downloads_clear_all">مسح كافة التنزيلات</string>
+    <string name="downloads_clear_completed">مسح سجلات التنزيلات المكتملة</string>
+    <string name="downloads_clear_all">مسح جميع السجلات</string>
     <string name="downloads_actions_menu">إجراءات التنزيلات</string>
     <string name="downloads_multi_manage">إدارة التنزيلات</string>
     <string name="downloads_multi_select_all">تحديد الكل</string>
@@ -342,7 +342,7 @@
     <string name="login_entry_favorite_title">المفضلة</string>
     <string name="login_entry_favorite_desc">قم بتنزيل مقاطع الفيديو المحفوظة الخاصة بك</string>
     <string name="login_entry_watch_later_title">المشاهدة لاحقًا</string>
-    <string name="login_entry_watch_later_desc">تابع من حيث توقفت</string>
+    <string name="login_entry_watch_later_desc">ستشاهدها في المرة القادمة بالتأكيد؟</string>
     <string name="login_entry_settings_title">الإعدادات</string>
     <string name="login_entry_settings_desc">تخصيص BiliTools</string>
     <string name="history_cover_desc">غلاف عنصر السجل</string>
@@ -351,7 +351,7 @@
     <string name="history_error_load">تعذر تحميل سجل المشاهدة. حاول مرة أخرى لاحقًا.</string>
     <string name="history_refresh">تحديث</string>
     <string name="history_more_filters">المزيد من المرشحات</string>
-    <string name="history_download">تنزيل</string>
+    <string name="history_download">فتح خيارات التنزيل</string>
     <string name="history_progress_format">%1$s / %2$s</string>
     <string name="history_progress_completed">تمت المشاهدة</string>
     <string name="history_page_prev">الصفحة السابقة</string>
@@ -407,8 +407,8 @@
     <string name="settings_general_title">عام</string>
     <string name="settings_download_title">التنزيلات</string>
     <string name="settings_appearance_title">المظهر</string>
-    <string name="settings_general_summary">اللغة وردود الفعل اللمسية ورسوم بدء التشغيل المتحركة والإشعارات</string>
-    <string name="settings_download_summary">مكان التنزيل وعدد التنزيلات المتزامنة والجودة وبيانات التعريف وتنسيقات الملفات</string>
+    <string name="settings_general_summary">اللغة وردود الفعل اللمسية ورسوم بدء التشغيل المتحركة وإشعارات التحديث المباشر</string>
+    <string name="settings_download_summary">مكان التنزيل وعدد التنزيلات المتزامنة والجودة الافتراضية وبيانات التعريف وتحويل التنسيقات وبيانات الجوال والظهور في المعرض</string>
     <string name="settings_appearance_summary">السمة والألوان والسمة السوداء الخالصة والزجاج السائل</string>
     <string name="settings_about_summary">الإصدار والتحديثات والإبلاغ عن المشكلات والتراخيص وإخلاء المسؤولية</string>
     <string name="settings_add_metadata">إضافة بيانات التعريف إلى التنزيلات</string>
@@ -440,9 +440,9 @@
     <string name="settings_download_preference_group_audio_quality">معدل البت الصوتي</string>
     <string name="settings_download_preference_group_audio_quality_desc">يعيد استخدام معدل البت الصوتي المحدد. بخلاف ذلك يستخدم جودة التنزيل الافتراضية.</string>
     <string name="settings_download_preference_group_embedding">الترجمة وكلمات الأغاني المضمنة</string>
-    <string name="settings_download_preference_group_embedding_desc">يتذكر ما إذا كان سيتم تضمين الترجمة وكلمات الأغاني. اختر لغات الترجمة مرة أخرى لكل تنزيل.</string>
+    <string name="settings_download_preference_group_embedding_desc">يتذكر ما إذا كان سيتم تضمين الترجمة أو كلمات الأغاني. تُختار اللغات مجددًا في كل مرة يتم فيها تحليل المحتوى.</string>
     <string name="settings_download_preference_group_misc_exports">ملفات الترجمة وملخصات الذكاء الاصطناعي</string>
-    <string name="settings_download_preference_group_misc_exports_desc">يتذكر ما إذا كان سيتم تصدير الترجمات وملخصات الذكاء الاصطناعي. اختر لغات الترجمة مرة أخرى لكل تنزيل.</string>
+    <string name="settings_download_preference_group_misc_exports_desc">يتذكر ما إذا كان سيتم حفظ ملفات الترجمة وتصدير ملخصات الذكاء الاصطناعي. تُختار لغات الترجمة مجددًا في كل مرة يتم فيها تحليل المحتوى.</string>
     <string name="settings_download_preference_group_nfo">بيانات تعريف NFO</string>
     <string name="settings_download_preference_group_nfo_desc">البيانات التعريفية للمجموعة أو السلسلة وللحلقات الفردية.</string>
     <string name="settings_download_preference_group_danmaku">دانماكو</string>
@@ -466,7 +466,7 @@
     <string name="download_embed_write_failed">فشل التضمين. تم الاحتفاظ بالملف الذي تم تنزيله.</string>
     <string name="download_embed_unsupported">لا يمكن لتنسيق الملف هذا تضمين المحتوى المحدد</string>
     <string name="settings_max_concurrent_downloads">التنزيلات المتزامنة</string>
-    <string name="settings_max_concurrent_downloads_desc">يحد من تنزيلات الفيديو والصوت وصور المنشورات المتزامنة. تُضاف التنزيلات الإضافية إلى قائمة الانتظار. قد تؤدي الحدود الأعلى إلى فرض قيود من Bilibili. يتم تنزيل الترجمات والدانماكو والأغلفة والبيانات الوصفية وملخصات الذكاء الاصطناعي ونصوص المنشورات بشكل منفصل.</string>
+    <string name="settings_max_concurrent_downloads_desc">يحدّد عدد تنزيلات الفيديو والصوت وصور المنشورات المتزامنة. تنتظر التنزيلات الإضافية في قائمة الانتظار. قد يؤدي رفع الحد كثيرًا إلى فرض قيود من Bilibili. لا ينطبق هذا الحد على الترجمة والدانماكو والأغلفة وبيانات NFO وملخصات الذكاء الاصطناعي ونصوص المنشورات.</string>
     <string name="settings_convert_xml_danmaku_to_ass">تحويل دانماكو إلى ASS</string>
     <string name="settings_convert_xml_danmaku_to_ass_desc">يحوّل ملفات الدانماكو بتنسيق XML التي تم تنزيلها إلى ترجمات ASS.</string>
     <string name="settings_convert_audio_to_mp3">تحويل الصوت إلى MP3</string>
@@ -533,7 +533,7 @@
     <string name="settings_color_scheme_seafoam">النعناع</string>
     <string name="settings_color_scheme_lagoon">أزرق البحيرة</string>
     <string name="settings_color_scheme_sky">أزرق سماوي</string>
-    <string name="settings_color_scheme_iris">القزحية</string>
+    <string name="settings_color_scheme_iris">السوسن</string>
     <string name="settings_color_scheme_periwinkle">أزرق بنفسجي</string>
     <string name="settings_color_scheme_lilac">ليلك</string>
     <string name="settings_color_scheme_orchid">الأوركيد</string>

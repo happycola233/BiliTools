@@ -13,7 +13,7 @@
     <string name="subtitle_source_cancel">Batal</string>
     <string name="subtitle_source_done">Selesai</string>
     <string name="subtitle_source_coverage">Tersedia: %1$d / %2$d</string>
-    <string name="subtitle_source_coverage_pending">Disahkan: %1$d / %2$d</string>
+    <string name="subtitle_source_coverage_pending">Disahkan tersedia: %1$d / %2$d</string>
     <string name="subtitle_source_unconfirmed">Ketersediaan belum disahkan</string>
     <string name="subtitle_source_unavailable">Tidak tersedia untuk item ini</string>
     <string name="subtitle_source_loading">Memuatkan sari kata…</string>

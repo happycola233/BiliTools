@@ -14,7 +14,7 @@
     <string name="common_upper_name_copied">作成者名がクリップボードにコピーされました</string>
     <string name="login_title">ログイン</string>
     <string name="login_qr_desc">ログイン用QRコード</string>
-    <string name="login_refresh">QRコードの生成</string>
+    <string name="login_refresh">QRコードを生成</string>
     <string name="login_logout">ログアウト</string>
     <string name="login_logout_confirm_title">ログアウトしますか？</string>
     <string name="login_logout_confirm_message">ログアウトしてもよろしいですか？</string>
@@ -57,7 +57,7 @@
     <string name="login_stat_follower">フォロワー</string>
     <string name="login_stat_dynamic">投稿</string>
     <string name="login_stat_coins">コイン</string>
-    <string name="login_captcha_title">確認を完了してください</string>
+    <string name="login_captcha_title">認証を完了してください</string>
     <string name="login_captcha_loading">認証を読み込み中</string>
     <string name="parse_input_card_title">リンクを解析</string>
     <string name="parse_hint">リンク/AV/BV/SS/EP/AU/AM/SID/FID/CV/RL/UID</string>
@@ -210,7 +210,7 @@
     <string name="download_unavailable_video">この項目には利用できるビデオがありません</string>
     <string name="download_unavailable_audio_video">この項目には結合できるオーディオまたはビデオがありません</string>
     <string name="download_unavailable_image">この項目には対応する画像がありません</string>
-    <string name="download_unavailable_opus_images">この投稿には画像がありません</string>
+    <string name="download_unavailable_opus_images">この投稿の本文には画像がありません</string>
     <string name="parse_error_opus_risk_control">投稿の詳細へのリクエストが一時的に制限されています。しばらくしてからもう一度お試しください。</string>
     <string name="parse_error_opus_login_required">この投稿を表示するにはログインしてください</string>
     <string name="parse_error_opus_permission_denied">現在のアカウントにはこの投稿を表示する権限がありません</string>
@@ -327,7 +327,7 @@
     <string name="login_entry_favorite_title">お気に入り</string>
     <string name="login_entry_favorite_desc">お気に入りのビデオをダウンロード</string>
     <string name="login_entry_watch_later_title">後で見る</string>
-    <string name="login_entry_watch_later_desc">中断したところから再開</string>
+    <string name="login_entry_watch_later_desc">次は必ず見る？</string>
     <string name="login_entry_settings_title">設定</string>
     <string name="login_entry_settings_desc">BiliTools の動作を設定</string>
     <string name="history_cover_desc">履歴のカバー画像</string>
@@ -336,7 +336,7 @@
     <string name="history_error_load">視聴履歴を読み込めませんでした。しばらくしてからもう一度お試しください。</string>
     <string name="history_refresh">更新</string>
     <string name="history_more_filters">その他のフィルター</string>
-    <string name="history_download">ダウンロード</string>
+    <string name="history_download">ダウンロードオプションを開く</string>
     <string name="history_progress_format">%1$s / %2$s</string>
     <string name="history_progress_completed">視聴済み</string>
     <string name="history_page_prev">前のページ</string>
@@ -392,8 +392,8 @@
     <string name="settings_general_title">一般</string>
     <string name="settings_download_title">ダウンロード</string>
     <string name="settings_appearance_title">外観</string>
-    <string name="settings_general_summary">言語、触覚フィードバック、起動アニメーション、通知</string>
-    <string name="settings_download_summary">保存先、同時ダウンロード数、画質、メタデータ、ファイル形式</string>
+    <string name="settings_general_summary">言語、触覚フィードバック、起動アニメーション、ライブアップデート通知</string>
+    <string name="settings_download_summary">保存先、同時ダウンロード数、デフォルト品質、メタデータ、形式変換、モバイルデータ、ギャラリー表示</string>
     <string name="settings_appearance_summary">テーマ、配色、ピュアブラック、液体ガラス</string>
     <string name="settings_about_summary">バージョン、アップデート、問題の報告、ライセンス、免責事項</string>
     <string name="settings_add_metadata">ダウンロードしたファイルにメタデータを追加</string>
@@ -425,11 +425,11 @@
     <string name="settings_download_preference_group_audio_quality">オーディオビットレート</string>
     <string name="settings_download_preference_group_audio_quality_desc">次回も選択したオーディオビットレートを使用します。オフの場合は「デフォルトのダウンロード品質」を使用します。</string>
     <string name="settings_download_preference_group_embedding">埋め込み字幕と歌詞</string>
-    <string name="settings_download_preference_group_embedding_desc">字幕と歌詞を埋め込むかどうかを記憶します。ダウンロードするたびに字幕言語を再度選択します。</string>
+    <string name="settings_download_preference_group_embedding_desc">字幕や歌詞を埋め込むかどうかを記憶します。言語はコンテンツを解析するたびに選択し直します。</string>
     <string name="settings_download_preference_group_misc_exports">字幕ファイルとAI要約</string>
-    <string name="settings_download_preference_group_misc_exports_desc">字幕ファイルの保存と AI 要約のエクスポートを行うかどうかを記憶します。字幕言語は毎回選択し直します。</string>
+    <string name="settings_download_preference_group_misc_exports_desc">字幕ファイルを保存するか、AI 要約をエクスポートするかを記憶します。字幕言語はコンテンツを解析するたびに選択し直します。</string>
     <string name="settings_download_preference_group_nfo">NFO メタデータ</string>
-    <string name="settings_download_preference_group_nfo_desc">コレクションメタデータおよび個々のエピソードメタデータ。</string>
+    <string name="settings_download_preference_group_nfo_desc">コレクションやシリーズ、および各エピソードのメタデータ。</string>
     <string name="settings_download_preference_group_danmaku">弾幕</string>
     <string name="settings_download_preference_group_danmaku_desc">現在および過去の弾幕の選択を記憶します。日付と時刻は記憶されません。</string>
     <string name="settings_download_preference_group_images">画像</string>

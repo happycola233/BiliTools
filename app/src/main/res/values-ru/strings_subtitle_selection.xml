@@ -13,13 +13,13 @@
     <string name="subtitle_source_cancel">Отмена</string>
     <string name="subtitle_source_done">Готово</string>
     <string name="subtitle_source_coverage">Доступно: %1$d / %2$d</string>
-    <string name="subtitle_source_coverage_pending">Подтверждено: %1$d / %2$d</string>
+    <string name="subtitle_source_coverage_pending">Доступность подтверждена: %1$d / %2$d</string>
     <string name="subtitle_source_unconfirmed">Доступность еще не подтверждена</string>
     <string name="subtitle_source_unavailable">Недоступно для этого элемента</string>
     <string name="subtitle_source_loading">Загрузка субтитров…</string>
     <string name="subtitle_source_loading_batch">Загрузка субтитров: %1$d / %2$d</string>
     <string name="subtitle_source_failure">Не удалось загрузить субтитры.</string>
-    <string name="subtitle_source_partial_failure">Элементы с ошибками субтитров: %1$d</string>
+    <string name="subtitle_source_partial_failure">Элементов, для которых не удалось загрузить субтитры: %1$d</string>
     <string name="subtitle_source_retry">Повторить попытку</string>
     <string name="subtitle_source_empty">Для этого видео субтитры недоступны.</string>
     <string name="subtitle_source_empty_batch">Для этих элементов субтитры недоступны.</string>

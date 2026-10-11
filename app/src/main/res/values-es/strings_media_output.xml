@@ -2,7 +2,7 @@
 <resources>
     <string name="download_detail_preparing_media">Preparando archivos multimedia</string>
     <string name="download_failure_prepare_media">No se pudieron preparar archivos multimedia</string>
-    <string name="download_embed_missing_languages">Subtítulos faltantes: %1$s</string>
+    <string name="download_embed_missing_languages">Subtítulos no incrustados: %1$s</string>
     <string name="parse_subtitle_selection_required">Elija un idioma de subtítulos o letras, o desactive la opción correspondiente para continuar.</string>
     <string name="parse_dolby_mp3_notice">La conversión a MP3 está activada. No se conservará Dolby Atmos.</string>
 </resources>

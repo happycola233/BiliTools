@@ -164,7 +164,7 @@
     <string name="parse_ai_summary_copy_single_done">AI summary has been copied to the clipboard</string>
     <string name="parse_ai_summary_copy_current_done">Current AI summary has been copied</string>
     <string name="parse_ai_summary_copy_all_done">All AI summaries have been copied</string>
-    <string name="parse_copy_preview_available_count">%1$d of %2$d available</string>
+    <string name="parse_copy_preview_available_count">%1$d / %2$d items can be copied</string>
     <string name="parse_ai_summary_label">AI summary</string>
     <string name="parse_nfo_label">NFO metadata</string>
     <string name="parse_nfo_collection">Collection or series metadata</string>
@@ -210,7 +210,7 @@
     <string name="download_unavailable_video">No video is available for this item</string>
     <string name="download_unavailable_audio_video">This item is missing audio or video required for merging</string>
     <string name="download_unavailable_image">The selected image is not available for this item</string>
-    <string name="download_unavailable_opus_images">This post has no images</string>
+    <string name="download_unavailable_opus_images">This post has no images in its body</string>
     <string name="parse_error_opus_risk_control">Requests for post details are temporarily limited. Try again later.</string>
     <string name="parse_error_opus_login_required">Log in to view this post</string>
     <string name="parse_error_opus_permission_denied">Your account cannot access this post</string>
@@ -223,8 +223,8 @@
     <plurals name="downloads_selection_title">
         <item quantity="other">%1$d selected</item>
     </plurals>
-    <string name="downloads_clear_completed">Clear completed downloads</string>
-    <string name="downloads_clear_all">Clear all downloads</string>
+    <string name="downloads_clear_completed">Clear completed records</string>
+    <string name="downloads_clear_all">Clear all records</string>
     <string name="downloads_actions_menu">Download actions</string>
     <string name="downloads_multi_manage">Manage downloads</string>
     <string name="downloads_multi_select_all">Select all</string>
@@ -330,7 +330,7 @@
     <string name="login_entry_favorite_title">Favorites</string>
     <string name="login_entry_favorite_desc">Download your saved videos</string>
     <string name="login_entry_watch_later_title">Watch later</string>
-    <string name="login_entry_watch_later_desc">Pick up where you left off</string>
+    <string name="login_entry_watch_later_desc">Next time, for sure?</string>
     <string name="login_entry_settings_title">Settings</string>
     <string name="login_entry_settings_desc">Customize BiliTools</string>
     <string name="history_cover_desc">History item cover</string>
@@ -339,9 +339,9 @@
     <string name="history_error_load">Could not load watch history. Try again later.</string>
     <string name="history_refresh">Refresh</string>
     <string name="history_more_filters">More filters</string>
-    <string name="history_download">Download</string>
+    <string name="history_download">Open download options</string>
     <string name="history_progress_format">%1$s / %2$s</string>
-    <string name="history_progress_completed">Finished</string>
+    <string name="history_progress_completed">Watched</string>
     <string name="history_page_prev">Previous page</string>
     <string name="history_page_next">Next page</string>
     <string name="history_page_status">Page %1$d</string>
@@ -395,8 +395,8 @@
     <string name="settings_general_title">General</string>
     <string name="settings_download_title">Downloads</string>
     <string name="settings_appearance_title">Appearance</string>
-    <string name="settings_general_summary">Language, haptics, startup animation and notifications</string>
-    <string name="settings_download_summary">Location, concurrency, quality, metadata and file formats</string>
+    <string name="settings_general_summary">Language, haptics, startup animation and Live Update notifications</string>
+    <string name="settings_download_summary">Download location, simultaneous downloads, default quality, metadata, format conversion, mobile data and gallery visibility</string>
     <string name="settings_appearance_summary">Theme, colors, pure black mode and liquid glass</string>
     <string name="settings_about_summary">Version, updates, problem reports, licenses and disclaimer</string>
     <string name="settings_add_metadata">Add metadata to downloads</string>
@@ -405,7 +405,7 @@
     <string name="settings_metadata_options_desc">Cover, artist and album</string>
     <string name="settings_metadata_cover">Embed cover</string>
     <string name="settings_metadata_cover_desc">Embed the cover of the current video or song into the file.</string>
-    <string name="settings_metadata_disabled">Metadata is off. Enable it in Download settings.</string>
+    <string name="settings_metadata_disabled">Metadata is off. Open Settings → Downloads to enable it.</string>
     <string name="settings_metadata_uploader">Use the uploader as artist</string>
     <string name="settings_metadata_uploader_desc">Uses the uploader when no music artist is available, such as for original videos. For reposts and shows, the uploader is only added to the Comment tag.</string>
     <string name="settings_metadata_collection">Use the collection as album</string>
@@ -413,14 +413,14 @@
     <string name="settings_download_preference_memory">Remember download options</string>
     <string name="settings_download_preference_memory_desc">Reuses the options you selected the next time you parse content.</string>
     <string name="settings_download_preference_memory_summary_off">Resets download options after each parse</string>
-    <string name="settings_download_preference_memory_summary_none">Enabled, but no options selected</string>
+    <string name="settings_download_preference_memory_summary_none">Enabled, but no options are selected to remember</string>
     <string name="settings_download_preference_memory_summary_all">Remembers all download options</string>
     <string name="settings_download_preference_memory_summary_some">Categories remembered: %1$d · %2$s</string>
     <string name="settings_download_preference_memory_groups_title">Options to remember</string>
     <string name="settings_download_preference_memory_groups_desc">Other options return to their defaults after each parse.</string>
     <string name="settings_download_preference_memory_disabled_hint">Off. All download options return to their defaults after each parse.</string>
     <string name="settings_download_preference_group_output_type">Output type</string>
-    <string name="settings_download_preference_group_output_type_desc">Video with audio, video only or audio only. Defaults to video with audio when not remembered.</string>
+    <string name="settings_download_preference_group_output_type_desc">Audio and video, video only or audio only. Defaults to Audio and video when not remembered.</string>
     <string name="settings_download_preference_group_stream_format">Stream format</string>
     <string name="settings_download_preference_group_stream_format_desc">DASH, MP4 or FLV. Defaults to DASH when not remembered.</string>
     <string name="settings_download_preference_group_video_quality">Resolution and video codec</string>
@@ -428,11 +428,11 @@
     <string name="settings_download_preference_group_audio_quality">Audio bitrate</string>
     <string name="settings_download_preference_group_audio_quality_desc">Reuses the selected audio bitrate. Otherwise uses Default download quality.</string>
     <string name="settings_download_preference_group_embedding">Embedded subtitles and lyrics</string>
-    <string name="settings_download_preference_group_embedding_desc">Remembers whether to embed subtitles and lyrics. Choose subtitle languages again for each download.</string>
+    <string name="settings_download_preference_group_embedding_desc">Remembers whether to embed subtitles or lyrics. Choose languages again each time you parse content.</string>
     <string name="settings_download_preference_group_misc_exports">Subtitle files and AI summaries</string>
-    <string name="settings_download_preference_group_misc_exports_desc">Remembers whether to export subtitles and AI summaries. Choose subtitle languages again for each download.</string>
+    <string name="settings_download_preference_group_misc_exports_desc">Remembers whether to save subtitle files and export AI summaries. Choose subtitle languages again each time you parse content.</string>
     <string name="settings_download_preference_group_nfo">NFO metadata</string>
-    <string name="settings_download_preference_group_nfo_desc">Collection metadata and individual episode metadata.</string>
+    <string name="settings_download_preference_group_nfo_desc">Collection or series metadata and individual episode metadata.</string>
     <string name="settings_download_preference_group_danmaku">Danmaku</string>
     <string name="settings_download_preference_group_danmaku_desc">Remembers current and historical danmaku selections. Dates and times are not remembered.</string>
     <string name="settings_download_preference_group_images">Images</string>
@@ -454,7 +454,7 @@
     <string name="download_embed_write_failed">Embedding failed. The downloaded file has been kept.</string>
     <string name="download_embed_unsupported">This file format cannot embed the selected content</string>
     <string name="settings_max_concurrent_downloads">Concurrent downloads</string>
-    <string name="settings_max_concurrent_downloads_desc">Limits simultaneous video, audio and post image downloads. Additional downloads are queued. Higher limits may trigger Bilibili restrictions. Subtitles, danmaku, covers, metadata, AI summaries and post text are downloaded separately.</string>
+    <string name="settings_max_concurrent_downloads_desc">Limits simultaneous video, audio and post image downloads. Additional downloads are queued. Higher limits may trigger Bilibili restrictions. Subtitles, danmaku, covers, NFO metadata, AI summaries and post text are not subject to this limit.</string>
     <string name="settings_convert_xml_danmaku_to_ass">Convert danmaku to ASS</string>
     <string name="settings_convert_xml_danmaku_to_ass_desc">Converts downloaded XML danmaku to ASS subtitles.</string>
     <string name="settings_convert_audio_to_mp3">Convert audio to MP3</string>

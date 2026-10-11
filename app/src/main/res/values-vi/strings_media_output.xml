@@ -2,7 +2,7 @@
 <resources>
     <string name="download_detail_preparing_media">Đang chuẩn bị tệp đa phương tiện</string>
     <string name="download_failure_prepare_media">Không thể chuẩn bị tệp đa phương tiện</string>
-    <string name="download_embed_missing_languages">Thiếu phụ đề: %1$s</string>
+    <string name="download_embed_missing_languages">Phụ đề chưa được nhúng: %1$s</string>
     <string name="parse_subtitle_selection_required">Chọn ngôn ngữ phụ đề hoặc lời bài hát hoặc tắt tùy chọn tương ứng để tiếp tục.</string>
     <string name="parse_dolby_mp3_notice">Đã bật chuyển sang MP3, Dolby Atmos sẽ không được giữ lại.</string>
 </resources>

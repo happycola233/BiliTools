@@ -34,7 +34,7 @@
     <string name="settings_naming_item_folder_template">項目フォルダのテンプレート</string>
     <string name="settings_naming_item_folder_template_desc">ダウンロードする各項目のフォルダ名を設定します。</string>
     <string name="settings_naming_file_template">ファイル名のテンプレート</string>
-    <string name="settings_naming_file_template_desc">各タスクのベースファイル名を設定します。ファイル拡張子は出力形式に自動的に追加されます。</string>
+    <string name="settings_naming_file_template_desc">各タスクが出力するファイルの基本名を設定します。拡張子は出力形式に応じて自動的に追加されます。</string>
     <string name="settings_naming_restore_defaults">デフォルトのテンプレートに戻す</string>
     <string name="settings_naming_restore_defaults_desc">すべてのカスタムテンプレートを削除し、デフォルト名を復元します。</string>
     <string name="settings_naming_restore_defaults_confirm_message">デフォルトのテンプレートに戻しますか？すべてのカスタムテンプレートが削除されます。</string>

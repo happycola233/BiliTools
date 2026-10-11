@@ -70,7 +70,7 @@
     <string name="settings_naming_preview_list_collection">Öğrenme materyalleri</string>
     <string name="settings_naming_preview_upper">Media Storm</string>
     <string name="settings_naming_token_title">Başlık</string>
-    <string name="settings_naming_token_work">Video veya dizi başlığı</string>
+    <string name="settings_naming_token_work">Eser başlığı</string>
     <string name="settings_naming_token_collection">Koleksiyon başlığı</string>
     <string name="settings_naming_token_p">Parça numarası</string>
     <string name="settings_naming_token_ep">Bölüm numarası</string>

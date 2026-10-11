@@ -2,7 +2,7 @@
 <resources>
     <string name="download_detail_preparing_media">جارٍ تحضير ملفات الوسائط</string>
     <string name="download_failure_prepare_media">تعذر تحضير ملفات الوسائط</string>
-    <string name="download_embed_missing_languages">الترجمة المفقودة: %1$s</string>
+    <string name="download_embed_missing_languages">الترجمات التي لم تُضمّن: %1$s</string>
     <string name="parse_subtitle_selection_required">اختر لغة الترجمة أو كلمات الأغاني، أو قم بإيقاف تشغيل الخيار المقابل للمتابعة.</string>
     <string name="parse_dolby_mp3_notice">التحويل إلى MP3 مفعّل، لذا لن يتم الاحتفاظ بـ Dolby Atmos.</string>
 </resources>

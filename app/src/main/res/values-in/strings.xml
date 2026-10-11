@@ -59,10 +59,10 @@
     <string name="login_stat_coins">Koin</string>
     <string name="login_captcha_title">Harap selesaikan verifikasi</string>
     <string name="login_captcha_loading">Memuat verifikasi</string>
-    <string name="parse_input_card_title">Parsing tautan</string>
+    <string name="parse_input_card_title">Analisis tautan</string>
     <string name="parse_hint">Tautan/AV/BV/SS/EP/AU/AM/SID/FID/CV/RL/UID</string>
     <string name="parse_paste">Tempel</string>
-    <string name="parse_action">Parsing</string>
+    <string name="parse_action">Analisis</string>
     <string name="parse_cover_desc">Sampul konten</string>
     <string name="parse_section_result">Hasil</string>
     <string name="parse_copy_description">Salin deskripsi</string>
@@ -164,7 +164,7 @@
     <string name="parse_ai_summary_copy_single_done">Ringkasan AI telah disalin ke papan klip</string>
     <string name="parse_ai_summary_copy_current_done">Ringkasan AI saat ini telah disalin</string>
     <string name="parse_ai_summary_copy_all_done">Semua ringkasan AI telah disalin</string>
-    <string name="parse_copy_preview_available_count">%1$d dari %2$d tersedia</string>
+    <string name="parse_copy_preview_available_count">%1$d dari %2$d item dapat disalin</string>
     <string name="parse_ai_summary_label">Ringkasan AI</string>
     <string name="parse_nfo_label">Metadata NFO</string>
     <string name="parse_nfo_collection">Metadata koleksi atau seri</string>
@@ -199,7 +199,7 @@
     <string name="parse_bitrate_hires">Hi-Res lossless</string>
     <string name="parse_bitrate_flac">FLAC lossless</string>
     <string name="parse_bitrate_other">Lainnya</string>
-    <string name="parse_error_no_stream">Parsing tautan terlebih dahulu</string>
+    <string name="parse_error_no_stream">Analisis tautan terlebih dahulu</string>
     <string name="parse_error_no_subtitle">Tidak ditemukan subtitle yang tersedia</string>
     <string name="parse_error_no_ai">Belum ada ringkasan AI untuk video ini</string>
     <string name="parse_error_no_nfo">Tidak ada metadata NFO yang tersedia</string>
@@ -210,7 +210,7 @@
     <string name="download_unavailable_video">Tidak ada video yang tersedia untuk item ini</string>
     <string name="download_unavailable_audio_video">Item ini tidak memiliki audio atau video yang diperlukan untuk penggabungan</string>
     <string name="download_unavailable_image">Gambar yang dipilih tidak tersedia untuk item ini</string>
-    <string name="download_unavailable_opus_images">Postingan ini tidak memiliki gambar</string>
+    <string name="download_unavailable_opus_images">Isi postingan ini tidak memuat gambar</string>
     <string name="parse_error_opus_risk_control">Permintaan detail postingan untuk sementara dibatasi. Coba lagi nanti.</string>
     <string name="parse_error_opus_login_required">Masuk untuk melihat postingan ini</string>
     <string name="parse_error_opus_permission_denied">Akun Anda tidak dapat mengakses postingan ini</string>
@@ -223,8 +223,8 @@
     <plurals name="downloads_selection_title">
         <item quantity="other">%1$d dipilih</item>
     </plurals>
-    <string name="downloads_clear_completed">Hapus unduhan yang telah selesai</string>
-    <string name="downloads_clear_all">Hapus semua unduhan</string>
+    <string name="downloads_clear_completed">Hapus riwayat unduhan selesai</string>
+    <string name="downloads_clear_all">Hapus semua riwayat unduhan</string>
     <string name="downloads_actions_menu">Tindakan unduhan</string>
     <string name="downloads_multi_manage">Kelola unduhan</string>
     <string name="downloads_multi_select_all">Pilih semua</string>
@@ -285,7 +285,7 @@
     <string name="download_retry">Coba lagi</string>
     <string name="download_delete">Hapus</string>
     <string name="download_time_unknown">Waktu tidak diketahui</string>
-    <string name="downloads_reparse">Parsing lagi</string>
+    <string name="downloads_reparse">Analisis ulang</string>
     <string name="downloads_view_details">Detail</string>
     <string name="downloads_details_title">Detail unduhan</string>
     <string name="downloads_details_source">Informasi dasar</string>
@@ -314,7 +314,7 @@
     <string name="download_failure_convert_audio">Tidak dapat mengonversi audio ke MP3</string>
     <string name="download_failure_convert_video">Tidak dapat mengonversi video ke MP4</string>
     <string name="download_failure_resume_data_missing">Data untuk melanjutkan unduhan hilang. Mulai unduhan lagi.</string>
-    <string name="download_failure_retry_data_missing">Data pengunduhan tidak lengkap. Parsing konten lagi untuk mencoba lagi.</string>
+    <string name="download_failure_retry_data_missing">Data unduhan tidak lengkap. Analisis ulang konten untuk mencoba lagi.</string>
     <string name="download_failure_extra">Tidak dapat memproses %1$s: %2$s</string>
     <string name="login_user_mid">UID: %1$d</string>
     <string name="login_user_level">Tingkat: Lv%1$d</string>
@@ -327,7 +327,7 @@
     <string name="login_entry_favorite_title">Favorit</string>
     <string name="login_entry_favorite_desc">Unduh video simpanan Anda</string>
     <string name="login_entry_watch_later_title">Tonton nanti</string>
-    <string name="login_entry_watch_later_desc">Lanjutkan dari bagian terakhir yang Anda tinggalkan</string>
+    <string name="login_entry_watch_later_desc">Lain kali pasti ditonton?</string>
     <string name="login_entry_settings_title">Pengaturan</string>
     <string name="login_entry_settings_desc">Sesuaikan BiliTools</string>
     <string name="history_cover_desc">Sampul item riwayat</string>
@@ -336,7 +336,7 @@
     <string name="history_error_load">Tidak dapat memuat riwayat tontonan. Coba lagi nanti.</string>
     <string name="history_refresh">Segarkan</string>
     <string name="history_more_filters">Lebih banyak filter</string>
-    <string name="history_download">Unduh</string>
+    <string name="history_download">Buka opsi unduhan</string>
     <string name="history_progress_format">%1$s / %2$s</string>
     <string name="history_progress_completed">Sudah ditonton</string>
     <string name="history_page_prev">Halaman sebelumnya</string>
@@ -392,8 +392,8 @@
     <string name="settings_general_title">Umum</string>
     <string name="settings_download_title">Unduhan</string>
     <string name="settings_appearance_title">Penampilan</string>
-    <string name="settings_general_summary">Bahasa, umpan balik haptik, animasi startup, dan notifikasi</string>
-    <string name="settings_download_summary">Lokasi, unduhan bersamaan, kualitas, metadata, dan format file</string>
+    <string name="settings_general_summary">Bahasa, umpan balik haptik, animasi saat membuka aplikasi, dan notifikasi Pembaruan Langsung</string>
+    <string name="settings_download_summary">Lokasi unduhan, jumlah unduhan bersamaan, kualitas default, metadata, konversi format, data seluler, dan tampilan di galeri</string>
     <string name="settings_appearance_summary">Tema, warna, mode hitam murni, dan kaca cair</string>
     <string name="settings_about_summary">Versi, pembaruan, laporan masalah, lisensi, dan penafian</string>
     <string name="settings_add_metadata">Tambahkan metadata ke unduhan</string>
@@ -425,11 +425,11 @@
     <string name="settings_download_preference_group_audio_quality">Kecepatan bit audio</string>
     <string name="settings_download_preference_group_audio_quality_desc">Menggunakan kembali kecepatan bit audio yang dipilih. Jika tidak, gunakan kualitas unduhan default.</string>
     <string name="settings_download_preference_group_embedding">Subtitle dan lirik tertanam</string>
-    <string name="settings_download_preference_group_embedding_desc">Mengingat apakah akan menyematkan subtitle dan lirik. Pilih lagi bahasa subtitle untuk setiap unduhan.</string>
+    <string name="settings_download_preference_group_embedding_desc">Mengingat apakah subtitle atau lirik akan disematkan. Bahasa dipilih ulang setiap kali konten dianalisis.</string>
     <string name="settings_download_preference_group_misc_exports">File subtitle dan ringkasan AI</string>
-    <string name="settings_download_preference_group_misc_exports_desc">Mengingat apakah akan mengekspor subtitle dan ringkasan AI. Pilih lagi bahasa subtitle untuk setiap unduhan.</string>
+    <string name="settings_download_preference_group_misc_exports_desc">Mengingat apakah file subtitle akan disimpan dan ringkasan AI akan diekspor. Bahasa subtitle dipilih ulang setiap kali konten dianalisis.</string>
     <string name="settings_download_preference_group_nfo">Metadata NFO</string>
-    <string name="settings_download_preference_group_nfo_desc">Metadata koleksi dan metadata episode individual.</string>
+    <string name="settings_download_preference_group_nfo_desc">Metadata koleksi atau serial dan metadata setiap episode.</string>
     <string name="settings_download_preference_group_danmaku">Danmaku</string>
     <string name="settings_download_preference_group_danmaku_desc">Mengingat pilihan danmaku terkini dan riwayat danmaku. Tanggal dan jam tidak diingat.</string>
     <string name="settings_download_preference_group_images">Gambar</string>
@@ -451,7 +451,7 @@
     <string name="download_embed_write_failed">Penyematan gagal. File yang diunduh telah disimpan.</string>
     <string name="download_embed_unsupported">Format file ini tidak dapat menyematkan konten yang dipilih</string>
     <string name="settings_max_concurrent_downloads">Unduhan serentak</string>
-    <string name="settings_max_concurrent_downloads_desc">Membatasi pengunduhan video, audio, dan gambar postingan secara bersamaan. Unduhan tambahan dimasukkan dalam antrean. Batas yang lebih tinggi dapat memicu pembatasan Bilibili. Subtitle, danmaku, sampul, metadata, ringkasan AI, dan teks postingan diunduh secara terpisah.</string>
+    <string name="settings_max_concurrent_downloads_desc">Membatasi jumlah unduhan video, audio, dan gambar postingan yang berjalan bersamaan. Unduhan lainnya menunggu dalam antrean. Batas yang terlalu tinggi dapat memicu pembatasan dari Bilibili. Subtitle, danmaku, sampul, metadata NFO, ringkasan AI, dan teks postingan tidak terkena batas ini.</string>
     <string name="settings_convert_xml_danmaku_to_ass">Ubah danmaku menjadi ASS</string>
     <string name="settings_convert_xml_danmaku_to_ass_desc">Mengonversi danmaku XML yang diunduh menjadi subtitle ASS.</string>
     <string name="settings_convert_audio_to_mp3">Konversi audio ke MP3</string>
@@ -476,12 +476,12 @@
     <string name="settings_default_quality_resolution_highest">Resolusi tertinggi</string>
     <string name="settings_default_quality_resolution_lowest">Resolusi terendah</string>
     <string name="settings_default_quality_resolution_fixed_label">Resolusi tetap</string>
-    <string name="settings_default_quality_resolution_fixed_desc">Jika tidak tersedia, gunakan resolusi tertinggi yang didukung oleh video.</string>
+    <string name="settings_default_quality_resolution_fixed_desc">Jika resolusi yang dipilih tidak tersedia, aplikasi otomatis menggunakan resolusi tertinggi yang tersedia untuk video tersebut.</string>
     <string name="settings_default_quality_audio_highest">Kecepatan bit audio tertinggi</string>
     <string name="settings_default_quality_audio_lowest">Kecepatan bit audio terendah</string>
     <string name="settings_default_quality_audio_fixed_label">Kecepatan bit audio tetap</string>
-    <string name="settings_default_quality_audio_fixed_desc">Jika tidak tersedia, gunakan kecepatan bit audio tertinggi yang didukung oleh video.</string>
-    <string name="settings_default_quality_codec_desc">Jika tidak tersedia, gunakan codec yang didukung oleh video.</string>
+    <string name="settings_default_quality_audio_fixed_desc">Jika kecepatan bit audio yang dipilih tidak tersedia, aplikasi otomatis menggunakan kecepatan bit audio tertinggi yang tersedia untuk video tersebut.</string>
+    <string name="settings_default_quality_codec_desc">Jika kodek yang dipilih tidak tersedia, aplikasi otomatis menggunakan kodek yang tersedia untuk video tersebut.</string>
     <string name="settings_theme">Tema</string>
     <string name="settings_theme_system">Default sistem</string>
     <string name="settings_theme_light">Terang</string>

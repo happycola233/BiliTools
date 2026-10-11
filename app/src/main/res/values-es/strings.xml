@@ -164,7 +164,7 @@
     <string name="parse_ai_summary_copy_single_done">El resumen de IA se ha copiado al portapapeles.</string>
     <string name="parse_ai_summary_copy_current_done">Se ha copiado el resumen de IA actual.</string>
     <string name="parse_ai_summary_copy_all_done">Se han copiado todos los resúmenes de IA.</string>
-    <string name="parse_copy_preview_available_count">%1$d de %2$d disponibles</string>
+    <string name="parse_copy_preview_available_count">%1$d de %2$d elementos se pueden copiar</string>
     <string name="parse_ai_summary_label">Resumen de IA</string>
     <string name="parse_nfo_label">Metadatos NFO</string>
     <string name="parse_nfo_collection">Metadatos de colección o serie</string>
@@ -210,7 +210,7 @@
     <string name="download_unavailable_video">No hay vídeo disponible para este elemento</string>
     <string name="download_unavailable_audio_video">A este elemento le falta el audio o el vídeo necesarios para la fusión</string>
     <string name="download_unavailable_image">La imagen seleccionada no está disponible para este elemento</string>
-    <string name="download_unavailable_opus_images">Esta publicación no tiene imágenes.</string>
+    <string name="download_unavailable_opus_images">El cuerpo de esta publicación no contiene imágenes</string>
     <string name="parse_error_opus_risk_control">Las solicitudes de detalles de publicaciones están temporalmente limitadas. Vuelva a intentarlo más tarde.</string>
     <string name="parse_error_opus_login_required">Inicie sesión para ver esta publicación</string>
     <string name="parse_error_opus_permission_denied">Su cuenta no puede acceder a esta publicación</string>
@@ -223,8 +223,8 @@
     <plurals name="downloads_selection_title">
         <item quantity="other">%1$d seleccionados</item>
     </plurals>
-    <string name="downloads_clear_completed">Borrar descargas completadas</string>
-    <string name="downloads_clear_all">Borrar todas las descargas</string>
+    <string name="downloads_clear_completed">Borrar registros de descargas completadas</string>
+    <string name="downloads_clear_all">Borrar todos los registros</string>
     <string name="downloads_actions_menu">Acciones de descarga</string>
     <string name="downloads_multi_manage">Administrar descargas</string>
     <string name="downloads_multi_select_all">Seleccionar todo</string>
@@ -330,7 +330,7 @@
     <string name="login_entry_favorite_title">Favoritos</string>
     <string name="login_entry_favorite_desc">Descargue sus vídeos guardados</string>
     <string name="login_entry_watch_later_title">Ver más tarde</string>
-    <string name="login_entry_watch_later_desc">Continúe donde lo dejó</string>
+    <string name="login_entry_watch_later_desc">¿La próxima vez, seguro?</string>
     <string name="login_entry_settings_title">Ajustes</string>
     <string name="login_entry_settings_desc">Personalizar BiliTools</string>
     <string name="history_cover_desc">Portada del elemento del historial</string>
@@ -339,9 +339,9 @@
     <string name="history_error_load">No se pudo cargar el historial de visualización. Vuelva a intentarlo más tarde.</string>
     <string name="history_refresh">Actualizar</string>
     <string name="history_more_filters">Más filtros</string>
-    <string name="history_download">Descargar</string>
+    <string name="history_download">Abrir opciones de descarga</string>
     <string name="history_progress_format">%1$s / %2$s</string>
-    <string name="history_progress_completed">Finalizado</string>
+    <string name="history_progress_completed">Visto</string>
     <string name="history_page_prev">Página anterior</string>
     <string name="history_page_next">Página siguiente</string>
     <string name="history_page_status">Página %1$d</string>
@@ -395,8 +395,8 @@
     <string name="settings_general_title">General</string>
     <string name="settings_download_title">Descargas</string>
     <string name="settings_appearance_title">Apariencia</string>
-    <string name="settings_general_summary">Idioma, respuesta háptica, animación de inicio y notificaciones</string>
-    <string name="settings_download_summary">Ubicación, simultaneidad, calidad, metadatos y formatos de archivo</string>
+    <string name="settings_general_summary">Idioma, respuesta háptica, animación de inicio y notificaciones de actualización en vivo</string>
+    <string name="settings_download_summary">Ubicación de descarga, descargas simultáneas, calidad predeterminada, metadatos, conversión de formatos, datos móviles y visibilidad en la galería</string>
     <string name="settings_appearance_summary">Tema, colores, modo negro puro y vidrio líquido</string>
     <string name="settings_about_summary">Versión, actualizaciones, informes de problemas, licencias y descargo de responsabilidad</string>
     <string name="settings_add_metadata">Agregar metadatos a las descargas</string>
@@ -428,11 +428,11 @@
     <string name="settings_download_preference_group_audio_quality">Velocidad de bits de audio</string>
     <string name="settings_download_preference_group_audio_quality_desc">Reutiliza la velocidad de bits de audio seleccionada. De lo contrario, utiliza la calidad de descarga predeterminada.</string>
     <string name="settings_download_preference_group_embedding">Subtítulos y letras incrustados</string>
-    <string name="settings_download_preference_group_embedding_desc">Recuerda si se deben incrustar subtítulos y letras. Elija los idiomas de los subtítulos nuevamente para cada descarga.</string>
+    <string name="settings_download_preference_group_embedding_desc">Recuerda si se deben incrustar subtítulos o letras. Los idiomas se eligen de nuevo cada vez que se analiza contenido.</string>
     <string name="settings_download_preference_group_misc_exports">Archivos de subtítulos y resúmenes de IA</string>
-    <string name="settings_download_preference_group_misc_exports_desc">Recuerda si se deben exportar subtítulos y resúmenes de IA. Elija los idiomas de los subtítulos nuevamente para cada descarga.</string>
+    <string name="settings_download_preference_group_misc_exports_desc">Recuerda si se deben guardar archivos de subtítulos y exportar resúmenes de IA. Los idiomas de los subtítulos se eligen de nuevo cada vez que se analiza contenido.</string>
     <string name="settings_download_preference_group_nfo">Metadatos NFO</string>
-    <string name="settings_download_preference_group_nfo_desc">Metadatos de colección y metadatos de episodios individuales.</string>
+    <string name="settings_download_preference_group_nfo_desc">Metadatos de colecciones o series y de episodios individuales.</string>
     <string name="settings_download_preference_group_danmaku">Danmaku</string>
     <string name="settings_download_preference_group_danmaku_desc">Recuerda selecciones danmaku actuales e históricas. No se recuerdan fechas ni horas.</string>
     <string name="settings_download_preference_group_images">Imágenes</string>
@@ -454,7 +454,7 @@
     <string name="download_embed_write_failed">La incrustación falló. El archivo descargado se ha conservado.</string>
     <string name="download_embed_unsupported">Este formato de archivo no puede incrustar el contenido seleccionado</string>
     <string name="settings_max_concurrent_downloads">Descargas simultáneas</string>
-    <string name="settings_max_concurrent_downloads_desc">Limita las descargas simultáneas de vídeo, audio e imágenes de publicaciones. Las descargas adicionales quedan en cola. Los límites altos pueden activar restricciones de Bilibili. Los subtítulos, danmaku, portadas, metadatos, resúmenes de IA y textos de publicaciones se descargan por separado.</string>
+    <string name="settings_max_concurrent_downloads_desc">Limita las descargas simultáneas de vídeos, audio e imágenes de publicaciones. Las demás quedan en cola. Un límite alto puede provocar restricciones de Bilibili. Los subtítulos, danmaku, portadas, metadatos NFO, resúmenes de IA y textos de publicaciones no están sujetos a este límite.</string>
     <string name="settings_convert_xml_danmaku_to_ass">Convertir danmaku a ASS</string>
     <string name="settings_convert_xml_danmaku_to_ass_desc">Convierte danmaku XML descargado en subtítulos ASS.</string>
     <string name="settings_convert_audio_to_mp3">Convertir audio a MP3</string>

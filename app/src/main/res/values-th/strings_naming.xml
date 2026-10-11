@@ -70,7 +70,7 @@
     <string name="settings_naming_preview_list_collection">สื่อการเรียนรู้</string>
     <string name="settings_naming_preview_upper">Media Storm</string>
     <string name="settings_naming_token_title">ชื่อเรื่อง</string>
-    <string name="settings_naming_token_work">ชื่อวิดีโอหรือซีรีส์</string>
+    <string name="settings_naming_token_work">ชื่อผลงาน</string>
     <string name="settings_naming_token_collection">ชื่อคอลเลกชัน</string>
     <string name="settings_naming_token_p">หมายเลขส่วน</string>
     <string name="settings_naming_token_ep">หมายเลขตอน</string>

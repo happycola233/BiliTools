@@ -70,7 +70,7 @@
     <string name="settings_naming_preview_list_collection">المواد التعليمية</string>
     <string name="settings_naming_preview_upper">Media Storm</string>
     <string name="settings_naming_token_title">العنوان</string>
-    <string name="settings_naming_token_work">عنوان الفيديو أو المسلسل</string>
+    <string name="settings_naming_token_work">عنوان العمل</string>
     <string name="settings_naming_token_collection">عنوان المجموعة</string>
     <string name="settings_naming_token_p">رقم الجزء</string>
     <string name="settings_naming_token_ep">رقم الحلقة</string>

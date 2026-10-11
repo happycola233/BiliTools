@@ -13,7 +13,7 @@
     <string name="subtitle_source_cancel">İptal</string>
     <string name="subtitle_source_done">Bitti</string>
     <string name="subtitle_source_coverage">Kullanılabilir: %1$d / %2$d</string>
-    <string name="subtitle_source_coverage_pending">Doğrulandı: %1$d / %2$d</string>
+    <string name="subtitle_source_coverage_pending">Kullanılabilirliği doğrulanan: %1$d / %2$d</string>
     <string name="subtitle_source_unconfirmed">Kullanılabilirlik henüz onaylanmadı</string>
     <string name="subtitle_source_unavailable">Bu öğe için mevcut değil</string>
     <string name="subtitle_source_loading">Altyazılar yükleniyor…</string>

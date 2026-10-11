@@ -70,7 +70,7 @@
     <string name="settings_naming_preview_list_collection">Учебные материалы</string>
     <string name="settings_naming_preview_upper">Media Storm</string>
     <string name="settings_naming_token_title">Название</string>
-    <string name="settings_naming_token_work">Название видео или сериала</string>
+    <string name="settings_naming_token_work">Название произведения</string>
     <string name="settings_naming_token_collection">Название сборника</string>
     <string name="settings_naming_token_p">Номер части</string>
     <string name="settings_naming_token_ep">Номер эпизода</string>

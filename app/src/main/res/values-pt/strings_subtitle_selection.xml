@@ -13,13 +13,13 @@
     <string name="subtitle_source_cancel">Cancelar</string>
     <string name="subtitle_source_done">Concluído</string>
     <string name="subtitle_source_coverage">Disponíveis: %1$d / %2$d</string>
-    <string name="subtitle_source_coverage_pending">Confirmados: %1$d / %2$d</string>
+    <string name="subtitle_source_coverage_pending">Disponibilidade confirmada: %1$d / %2$d</string>
     <string name="subtitle_source_unconfirmed">Disponibilidade ainda não confirmada</string>
     <string name="subtitle_source_unavailable">Indisponível para este item</string>
     <string name="subtitle_source_loading">Carregando legendas…</string>
     <string name="subtitle_source_loading_batch">Carregando legendas: %1$d / %2$d</string>
     <string name="subtitle_source_failure">Não foi possível carregar as legendas.</string>
-    <string name="subtitle_source_partial_failure">Itens com erros de legenda: %1$d</string>
+    <string name="subtitle_source_partial_failure">Itens cujas legendas não puderam ser carregadas: %1$d</string>
     <string name="subtitle_source_retry">Tentar novamente</string>
     <string name="subtitle_source_empty">Nenhuma legenda está disponível para este vídeo.</string>
     <string name="subtitle_source_empty_batch">Nenhuma legenda está disponível para esses itens.</string>

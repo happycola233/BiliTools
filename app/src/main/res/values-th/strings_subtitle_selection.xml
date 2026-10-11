@@ -13,7 +13,7 @@
     <string name="subtitle_source_cancel">ยกเลิก</string>
     <string name="subtitle_source_done">เสร็จแล้ว</string>
     <string name="subtitle_source_coverage">พร้อมใช้งาน: %1$d / %2$d</string>
-    <string name="subtitle_source_coverage_pending">ยืนยันแล้ว: %1$d / %2$d</string>
+    <string name="subtitle_source_coverage_pending">ยืนยันว่ามีคำบรรยาย: %1$d / %2$d รายการ</string>
     <string name="subtitle_source_unconfirmed">ยังไม่ได้รับการยืนยันความพร้อมใช้งาน</string>
     <string name="subtitle_source_unavailable">ไม่พร้อมใช้งานสำหรับรายการนี้</string>
     <string name="subtitle_source_loading">กำลังโหลดคำบรรยาย...</string>

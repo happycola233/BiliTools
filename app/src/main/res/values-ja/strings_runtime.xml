@@ -21,7 +21,7 @@
     <string name="runtime_special_attributes">特殊属性</string>
     <string name="runtime_video_status">ビデオステータス</string>
     <string name="runtime_warning">警告</string>
-    <string name="runtime_redirect_video">ビデオリダイレクト</string>
+    <string name="runtime_redirect_video">重複動画の転送先</string>
     <string name="runtime_time_categories">時間とカテゴリー</string>
     <string name="runtime_total_duration">総再生時間</string>
     <string name="runtime_legacy_category">カテゴリ（旧）</string>
@@ -90,7 +90,7 @@
     <string name="runtime_limited_free">期間限定で無料</string>
     <string name="runtime_purchase_required">購入が必要です</string>
     <string name="runtime_dynamic_video">ビデオ投稿</string>
-    <string name="runtime_approved_limited">限定公開で承認</string>
+    <string name="runtime_approved_limited">審査通過（オレンジステータス）</string>
     <string name="runtime_pending_review">審査待ち</string>
     <string name="runtime_rejected">差し戻し</string>
     <string name="runtime_locked_police">法執行機関による制限</string>
@@ -102,7 +102,7 @@
     <string name="runtime_transcode_pending">トランスコーディングを待機中</string>
     <string name="runtime_review_delayed">審査延期</string>
     <string name="runtime_source_repair">ビデオソースの修復待ち</string>
-    <string name="runtime_dump_failed">転送に失敗しました</string>
+    <string name="runtime_dump_failed">データのダンプに失敗</string>
     <string name="runtime_comments_review">コメント権限の審査待ち</string>
     <string name="runtime_temporary_trash">一時ゴミ箱</string>
     <string name="runtime_distributing">配信中</string>
@@ -133,7 +133,7 @@
     <string name="runtime_episode_part">エピソード / パート</string>
     <string name="runtime_title">タイトル</string>
     <string name="runtime_uploader">クリエイター</string>
-    <string name="runtime_album">アルバムまたはシリーズ</string>
+    <string name="runtime_album">アルバム / 作品</string>
     <string name="runtime_track_number">エピソード番号</string>
     <string name="runtime_source_url">ソースリンク</string>
     <string name="runtime_download_directory">ダウンロードディレクトリ</string>
@@ -143,7 +143,7 @@
     <string name="runtime_download_size">ダウンロードサイズ</string>
     <string name="runtime_quality">品質</string>
     <string name="runtime_video_codec">ビデオコーデック</string>
-    <string name="runtime_audio_spec">オーディオフォーマット</string>
+    <string name="runtime_audio_spec">オーディオ仕様</string>
     <string name="runtime_file_format">ファイル形式</string>
     <string name="runtime_saved_location">保存先</string>
     <string name="runtime_target_location">保存予定先</string>

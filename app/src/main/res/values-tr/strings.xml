@@ -193,7 +193,7 @@
     <string name="parse_resolution_720">720P HD</string>
     <string name="parse_resolution_480">480P SD</string>
     <string name="parse_resolution_360">360P düşük kalite</string>
-    <string name="parse_resolution_240">240P veri koruyucu</string>
+    <string name="parse_resolution_240">240P veri tasarrufu</string>
     <string name="parse_resolution_other">Diğer</string>
     <string name="parse_bitrate_dolby">Dolby Atmos</string>
     <string name="parse_bitrate_hires">Hi-Res kayıpsız</string>
@@ -210,7 +210,7 @@
     <string name="download_unavailable_video">Bu öğe için video mevcut değil</string>
     <string name="download_unavailable_audio_video">Bu öğede birleştirme için gereken ses veya video eksik</string>
     <string name="download_unavailable_image">Seçilen görüntü bu öğe için mevcut değil</string>
-    <string name="download_unavailable_opus_images">Bu gönderide görsel yok</string>
+    <string name="download_unavailable_opus_images">Bu gönderinin içeriğinde görsel yok</string>
     <string name="parse_error_opus_risk_control">Gönderi ayrıntılarına yönelik talepler geçici olarak sınırlıdır. Daha sonra tekrar deneyin.</string>
     <string name="parse_error_opus_login_required">Bu gönderiyi görüntülemek için giriş yapın</string>
     <string name="parse_error_opus_permission_denied">Hesabınız bu gönderiye erişemiyor</string>
@@ -223,8 +223,8 @@
     <plurals name="downloads_selection_title">
         <item quantity="other">%1$d seçildi</item>
     </plurals>
-    <string name="downloads_clear_completed">Tamamlanan indirmeleri temizle</string>
-    <string name="downloads_clear_all">Tüm indirmeleri temizle</string>
+    <string name="downloads_clear_completed">Tamamlanan indirme kayıtlarını temizle</string>
+    <string name="downloads_clear_all">Tüm kayıtları temizle</string>
     <string name="downloads_actions_menu">İndirme işlemleri</string>
     <string name="downloads_multi_manage">İndirmeleri yönet</string>
     <string name="downloads_multi_select_all">Tümünü seç</string>
@@ -330,7 +330,7 @@
     <string name="login_entry_favorite_title">Favoriler</string>
     <string name="login_entry_favorite_desc">Kaydedilen videolarınızı indirin</string>
     <string name="login_entry_watch_later_title">Daha sonra izle</string>
-    <string name="login_entry_watch_later_desc">Kaldığınız yerden devam edin</string>
+    <string name="login_entry_watch_later_desc">Bir dahaki sefere kesin izleyecek misin?</string>
     <string name="login_entry_settings_title">Ayarlar</string>
     <string name="login_entry_settings_desc">BiliTools\'u özelleştirin</string>
     <string name="history_cover_desc">Geçmiş öğe kapağı</string>
@@ -339,7 +339,7 @@
     <string name="history_error_load">İzleme geçmişi yüklenemedi. Daha sonra tekrar deneyin.</string>
     <string name="history_refresh">Yenile</string>
     <string name="history_more_filters">Daha fazla filtre</string>
-    <string name="history_download">İndir</string>
+    <string name="history_download">İndirme seçeneklerini aç</string>
     <string name="history_progress_format">%1$s / %2$s</string>
     <string name="history_progress_completed">İzlendi</string>
     <string name="history_page_prev">Önceki sayfa</string>
@@ -395,8 +395,8 @@
     <string name="settings_general_title">Genel</string>
     <string name="settings_download_title">İndirilenler</string>
     <string name="settings_appearance_title">Görünüm</string>
-    <string name="settings_general_summary">Dil, dokunsal geri bildirim, başlangıç animasyonu ve bildirimler</string>
-    <string name="settings_download_summary">Konum, eş zamanlı indirmeler, kalite, meta veriler ve dosya biçimleri</string>
+    <string name="settings_general_summary">Dil, dokunsal geri bildirim, başlangıç animasyonu ve Canlı Güncelleme bildirimleri</string>
+    <string name="settings_download_summary">İndirme konumu, eş zamanlı indirme sayısı, varsayılan kalite, meta veriler, biçim dönüştürme, mobil veri ve galeride görünürlük</string>
     <string name="settings_appearance_summary">Tema, renkler, saf siyah modu ve sıvı cam</string>
     <string name="settings_about_summary">Sürüm, güncellemeler, sorun bildirimleri, lisanslar ve sorumluluk reddi beyanı</string>
     <string name="settings_add_metadata">İndirilen dosyalara meta veri ekle</string>
@@ -428,11 +428,11 @@
     <string name="settings_download_preference_group_audio_quality">Ses bit hızı</string>
     <string name="settings_download_preference_group_audio_quality_desc">Seçilen ses bit hızını yeniden kullanır. Aksi halde Varsayılan indirme kalitesini kullanır.</string>
     <string name="settings_download_preference_group_embedding">Gömülü altyazılar ve şarkı sözleri</string>
-    <string name="settings_download_preference_group_embedding_desc">Altyazıların ve şarkı sözlerinin eklenip eklenmeyeceğini hatırlar. Her indirme için altyazı dillerini tekrar seçin.</string>
+    <string name="settings_download_preference_group_embedding_desc">Altyazıların veya şarkı sözlerinin gömülüp gömülmeyeceğini hatırlar. İçerik her çözümlendiğinde diller yeniden seçilir.</string>
     <string name="settings_download_preference_group_misc_exports">Altyazı dosyaları ve AI özetleri</string>
-    <string name="settings_download_preference_group_misc_exports_desc">Altyazıların ve AI özetlerinin dışa aktarılıp aktarılmayacağını hatırlar. Her indirme için altyazı dillerini tekrar seçin.</string>
+    <string name="settings_download_preference_group_misc_exports_desc">Altyazı dosyalarının kaydedilip kaydedilmeyeceğini ve AI özetlerinin dışa aktarılıp aktarılmayacağını hatırlar. İçerik her çözümlendiğinde altyazı dilleri yeniden seçilir.</string>
     <string name="settings_download_preference_group_nfo">NFO meta verileri</string>
-    <string name="settings_download_preference_group_nfo_desc">Koleksiyon meta verileri ve bireysel bölüm meta verileri.</string>
+    <string name="settings_download_preference_group_nfo_desc">Koleksiyon veya dizi meta verileri ve tek tek bölümlerin meta verileri.</string>
     <string name="settings_download_preference_group_danmaku">Danmaku</string>
     <string name="settings_download_preference_group_danmaku_desc">Güncel ve geçmiş danmaku seçimlerini hatırlar. Tarihler ve saatler hatırlanmıyor.</string>
     <string name="settings_download_preference_group_images">Görüntüler</string>
@@ -454,7 +454,7 @@
     <string name="download_embed_write_failed">Yerleştirme başarısız oldu. İndirilen dosya saklandı.</string>
     <string name="download_embed_unsupported">Bu dosya formatı seçilen içeriği gömemez</string>
     <string name="settings_max_concurrent_downloads">Eşzamanlı indirmeler</string>
-    <string name="settings_max_concurrent_downloads_desc">Eş zamanlı video, ses ve gönderi görseli indirmelerini sınırlar. Ek indirmeler sıraya alınır. Daha yüksek limitler Bilibili kısıtlamalarını tetikleyebilir. Altyazılar, danmaku, kapaklar, meta veriler, AI özetleri ve gönderi metni ayrı olarak indirilir.</string>
+    <string name="settings_max_concurrent_downloads_desc">Eş zamanlı video, ses ve gönderi görseli indirmelerinin sayısını sınırlar. Diğer indirmeler sırada bekler. Yüksek bir sınır, Bilibili kısıtlamalarını tetikleyebilir. Altyazılar, danmaku, kapaklar, NFO meta verileri, AI özetleri ve gönderi metinleri bu sınıra tabi değildir.</string>
     <string name="settings_convert_xml_danmaku_to_ass">Danmaku\'yu ASS\'ye dönüştür</string>
     <string name="settings_convert_xml_danmaku_to_ass_desc">İndirilen XML danmaku\'yu ASS altyazılarına dönüştürür.</string>
     <string name="settings_convert_audio_to_mp3">Sesi MP3\'ye dönüştür</string>

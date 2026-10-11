@@ -2,7 +2,7 @@
 <resources>
     <string name="download_detail_preparing_media">メディアファイルを準備中</string>
     <string name="download_failure_prepare_media">メディアファイルを準備できませんでした</string>
-    <string name="download_embed_missing_languages">未完了の字幕: %1$s</string>
+    <string name="download_embed_missing_languages">埋め込めなかった字幕：%1$s</string>
     <string name="parse_subtitle_selection_required">字幕または歌詞の言語を選択するか、対応するオプションをオフにしてから続行してください。</string>
     <string name="parse_dolby_mp3_notice">MP3 への変換がオンのため、Dolby Atmos は保持されません。</string>
 </resources>

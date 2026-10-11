@@ -164,7 +164,7 @@
     <string name="parse_ai_summary_copy_single_done">ИИ-сводка скопирована в буфер обмена.</string>
     <string name="parse_ai_summary_copy_current_done">Текущая ИИ-сводка скопирована.</string>
     <string name="parse_ai_summary_copy_all_done">Все ИИ-сводки скопированы.</string>
-    <string name="parse_copy_preview_available_count">Доступно %1$d из %2$d</string>
+    <string name="parse_copy_preview_available_count">Можно скопировать: %1$d из %2$d</string>
     <string name="parse_ai_summary_label">ИИ-сводка</string>
     <string name="parse_nfo_label">Метаданные NFO</string>
     <string name="parse_nfo_collection">Метаданные коллекции или серии</string>
@@ -210,7 +210,7 @@
     <string name="download_unavailable_video">Для этого элемента нет видео</string>
     <string name="download_unavailable_audio_video">В этом элементе отсутствует аудио или видео, необходимое для объединения.</string>
     <string name="download_unavailable_image">Выбранное изображение недоступно для этого элемента.</string>
-    <string name="download_unavailable_opus_images">В этой публикации нет изображений</string>
+    <string name="download_unavailable_opus_images">В содержимом этой публикации нет изображений</string>
     <string name="parse_error_opus_risk_control">Запросы сведений о публикациях временно ограничены. Повторите попытку позже.</string>
     <string name="parse_error_opus_login_required">Войдите, чтобы просмотреть эту публикацию</string>
     <string name="parse_error_opus_permission_denied">У вашего аккаунта нет доступа к этой публикации</string>
@@ -223,8 +223,8 @@
     <plurals name="downloads_selection_title">
         <item quantity="other">Выбрано: %1$d</item>
     </plurals>
-    <string name="downloads_clear_completed">Очистить завершенные загрузки</string>
-    <string name="downloads_clear_all">Очистить все загрузки</string>
+    <string name="downloads_clear_completed">Очистить записи завершённых загрузок</string>
+    <string name="downloads_clear_all">Очистить все записи</string>
     <string name="downloads_actions_menu">Действия с загрузками</string>
     <string name="downloads_multi_manage">Управление загрузками</string>
     <string name="downloads_multi_select_all">Выбрать все</string>
@@ -336,7 +336,7 @@
     <string name="login_entry_favorite_title">Избранное</string>
     <string name="login_entry_favorite_desc">Загрузите сохраненные видео</string>
     <string name="login_entry_watch_later_title">Посмотреть позже</string>
-    <string name="login_entry_watch_later_desc">Продолжайте с того места, на котором остановились.</string>
+    <string name="login_entry_watch_later_desc">В следующий раз точно посмотрите?</string>
     <string name="login_entry_settings_title">Настройки</string>
     <string name="login_entry_settings_desc">Настройте BiliTools</string>
     <string name="history_cover_desc">Обложка записи истории</string>
@@ -345,7 +345,7 @@
     <string name="history_error_load">Не удалось загрузить историю просмотров. Повторите попытку позже.</string>
     <string name="history_refresh">Обновить</string>
     <string name="history_more_filters">Дополнительные фильтры</string>
-    <string name="history_download">Скачать</string>
+    <string name="history_download">Открыть параметры загрузки</string>
     <string name="history_progress_format">%1$s / %2$s</string>
     <string name="history_progress_completed">Просмотрено</string>
     <string name="history_page_prev">Предыдущая страница</string>
@@ -401,8 +401,8 @@
     <string name="settings_general_title">Общие</string>
     <string name="settings_download_title">Загрузки</string>
     <string name="settings_appearance_title">Внешний вид</string>
-    <string name="settings_general_summary">Язык, виброотклик, анимация запуска и уведомления</string>
-    <string name="settings_download_summary">Папка загрузки, одновременные загрузки, качество, метаданные и форматы файлов</string>
+    <string name="settings_general_summary">Язык, виброотклик, анимация запуска и уведомления Live Update</string>
+    <string name="settings_download_summary">Папка загрузки, одновременные загрузки, качество по умолчанию, метаданные, преобразование форматов, мобильный интернет и показ в галерее</string>
     <string name="settings_appearance_summary">Тема, цвета, чисто черная тема и жидкое стекло</string>
     <string name="settings_about_summary">Версия, обновления, сообщения о проблемах, лицензии и отказ от ответственности</string>
     <string name="settings_add_metadata">Добавление метаданных к загрузкам</string>
@@ -434,9 +434,9 @@
     <string name="settings_download_preference_group_audio_quality">Битрейт аудио</string>
     <string name="settings_download_preference_group_audio_quality_desc">Повторно использует выбранный битрейт аудио. В противном случае используется качество загрузки по умолчанию.</string>
     <string name="settings_download_preference_group_embedding">Встроенные субтитры и тексты песен</string>
-    <string name="settings_download_preference_group_embedding_desc">Запоминает, нужно ли встраивать субтитры и тексты песен. Языки субтитров выбираются заново для каждой загрузки.</string>
+    <string name="settings_download_preference_group_embedding_desc">Запоминает, нужно ли встраивать субтитры или тексты песен. Языки выбираются заново при каждом разборе контента.</string>
     <string name="settings_download_preference_group_misc_exports">Файлы субтитров и ИИ-сводки</string>
-    <string name="settings_download_preference_group_misc_exports_desc">Запоминает, нужно ли экспортировать субтитры и ИИ-сводки. Языки субтитров выбираются заново для каждой загрузки.</string>
+    <string name="settings_download_preference_group_misc_exports_desc">Запоминает, нужно ли сохранять файлы субтитров и экспортировать ИИ-сводки. Языки субтитров выбираются заново при каждом разборе контента.</string>
     <string name="settings_download_preference_group_nfo">Метаданные NFO</string>
     <string name="settings_download_preference_group_nfo_desc">Метаданные сборника или сериала и отдельных эпизодов.</string>
     <string name="settings_download_preference_group_danmaku">Данмаку</string>
@@ -460,7 +460,7 @@
     <string name="download_embed_write_failed">Не удалось встроить. Загруженный файл сохранен.</string>
     <string name="download_embed_unsupported">Этот формат файла не может встраивать выбранный контент.</string>
     <string name="settings_max_concurrent_downloads">Одновременные загрузки</string>
-    <string name="settings_max_concurrent_downloads_desc">Ограничивает одновременную загрузку видео, аудио и изображений публикаций. Остальные загрузки ставятся в очередь. Более высокие лимиты могут вызвать ограничения Bilibili. Субтитры, данмаку, обложки, метаданные, ИИ-сводки и текст публикаций загружаются отдельно.</string>
+    <string name="settings_max_concurrent_downloads_desc">Ограничивает число одновременных загрузок видео, аудио и изображений из публикаций. Остальные загрузки ожидают в очереди. Высокий лимит может вызвать ограничения со стороны Bilibili. Этот лимит не распространяется на субтитры, данмаку, обложки, метаданные NFO, ИИ-сводки и тексты публикаций.</string>
     <string name="settings_convert_xml_danmaku_to_ass">Конвертировать данмаку в ASS</string>
     <string name="settings_convert_xml_danmaku_to_ass_desc">Преобразует загруженные данмаку XML в субтитры ASS.</string>
     <string name="settings_convert_audio_to_mp3">Конвертировать аудио в MP3</string>

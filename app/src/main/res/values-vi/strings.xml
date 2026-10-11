@@ -142,9 +142,9 @@
     <string name="parse_opus_images">Hình ảnh bài đăng</string>
     <string name="parse_subtitle_label">Phụ đề</string>
     <string name="parse_embed_subtitles_label">Nhúng phụ đề</string>
-    <string name="parse_embed_subtitles_option">Nhúng vào file video</string>
+    <string name="parse_embed_subtitles_option">Nhúng vào tệp video</string>
     <string name="parse_embed_lyrics_label">Nhúng lời bài hát</string>
-    <string name="parse_embed_lyrics_option">Nhúng vào file âm thanh</string>
+    <string name="parse_embed_lyrics_option">Nhúng vào tệp âm thanh</string>
     <string name="parse_embed_subtitles_flv">Video sẽ được lưu dưới dạng MP4 sau khi nhúng phụ đề.</string>
     <string name="parse_copy_subtitle_now">Sao chép phụ đề</string>
     <string name="parse_subtitle_copy_current">Sao chép mục này</string>
@@ -210,7 +210,7 @@
     <string name="download_unavailable_video">Không có video nào cho mục này</string>
     <string name="download_unavailable_audio_video">Mục này thiếu âm thanh hoặc video cần thiết để hợp nhất</string>
     <string name="download_unavailable_image">Hình ảnh đã chọn không có sẵn cho mục này</string>
-    <string name="download_unavailable_opus_images">Bài đăng này không có hình ảnh</string>
+    <string name="download_unavailable_opus_images">Nội dung bài đăng này không có hình ảnh</string>
     <string name="parse_error_opus_risk_control">Yêu cầu chi tiết bài đăng tạm thời bị hạn chế. Hãy thử lại sau.</string>
     <string name="parse_error_opus_login_required">Đăng nhập để xem bài đăng này</string>
     <string name="parse_error_opus_permission_denied">Tài khoản của bạn không thể truy cập bài đăng này</string>
@@ -223,8 +223,8 @@
     <plurals name="downloads_selection_title">
         <item quantity="other">Đã chọn %1$d</item>
     </plurals>
-    <string name="downloads_clear_completed">Xóa các bản tải xuống đã hoàn tất</string>
-    <string name="downloads_clear_all">Xóa tất cả các bản tải xuống</string>
+    <string name="downloads_clear_completed">Xóa bản ghi tải xuống đã hoàn tất</string>
+    <string name="downloads_clear_all">Xóa tất cả bản ghi tải xuống</string>
     <string name="downloads_actions_menu">Hành động tải xuống</string>
     <string name="downloads_multi_manage">Quản lý tải xuống</string>
     <string name="downloads_multi_select_all">Chọn tất cả</string>
@@ -327,7 +327,7 @@
     <string name="login_entry_favorite_title">Yêu thích</string>
     <string name="login_entry_favorite_desc">Tải xuống video đã lưu của bạn</string>
     <string name="login_entry_watch_later_title">Xem sau</string>
-    <string name="login_entry_watch_later_desc">Tiếp tục nơi bạn đã dừng lại</string>
+    <string name="login_entry_watch_later_desc">Lần sau nhất định xem chứ?</string>
     <string name="login_entry_settings_title">Cài đặt</string>
     <string name="login_entry_settings_desc">Tùy chỉnh BiliTools</string>
     <string name="history_cover_desc">Bìa mục lịch sử</string>
@@ -336,7 +336,7 @@
     <string name="history_error_load">Không thể tải lịch sử xem. Hãy thử lại sau.</string>
     <string name="history_refresh">Làm mới</string>
     <string name="history_more_filters">Thêm bộ lọc</string>
-    <string name="history_download">Tải xuống</string>
+    <string name="history_download">Mở tùy chọn tải xuống</string>
     <string name="history_progress_format">%1$s / %2$s</string>
     <string name="history_progress_completed">Đã xem hết</string>
     <string name="history_page_prev">Trang trước</string>
@@ -392,8 +392,8 @@
     <string name="settings_general_title">Chung</string>
     <string name="settings_download_title">Tải xuống</string>
     <string name="settings_appearance_title">Giao diện</string>
-    <string name="settings_general_summary">Ngôn ngữ, phản hồi xúc giác, hoạt ảnh khởi động và thông báo</string>
-    <string name="settings_download_summary">Vị trí tải xuống, số lượt tải đồng thời, chất lượng, siêu dữ liệu và định dạng tệp</string>
+    <string name="settings_general_summary">Ngôn ngữ, phản hồi xúc giác, hiệu ứng khởi động và thông báo cập nhật trực tiếp</string>
+    <string name="settings_download_summary">Vị trí tải xuống, số lượt tải đồng thời, chất lượng mặc định, siêu dữ liệu, chuyển đổi định dạng, dữ liệu di động và hiển thị trong thư viện ảnh</string>
     <string name="settings_appearance_summary">Chủ đề, màu sắc, chế độ đen tuyền và kính lỏng</string>
     <string name="settings_about_summary">Phiên bản, cập nhật, báo cáo sự cố, giấy phép và tuyên bố từ chối trách nhiệm</string>
     <string name="settings_add_metadata">Thêm siêu dữ liệu vào các bản tải xuống</string>
@@ -425,9 +425,9 @@
     <string name="settings_download_preference_group_audio_quality">Tốc độ bit âm thanh</string>
     <string name="settings_download_preference_group_audio_quality_desc">Sử dụng lại tốc độ bit âm thanh đã chọn. Nếu không thì sử dụng chất lượng tải xuống mặc định.</string>
     <string name="settings_download_preference_group_embedding">Phụ đề và lời bài hát nhúng</string>
-    <string name="settings_download_preference_group_embedding_desc">Ghi nhớ có nhúng phụ đề và lời bài hát hay không. Chọn lại ngôn ngữ phụ đề cho mỗi lần tải xuống.</string>
+    <string name="settings_download_preference_group_embedding_desc">Ghi nhớ có nhúng phụ đề hoặc lời bài hát hay không. Ngôn ngữ được chọn lại mỗi lần phân tích nội dung.</string>
     <string name="settings_download_preference_group_misc_exports">Tệp phụ đề và tóm tắt AI</string>
-    <string name="settings_download_preference_group_misc_exports_desc">Ghi nhớ có xuất phụ đề và tóm tắt AI hay không. Chọn lại ngôn ngữ phụ đề cho mỗi lần tải xuống.</string>
+    <string name="settings_download_preference_group_misc_exports_desc">Ghi nhớ có lưu tệp phụ đề và xuất tóm tắt AI hay không. Ngôn ngữ phụ đề được chọn lại mỗi lần phân tích nội dung.</string>
     <string name="settings_download_preference_group_nfo">Siêu dữ liệu NFO</string>
     <string name="settings_download_preference_group_nfo_desc">Siêu dữ liệu tuyển tập hoặc bộ phim và từng tập.</string>
     <string name="settings_download_preference_group_danmaku">Danmaku</string>
@@ -451,11 +451,11 @@
     <string name="download_embed_write_failed">Nhúng không thành công. Tệp đã tải xuống đã được lưu giữ.</string>
     <string name="download_embed_unsupported">Định dạng tệp này không thể nhúng nội dung đã chọn</string>
     <string name="settings_max_concurrent_downloads">Tải xuống đồng thời</string>
-    <string name="settings_max_concurrent_downloads_desc">Giới hạn tải xuống đồng thời video, âm thanh và hình ảnh bài đăng. Tải xuống bổ sung được xếp hàng đợi. Giới hạn cao hơn có thể gây ra hạn chế từ Bilibili. Phụ đề, danmaku, bìa, siêu dữ liệu, tóm tắt AI và văn bản bài đăng được tải xuống riêng.</string>
+    <string name="settings_max_concurrent_downloads_desc">Giới hạn số video, âm thanh và hình ảnh bài đăng được tải xuống đồng thời. Các lượt tải còn lại sẽ chờ trong hàng đợi. Giới hạn quá cao có thể khiến Bilibili hạn chế truy cập. Phụ đề, danmaku, ảnh bìa, siêu dữ liệu NFO, tóm tắt AI và văn bản bài đăng không chịu giới hạn này.</string>
     <string name="settings_convert_xml_danmaku_to_ass">Chuyển đổi danmaku sang ASS</string>
     <string name="settings_convert_xml_danmaku_to_ass_desc">Chuyển đổi danmaku XML đã tải xuống sang phụ đề ASS.</string>
     <string name="settings_convert_audio_to_mp3">Chuyển đổi âm thanh thành MP3</string>
-    <string name="settings_convert_audio_to_mp3_desc">Chuyển đổi các bản tải xuống chỉ có âm thanh thành MP3. Chuyển đổi lossy có thể làm giảm chất lượng âm thanh. Tải xuống video không bị ảnh hưởng.</string>
+    <string name="settings_convert_audio_to_mp3_desc">Chuyển các bản tải xuống chỉ có âm thanh sang MP3. Quá trình chuyển đổi dùng mã hóa mất dữ liệu nên có thể làm giảm chất lượng âm thanh. Các bản tải xuống có video không bị ảnh hưởng.</string>
     <string name="settings_convert_video_to_mp4">Chuyển đổi video sang MP4</string>
     <string name="settings_convert_video_to_mp4_desc">Lưu video đã tải xuống dưới dạng MP4. Giữ các bản âm thanh tương thích và chuyển đổi các định dạng không được hỗ trợ như FLAC sang AAC.</string>
     <string name="settings_confirm_cellular">Xác nhận trước khi tải qua dữ liệu di động</string>
@@ -476,12 +476,12 @@
     <string name="settings_default_quality_resolution_highest">Độ phân giải cao nhất</string>
     <string name="settings_default_quality_resolution_lowest">Độ phân giải thấp nhất</string>
     <string name="settings_default_quality_resolution_fixed_label">Độ phân giải cố định</string>
-    <string name="settings_default_quality_resolution_fixed_desc">Nếu không có, hãy sử dụng độ phân giải cao nhất được video hỗ trợ.</string>
+    <string name="settings_default_quality_resolution_fixed_desc">Nếu độ phân giải đã chọn không có sẵn, ứng dụng sẽ tự động dùng độ phân giải cao nhất hiện có của video.</string>
     <string name="settings_default_quality_audio_highest">Tốc độ bit âm thanh cao nhất</string>
     <string name="settings_default_quality_audio_lowest">Tốc độ bit âm thanh thấp nhất</string>
     <string name="settings_default_quality_audio_fixed_label">Tốc độ bit âm thanh cố định</string>
-    <string name="settings_default_quality_audio_fixed_desc">Nếu không có sẵn, hãy sử dụng tốc độ bit âm thanh cao nhất được video hỗ trợ.</string>
-    <string name="settings_default_quality_codec_desc">Nếu không có sẵn, hãy sử dụng codec được video hỗ trợ.</string>
+    <string name="settings_default_quality_audio_fixed_desc">Nếu tốc độ bit âm thanh đã chọn không có sẵn, ứng dụng sẽ tự động dùng tốc độ bit âm thanh cao nhất hiện có của video.</string>
+    <string name="settings_default_quality_codec_desc">Nếu bộ mã hóa đã chọn không có sẵn, ứng dụng sẽ tự động dùng bộ mã hóa hiện có của video.</string>
     <string name="settings_theme">Chủ đề</string>
     <string name="settings_theme_system">Mặc định hệ thống</string>
     <string name="settings_theme_light">Sáng</string>
@@ -498,7 +498,7 @@
     <string name="settings_liquid_bottom_tabs_desc">Áp dụng kính lỏng cho thanh điều hướng phía dưới. Tắt để dùng kiểu Material.</string>
     <string name="settings_black_theme_title">Chủ đề đen tuyền</string>
     <string name="settings_black_theme_desc">Sử dụng nền AMOLED đen tuyền ở chế độ tối.</string>
-    <string name="settings_launch_splash_animation">Hoạt hình khởi động</string>
+    <string name="settings_launch_splash_animation">Hiệu ứng khởi động</string>
     <string name="settings_launch_splash_animation_desc">Hiển thị hoạt ảnh TV nảy khi khởi động. Tắt để mở trực tiếp trang chủ.</string>
     <string name="settings_haptic_feedback">Phản hồi xúc giác</string>
     <string name="settings_haptic_feedback_desc">Cường độ rung khi tương tác. “Nhẹ” chỉ gồm nhấn giữ, hút khi vuốt và kết quả thao tác; “Đầy đủ” có thêm chạm, chọn và từng bước khi kéo. Không có tác dụng nếu phản hồi xúc giác bị tắt trong cài đặt hệ thống.</string>

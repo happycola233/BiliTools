@@ -70,7 +70,7 @@
     <string name="settings_naming_preview_list_collection">Materiais de aprendizagem</string>
     <string name="settings_naming_preview_upper">Media Storm</string>
     <string name="settings_naming_token_title">Título</string>
-    <string name="settings_naming_token_work">Título do vídeo ou série</string>
+    <string name="settings_naming_token_work">Título da obra</string>
     <string name="settings_naming_token_collection">Título da coleção</string>
     <string name="settings_naming_token_p">Número da parte</string>
     <string name="settings_naming_token_ep">Número do episódio</string>

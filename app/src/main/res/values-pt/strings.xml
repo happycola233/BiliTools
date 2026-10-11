@@ -23,7 +23,7 @@
     <string name="login_status_scan">Escaneie com o app Bilibili para fazer login</string>
     <string name="login_status_qr_failed">Falha na geração do código QR</string>
     <string name="login_status_polling_stopped">Verificação de login interrompida</string>
-    <string name="login_status_signed_out">Desconectado</string>
+    <string name="login_status_signed_out">Sessão encerrada</string>
     <string name="login_status_signed_in">Login bem-sucedido</string>
     <string name="login_status_waiting">Aguardando a leitura do código…</string>
     <string name="login_status_scanned">Código escaneado. Confirme o login no Bilibili.</string>
@@ -164,7 +164,7 @@
     <string name="parse_ai_summary_copy_single_done">O resumo da IA foi copiado para a área de transferência</string>
     <string name="parse_ai_summary_copy_current_done">O resumo atual da IA foi copiado</string>
     <string name="parse_ai_summary_copy_all_done">Todos os resumos de IA foram copiados</string>
-    <string name="parse_copy_preview_available_count">%1$d de %2$d disponíveis</string>
+    <string name="parse_copy_preview_available_count">%1$d de %2$d itens podem ser copiados</string>
     <string name="parse_ai_summary_label">Resumo de IA</string>
     <string name="parse_nfo_label">Metadados NFO</string>
     <string name="parse_nfo_collection">Metadados de coleção ou série</string>
@@ -210,7 +210,7 @@
     <string name="download_unavailable_video">Nenhum vídeo está disponível para este item</string>
     <string name="download_unavailable_audio_video">Este item não tem o áudio ou vídeo necessário para mesclar</string>
     <string name="download_unavailable_image">A imagem selecionada não está disponível para este item</string>
-    <string name="download_unavailable_opus_images">Esta postagem não possui imagens</string>
+    <string name="download_unavailable_opus_images">O corpo desta publicação não contém imagens</string>
     <string name="parse_error_opus_risk_control">As solicitações de detalhes de postagem estão temporariamente limitadas. Tente novamente mais tarde.</string>
     <string name="parse_error_opus_login_required">Faça login para ver esta postagem</string>
     <string name="parse_error_opus_permission_denied">Sua conta não pode acessar esta postagem</string>
@@ -223,8 +223,8 @@
     <plurals name="downloads_selection_title">
         <item quantity="other">%1$d selecionados</item>
     </plurals>
-    <string name="downloads_clear_completed">Limpar downloads concluídos</string>
-    <string name="downloads_clear_all">Limpar todos os downloads</string>
+    <string name="downloads_clear_completed">Limpar registros de downloads concluídos</string>
+    <string name="downloads_clear_all">Limpar todos os registros</string>
     <string name="downloads_actions_menu">Ações de download</string>
     <string name="downloads_multi_manage">Gerenciar downloads</string>
     <string name="downloads_multi_select_all">Selecionar tudo</string>
@@ -330,7 +330,7 @@
     <string name="login_entry_favorite_title">Favoritos</string>
     <string name="login_entry_favorite_desc">Baixe seus vídeos salvos</string>
     <string name="login_entry_watch_later_title">Assistir mais tarde</string>
-    <string name="login_entry_watch_later_desc">Continue de onde parou</string>
+    <string name="login_entry_watch_later_desc">Da próxima vez, com certeza?</string>
     <string name="login_entry_settings_title">Configurações</string>
     <string name="login_entry_settings_desc">Personalizar BiliTools</string>
     <string name="history_cover_desc">Capa do item do histórico</string>
@@ -339,7 +339,7 @@
     <string name="history_error_load">Não foi possível carregar o histórico de exibição. Tente novamente mais tarde.</string>
     <string name="history_refresh">Atualizar</string>
     <string name="history_more_filters">Mais filtros</string>
-    <string name="history_download">Baixar</string>
+    <string name="history_download">Abrir opções de download</string>
     <string name="history_progress_format">%1$s / %2$s</string>
     <string name="history_progress_completed">Assistido</string>
     <string name="history_page_prev">Página anterior</string>
@@ -395,8 +395,8 @@
     <string name="settings_general_title">Geral</string>
     <string name="settings_download_title">Downloads</string>
     <string name="settings_appearance_title">Aparência</string>
-    <string name="settings_general_summary">Idioma, retorno tátil, animação de inicialização e notificações</string>
-    <string name="settings_download_summary">Local, downloads simultâneos, qualidade, metadados e formatos de arquivo</string>
+    <string name="settings_general_summary">Idioma, retorno tátil, animação de inicialização e notificações de atualização ao vivo</string>
+    <string name="settings_download_summary">Local de download, downloads simultâneos, qualidade padrão, metadados, conversão de formatos, dados móveis e visibilidade na galeria</string>
     <string name="settings_appearance_summary">Tema, cores, modo preto puro e vidro líquido</string>
     <string name="settings_about_summary">Versão, atualizações, relatos de problemas, licenças e isenção de responsabilidade</string>
     <string name="settings_add_metadata">Adicionar metadados aos downloads</string>
@@ -428,11 +428,11 @@
     <string name="settings_download_preference_group_audio_quality">Taxa de bits de áudio</string>
     <string name="settings_download_preference_group_audio_quality_desc">Reutiliza a taxa de bits de áudio selecionada. Caso contrário, usa a qualidade de download padrão.</string>
     <string name="settings_download_preference_group_embedding">Legendas e letras incorporadas</string>
-    <string name="settings_download_preference_group_embedding_desc">Lembra se deve incorporar legendas e letras. Escolha os idiomas das legendas novamente para cada download.</string>
+    <string name="settings_download_preference_group_embedding_desc">Lembra se deve incorporar legendas ou letras. Os idiomas são escolhidos novamente a cada análise de conteúdo.</string>
     <string name="settings_download_preference_group_misc_exports">Arquivos de legendas e resumos de IA</string>
-    <string name="settings_download_preference_group_misc_exports_desc">Lembra se deve exportar legendas e resumos de IA. Escolha os idiomas das legendas novamente para cada download.</string>
+    <string name="settings_download_preference_group_misc_exports_desc">Lembra se deve salvar arquivos de legenda e exportar resumos de IA. Os idiomas das legendas são escolhidos novamente a cada análise de conteúdo.</string>
     <string name="settings_download_preference_group_nfo">Metadados NFO</string>
-    <string name="settings_download_preference_group_nfo_desc">Metadados de coleção e metadados de episódios individuais.</string>
+    <string name="settings_download_preference_group_nfo_desc">Metadados de coleções ou séries e de episódios individuais.</string>
     <string name="settings_download_preference_group_danmaku">Danmaku</string>
     <string name="settings_download_preference_group_danmaku_desc">Lembra seleções de danmaku atuais e históricas. Datas e horários não são lembrados.</string>
     <string name="settings_download_preference_group_images">Imagens</string>
@@ -454,7 +454,7 @@
     <string name="download_embed_write_failed">A incorporação falhou. O arquivo baixado foi mantido.</string>
     <string name="download_embed_unsupported">Este formato de arquivo não pode incorporar o conteúdo selecionado</string>
     <string name="settings_max_concurrent_downloads">Downloads simultâneos</string>
-    <string name="settings_max_concurrent_downloads_desc">Limita os downloads simultâneos de vídeo, áudio e imagens de postagens. Downloads adicionais ficam na fila. Limites mais altos podem acionar restrições do Bilibili. Legendas, danmaku, capas, metadados, resumos de IA e textos de postagens são baixados separadamente.</string>
+    <string name="settings_max_concurrent_downloads_desc">Limita os downloads simultâneos de vídeos, áudio e imagens de publicações. Os demais ficam na fila. Um limite alto pode provocar restrições do Bilibili. Legendas, danmaku, capas, metadados NFO, resumos de IA e textos de publicações não estão sujeitos a esse limite.</string>
     <string name="settings_convert_xml_danmaku_to_ass">Converter danmaku em ASS</string>
     <string name="settings_convert_xml_danmaku_to_ass_desc">Converte danmaku XML baixado em legendas ASS.</string>
     <string name="settings_convert_audio_to_mp3">Converter áudio para MP3</string>
