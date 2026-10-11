@@ -17,14 +17,14 @@
     <string name="subtitle_source_unconfirmed">لم يتم تأكيد التوفر بعد</string>
     <string name="subtitle_source_unavailable">غير متوفر لهذا العنصر</string>
     <string name="subtitle_source_loading">جارٍ تحميل الترجمة...</string>
-    <string name="subtitle_source_loading_batch">تحميل الترجمة: %1$d / %2$d</string>
-    <string name="subtitle_source_failure">فشل تحميل الترجمة.</string>
+    <string name="subtitle_source_loading_batch">جارٍ تحميل الترجمات: %1$d / %2$d</string>
+    <string name="subtitle_source_failure">تعذر تحميل الترجمات.</string>
     <string name="subtitle_source_partial_failure">عناصر تعذر تحميل ترجماتها: %1$d</string>
-    <string name="subtitle_source_retry">حاول مرة أخرى</string>
+    <string name="subtitle_source_retry">إعادة المحاولة</string>
     <string name="subtitle_source_empty">لا توجد ترجمة متاحة لهذا الفيديو.</string>
     <string name="subtitle_source_empty_batch">لا توجد ترجمة متاحة لهذه العناصر.</string>
     <string name="subtitle_source_login">قم بتسجيل الدخول للوصول إلى ترجمات الفيديو.</string>
     <string name="subtitle_source_choose_lyrics">حدد مسار الترجمة لاستخدامه ككلمات.</string>
-    <string name="subtitle_source_choose_subtitles">يرجى تحديد عنوان فرعي واحد على الأقل.</string>
+    <string name="subtitle_source_choose_subtitles">يرجى تحديد ترجمة واحدة على الأقل.</string>
     <string name="subtitle_source_missing_selection">لغة الترجمة المحددة مفقودة من بعض العناصر.</string>
 </resources>

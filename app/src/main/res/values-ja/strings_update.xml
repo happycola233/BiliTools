@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="update_dialog_download">アップデートのダウンロード</string>
-    <string name="update_dialog_ignore_once">この更新を無視する</string>
+    <string name="update_dialog_download">アップデートをダウンロード</string>
+    <string name="update_dialog_ignore_once">このアップデートをスキップ</string>
     <string name="update_dialog_download_started">アップデートはバックグラウンドでダウンロード中です</string>
-    <string name="update_dialog_download_running">アップデートは既にバックグラウンドでダウンロードされています</string>
+    <string name="update_dialog_download_running">アップデートはすでにバックグラウンドでダウンロード中です</string>
     <string name="update_dialog_download_failed">アップデートのダウンロードの開始に失敗しました: %1$s</string>
     <string name="update_dialog_apk_missing">このデバイスには利用可能な更新パッケージがありません。</string>
     <string name="update_dialog_ignore_saved">%1$s の更新リマインダーが非表示になりました</string>
@@ -16,7 +16,7 @@
     <string name="update_notification_channel_result_desc">アプリアップデートのダウンロード結果</string>
     <string name="update_notification_progress_title">アップデート %1$s をダウンロードしています</string>
     <string name="update_notification_progress_content_known">%1$d%% %2$s / %3$s</string>
-    <string name="update_notification_progress_content_unknown">%1$sをダウンロードしました</string>
+    <string name="update_notification_progress_content_unknown">%1$s ダウンロード済み</string>
     <string name="update_notification_ready_title">アップデートをインストールする準備ができました</string>
     <string name="update_notification_ready_content">タップして %1$s をインストールしてください</string>
     <string name="update_notification_action_install">インストール</string>

@@ -5,7 +5,7 @@
     <string name="update_dialog_download_started">Обновление загружается в фоновом режиме.</string>
     <string name="update_dialog_download_running">Обновление уже загружается в фоновом режиме.</string>
     <string name="update_dialog_download_failed">Не удалось начать загрузку обновления: %1$s</string>
-    <string name="update_dialog_apk_missing">Для этого устройства не доступен пакет обновлений.</string>
+    <string name="update_dialog_apk_missing">Для этого устройства нет подходящего пакета обновления.</string>
     <string name="update_dialog_ignore_saved">Напоминания об обновлении для %1$s теперь скрыты.</string>
     <string name="update_dialog_published_on">Опубликовано %1$s</string>
     <string name="update_install_file_missing">Пакет обновлений отсутствует или был удален</string>
@@ -16,7 +16,7 @@
     <string name="update_notification_channel_result_desc">Результаты загрузки обновления приложения</string>
     <string name="update_notification_progress_title">Загрузка обновления %1$s</string>
     <string name="update_notification_progress_content_known">%1$d%% %2$s / %3$s</string>
-    <string name="update_notification_progress_content_unknown">Загружено %1$s</string>
+    <string name="update_notification_progress_content_unknown">Загружено: %1$s</string>
     <string name="update_notification_ready_title">Обновление готово к установке</string>
     <string name="update_notification_ready_content">Нажмите, чтобы установить %1$s</string>
     <string name="update_notification_action_install">Установить</string>

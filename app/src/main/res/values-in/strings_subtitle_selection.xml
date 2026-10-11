@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="parse_subtitle_file_option">Simpan file subtitle</string>
-    <string name="subtitle_source_language">Bahasa subjudul</string>
+    <string name="subtitle_source_language">Bahasa subtitle</string>
     <string name="subtitle_source_lyrics_language">Bahasa lirik</string>
     <string name="subtitle_source_embed_title">Bahasa subtitle tertanam</string>
-    <string name="subtitle_source_file_title">Bahasa file subjudul</string>
+    <string name="subtitle_source_file_title">Bahasa file subtitle</string>
     <string name="subtitle_source_ai_description">Subtitle AI</string>
     <string name="subtitle_source_select">Pilih bahasa</string>
     <string name="subtitle_source_select_all">Pilih semua</string>
-    <string name="subtitle_source_all_count">Semua subtitel · Bahasa: %1$d</string>
+    <string name="subtitle_source_all_count">Semua subtitle · Bahasa: %1$d</string>
     <string name="subtitle_source_selected_count">Bahasa dipilih: %1$d</string>
     <string name="subtitle_source_cancel">Batal</string>
     <string name="subtitle_source_done">Selesai</string>
@@ -18,8 +18,8 @@
     <string name="subtitle_source_unavailable">Tidak tersedia untuk item ini</string>
     <string name="subtitle_source_loading">Memuat subtitle…</string>
     <string name="subtitle_source_loading_batch">Memuat subtitle: %1$d / %2$d</string>
-    <string name="subtitle_source_failure">Pemuatan subtitle gagal.</string>
-    <string name="subtitle_source_partial_failure">Item yang gagal memuat subtitel: %1$d</string>
+    <string name="subtitle_source_failure">Tidak dapat memuat subtitle.</string>
+    <string name="subtitle_source_partial_failure">Item yang gagal memuat subtitle: %1$d</string>
     <string name="subtitle_source_retry">Coba lagi</string>
     <string name="subtitle_source_empty">Tidak ada subtitle yang tersedia untuk video ini.</string>
     <string name="subtitle_source_empty_batch">Tidak ada subtitle yang tersedia untuk item ini.</string>

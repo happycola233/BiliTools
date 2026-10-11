@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="notification_channel_download_progress_desc">ดาวน์โหลดความคืบหน้าและการควบคุม</string>
-    <string name="notification_channel_download_result_name">ดาวน์โหลดผลลัพธ์</string>
+    <string name="notification_channel_download_progress_desc">ความคืบหน้าการดาวน์โหลดและการควบคุม</string>
+    <string name="notification_channel_download_result_name">ผลการดาวน์โหลด</string>
     <string name="notification_channel_download_result_desc">แสดงสถานะการดาวน์โหลดเสร็จสิ้น</string>
     <string name="notification_title_paused_multiple">งานที่หยุดชั่วคราว: %1$d</string>
     <string name="notification_status_downloading">กำลังดาวน์โหลด</string>
@@ -15,7 +15,7 @@
     <string name="notification_short_merging">กำลังประมวลผล</string>
     <string name="notification_short_progress">%1$d%%</string>
     <string name="notification_summary_all_completed">ดาวน์โหลดเสร็จสมบูรณ์</string>
-    <string name="notification_summary_finished">การดาวน์โหลดเสร็จสิ้น</string>
+    <string name="notification_summary_finished">การดาวน์โหลดสิ้นสุดแล้ว</string>
     <string name="notification_summary_content">เสร็จสมบูรณ์: %1$d · ล้มเหลว: %2$d · ยกเลิก: %3$d</string>
     <string name="notification_permission_denied_tip">การอนุญาตการแจ้งเตือนถูกปฏิเสธ การดาวน์โหลดจะดำเนินต่อไป แต่ความคืบหน้าจะไม่ปรากฏในการแจ้งเตือน</string>
     <string name="notification_batch_completed">เสร็จแล้ว %1$d / %2$d รายการ</string>

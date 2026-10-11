@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="notification_channel_download_progress_desc">Ход загрузки и элементы управления</string>
-    <string name="notification_channel_download_result_name">Загрузка результатов</string>
-    <string name="notification_channel_download_result_desc">Отображение статуса завершения задачи загрузки</string>
+    <string name="notification_channel_download_result_name">Результаты загрузки</string>
+    <string name="notification_channel_download_result_desc">Статус завершения задач загрузки</string>
     <string name="notification_title_paused_multiple">Задачи на паузе: %1$d</string>
     <string name="notification_status_downloading">Загрузка</string>
     <string name="notification_status_preparing">Подготовка к загрузке</string>
@@ -15,9 +15,9 @@
     <string name="notification_short_merging">Обработка</string>
     <string name="notification_short_progress">%1$d%%</string>
     <string name="notification_summary_all_completed">Загрузка завершена</string>
-    <string name="notification_summary_finished">Загрузка завершена</string>
+    <string name="notification_summary_finished">Загрузки окончены</string>
     <string name="notification_summary_content">Завершено: %1$d · Не удалось: %2$d · Отменено: %3$d</string>
-    <string name="notification_permission_denied_tip">В разрешении на уведомление было отказано. Загрузки продолжатся, но прогресс не будет отображаться в уведомлениях.</string>
+    <string name="notification_permission_denied_tip">Разрешение на уведомления не предоставлено. Загрузки продолжатся, но прогресс не будет отображаться в уведомлениях.</string>
     <string name="notification_batch_completed">Завершено: %1$d / %2$d</string>
     <string name="notification_downloaded_bytes">Загружено: %1$s</string>
     <string name="notification_status_waiting">Ожидание</string>

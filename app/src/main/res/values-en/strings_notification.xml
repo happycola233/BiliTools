@@ -2,7 +2,7 @@
 <resources>
     <string name="notification_channel_download_progress_desc">Download progress and controls</string>
     <string name="notification_channel_download_result_name">Download results</string>
-    <string name="notification_channel_download_result_desc">Display download task completion status</string>
+    <string name="notification_channel_download_result_desc">Completion status of download tasks</string>
     <string name="notification_title_paused_multiple">Paused tasks: %1$d</string>
     <string name="notification_status_downloading">Downloading</string>
     <string name="notification_status_preparing">Preparing download</string>

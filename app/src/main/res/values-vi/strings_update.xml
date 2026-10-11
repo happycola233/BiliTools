@@ -22,5 +22,5 @@
     <string name="update_notification_action_install">Cài đặt</string>
     <string name="update_notification_failed_title">Tải xuống bản cập nhật không thành công: %1$s</string>
     <string name="update_notification_failed_content">%1$s</string>
-    <string name="update_notification_action_open_release">Mở trang phát hành</string>
+    <string name="update_notification_action_open_release">Xem bản phát hành</string>
 </resources>

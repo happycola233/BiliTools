@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="notification_channel_download_progress_desc">Progreso de descarga y controles.</string>
-    <string name="notification_channel_download_result_name">Descargar resultados</string>
-    <string name="notification_channel_download_result_desc">Mostrar el estado de finalización de la tarea de descarga</string>
+    <string name="notification_channel_download_result_name">Resultados de descarga</string>
+    <string name="notification_channel_download_result_desc">Estado de finalización de las tareas de descarga</string>
     <string name="notification_title_paused_multiple">Tareas en pausa: %1$d</string>
     <string name="notification_status_downloading">Descargando</string>
     <string name="notification_status_preparing">Preparando la descarga</string>
-    <string name="notification_status_merging">Procesamiento</string>
+    <string name="notification_status_merging">Procesando</string>
     <string name="notification_status_paused">En pausa</string>
     <string name="notification_content_progress_bytes">%1$d%% %2$s / %3$s</string>
     <string name="notification_content_paused_count">En pausa: %1$d</string>
     <string name="notification_short_downloading">Descargando</string>
-    <string name="notification_short_preparing">Preparación</string>
-    <string name="notification_short_merging">Procesamiento</string>
+    <string name="notification_short_preparing">Preparando</string>
+    <string name="notification_short_merging">Procesando</string>
     <string name="notification_short_progress">%1$d%%</string>
     <string name="notification_summary_all_completed">Descarga completada</string>
     <string name="notification_summary_finished">Descargas finalizadas</string>

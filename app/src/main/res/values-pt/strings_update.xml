@@ -16,11 +16,11 @@
     <string name="update_notification_channel_result_desc">Resultados de download de atualização de aplicativo</string>
     <string name="update_notification_progress_title">Baixando atualização %1$s</string>
     <string name="update_notification_progress_content_known">%1$d%% %2$s / %3$s</string>
-    <string name="update_notification_progress_content_unknown">Baixado %1$s</string>
+    <string name="update_notification_progress_content_unknown">Baixado: %1$s</string>
     <string name="update_notification_ready_title">Atualização pronta para instalação</string>
     <string name="update_notification_ready_content">Toque para instalar %1$s</string>
     <string name="update_notification_action_install">Instalar</string>
     <string name="update_notification_failed_title">Falha no download da atualização: %1$s</string>
     <string name="update_notification_failed_content">%1$s</string>
-    <string name="update_notification_action_open_release">Abrir página de lançamento</string>
+    <string name="update_notification_action_open_release">Ver página da versão</string>
 </resources>

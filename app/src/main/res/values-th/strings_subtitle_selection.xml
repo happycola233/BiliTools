@@ -18,7 +18,7 @@
     <string name="subtitle_source_unavailable">ไม่พร้อมใช้งานสำหรับรายการนี้</string>
     <string name="subtitle_source_loading">กำลังโหลดคำบรรยาย...</string>
     <string name="subtitle_source_loading_batch">กำลังโหลดคำบรรยาย: %1$d / %2$d</string>
-    <string name="subtitle_source_failure">การโหลดคำบรรยายล้มเหลว</string>
+    <string name="subtitle_source_failure">โหลดคำบรรยายไม่ได้</string>
     <string name="subtitle_source_partial_failure">รายการที่โหลดคำบรรยายไม่สำเร็จ: %1$d</string>
     <string name="subtitle_source_retry">ลองอีกครั้ง</string>
     <string name="subtitle_source_empty">ไม่มีคำบรรยายสำหรับวิดีโอนี้</string>

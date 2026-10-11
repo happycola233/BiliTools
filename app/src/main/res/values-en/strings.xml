@@ -19,7 +19,7 @@
     <string name="login_logout_confirm_title">Log out?</string>
     <string name="login_logout_confirm_message">Are you sure you want to log out?</string>
     <string name="login_status_idle">Generate a QR code to log in</string>
-    <string name="login_status_generating">Generating QR code...</string>
+    <string name="login_status_generating">Generating QR code…</string>
     <string name="login_status_scan">Scan with the Bilibili app to log in</string>
     <string name="login_status_qr_failed">QR code generation failed</string>
     <string name="login_status_polling_stopped">Login check stopped</string>
@@ -44,8 +44,8 @@
     <string name="login_action">Log in</string>
     <string name="login_sms_sent">Verification code has been sent</string>
     <string name="login_error_account_empty">Enter your account</string>
-    <string name="login_error_password_empty">Please enter password</string>
-    <string name="login_error_phone_empty">Please enter mobile phone number</string>
+    <string name="login_error_password_empty">Enter your password</string>
+    <string name="login_error_phone_empty">Enter your phone number</string>
     <string name="login_error_sms_code_empty">Please enter the verification code</string>
     <string name="login_error_sms_request_first">Request a verification code first</string>
     <string name="login_error_captcha_failed">Could not load verification. Try again.</string>
@@ -235,8 +235,6 @@
     <string name="downloads_multi_no_task">No downloads available</string>
     <string name="downloads_multi_confirm_clear_message">Remove &lt;b&gt;%1$d&lt;/b&gt; selected items from the list. Downloaded files are kept; unfinished tasks stop and their temporary files are deleted.</string>
     <string name="downloads_multi_confirm_delete_message">Remove &lt;b&gt;%1$d&lt;/b&gt; selected items and delete their downloaded files. This can\'t be undone.</string>
-    <string name="downloads_multi_done_clear">Records cleared: %1$d</string>
-    <string name="downloads_multi_done_delete">Tasks processed: %1$d</string>
     <string name="downloads_group_progress_unavailable">Skipped: %1$d</string>
     <string name="downloads_group_delete">Delete this group</string>
     <string name="downloads_group_resolved_summary">%1$d / %2$d done</string>
@@ -310,7 +308,7 @@
     <string name="download_size_progress">%1$s / %2$s</string>
     <string name="download_size_downloaded">%1$s</string>
     <string name="download_speed_format">%1$s/s</string>
-    <string name="download_eta_format">Remaining %1$s</string>
+    <string name="download_eta_format">%1$s left</string>
     <string name="download_detail_unavailable">%1$s, skipped</string>
     <string name="download_reason_unknown">Unknown reason</string>
     <string name="download_failure_save">Could not save the file. Check the download location and available storage.</string>
@@ -337,7 +335,7 @@
     <string name="login_entry_settings_desc">Customize BiliTools</string>
     <string name="history_cover_desc">History item cover</string>
     <string name="history_empty">No watch history yet</string>
-    <string name="history_login_required">Sign in to view your watch history</string>
+    <string name="history_login_required">Log in to view your watch history</string>
     <string name="history_error_load">Could not load watch history. Try again later.</string>
     <string name="history_refresh">Refresh</string>
     <string name="history_more_filters">More filters</string>
@@ -356,12 +354,12 @@
     <string name="history_filter_apply">Apply filters</string>
     <string name="history_filter_reset">Reset</string>
     <string name="history_filter_duration">Duration</string>
-    <string name="history_filter_duration_all">All duration</string>
-    <string name="history_filter_duration_under_10">Below 10 minutes</string>
+    <string name="history_filter_duration_all">Any duration</string>
+    <string name="history_filter_duration_under_10">Under 10 minutes</string>
     <string name="history_filter_duration_10_30">10-30 minutes</string>
     <string name="history_filter_duration_30_60">30-60 minutes</string>
     <string name="history_filter_duration_over_60">More than 60 minutes</string>
-    <string name="history_filter_time">time</string>
+    <string name="history_filter_time">Time</string>
     <string name="history_filter_time_all">All time</string>
     <string name="history_filter_time_today">Today</string>
     <string name="history_filter_time_yesterday">Yesterday</string>
@@ -409,7 +407,7 @@
     <string name="settings_metadata_cover_desc">Embed the cover of the current video or song into the file.</string>
     <string name="settings_metadata_disabled">Metadata is off. Enable it in Download settings.</string>
     <string name="settings_metadata_uploader">Use the uploader as artist</string>
-    <string name="settings_metadata_uploader_desc">Uses the uploader when no music artist is available, such as for original videos. For reposts and shows, the uploader appears only in comments.</string>
+    <string name="settings_metadata_uploader_desc">Uses the uploader when no music artist is available, such as for original videos. For reposts and shows, the uploader is only added to the Comment tag.</string>
     <string name="settings_metadata_collection">Use the collection as album</string>
     <string name="settings_metadata_collection_desc">Uses the creator\'s collection title as the album. Multi-part videos keep their video title. Favorites and playlists are not used as albums.</string>
     <string name="settings_download_preference_memory">Remember download options</string>
@@ -437,8 +435,8 @@
     <string name="settings_download_preference_group_nfo_desc">Collection metadata and individual episode metadata.</string>
     <string name="settings_download_preference_group_danmaku">Danmaku</string>
     <string name="settings_download_preference_group_danmaku_desc">Remembers current and historical danmaku selections. Dates and times are not remembered.</string>
-    <string name="settings_download_preference_group_images">Image</string>
-    <string name="settings_download_preference_group_images_desc">Checking of pictures such as cover, square cover, first frame, etc.</string>
+    <string name="settings_download_preference_group_images">Images</string>
+    <string name="settings_download_preference_group_images_desc">Remembers selections for covers, square covers, first frames and other images.</string>
     <string name="settings_download_preference_group_opus">Posts</string>
     <string name="settings_download_preference_group_opus_desc">Post content and images.</string>
     <string name="download_detail_metadata">Writing metadata</string>
@@ -497,10 +495,10 @@
     <string name="settings_liquid_glass_panels">Liquid glass panels</string>
     <string name="settings_liquid_glass_panels_desc">Applies liquid glass to download task menus and the selection toolbar. Turn off to use Material style.</string>
     <string name="settings_liquid_glass_panels_unavailable_desc">Liquid glass is unavailable on this device. Material style is used instead.</string>
-    <string name="settings_liquid_bottom_tabs_unavailable_desc">Liquid glass is unavailable on this device. Material navigation is used.</string>
+    <string name="settings_liquid_bottom_tabs_unavailable_desc">Liquid glass is unavailable on this device. Navigation uses Material style instead.</string>
     <string name="settings_liquid_bar_width">Navigation bar width</string>
-    <string name="settings_liquid_bar_width_desc">Adjusts how much of the screen width the navigation pill occupies.</string>
-    <string name="settings_liquid_bottom_tabs_desc">Applies liquid glass to bottom navigation. Turn off to use Material navigation.</string>
+    <string name="settings_liquid_bar_width_desc">Adjusts how much of the screen width the navigation bar takes up.</string>
+    <string name="settings_liquid_bottom_tabs_desc">Applies liquid glass to bottom navigation. Turn off to use Material style.</string>
     <string name="settings_black_theme_title">Pure black theme</string>
     <string name="settings_black_theme_desc">Uses a pure black AMOLED background in dark mode.</string>
     <string name="settings_launch_splash_animation">Startup animation</string>

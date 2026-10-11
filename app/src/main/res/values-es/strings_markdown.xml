@@ -10,5 +10,5 @@
     <string name="markdown_details_collapsed">Contraído</string>
     <string name="markdown_task_done">Completada</string>
     <string name="markdown_task_todo">Pendiente</string>
-    <string name="markdown_image_failed">No se pudo cargar la imagen. Toca para volver a intentarlo.</string>
+    <string name="markdown_image_failed">No se pudo cargar la imagen. Toque para volver a intentarlo.</string>
 </resources>

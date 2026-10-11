@@ -16,11 +16,11 @@
     <string name="update_notification_channel_result_desc">Uygulama güncelleme indirme sonuçları</string>
     <string name="update_notification_progress_title">%1$s güncellemesi indiriliyor</string>
     <string name="update_notification_progress_content_known">%1$d%% %2$s / %3$s</string>
-    <string name="update_notification_progress_content_unknown">İndirildi %1$s</string>
+    <string name="update_notification_progress_content_unknown">İndirilen: %1$s</string>
     <string name="update_notification_ready_title">Güncelleme kurulmaya hazır</string>
     <string name="update_notification_ready_content">%1$s yüklemek için dokunun</string>
-    <string name="update_notification_action_install">Kurulum</string>
+    <string name="update_notification_action_install">Yükle</string>
     <string name="update_notification_failed_title">Güncelleme indirme işlemi başarısız oldu: %1$s</string>
     <string name="update_notification_failed_content">%1$s</string>
-    <string name="update_notification_action_open_release">Sürüm sayfasını aç</string>
+    <string name="update_notification_action_open_release">Sürümü görüntüle</string>
 </resources>

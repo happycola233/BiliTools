@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="update_dialog_download">ดาวน์โหลดอัพเดต</string>
+    <string name="update_dialog_download">ดาวน์โหลดอัปเดต</string>
     <string name="update_dialog_ignore_once">ละเว้นการอัปเดตนี้</string>
     <string name="update_dialog_download_started">กำลังดาวน์โหลดการอัปเดตในเบื้องหลัง</string>
-    <string name="update_dialog_download_running">มีการดาวน์โหลดการอัปเดตในเบื้องหลังแล้ว</string>
+    <string name="update_dialog_download_running">กำลังดาวน์โหลดแพ็กเกจอัปเดตในเบื้องหลังอยู่แล้ว</string>
     <string name="update_dialog_download_failed">ไม่สามารถเริ่มการดาวน์โหลดอัปเดต: %1$s</string>
-    <string name="update_dialog_apk_missing">ไม่มีแพ็คเกจการอัปเดตสำหรับอุปกรณ์นี้</string>
+    <string name="update_dialog_apk_missing">ไม่พบแพ็กเกจอัปเดตสำหรับอุปกรณ์นี้</string>
     <string name="update_dialog_ignore_saved">การแจ้งเตือนการอัปเดตสำหรับ %1$s ถูกซ่อนไว้แล้ว</string>
     <string name="update_dialog_published_on">เผยแพร่เมื่อ %1$s</string>
-    <string name="update_install_file_missing">แพ็คเกจอัพเดตหายไปหรือถูกลบไปแล้ว</string>
+    <string name="update_install_file_missing">ไม่พบแพ็กเกจอัปเดตหรือถูกลบไปแล้ว</string>
     <string name="update_install_launch_failed">ไม่สามารถเปิดตัวติดตั้งได้</string>
     <string name="update_notification_channel_progress_name">ดาวน์โหลดอัปเดตแอป</string>
-    <string name="update_notification_channel_progress_desc">ความคืบหน้าของการดาวน์โหลดแอปอัปเดต</string>
+    <string name="update_notification_channel_progress_desc">ความคืบหน้าการดาวน์โหลดอัปเดตแอป</string>
     <string name="update_notification_channel_result_name">การติดตั้งการอัปเดตแอป</string>
     <string name="update_notification_channel_result_desc">ผลการดาวน์โหลดการอัปเดตแอป</string>
     <string name="update_notification_progress_title">กำลังดาวน์โหลดอัปเดต %1$s</string>
@@ -22,5 +22,5 @@
     <string name="update_notification_action_install">ติดตั้ง</string>
     <string name="update_notification_failed_title">การดาวน์โหลดอัปเดตล้มเหลว: %1$s</string>
     <string name="update_notification_failed_content">%1$s</string>
-    <string name="update_notification_action_open_release">เปิดหน้าเผยแพร่</string>
+    <string name="update_notification_action_open_release">ดูหน้าเผยแพร่</string>
 </resources>

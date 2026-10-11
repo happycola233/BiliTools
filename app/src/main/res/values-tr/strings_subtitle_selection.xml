@@ -18,9 +18,9 @@
     <string name="subtitle_source_unavailable">Bu öğe için mevcut değil</string>
     <string name="subtitle_source_loading">Altyazılar yükleniyor…</string>
     <string name="subtitle_source_loading_batch">Altyazılar yükleniyor: %1$d / %2$d</string>
-    <string name="subtitle_source_failure">Altyazı yükleme başarısız oldu.</string>
+    <string name="subtitle_source_failure">Altyazılar yüklenemedi.</string>
     <string name="subtitle_source_partial_failure">Altyazısı yüklenemeyen öğeler: %1$d</string>
-    <string name="subtitle_source_retry">Tekrar deneyin</string>
+    <string name="subtitle_source_retry">Yeniden dene</string>
     <string name="subtitle_source_empty">Bu video için altyazı mevcut değil.</string>
     <string name="subtitle_source_empty_batch">Bu öğeler için altyazı mevcut değildir.</string>
     <string name="subtitle_source_login">Video altyazılarına erişmek için oturum açın.</string>

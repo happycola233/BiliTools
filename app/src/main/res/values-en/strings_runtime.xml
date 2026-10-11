@@ -15,7 +15,7 @@
     <string name="runtime_tags">Tags</string>
     <string name="runtime_original">Original</string>
     <string name="runtime_repost">Reposted</string>
-    <string name="runtime_no_reprint">Reprinting is prohibited</string>
+    <string name="runtime_no_reprint">Reposting prohibited</string>
     <string name="runtime_attributes">Properties</string>
     <string name="runtime_type">Type</string>
     <string name="runtime_special_attributes">Special properties</string>
@@ -43,7 +43,7 @@
     <string name="runtime_release_status">Update status</string>
     <string name="runtime_completed">Completed</string>
     <string name="runtime_ongoing">Ongoing</string>
-    <string name="runtime_release_notes">Update notes</string>
+    <string name="runtime_release_notes">Release info</string>
     <string name="runtime_time_classification">Time and categories</string>
     <string name="runtime_series_type">Series type</string>
     <string name="runtime_region">Region</string>
@@ -148,7 +148,7 @@
     <string name="runtime_saved_location">Saved location</string>
     <string name="runtime_target_location">Destination</string>
     <string name="runtime_failure_reason">Reason for failure</string>
-    <string name="runtime_explanation">Description</string>
+    <string name="runtime_explanation">Details</string>
     <string name="runtime_embedded_subtitles">Embedded subtitles</string>
     <string name="runtime_embedded_lyrics">Embedded lyrics</string>
     <string name="runtime_incomplete_items">Unfinished items</string>
@@ -166,7 +166,7 @@
     <string name="runtime_on">On</string>
     <string name="runtime_off">Off</string>
     <string name="runtime_dynamic_id">Post %1$s</string>
-    <string name="runtime_copyright_no_reprint">%1$s (reproduction prohibited)</string>
+    <string name="runtime_copyright_no_reprint">%1$s (reposting prohibited)</string>
     <string name="runtime_rank_position">No. %1$d</string>
     <string name="runtime_count_items">Items: %1$d</string>
     <string name="runtime_count_songs">Songs: %1$d</string>
