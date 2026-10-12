@@ -7,6 +7,7 @@ import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -106,6 +107,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.LookaheadScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -214,11 +216,19 @@ private val metadataRowLabelGap = 20.dp
 
 /** 键值表的字段名列最多占内容宽度的比例，超出则字段名换行，避免把取值挤得过窄。 */
 private const val metadataRowLabelMaxWidthFraction = 0.4f
-private const val optionsVisibilityAnimationDurationMillis = 180
 private const val optionsValueAnimationDurationMillis = 120
-private const val parseContentAnimationDurationMillis = 220
 private const val coverFadeAnimationDurationMillis = 240
 private const val coverLayerSettleDelayMillis = 60L
+
+/**
+ * 解析页卡片内所有尺寸变化共用的空间弹簧。
+ *
+ * [ParseCard] 在 LookaheadScope 中兜底动画卡片高度，卡片内的切换、展开动画也都直接以预测出的
+ * 最终尺寸为目标。只有共用同一条弹簧，内外动画才会同帧起步、同步收敛：卡片边缘与下方卡片紧跟
+ * 内容移动，既不滞后、也不会裁切或空出内容。卡片内新增尺寸动画时必须使用它。
+ */
+private val parseLayoutSizeSpec: FiniteAnimationSpec<IntSize>
+    @Composable get() = MaterialTheme.motionScheme.defaultSpatialSpec()
 
 private object ParseTextStyles {
     val cardTitle: TextStyle
@@ -729,9 +739,9 @@ private fun SearchInputBar(
         AnimatedVisibility(
             visible = hasError,
             enter = fadeIn(animationSpec = motionScheme.fastEffectsSpec()) +
-                expandVertically(animationSpec = motionScheme.defaultSpatialSpec()),
+                expandVertically(animationSpec = parseLayoutSizeSpec),
             exit = fadeOut(animationSpec = motionScheme.fastEffectsSpec()) +
-                shrinkVertically(animationSpec = motionScheme.defaultSpatialSpec()),
+                shrinkVertically(animationSpec = parseLayoutSizeSpec),
         ) {
             Row(
                 modifier = Modifier
@@ -769,14 +779,8 @@ private fun ParseResultCard(
 ) {
     val display = resolveParseResultCardDisplay(LocalContext.current, state, info, selectedItem)
     var detailSubjectKey by rememberSaveable { mutableStateOf<String?>(null) }
-    val contentSizeSpec = tween<IntSize>(
-        durationMillis = parseContentAnimationDurationMillis,
-        easing = FastOutSlowInEasing,
-    )
-    val contentFadeSpec = tween<Float>(
-        durationMillis = parseContentAnimationDurationMillis,
-        easing = FastOutSlowInEasing,
-    )
+    val motionScheme = MaterialTheme.motionScheme
+    val layoutSizeSpec = parseLayoutSizeSpec
 
     LaunchedEffect(display.metadata.subjectKey) {
         if (detailSubjectKey != display.metadata.subjectKey) {
@@ -785,104 +789,102 @@ private fun ParseResultCard(
     }
 
     ParseCard {
+        CoverImage(
+            coverUrl = display.coverUrl,
+            onCopy = { url ->
+                onCopyResultContent(ParseResultCopyTarget.CoverUrl, url)
+            },
+        )
         Column(
-            modifier = Modifier.animateContentSize(animationSpec = contentSizeSpec),
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            CoverImage(
-                coverUrl = display.coverUrl,
-                onCopy = { url ->
-                    onCopyResultContent(ParseResultCopyTarget.CoverUrl, url)
+            AnimatedContent(
+                targetState = display,
+                transitionSpec = {
+                    // 旧内容快速淡出、新内容稍缓淡入，减少两段文字重叠的时间。
+                    fadeIn(animationSpec = motionScheme.defaultEffectsSpec()) togetherWith
+                        fadeOut(animationSpec = motionScheme.fastEffectsSpec()) using
+                        SizeTransform(sizeAnimationSpec = { _, _ -> layoutSizeSpec })
                 },
-            )
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                AnimatedContent(
-                    targetState = display,
-                    transitionSpec = {
-                        fadeIn(animationSpec = contentFadeSpec) togetherWith
-                            fadeOut(animationSpec = contentFadeSpec)
-                    },
-                    contentKey = { it.metadata.subjectKey },
-                    label = "ParseResultCardDisplay",
-                ) { animatedDisplay ->
-                    val displayTitle = animatedDisplay.title.ifBlank {
-                        stringResource(R.string.parse_section_result)
-                    }
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        LongPressCopyText(
-                            text = displayTitle,
-                            copyActionLabel = stringResource(R.string.common_copy_title),
-                            onCopy = { text ->
-                                onCopyResultContent(ParseResultCopyTarget.Title, text)
-                            },
-                            style = ParseTextStyles.mediaTitle,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        animatedDisplay.upper
-                            ?.takeIf { it.name.isNotBlank() }
-                            ?.let { upper ->
-                                val upperName = upper.name.trim()
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    UserIdentityLabel(
-                                        name = upperName,
-                                        avatarUrl = upper.avatar,
-                                        modifier = Modifier.weight(1f, fill = false),
-                                        onClick = { onOpenUpper(upper.mid) },
-                                        onLongClickLabel = stringResource(R.string.common_copy_upper_name),
-                                        onLongClick = {
-                                            onCopyResultContent(
-                                                ParseResultCopyTarget.UpperName,
-                                                upperName,
-                                            )
-                                        },
-                                    )
-                                    upper.followerCount?.let { followerCount ->
-                                        FormattedStatValue(
-                                            iconRes = R.string.icon_stat_follower,
-                                            value = followerCount,
-                                            modifier = Modifier.padding(start = 18.dp),
+                contentKey = { it.metadata.subjectKey },
+                label = "ParseResultCardDisplay",
+            ) { animatedDisplay ->
+                val displayTitle = animatedDisplay.title.ifBlank {
+                    stringResource(R.string.parse_section_result)
+                }
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    LongPressCopyText(
+                        text = displayTitle,
+                        copyActionLabel = stringResource(R.string.common_copy_title),
+                        onCopy = { text ->
+                            onCopyResultContent(ParseResultCopyTarget.Title, text)
+                        },
+                        style = ParseTextStyles.mediaTitle,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    animatedDisplay.upper
+                        ?.takeIf { it.name.isNotBlank() }
+                        ?.let { upper ->
+                            val upperName = upper.name.trim()
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                UserIdentityLabel(
+                                    name = upperName,
+                                    avatarUrl = upper.avatar,
+                                    modifier = Modifier.weight(1f, fill = false),
+                                    onClick = { onOpenUpper(upper.mid) },
+                                    onLongClickLabel = stringResource(R.string.common_copy_upper_name),
+                                    onLongClick = {
+                                        onCopyResultContent(
+                                            ParseResultCopyTarget.UpperName,
+                                            upperName,
                                         )
-                                    }
+                                    },
+                                )
+                                upper.followerCount?.let { followerCount ->
+                                    FormattedStatValue(
+                                        iconRes = R.string.icon_stat_follower,
+                                        value = followerCount,
+                                        modifier = Modifier.padding(start = 18.dp),
+                                    )
                                 }
                             }
-                        MetadataSummaryRow(
-                            metadata = animatedDisplay.metadata,
-                            onOpenDetails = {
-                                detailSubjectKey = animatedDisplay.metadata.subjectKey
-                            },
-                            onCopyPublicId = { publicId ->
-                                onCopyResultContent(ParseResultCopyTarget.PublicId, publicId)
+                        }
+                    MetadataSummaryRow(
+                        metadata = animatedDisplay.metadata,
+                        onOpenDetails = {
+                            detailSubjectKey = animatedDisplay.metadata.subjectKey
+                        },
+                        onCopyPublicId = { publicId ->
+                            onCopyResultContent(ParseResultCopyTarget.PublicId, publicId)
+                        },
+                    )
+                    if (animatedDisplay.description.isNotBlank()) {
+                        ExpandableDescription(
+                            text = animatedDisplay.description,
+                            subjectKey = animatedDisplay.metadata.subjectKey,
+                            copyActionLabel = stringResource(R.string.parse_copy_description),
+                            onCopy = { text ->
+                                onCopyResultContent(ParseResultCopyTarget.Description, text)
                             },
                         )
-                        if (animatedDisplay.description.isNotBlank()) {
-                            ExpandableDescription(
-                                text = animatedDisplay.description,
-                                subjectKey = animatedDisplay.metadata.subjectKey,
-                                copyActionLabel = stringResource(R.string.parse_copy_description),
-                                onCopy = { text ->
-                                    onCopyResultContent(ParseResultCopyTarget.Description, text)
-                                },
-                            )
-                        }
-                        StatRow(animatedDisplay.stat)
                     }
+                    StatRow(animatedDisplay.stat)
                 }
-                SectionControls(
-                    state = state,
-                    info = info,
-                    onSectionChange = onSectionChange,
-                    onCollectionModeChange = onCollectionModeChange,
-                )
-                contentBelowSectionControls()
             }
+            SectionControls(
+                state = state,
+                info = info,
+                onSectionChange = onSectionChange,
+                onCollectionModeChange = onCollectionModeChange,
+            )
+            contentBelowSectionControls()
         }
     }
 
@@ -1018,13 +1020,7 @@ private fun ExpandableDescription(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .animateContentSize(
-                animationSpec = tween(
-                    durationMillis = parseContentAnimationDurationMillis,
-                    easing = FastOutSlowInEasing,
-                ),
-                alignment = Alignment.TopStart,
-            )
+            .animateContentSize(animationSpec = parseLayoutSizeSpec)
             .then(interactionModifier),
     ) {
         Text(
@@ -1743,10 +1739,7 @@ private fun PageSelectionList(
     val interactionEnabled = !state.loading && !state.collectionModeLoading
     val listAlpha by animateFloatAsState(
         targetValue = if (state.collectionModeLoading) 0.48f else 1f,
-        animationSpec = tween(
-            durationMillis = parseContentAnimationDurationMillis,
-            easing = FastOutSlowInEasing,
-        ),
+        animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
     )
     if (!info.paged && state.items.size <= pageSelectionNaturalItemLimit) {
         LaunchedEffect(state.pagination.scrollRequest, interactionEnabled) {
@@ -2314,23 +2307,15 @@ private fun ParseOptionsCard(
         ((selectedItem?.aid != null && selectedItem.cid != null) || allowMissingExtras)
     val danmakuHistoryEnabled = mediaCapabilities.supportsDanmakuExport &&
         (selectedItem?.cid != null || allowMissingExtras)
-    val sizeSpec = tween<IntSize>(
-        durationMillis = parseContentAnimationDurationMillis,
-        easing = FastOutSlowInEasing,
-    )
-    val fadeSpec = tween<Float>(
-        durationMillis = optionsVisibilityAnimationDurationMillis,
-        easing = FastOutSlowInEasing,
-    )
+    val motionScheme = MaterialTheme.motionScheme
+    val layoutSizeSpec = parseLayoutSizeSpec
 
     ParseCard {
         Column(
-            modifier = Modifier
-                .padding(
-                    horizontal = optionsCardHorizontalPadding,
-                    vertical = optionsCardVerticalPadding,
-                )
-                .animateContentSize(animationSpec = sizeSpec),
+            modifier = Modifier.padding(
+                horizontal = optionsCardHorizontalPadding,
+                vertical = optionsCardVerticalPadding,
+            ),
         ) {
             Text(
                 text = stringResource(R.string.parse_section_options),
@@ -2387,10 +2372,9 @@ private fun ParseOptionsCard(
                             modifier = Modifier.fillMaxWidth(),
                             contentAlignment = Alignment.TopStart,
                             transitionSpec = {
-                                (fadeIn(animationSpec = fadeSpec) togetherWith
-                                    fadeOut(animationSpec = fadeSpec)).using(
-                                    SizeTransform(sizeAnimationSpec = { _, _ -> sizeSpec }),
-                                )
+                                fadeIn(animationSpec = motionScheme.defaultEffectsSpec()) togetherWith
+                                    fadeOut(animationSpec = motionScheme.fastEffectsSpec()) using
+                                    SizeTransform(sizeAnimationSpec = { _, _ -> layoutSizeSpec })
                             },
                             label = "ParseOutputOptions",
                         ) { animatedState ->
@@ -2828,27 +2812,20 @@ private fun AnimatedOptionsVisibility(
     visible: Boolean,
     content: @Composable () -> Unit,
 ) {
-    val sizeSpec = tween<IntSize>(
-        durationMillis = optionsVisibilityAnimationDurationMillis,
-        easing = FastOutSlowInEasing,
-    )
-    val fadeSpec = tween<Float>(
-        durationMillis = optionsVisibilityAnimationDurationMillis,
-        easing = FastOutSlowInEasing,
-    )
+    val fadeSpec = MaterialTheme.motionScheme.fastEffectsSpec<Float>()
     AnimatedVisibility(
         visible = visible,
         enter =
             fadeIn(animationSpec = fadeSpec) +
                 expandVertically(
                     expandFrom = Alignment.Top,
-                    animationSpec = sizeSpec,
+                    animationSpec = parseLayoutSizeSpec,
                 ),
         exit =
             fadeOut(animationSpec = fadeSpec) +
                 shrinkVertically(
                     shrinkTowards = Alignment.Top,
-                    animationSpec = sizeSpec,
+                    animationSpec = parseLayoutSizeSpec,
                 ),
     ) {
         content()
@@ -3332,7 +3309,14 @@ private fun <T> CompactSelectionField(
     }
 }
 
-/** 解析页的一级卡片：与「我」页、设置页的列表卡片同底色、同圆角、无投影。 */
+/**
+ * 解析页的一级卡片：与「我」页、设置页的列表卡片同底色、同圆角、无投影。
+ *
+ * 卡片高度变化统一在这里动画。卡片内的切换、展开动画会逐帧改变内容尺寸，若卡片级动画只能看到
+ * 这些中间值，每帧都会被重新指定目标，导致卡片边缘与下方卡片明显滞后、并裁切内容。放进
+ * LookaheadScope 后，所有尺寸动画都直接以最终布局为目标，再配合共用的 [parseLayoutSizeSpec]
+ * 与内容同步移动；没有自带动画的内容变化（如异步加载出的选项）也由这里平滑过渡。
+ */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ParseCard(
@@ -3344,8 +3328,16 @@ private fun ParseCard(
         shape = MaterialTheme.shapes.largeIncreased,
         colors = CardDefaults.cardColors(containerColor = AppSurfaces.cardContainerColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        content = content,
-    )
+    ) {
+        LookaheadScope {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .animateContentSize(animationSpec = parseLayoutSizeSpec),
+                content = content,
+            )
+        }
+    }
 }
 
 @Composable
