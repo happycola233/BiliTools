@@ -332,11 +332,11 @@
     <string name="download_detail_converting_audio">Преобразование в формат MP3</string>
     <string name="download_detail_converting_video">Преобразование в формат MP4</string>
     <string name="history_title">История просмотра</string>
-    <string name="history_entry_desc">Откройте для себя заново то, что вы смотрели</string>
+    <string name="history_entry_desc">Айда на раскопки~</string>
     <string name="login_entry_favorite_title">Избранное</string>
-    <string name="login_entry_favorite_desc">Загрузите сохраненные видео</string>
+    <string name="login_entry_favorite_desc">Скачайте, пока не исчезли!</string>
     <string name="login_entry_watch_later_title">Посмотреть позже</string>
-    <string name="login_entry_watch_later_desc">В следующий раз точно посмотрите?</string>
+    <string name="login_entry_watch_later_desc">В следующий раз точно (честно)</string>
     <string name="login_entry_settings_title">Настройки</string>
     <string name="login_entry_settings_desc">Настройте BiliTools</string>
     <string name="history_cover_desc">Обложка записи истории</string>

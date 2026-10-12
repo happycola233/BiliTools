@@ -323,11 +323,11 @@
     <string name="download_detail_converting_audio">Đang chuyển đổi sang định dạng MP3</string>
     <string name="download_detail_converting_video">Đang chuyển đổi sang định dạng MP4</string>
     <string name="history_title">Lịch sử xem</string>
-    <string name="history_entry_desc">Khám phá lại những gì bạn đã xem</string>
+    <string name="history_entry_desc">Cùng đào ký ức nào~</string>
     <string name="login_entry_favorite_title">Yêu thích</string>
-    <string name="login_entry_favorite_desc">Tải xuống video đã lưu của bạn</string>
+    <string name="login_entry_favorite_desc">Tải về trước khi bay màu!</string>
     <string name="login_entry_watch_later_title">Xem sau</string>
-    <string name="login_entry_watch_later_desc">Lần sau nhất định xem chứ?</string>
+    <string name="login_entry_watch_later_desc">Lần sau nhất định (thật)</string>
     <string name="login_entry_settings_title">Cài đặt</string>
     <string name="login_entry_settings_desc">Tùy chỉnh BiliTools</string>
     <string name="history_cover_desc">Bìa mục lịch sử</string>

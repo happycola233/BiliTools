@@ -323,11 +323,11 @@
     <string name="download_detail_converting_audio">Menukar kepada format MP3</string>
     <string name="download_detail_converting_video">Menukar kepada format MP4</string>
     <string name="history_title">Sejarah tontonan</string>
-    <string name="history_entry_desc">Temui semula apa yang telah anda tonton</string>
+    <string name="history_entry_desc">Jom gali kenangan lama~</string>
     <string name="login_entry_favorite_title">Kegemaran</string>
-    <string name="login_entry_favorite_desc">Muat turun video anda yang disimpan</string>
+    <string name="login_entry_favorite_desc">Muat turun sebelum hilang!</string>
     <string name="login_entry_watch_later_title">Tonton kemudian</string>
-    <string name="login_entry_watch_later_desc">Lain kali pasti tonton?</string>
+    <string name="login_entry_watch_later_desc">Lain kali pasti (betul)</string>
     <string name="login_entry_settings_title">Tetapan</string>
     <string name="login_entry_settings_desc">Sesuaikan BiliTools</string>
     <string name="history_cover_desc">Gambar muka depan item sejarah</string>

@@ -326,11 +326,11 @@
     <string name="download_detail_converting_audio">MP3 biçimine dönüştürülüyor</string>
     <string name="download_detail_converting_video">MP4 biçimine dönüştürülüyor</string>
     <string name="history_title">İzleme geçmişi</string>
-    <string name="history_entry_desc">İzlediklerinizi yeniden keşfedin</string>
+    <string name="history_entry_desc">Hadi kazıya~</string>
     <string name="login_entry_favorite_title">Favoriler</string>
-    <string name="login_entry_favorite_desc">Kaydedilen videolarınızı indirin</string>
+    <string name="login_entry_favorite_desc">Kaybolmadan indirin!</string>
     <string name="login_entry_watch_later_title">Daha sonra izle</string>
-    <string name="login_entry_watch_later_desc">Bir dahaki sefere kesin izleyecek misin?</string>
+    <string name="login_entry_watch_later_desc">Bir dahaki sefere kesin (gerçekten)</string>
     <string name="login_entry_settings_title">Ayarlar</string>
     <string name="login_entry_settings_desc">BiliTools\'u özelleştirin</string>
     <string name="history_cover_desc">Geçmiş öğe kapağı</string>

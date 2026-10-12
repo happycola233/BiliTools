@@ -323,11 +323,11 @@
     <string name="download_detail_converting_audio">กำลังแปลงเป็นรูปแบบ MP3</string>
     <string name="download_detail_converting_video">กำลังแปลงเป็นรูปแบบ MP4</string>
     <string name="history_title">ประวัติการดู</string>
-    <string name="history_entry_desc">ค้นพบสิ่งที่คุณเคยดูอีกครั้ง</string>
+    <string name="history_entry_desc">ไปขุดของเก่ากันน้า~</string>
     <string name="login_entry_favorite_title">รายการโปรด</string>
-    <string name="login_entry_favorite_desc">ดาวน์โหลดวิดีโอที่คุณบันทึกไว้</string>
+    <string name="login_entry_favorite_desc">รีบโหลดเก็บก่อนวิดีโอหาย!</string>
     <string name="login_entry_watch_later_title">ดูภายหลัง</string>
-    <string name="login_entry_watch_later_desc">ไว้ดูคราวหน้าแน่นะ?</string>
+    <string name="login_entry_watch_later_desc">ไว้คราวหน้าแน่นอน (จริง)</string>
     <string name="login_entry_settings_title">การตั้งค่า</string>
     <string name="login_entry_settings_desc">ปรับแต่ง BiliTools</string>
     <string name="history_cover_desc">ปกรายการประวัติ</string>

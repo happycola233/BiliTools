@@ -338,11 +338,11 @@
     <string name="download_detail_converting_audio">جارٍ التحويل إلى تنسيق MP3</string>
     <string name="download_detail_converting_video">جارٍ التحويل إلى تنسيق MP4</string>
     <string name="history_title">سجل المشاهدة</string>
-    <string name="history_entry_desc">أعد اكتشاف ما شاهدته</string>
+    <string name="history_entry_desc">يلا ننبش الذكريات~</string>
     <string name="login_entry_favorite_title">المفضلة</string>
-    <string name="login_entry_favorite_desc">قم بتنزيل مقاطع الفيديو المحفوظة الخاصة بك</string>
+    <string name="login_entry_favorite_desc">نزّلها قبل أن تختفي!</string>
     <string name="login_entry_watch_later_title">المشاهدة لاحقًا</string>
-    <string name="login_entry_watch_later_desc">ستشاهدها في المرة القادمة بالتأكيد؟</string>
+    <string name="login_entry_watch_later_desc">في المرة القادمة بالتأكيد (حقًا)</string>
     <string name="login_entry_settings_title">الإعدادات</string>
     <string name="login_entry_settings_desc">تخصيص BiliTools</string>
     <string name="history_cover_desc">غلاف عنصر السجل</string>

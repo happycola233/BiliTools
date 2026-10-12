@@ -337,11 +337,11 @@
     <string name="download_detail_converting_audio">正在转换为 MP3 格式</string>
     <string name="download_detail_converting_video">正在转换为 MP4 格式</string>
     <string name="history_title">历史记录</string>
-    <string name="history_entry_desc">浏览观看足迹。</string>
+    <string name="history_entry_desc">来考古啦～</string>
     <string name="login_entry_favorite_title">我的收藏</string>
-    <string name="login_entry_favorite_desc">下载宝藏视频！</string>
+    <string name="login_entry_favorite_desc">抢在已失效之前！</string>
     <string name="login_entry_watch_later_title">稍后再看</string>
-    <string name="login_entry_watch_later_desc">下次一定？</string>
+    <string name="login_entry_watch_later_desc">下次一定（真）</string>
     <string name="login_entry_settings_title">设置</string>
     <string name="login_entry_settings_desc">配置 BiliTools 的各项行为</string>
     <string name="history_cover_desc">历史记录封面</string>

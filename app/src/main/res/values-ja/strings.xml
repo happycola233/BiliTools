@@ -323,11 +323,11 @@
     <string name="download_detail_converting_audio">MP3 形式に変換中</string>
     <string name="download_detail_converting_video">MP4 形式に変換中</string>
     <string name="history_title">視聴履歴</string>
-    <string name="history_entry_desc">視聴の足跡をたどる</string>
+    <string name="history_entry_desc">発掘しよ〜</string>
     <string name="login_entry_favorite_title">お気に入り</string>
-    <string name="login_entry_favorite_desc">お気に入りのビデオをダウンロード</string>
+    <string name="login_entry_favorite_desc">消える前に確保！</string>
     <string name="login_entry_watch_later_title">後で見る</string>
-    <string name="login_entry_watch_later_desc">次は必ず見る？</string>
+    <string name="login_entry_watch_later_desc">次こそ必ず（ほんと）</string>
     <string name="login_entry_settings_title">設定</string>
     <string name="login_entry_settings_desc">BiliTools の動作を設定</string>
     <string name="history_cover_desc">履歴のカバー画像</string>

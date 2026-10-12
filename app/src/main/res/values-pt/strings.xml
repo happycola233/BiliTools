@@ -326,11 +326,11 @@
     <string name="download_detail_converting_audio">Convertendo para o formato MP3</string>
     <string name="download_detail_converting_video">Convertendo para o formato MP4</string>
     <string name="history_title">Histórico de exibição</string>
-    <string name="history_entry_desc">Redescubra o que você assistiu</string>
+    <string name="history_entry_desc">Bora escavar memórias~</string>
     <string name="login_entry_favorite_title">Favoritos</string>
-    <string name="login_entry_favorite_desc">Baixe seus vídeos salvos</string>
+    <string name="login_entry_favorite_desc">Baixe antes que sumam!</string>
     <string name="login_entry_watch_later_title">Assistir mais tarde</string>
-    <string name="login_entry_watch_later_desc">Da próxima vez, com certeza?</string>
+    <string name="login_entry_watch_later_desc">Da próxima vez, com certeza (sério)</string>
     <string name="login_entry_settings_title">Configurações</string>
     <string name="login_entry_settings_desc">Personalizar BiliTools</string>
     <string name="history_cover_desc">Capa do item do histórico</string>
