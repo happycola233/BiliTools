@@ -221,6 +221,7 @@
     <string name="downloads_empty">Henüz indirme yok</string>
     <string name="downloads_empty_action">Ayrıştır\'a git</string>
     <plurals name="downloads_selection_title">
+        <item quantity="one">%1$d seçildi</item>
         <item quantity="other">%1$d seçildi</item>
     </plurals>
     <string name="downloads_clear_completed">Tamamlanan indirme kayıtlarını temizle</string>

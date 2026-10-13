@@ -49,6 +49,7 @@ import java.io.File
 @Composable
 fun DiagnosticReportHost(focusTaskId: Long? = null, onDismiss: () -> Unit) {
     val context = LocalContext.current
+    val shareChooserTitle = stringResource(R.string.diagnostic_share)
     val repository = context.appContainer.diagnosticReportRepository
     val settings by context.appContainer.settingsRepository.settings.collectAsState()
     val scope = rememberCoroutineScope()
@@ -93,7 +94,7 @@ fun DiagnosticReportHost(focusTaskId: Long? = null, onDismiss: () -> Unit) {
                             clipData = ClipData.newRawUri("BiliTools diagnostic report", prepared.uri)
                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         }
-                        context.startActivity(Intent.createChooser(intent, context.getString(R.string.diagnostic_share)))
+                        context.startActivity(Intent.createChooser(intent, shareChooserTitle))
                     }
                     "save" -> {
                         pendingSavePath = prepared.file.absolutePath

@@ -221,6 +221,11 @@
     <string name="downloads_empty">لا توجد تنزيلات بعد</string>
     <string name="downloads_empty_action">انتقل إلى التحليل</string>
     <plurals name="downloads_selection_title">
+        <item quantity="zero">تم تحديد %1$d</item>
+        <item quantity="one">تم تحديد %1$d</item>
+        <item quantity="two">تم تحديد %1$d</item>
+        <item quantity="few">تم تحديد %1$d</item>
+        <item quantity="many">تم تحديد %1$d</item>
         <item quantity="other">تم تحديد %1$d</item>
     </plurals>
     <string name="downloads_clear_completed">مسح سجلات التنزيلات المكتملة</string>

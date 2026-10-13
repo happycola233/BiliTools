@@ -221,6 +221,9 @@
     <string name="downloads_empty">Пока нет загрузок</string>
     <string name="downloads_empty_action">Перейти к разбору</string>
     <plurals name="downloads_selection_title">
+        <item quantity="one">Выбрано: %1$d</item>
+        <item quantity="few">Выбрано: %1$d</item>
+        <item quantity="many">Выбрано: %1$d</item>
         <item quantity="other">Выбрано: %1$d</item>
     </plurals>
     <string name="downloads_clear_completed">Очистить записи завершённых загрузок</string>

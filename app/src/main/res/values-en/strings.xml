@@ -221,6 +221,7 @@
     <string name="downloads_empty">No downloads yet</string>
     <string name="downloads_empty_action">Go to Parse</string>
     <plurals name="downloads_selection_title">
+        <item quantity="one">%1$d selected</item>
         <item quantity="other">%1$d selected</item>
     </plurals>
     <string name="downloads_clear_completed">Clear completed records</string>

@@ -221,6 +221,8 @@
     <string name="downloads_empty">Nenhum download ainda</string>
     <string name="downloads_empty_action">Ir para Analisar</string>
     <plurals name="downloads_selection_title">
+        <item quantity="one">%1$d selecionado</item>
+        <item quantity="many">%1$d selecionados</item>
         <item quantity="other">%1$d selecionados</item>
     </plurals>
     <string name="downloads_clear_completed">Limpar registros de downloads concluídos</string>
