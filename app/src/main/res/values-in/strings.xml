@@ -226,6 +226,8 @@
     <string name="downloads_clear_completed">Hapus riwayat unduhan selesai</string>
     <string name="downloads_clear_all">Hapus semua riwayat unduhan</string>
     <string name="downloads_actions_menu">Tindakan unduhan</string>
+    <string name="downloads_actions_expanded">Diperluas</string>
+    <string name="downloads_actions_collapsed">Diciutkan</string>
     <string name="downloads_multi_manage">Kelola unduhan</string>
     <string name="downloads_multi_select_all">Pilih semua</string>
     <string name="downloads_multi_unselect_all">Batalkan semua pilihan</string>

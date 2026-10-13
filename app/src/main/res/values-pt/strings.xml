@@ -226,6 +226,8 @@
     <string name="downloads_clear_completed">Limpar registros de downloads concluídos</string>
     <string name="downloads_clear_all">Limpar todos os registros</string>
     <string name="downloads_actions_menu">Ações de download</string>
+    <string name="downloads_actions_expanded">Expandido</string>
+    <string name="downloads_actions_collapsed">Recolhido</string>
     <string name="downloads_multi_manage">Gerenciar downloads</string>
     <string name="downloads_multi_select_all">Selecionar tudo</string>
     <string name="downloads_multi_unselect_all">Desmarcar tudo</string>

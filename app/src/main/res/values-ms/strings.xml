@@ -226,6 +226,8 @@
     <string name="downloads_clear_completed">Kosongkan rekod muat turun yang selesai</string>
     <string name="downloads_clear_all">Kosongkan semua rekod muat turun</string>
     <string name="downloads_actions_menu">Tindakan muat turun</string>
+    <string name="downloads_actions_expanded">Dikembangkan</string>
+    <string name="downloads_actions_collapsed">Dikuncupkan</string>
     <string name="downloads_multi_manage">Urus muat turun</string>
     <string name="downloads_multi_select_all">Pilih semua</string>
     <string name="downloads_multi_unselect_all">Nyahpilih semua</string>

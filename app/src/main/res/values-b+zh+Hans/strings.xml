@@ -240,6 +240,8 @@
     <string name="downloads_clear_completed">清除已完成记录</string>
     <string name="downloads_clear_all">清除全部记录</string>
     <string name="downloads_actions_menu">下载管理操作</string>
+    <string name="downloads_actions_expanded">已展开</string>
+    <string name="downloads_actions_collapsed">已收起</string>
     <string name="downloads_multi_manage">批量管理</string>
     <string name="downloads_multi_select_all">全选</string>
     <string name="downloads_multi_unselect_all">取消全选</string>

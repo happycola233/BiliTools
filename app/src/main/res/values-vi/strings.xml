@@ -226,6 +226,8 @@
     <string name="downloads_clear_completed">Xóa bản ghi tải xuống đã hoàn tất</string>
     <string name="downloads_clear_all">Xóa tất cả bản ghi tải xuống</string>
     <string name="downloads_actions_menu">Hành động tải xuống</string>
+    <string name="downloads_actions_expanded">Đã mở rộng</string>
+    <string name="downloads_actions_collapsed">Đã thu gọn</string>
     <string name="downloads_multi_manage">Quản lý tải xuống</string>
     <string name="downloads_multi_select_all">Chọn tất cả</string>
     <string name="downloads_multi_unselect_all">Bỏ chọn tất cả</string>

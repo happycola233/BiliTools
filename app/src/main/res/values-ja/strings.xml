@@ -226,6 +226,8 @@
     <string name="downloads_clear_completed">完了した記録を消去</string>
     <string name="downloads_clear_all">すべての記録を消去</string>
     <string name="downloads_actions_menu">ダウンロード管理の操作</string>
+    <string name="downloads_actions_expanded">展開済み</string>
+    <string name="downloads_actions_collapsed">折りたたみ済み</string>
     <string name="downloads_multi_manage">ダウンロードの管理</string>
     <string name="downloads_multi_select_all">すべて選択</string>
     <string name="downloads_multi_unselect_all">すべての選択を解除</string>

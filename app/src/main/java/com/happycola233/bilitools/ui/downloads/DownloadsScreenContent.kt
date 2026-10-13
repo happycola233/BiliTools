@@ -4,6 +4,7 @@ import android.graphics.Typeface
 import android.text.style.ForegroundColorSpan
 import android.text.style.StyleSpan
 import android.text.style.UnderlineSpan
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -32,6 +33,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FloatingActionButtonMenu
@@ -40,11 +42,16 @@ import androidx.compose.material3.FloatingActionButtonMenuScope
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleFloatingActionButton
 import androidx.compose.material3.ToggleFloatingActionButtonDefaults
 import androidx.compose.material3.ToggleFloatingActionButtonDefaults.animateIcon
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,6 +65,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -472,9 +485,9 @@ private fun DownloadsDeleteDialogButtons(onDismiss: () -> Unit, onConfirm: (Bool
  * 页面级批量操作菜单。只列出当前可执行的项；展开时按钮按 Expressive 规范由容器色过渡到 `primary`，
  * 图标同步变色、变小并切换为关闭。
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun DownloadsManageFab(
+internal fun DownloadsManageFab(
     bottomPadding: Dp,
     resumeAllCount: Int,
     pauseAllCount: Int,
@@ -488,6 +501,12 @@ private fun DownloadsManageFab(
 ) {
     val haptics = rememberAppHaptics()
     var expanded by remember { mutableStateOf(false) }
+    val menuLabel = stringResource(R.string.downloads_actions_menu)
+    val menuStateDescription = stringResource(
+        if (expanded) R.string.downloads_actions_expanded else R.string.downloads_actions_collapsed,
+    )
+    BackHandler(enabled = expanded) { expanded = false }
+
     // 展开的操作项与收起态的主按钮同色，见 AppAccents.floatingActionContainer。
     val menuItemContainerColor = AppAccents.floatingActionContainer
     val menuItemContentColor = AppAccents.onFloatingActionContainer
@@ -514,22 +533,37 @@ private fun DownloadsManageFab(
     FloatingActionButtonMenu(
         expanded = expanded,
         button = {
-            ToggleFloatingActionButton(
-                checked = expanded,
-                onCheckedChange = { next ->
-                    haptics.toggle(next)
-                    expanded = next
-                },
-                containerColor = buttonContainerColor,
+            TooltipBox(
+                positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                    if (expanded) TooltipAnchorPosition.Start else TooltipAnchorPosition.Above,
+                ),
+                tooltip = { PlainTooltip { Text(menuLabel) } },
+                state = rememberTooltipState(),
             ) {
-                Icon(
-                    painter = painterResource(
-                        if (checkedProgress > 0.5f) R.drawable.ic_close_rounded_24 else R.drawable.ic_more_horiz_24,
-                    ),
-                    contentDescription = stringResource(R.string.downloads_actions_menu),
-                    // 颜色与尺寸由 animateIcon 的着色层随展开进度统一决定，覆盖图标自身的 tint。
-                    modifier = Modifier.animateIcon({ checkedProgress }, color = iconColor),
-                )
+                ToggleFloatingActionButton(
+                    checked = expanded,
+                    onCheckedChange = { next ->
+                        haptics.toggle(next)
+                        expanded = next
+                    },
+                    containerColor = buttonContainerColor,
+                    modifier = Modifier.semantics {
+                        role = Role.Button
+                        contentDescription = menuLabel
+                        stateDescription = menuStateDescription
+                        // 先聚焦原位的开关按钮，再按菜单项顺序遍历，便于随时收起。
+                        traversalIndex = -1f
+                    },
+                ) {
+                    Icon(
+                        painter = painterResource(
+                            if (checkedProgress > 0.5f) R.drawable.ic_close_rounded_24 else R.drawable.ic_more_horiz_24,
+                        ),
+                        contentDescription = null,
+                        // 颜色与尺寸由 animateIcon 的着色层随展开进度统一决定，覆盖图标自身的 tint。
+                        modifier = Modifier.animateIcon({ checkedProgress }, color = iconColor),
+                    )
+                }
             }
         },
         modifier = modifier

@@ -226,6 +226,8 @@
     <string name="downloads_clear_completed">ล้างบันทึกการดาวน์โหลดที่เสร็จแล้ว</string>
     <string name="downloads_clear_all">ล้างบันทึกการดาวน์โหลดทั้งหมด</string>
     <string name="downloads_actions_menu">การดำเนินการดาวน์โหลด</string>
+    <string name="downloads_actions_expanded">ขยายแล้ว</string>
+    <string name="downloads_actions_collapsed">ยุบแล้ว</string>
     <string name="downloads_multi_manage">จัดการการดาวน์โหลด</string>
     <string name="downloads_multi_select_all">เลือกทั้งหมด</string>
     <string name="downloads_multi_unselect_all">ยกเลิกการเลือกทั้งหมด</string>

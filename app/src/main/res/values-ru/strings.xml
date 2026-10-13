@@ -226,6 +226,8 @@
     <string name="downloads_clear_completed">Очистить записи завершённых загрузок</string>
     <string name="downloads_clear_all">Очистить все записи</string>
     <string name="downloads_actions_menu">Действия с загрузками</string>
+    <string name="downloads_actions_expanded">Развернуто</string>
+    <string name="downloads_actions_collapsed">Свернуто</string>
     <string name="downloads_multi_manage">Управление загрузками</string>
     <string name="downloads_multi_select_all">Выбрать все</string>
     <string name="downloads_multi_unselect_all">Отменить выбор</string>

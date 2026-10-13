@@ -226,6 +226,8 @@
     <string name="downloads_clear_completed">Clear completed records</string>
     <string name="downloads_clear_all">Clear all records</string>
     <string name="downloads_actions_menu">Download actions</string>
+    <string name="downloads_actions_expanded">Expanded</string>
+    <string name="downloads_actions_collapsed">Collapsed</string>
     <string name="downloads_multi_manage">Manage downloads</string>
     <string name="downloads_multi_select_all">Select all</string>
     <string name="downloads_multi_unselect_all">Deselect all</string>

@@ -226,6 +226,8 @@
     <string name="downloads_clear_completed">Tamamlanan indirme kayıtlarını temizle</string>
     <string name="downloads_clear_all">Tüm kayıtları temizle</string>
     <string name="downloads_actions_menu">İndirme işlemleri</string>
+    <string name="downloads_actions_expanded">Genişletildi</string>
+    <string name="downloads_actions_collapsed">Daraltıldı</string>
     <string name="downloads_multi_manage">İndirmeleri yönet</string>
     <string name="downloads_multi_select_all">Tümünü seç</string>
     <string name="downloads_multi_unselect_all">Tümünün seçimini kaldır</string>

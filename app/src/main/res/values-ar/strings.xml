@@ -226,6 +226,8 @@
     <string name="downloads_clear_completed">مسح سجلات التنزيلات المكتملة</string>
     <string name="downloads_clear_all">مسح جميع السجلات</string>
     <string name="downloads_actions_menu">إجراءات التنزيلات</string>
+    <string name="downloads_actions_expanded">موسّعة</string>
+    <string name="downloads_actions_collapsed">مطويّة</string>
     <string name="downloads_multi_manage">إدارة التنزيلات</string>
     <string name="downloads_multi_select_all">تحديد الكل</string>
     <string name="downloads_multi_unselect_all">إلغاء تحديد الكل</string>
