@@ -103,7 +103,7 @@ internal fun DownloadsGroupHeader(
     })
     val supportingText = presentation.headerSupportingText(context, group)
     val transferEstimate = rememberDownloadTransferEstimate(group.tasks, presentation.speedBytesPerSec, presentation.etaSeconds)
-    val footerStatus = presentation.footerStatus(context, group, transferEstimate)
+    val footerStatusText = presentation.footerStatusText(context, group, transferEstimate, MaterialTheme.colorScheme.error)
     val checkboxSize = 40.dp
     val checkboxEndSpacing = 6.dp
     // 底栏与封面共用起始位置，多选时为复选框整列留空。
@@ -217,11 +217,11 @@ internal fun DownloadsGroupHeader(
             }
             if (presentation.completed) {
                 // 「已完成」分区已表达结果，只补充跳过或文件丢失信息。
-                if (footerStatus != null) {
+                if (footerStatusText.isNotEmpty()) {
                     Text(
-                        text = footerStatus,
+                        text = footerStatusText,
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (presentation.missingCount > 0) MaterialTheme.colorScheme.error else supportingColor,
+                        color = supportingColor,
                         modifier = Modifier.padding(start = footerStartPadding, top = 8.dp),
                     )
                 }
@@ -230,9 +230,9 @@ internal fun DownloadsGroupHeader(
                 modifier = Modifier.fillMaxWidth().padding(start = footerStartPadding, top = 4.dp),
             ) {
                 Text(
-                    text = footerStatus.orEmpty(),
+                    text = footerStatusText,
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (presentation.failedCount > 0 || presentation.missingCount > 0) MaterialTheme.colorScheme.error else supportingColor,
+                    color = supportingColor,
                     modifier = Modifier.weight(1f).padding(vertical = 8.dp),
                 )
                 DownloadsGroupSelectionSlot(

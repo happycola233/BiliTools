@@ -1,6 +1,10 @@
 package com.happycola233.bilitools.ui.downloads
 
 import android.content.Context
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.formatEstimatedTime
 import com.happycola233.bilitools.core.localizedStatusDetail
@@ -131,11 +135,12 @@ internal fun DownloadsGroupPresentation.headerSupportingText(context: Context, g
     else -> context.getString(R.string.downloads_group_resolved_summary, resolvedCount, group.tasks.size)
 }
 
-internal fun DownloadsGroupPresentation.footerStatus(
+internal fun DownloadsGroupPresentation.footerStatusText(
     context: Context,
     group: DownloadGroup,
     transferEstimate: DownloadTransferEstimate,
-): String? {
+    errorColor: Color,
+): AnnotatedString {
     val status = when {
         completed -> null
         transferEstimate.speedBytesPerSec > 0 -> listOfNotNull(
@@ -157,12 +162,25 @@ internal fun DownloadsGroupPresentation.footerStatus(
         group.tasks.any { it.status == DownloadStatus.Paused } -> context.getString(R.string.downloads_group_waiting)
         else -> context.getString(R.string.download_status_cancelled)
     }
-    return listOfNotNull(
-        status,
-        failedCount.takeIf { it > 0 }?.let { context.resources.getQuantityString(R.plurals.downloads_group_failed_count, it, it) },
-        skippedCount.takeIf { it > 0 }?.let { context.getString(R.string.downloads_group_progress_unavailable, it) },
-        missingCount.takeIf { it > 0 }?.let { context.resources.getQuantityString(R.plurals.downloads_group_missing_count, it, it) },
-    ).joinToString(" · ").takeIf { it.isNotEmpty() }
+    return buildAnnotatedString {
+        // 错误色只覆盖异常提示，状态、速度、剩余时间与分隔符沿用普通文字颜色。
+        fun appendPart(text: String, isError: Boolean = false) {
+            if (length > 0) append(" · ")
+            val start = length
+            append(text)
+            if (isError) addStyle(SpanStyle(color = errorColor), start, length)
+        }
+        status?.let { appendPart(it) }
+        if (failedCount > 0) {
+            appendPart(context.resources.getQuantityString(R.plurals.downloads_group_failed_count, failedCount, failedCount), isError = true)
+        }
+        if (skippedCount > 0) {
+            appendPart(context.getString(R.string.downloads_group_progress_unavailable, skippedCount))
+        }
+        if (missingCount > 0) {
+            appendPart(context.resources.getQuantityString(R.plurals.downloads_group_missing_count, missingCount, missingCount), isError = true)
+        }
+    }
 }
 
 internal fun calculateDownloadingEtaSeconds(groups: List<DownloadGroup>): Long? {
