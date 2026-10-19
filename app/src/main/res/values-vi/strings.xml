@@ -533,12 +533,10 @@
     <string name="settings_about_open_github">Mở kho lưu trữ GitHub</string>
     <string name="settings_about_version">Phiên bản hiện tại: v%1$s</string>
     <string name="settings_check_update_title">Kiểm tra cập nhật</string>
-    <string name="settings_check_update_desc">Nhấn để kiểm tra cập nhật</string>
     <string name="settings_check_update_desc_checking">Đang kiểm tra cập nhật…</string>
     <string name="settings_check_update_desc_available">Đã có bản cập nhật: %1$s</string>
     <string name="settings_check_update_desc_latest">Bạn đang dùng phiên bản mới nhất</string>
     <string name="settings_check_update_desc_failed">Không thể kiểm tra cập nhật. Nhấn để thử lại.</string>
-    <string name="settings_check_update_toast_latest">Bạn đang dùng phiên bản mới nhất</string>
     <string name="settings_check_update_toast_failed">Không thể kiểm tra cập nhật: %1$s</string>
     <string name="settings_license_title">Giấy phép</string>
     <string name="settings_opensource_licenses_title">Giấy phép nguồn mở</string>

@@ -3,5 +3,4 @@
     <string name="settings_language_title">Язык</string>
     <string name="settings_language_system">Как в системе</string>
     <string name="settings_live_activity_unavailable">Уведомления Live Update не поддерживаются в этой версии Android.</string>
-    <string name="settings_update_summary_format">%1$s (%2$s)</string>
 </resources>

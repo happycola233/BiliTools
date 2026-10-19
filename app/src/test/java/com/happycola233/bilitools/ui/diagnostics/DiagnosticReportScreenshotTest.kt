@@ -19,6 +19,7 @@ import com.happycola233.bilitools.data.AppThemeMode
 import com.happycola233.bilitools.data.model.*
 import com.happycola233.bilitools.ui.downloads.DownloadsDetailsSheet
 import com.happycola233.bilitools.ui.settings.AboutSettingsScreen
+import com.happycola233.bilitools.ui.settings.UpdateCheckUiState
 import com.happycola233.bilitools.ui.theme.BiliToolsTheme
 import java.io.File
 import org.junit.Rule
@@ -86,7 +87,7 @@ class DiagnosticReportScreenshotTest {
                             when (screen) {
                                 0 -> AboutSettingsScreen(
                                     versionName = "3.0", versionCode = 14,
-                                    checkUpdateSummary = "3.0 (14)",
+                                    updateCheckState = UpdateCheckUiState.UpToDate,
                                     onCheckUpdate = {}, onOpenSourceLicenses = {},
                                     onFeedback = { screen = 1 }, onClearDiagnostics = { clearCalls++ }, onBack = {},
                                 )

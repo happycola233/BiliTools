@@ -533,12 +533,10 @@
     <string name="settings_about_open_github">Buka repositori GitHub</string>
     <string name="settings_about_version">Versi semasa: v%1$s</string>
     <string name="settings_check_update_title">Semak kemas kini</string>
-    <string name="settings_check_update_desc">Ketik untuk menyemak kemas kini</string>
     <string name="settings_check_update_desc_checking">Menyemak kemas kini…</string>
     <string name="settings_check_update_desc_available">Kemas kini tersedia: %1$s</string>
     <string name="settings_check_update_desc_latest">Anda menggunakan versi terkini</string>
     <string name="settings_check_update_desc_failed">Tidak dapat menyemak kemas kini. Ketik untuk mencuba semula.</string>
-    <string name="settings_check_update_toast_latest">Anda menggunakan versi terkini</string>
     <string name="settings_check_update_toast_failed">Tidak dapat menyemak kemas kini: %1$s</string>
     <string name="settings_license_title">Lesen</string>
     <string name="settings_opensource_licenses_title">Lesen sumber terbuka</string>

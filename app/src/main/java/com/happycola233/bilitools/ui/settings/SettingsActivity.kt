@@ -17,7 +17,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
-import androidx.compose.ui.res.stringResource
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.AppLanguage
 import com.happycola233.bilitools.core.appContainer
@@ -75,38 +74,28 @@ class SettingsActivity : AppCompatActivity() {
             val versionName = remember { normalizeVersionLabel(updateRepository.currentVersionName()) }
             val versionCode = remember { currentVersionCode() }
             // 设置页切换语言时保留窗口和操作状态，展示文案始终由当前资源重新生成。
-            var updateCheckResult by remember { mutableStateOf<UpdateCheckResult?>(null) }
+            // 最近一次结果由仓库持有，启动时的自动检查完成后关于页无需再点也能看到状态。
+            val latestUpdateResult by updateRepository.latestResult.collectAsState()
             var checkingUpdate by remember { mutableStateOf(false) }
             var showDiagnosticReport by remember { mutableStateOf(false) }
-            val checkedVersion = when (val result = updateCheckResult) {
-                is UpdateCheckResult.UpdateAvailable -> normalizeVersionLabel(result.currentVersion)
-                is UpdateCheckResult.UpToDate -> normalizeVersionLabel(result.currentVersion)
-                else -> versionName
-            }
-            val updateStatus = if (checkingUpdate) {
-                stringResource(R.string.settings_check_update_desc_checking)
+            val updateCheckState = if (checkingUpdate) {
+                UpdateCheckUiState.Checking
             } else {
-                when (val result = updateCheckResult) {
-                    is UpdateCheckResult.UpdateAvailable -> stringResource(
-                        R.string.settings_check_update_desc_available,
-                        result.release.tagName,
-                    )
-                    is UpdateCheckResult.UpToDate -> stringResource(R.string.settings_check_update_desc_latest)
-                    is UpdateCheckResult.Failed -> stringResource(R.string.settings_check_update_desc_failed)
-                    null -> stringResource(R.string.settings_check_update_desc)
+                when (val result = latestUpdateResult) {
+                    is UpdateCheckResult.UpdateAvailable -> {
+                        UpdateCheckUiState.UpdateAvailable(result.release.tagName)
+                    }
+                    is UpdateCheckResult.UpToDate -> UpdateCheckUiState.UpToDate
+                    is UpdateCheckResult.Failed -> UpdateCheckUiState.Failed
+                    null -> UpdateCheckUiState.Idle
                 }
             }
-            val checkUpdateSummary = stringResource(
-                R.string.settings_update_summary_format,
-                stringResource(R.string.settings_about_version, checkedVersion),
-                updateStatus,
-            )
 
             BiliToolsSettingsContent(
                 settings = settings,
                 liveUpdateSupported = isLiveUpdateSupported,
                 backStack = viewModel.backStack,
-                checkUpdateSummary = checkUpdateSummary,
+                updateCheckState = updateCheckState,
                 versionName = versionName,
                 versionCode = versionCode,
                 onExit = ::finish,
@@ -122,9 +111,8 @@ class SettingsActivity : AppCompatActivity() {
                     if (!checkingUpdate) {
                         checkingUpdate = true
                         scope.launch {
-                            val result = updateRepository.checkForUpdate()
-                            updateCheckResult = result
-                            when (result) {
+                            // 已是最新时行内状态文字已足够反馈，只在需要更多信息时弹窗或提示。
+                            when (val result = updateRepository.checkForUpdate()) {
                                 is UpdateCheckResult.UpdateAvailable -> {
                                     UpdateDialog.show(
                                         activity = this@SettingsActivity,
@@ -133,13 +121,7 @@ class SettingsActivity : AppCompatActivity() {
                                     )
                                 }
 
-                                is UpdateCheckResult.UpToDate -> {
-                                    Toast.makeText(
-                                        this@SettingsActivity,
-                                        getString(R.string.settings_check_update_toast_latest),
-                                        Toast.LENGTH_SHORT,
-                                    ).show()
-                                }
+                                is UpdateCheckResult.UpToDate -> Unit
 
                                 is UpdateCheckResult.Failed -> {
                                     Toast.makeText(

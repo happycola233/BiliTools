@@ -553,12 +553,10 @@
     <string name="settings_about_open_github">فتح مستودع GitHub</string>
     <string name="settings_about_version">الإصدار الحالي: v%1$s</string>
     <string name="settings_check_update_title">التحقق من وجود تحديثات</string>
-    <string name="settings_check_update_desc">اضغط للتحقق من وجود تحديثات</string>
     <string name="settings_check_update_desc_checking">جارٍ التحقق من وجود تحديثات…</string>
     <string name="settings_check_update_desc_available">التحديث متاح: %1$s</string>
     <string name="settings_check_update_desc_latest">أنت تستخدم أحدث إصدار</string>
     <string name="settings_check_update_desc_failed">لا يمكن التحقق من وجود تحديثات. انقر لإعادة المحاولة.</string>
-    <string name="settings_check_update_toast_latest">أنت تستخدم أحدث إصدار</string>
     <string name="settings_check_update_toast_failed">تعذر التحقق من التحديثات: %1$s</string>
     <string name="settings_license_title">الترخيص</string>
     <string name="settings_opensource_licenses_title">تراخيص مفتوحة المصدر</string>

@@ -537,12 +537,10 @@
     <string name="settings_about_open_github">Open GitHub repository</string>
     <string name="settings_about_version">Current version: v%1$s</string>
     <string name="settings_check_update_title">Check for updates</string>
-    <string name="settings_check_update_desc">Tap to check for updates</string>
     <string name="settings_check_update_desc_checking">Checking for updates…</string>
     <string name="settings_check_update_desc_available">Update available: %1$s</string>
     <string name="settings_check_update_desc_latest">You are up to date</string>
     <string name="settings_check_update_desc_failed">Could not check for updates. Tap to retry.</string>
-    <string name="settings_check_update_toast_latest">You are up to date</string>
     <string name="settings_check_update_toast_failed">Could not check for updates: %1$s</string>
     <string name="settings_license_title">License</string>
     <string name="settings_opensource_licenses_title">Open source licenses</string>

@@ -202,7 +202,7 @@ fun BiliToolsSettingsContent(
     settings: AppSettings,
     liveUpdateSupported: Boolean,
     backStack: SnapshotStateList<SettingsDestination>,
-    checkUpdateSummary: String,
+    updateCheckState: UpdateCheckUiState,
     versionName: String,
     versionCode: Long,
     onExit: () -> Unit,
@@ -381,7 +381,7 @@ fun BiliToolsSettingsContent(
                     AboutSettingsScreen(
                         versionName = versionName,
                         versionCode = versionCode,
-                        checkUpdateSummary = checkUpdateSummary,
+                        updateCheckState = updateCheckState,
                         onCheckUpdate = onCheckUpdate,
                         onOpenSourceLicenses = {
                             onNavigate(SettingsDestination.OpenSourceLicenses)
@@ -2398,7 +2398,7 @@ private fun namingTokenPreviewLabel(token: NamingToken): String {
 internal fun AboutSettingsScreen(
     versionName: String,
     versionCode: Long,
-    checkUpdateSummary: String,
+    updateCheckState: UpdateCheckUiState,
     onCheckUpdate: () -> Unit,
     onOpenSourceLicenses: () -> Unit,
     onFeedback: () -> Unit,
@@ -2501,10 +2501,9 @@ internal fun AboutSettingsScreen(
                         SettingsItemTitle(stringResource(R.string.settings_check_update_title))
                     },
                     supportingContent = {
-                        Text(
-                            text = checkUpdateSummary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                        UpdateCheckStatusText(
+                            state = updateCheckState,
+                            versionName = versionName,
                         )
                     },
                     onClick = onCheckUpdate,

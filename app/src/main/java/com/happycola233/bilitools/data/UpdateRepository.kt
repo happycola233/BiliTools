@@ -14,6 +14,9 @@ import com.happycola233.bilitools.update.GitHubRoutePurpose
 import com.happycola233.bilitools.update.UpdateApkAssetSelector
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -81,6 +84,11 @@ class UpdateRepository(
     }
     private val latestAdapter by lazy { moshi.adapter(GitHubReleaseResponse::class.java) }
 
+    private val _latestResult = MutableStateFlow<UpdateCheckResult?>(null)
+
+    /** 本次进程内最近一次检查的结果；启动时的自动检查也会写入，关于页据此直接展示更新状态。 */
+    val latestResult: StateFlow<UpdateCheckResult?> = _latestResult.asStateFlow()
+
     fun currentVersionName(): String {
         @Suppress("DEPRECATION")
         val versionName = runCatching {
@@ -105,7 +113,7 @@ class UpdateRepository(
                 currentVersion = currentVersion,
                 errorMessage = error.message ?: strings.get(R.string.download_reason_unknown),
             )
-        }
+        }.also { _latestResult.value = it }
     }
 
     private fun fetchLatestRelease(): ReleaseInfo {

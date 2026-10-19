@@ -533,12 +533,10 @@
     <string name="settings_about_open_github">เปิดรีโพสิทอรี GitHub</string>
     <string name="settings_about_version">เวอร์ชันปัจจุบัน: v%1$s</string>
     <string name="settings_check_update_title">ตรวจสอบการอัปเดต</string>
-    <string name="settings_check_update_desc">แตะเพื่อตรวจสอบการอัปเดต</string>
     <string name="settings_check_update_desc_checking">กำลังตรวจสอบการอัปเดต…</string>
     <string name="settings_check_update_desc_available">มีการอัปเดต: %1$s</string>
     <string name="settings_check_update_desc_latest">คุณใช้เวอร์ชันล่าสุดแล้ว</string>
     <string name="settings_check_update_desc_failed">ไม่สามารถตรวจสอบการอัปเดตได้ แตะเพื่อลองอีกครั้ง</string>
-    <string name="settings_check_update_toast_latest">คุณใช้เวอร์ชันล่าสุดแล้ว</string>
     <string name="settings_check_update_toast_failed">ไม่สามารถตรวจสอบการอัปเดต: %1$s</string>
     <string name="settings_license_title">ใบอนุญาต</string>
     <string name="settings_opensource_licenses_title">ใบอนุญาตโอเพ่นซอร์ส</string>

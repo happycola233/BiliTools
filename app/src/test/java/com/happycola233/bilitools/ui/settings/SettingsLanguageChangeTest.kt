@@ -123,7 +123,8 @@ class SettingsLanguageChangeTest {
             val newFeedbackSummary = localizedString(activity, "en", R.string.diagnostic_feedback_description)
             compose.onNodeWithText(newFeedbackSummary, substring = true).assertIsDisplayed()
             compose.onNodeWithText(oldFeedbackSummary, substring = true).assertDoesNotExist()
-            val updateSummary = localizedString(activity, "en", R.string.settings_check_update_desc)
+            // 尚未检查时展示当前版本；版本号由构建决定，只比对文案部分。
+            val updateSummary = localizedString(activity, "en", R.string.settings_about_version).substringBefore("%")
             compose.onNode(hasScrollAction()).performScrollToNode(hasText(updateSummary, substring = true))
             compose.onNodeWithText(updateSummary, substring = true).assertIsDisplayed()
         }

@@ -537,12 +537,10 @@
     <string name="settings_about_open_github">GitHub deposunu aç</string>
     <string name="settings_about_version">Geçerli sürüm: v%1$s</string>
     <string name="settings_check_update_title">Güncellemeleri kontrol et</string>
-    <string name="settings_check_update_desc">Güncellemeleri kontrol etmek için dokunun</string>
     <string name="settings_check_update_desc_checking">Güncellemeler kontrol ediliyor…</string>
     <string name="settings_check_update_desc_available">Güncelleme mevcut: %1$s</string>
     <string name="settings_check_update_desc_latest">En son sürümü kullanıyorsunuz</string>
     <string name="settings_check_update_desc_failed">Güncellemeler kontrol edilemedi. Yeniden denemek için dokunun.</string>
-    <string name="settings_check_update_toast_latest">En son sürümü kullanıyorsunuz</string>
     <string name="settings_check_update_toast_failed">Güncellemeler kontrol edilemedi: %1$s</string>
     <string name="settings_license_title">Lisans</string>
     <string name="settings_opensource_licenses_title">Açık kaynak lisansları</string>

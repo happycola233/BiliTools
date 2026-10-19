@@ -545,12 +545,10 @@
     <string name="settings_about_open_github">Открыть репозиторий GitHub</string>
     <string name="settings_about_version">Текущая версия: v%1$s</string>
     <string name="settings_check_update_title">Проверить обновления</string>
-    <string name="settings_check_update_desc">Нажмите, чтобы проверить наличие обновлений.</string>
     <string name="settings_check_update_desc_checking">Проверка обновлений…</string>
     <string name="settings_check_update_desc_available">Доступно обновление: %1$s</string>
     <string name="settings_check_update_desc_latest">Установлена последняя версия</string>
     <string name="settings_check_update_desc_failed">Не удалось проверить наличие обновлений. Нажмите, чтобы повторить попытку.</string>
-    <string name="settings_check_update_toast_latest">Установлена последняя версия</string>
     <string name="settings_check_update_toast_failed">Не удалось проверить наличие обновлений: %1$s</string>
     <string name="settings_license_title">Лицензия</string>
     <string name="settings_opensource_licenses_title">Лицензии с открытым исходным кодом</string>

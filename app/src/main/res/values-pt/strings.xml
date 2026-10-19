@@ -538,12 +538,10 @@
     <string name="settings_about_open_github">Abrir repositório GitHub</string>
     <string name="settings_about_version">Versão atual: v%1$s</string>
     <string name="settings_check_update_title">Verificar atualizações</string>
-    <string name="settings_check_update_desc">Toque para verificar se há atualizações</string>
     <string name="settings_check_update_desc_checking">Verificando atualizações…</string>
     <string name="settings_check_update_desc_available">Atualização disponível: %1$s</string>
     <string name="settings_check_update_desc_latest">Você está atualizado</string>
     <string name="settings_check_update_desc_failed">Não foi possível verificar atualizações. Toque para tentar novamente.</string>
-    <string name="settings_check_update_toast_latest">Você está atualizado</string>
     <string name="settings_check_update_toast_failed">Não foi possível verificar atualizações: %1$s</string>
     <string name="settings_license_title">Licença</string>
     <string name="settings_opensource_licenses_title">Licenças de código aberto</string>

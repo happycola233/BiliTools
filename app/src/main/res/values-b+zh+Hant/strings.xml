@@ -533,12 +533,10 @@
     <string name="settings_about_open_github">開啟 GitHub 倉庫</string>
     <string name="settings_about_version">當前版本：v%1$s</string>
     <string name="settings_check_update_title">檢查更新</string>
-    <string name="settings_check_update_desc">點選檢查是否有新版本</string>
     <string name="settings_check_update_desc_checking">正在檢查更新…</string>
     <string name="settings_check_update_desc_available">發現新版本：%1$s</string>
     <string name="settings_check_update_desc_latest">當前已是最新版本</string>
     <string name="settings_check_update_desc_failed">檢查失敗，點選重試</string>
-    <string name="settings_check_update_toast_latest">當前已是最新版本</string>
     <string name="settings_check_update_toast_failed">檢查更新失敗：%1$s</string>
     <string name="settings_license_title">開源協議</string>
     <string name="settings_opensource_licenses_title">開源許可證</string>

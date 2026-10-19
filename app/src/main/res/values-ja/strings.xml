@@ -533,12 +533,10 @@
     <string name="settings_about_open_github">GitHub リポジトリを開く</string>
     <string name="settings_about_version">現在のバージョン：v%1$s</string>
     <string name="settings_check_update_title">アップデートを確認</string>
-    <string name="settings_check_update_desc">タップしてアップデートを確認します</string>
     <string name="settings_check_update_desc_checking">アップデートを確認しています…</string>
     <string name="settings_check_update_desc_available">利用可能なアップデート: %1$s</string>
     <string name="settings_check_update_desc_latest">最新バージョンです</string>
     <string name="settings_check_update_desc_failed">アップデートを確認できませんでした。タップして再試行してください。</string>
-    <string name="settings_check_update_toast_latest">最新バージョンです</string>
     <string name="settings_check_update_toast_failed">アップデートを確認できませんでした: %1$s</string>
     <string name="settings_license_title">ライセンス</string>
     <string name="settings_opensource_licenses_title">オープンソースライセンス</string>
