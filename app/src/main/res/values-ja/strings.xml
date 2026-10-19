@@ -50,6 +50,9 @@
     <string name="login_error_sms_request_first">先に認証コードを取得してください</string>
     <string name="login_error_captcha_failed">認証を読み込めませんでした。もう一度お試しください。</string>
     <string name="login_error_failed">ログインに失敗しました。しばらくしてからもう一度お試しください。</string>
+    <string name="login_risk_title">SMS 認証が必要です</string>
+    <string name="login_risk_message">このログインには SMS による本人確認が必要です。</string>
+    <string name="login_risk_action">認証する</string>
     <string name="login_cover_desc">アカウントカバー</string>
     <string name="login_vip_badge_desc">プレミアム会員バッジ</string>
     <string name="login_vip_label_desc">会員ラベル</string>

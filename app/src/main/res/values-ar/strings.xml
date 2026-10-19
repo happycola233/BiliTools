@@ -50,6 +50,9 @@
     <string name="login_error_sms_request_first">اطلب رمز التحقق أولاً</string>
     <string name="login_error_captcha_failed">تعذر تحميل التحقق. حاول ثانية.</string>
     <string name="login_error_failed">فشل تسجيل الدخول، يرجى المحاولة مرة أخرى لاحقًا.</string>
+    <string name="login_risk_title">يلزم التحقق عبر الرسائل القصيرة</string>
+    <string name="login_risk_message">يجب التحقق من تسجيل الدخول هذا عبر الرسائل القصيرة.</string>
+    <string name="login_risk_action">تحقّق</string>
     <string name="login_cover_desc">غلاف الحساب</string>
     <string name="login_vip_badge_desc">شارة العضوية المميزة</string>
     <string name="login_vip_label_desc">تسمية العضوية</string>

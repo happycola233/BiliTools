@@ -50,6 +50,9 @@
     <string name="login_error_sms_request_first">Request a verification code first</string>
     <string name="login_error_captcha_failed">Could not load verification. Try again.</string>
     <string name="login_error_failed">Login failed, please try again later.</string>
+    <string name="login_risk_title">SMS verification required</string>
+    <string name="login_risk_message">This login needs to be verified by SMS.</string>
+    <string name="login_risk_action">Verify</string>
     <string name="login_cover_desc">Account cover</string>
     <string name="login_vip_badge_desc">Premium membership badge</string>
     <string name="login_vip_label_desc">Membership label</string>

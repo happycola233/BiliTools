@@ -13,13 +13,10 @@ import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.happycola233.bilitools.R
 import com.happycola233.bilitools.core.appContainer
 import com.happycola233.bilitools.ui.AppViewModelFactory
 import com.happycola233.bilitools.ui.applySettingsThemeOverlays
 import com.happycola233.bilitools.ui.enableBiliEdgeToEdge
-import com.happycola233.bilitools.ui.me.BiliToolsLoginContent
 import kotlinx.coroutines.launch
 
 class LoginActivity : AppCompatActivity() {
@@ -60,6 +57,8 @@ class LoginActivity : AppCompatActivity() {
                 onLoginWithSms = viewModel::loginWithSms,
                 onSetCountryId = viewModel::setCountryId,
                 onDismissError = viewModel::clearError,
+                onConfirmRiskVerification = viewModel::openRiskSmsTab,
+                onDismissRiskVerification = viewModel::dismissRiskVerification,
             )
         }
 
@@ -79,7 +78,6 @@ class LoginActivity : AppCompatActivity() {
                     event.text,
                     Toast.LENGTH_SHORT,
                 ).show()
-                is LoginEvent.RiskVerificationRequired -> showRiskVerificationDialog(event.message)
             }
         }
     }
@@ -103,17 +101,5 @@ class LoginActivity : AppCompatActivity() {
             }
         }
         dialog.show(supportFragmentManager, "geetest")
-    }
-
-    private fun showRiskVerificationDialog(message: String?) {
-        val content = message?.takeIf { it.isNotBlank() }
-            ?: getString(R.string.login_error_failed)
-        MaterialAlertDialogBuilder(this)
-            .setMessage(content)
-            .setNegativeButton(android.R.string.cancel, null)
-            .setPositiveButton(R.string.login_tab_sms) { _, _ ->
-                viewModel.openRiskSmsTab()
-            }
-            .show()
     }
 }

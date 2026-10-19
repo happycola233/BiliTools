@@ -50,6 +50,9 @@
     <string name="login_error_sms_request_first">Minta kode verifikasi terlebih dahulu</string>
     <string name="login_error_captcha_failed">Tidak dapat memuat verifikasi. Coba lagi.</string>
     <string name="login_error_failed">Login gagal, coba lagi nanti.</string>
+    <string name="login_risk_title">Verifikasi SMS diperlukan</string>
+    <string name="login_risk_message">Login ini perlu diverifikasi melalui SMS.</string>
+    <string name="login_risk_action">Verifikasi</string>
     <string name="login_cover_desc">Sampul akun</string>
     <string name="login_vip_badge_desc">Lencana keanggotaan premium</string>
     <string name="login_vip_label_desc">Label keanggotaan</string>

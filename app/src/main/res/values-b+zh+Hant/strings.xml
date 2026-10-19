@@ -50,6 +50,9 @@
     <string name="login_error_sms_request_first">請先獲取驗證碼</string>
     <string name="login_error_captcha_failed">驗證載入失敗，請重試</string>
     <string name="login_error_failed">登入失敗，請稍後再試</string>
+    <string name="login_risk_title">需要簡訊驗證</string>
+    <string name="login_risk_message">本次登入需要透過簡訊驗證身分</string>
+    <string name="login_risk_action">前往驗證</string>
     <string name="login_cover_desc">賬號封面</string>
     <string name="login_vip_badge_desc">大會員徽標</string>
     <string name="login_vip_label_desc">會員標籤</string>

@@ -51,6 +51,9 @@
     <string name="login_error_sms_request_first">请先获取验证码</string>
     <string name="login_error_captcha_failed">验证加载失败，请重试</string>
     <string name="login_error_failed">登录失败，请稍后再试</string>
+    <string name="login_risk_title">需要短信验证</string>
+    <string name="login_risk_message">本次登录需要通过短信验证身份</string>
+    <string name="login_risk_action">去验证</string>
     <string name="login_cover_desc">账号封面</string>
     <string name="login_vip_badge_desc">大会员徽标</string>
     <string name="login_vip_label_desc">会员标签</string>

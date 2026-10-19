@@ -50,6 +50,9 @@
     <string name="login_error_sms_request_first">Trước tiên hãy yêu cầu mã xác minh</string>
     <string name="login_error_captcha_failed">Không thể tải xác minh. Hãy thử lại.</string>
     <string name="login_error_failed">Đăng nhập không thành công, vui lòng thử lại sau.</string>
+    <string name="login_risk_title">Cần xác minh qua SMS</string>
+    <string name="login_risk_message">Lần đăng nhập này cần được xác minh qua SMS.</string>
+    <string name="login_risk_action">Xác minh</string>
     <string name="login_cover_desc">Bìa tài khoản</string>
     <string name="login_vip_badge_desc">Huy hiệu thành viên cao cấp</string>
     <string name="login_vip_label_desc">Nhãn thành viên</string>

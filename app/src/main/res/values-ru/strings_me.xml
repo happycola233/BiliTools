@@ -8,5 +8,4 @@
     <string name="me_favorite_entry_disabled_desc">Войдите в систему, чтобы просмотреть избранное</string>
     <string name="me_watch_later_entry_disabled_desc">Войдите, чтобы открыть список «Посмотреть позже»</string>
     <string name="me_logout_summary">Удаляет данные входа с этого устройства</string>
-    <string name="me_login_screen_subtitle">Выберите способ входа и подтвердите свою учетную запись.</string>
 </resources>

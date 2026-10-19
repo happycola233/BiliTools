@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.AppSettings
 import com.happycola233.bilitools.data.DownloadMetadataSettings
+import com.happycola233.bilitools.ui.SubpageScaffold
 
 @Composable
 internal fun MetadataSettingsScreen(
@@ -24,7 +25,7 @@ internal fun MetadataSettingsScreen(
     modifier: Modifier = Modifier,
 ) {
     val metadata = settings.metadata
-    SettingsScaffold(
+    SubpageScaffold(
         title = stringResource(R.string.settings_metadata_options),
         subtitle = stringResource(R.string.settings_download_title),
         onBack = onBack,

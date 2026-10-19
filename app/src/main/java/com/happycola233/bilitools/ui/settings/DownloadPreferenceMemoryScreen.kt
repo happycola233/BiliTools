@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.DownloadPreferenceGroup
 import com.happycola233.bilitools.data.DownloadPreferenceMemorySettings
+import com.happycola233.bilitools.ui.SubpageScaffold
 
 /** 每个可保留的分组在设置页的呈现；顺序与解析页「下载与导出」卡片自上而下一致。 */
 private data class PreferenceGroupPresentation(
@@ -125,7 +126,7 @@ internal fun DownloadPreferenceMemoryScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    SettingsScaffold(
+    SubpageScaffold(
         title = stringResource(R.string.settings_download_preference_memory),
         subtitle = stringResource(R.string.settings_download_title),
         onBack = onBack,

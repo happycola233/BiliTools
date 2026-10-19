@@ -8,5 +8,4 @@
     <string name="me_favorite_entry_disabled_desc">Log masuk untuk melihat kegemaran anda</string>
     <string name="me_watch_later_entry_disabled_desc">Log masuk untuk melihat senarai Tonton kemudian</string>
     <string name="me_logout_summary">Mengalih keluar maklumat log masuk daripada peranti ini</string>
-    <string name="me_login_screen_subtitle">Pilih kaedah log masuk dan sahkan akaun anda</string>
 </resources>

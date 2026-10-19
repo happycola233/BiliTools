@@ -70,7 +70,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.ListItemColors
@@ -88,8 +87,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
-import androidx.compose.material3.TopAppBarColors
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -117,7 +114,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -171,6 +167,7 @@ import com.happycola233.bilitools.data.LiveUpdateIcon
 import com.happycola233.bilitools.data.SettingsRepository
 import com.happycola233.bilitools.data.TopLevelFolderMode
 import com.happycola233.bilitools.ui.AppAlertDialog
+import com.happycola233.bilitools.ui.SubpageScaffold
 import com.happycola233.bilitools.ui.diagnostics.ClearDiagnosticRecordsDialog
 import com.happycola233.bilitools.ui.BiliTvLaunchMotion
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
@@ -494,7 +491,7 @@ private fun MainSettingsScreen(
         )
     }
 
-    SettingsScaffold(
+    SubpageScaffold(
         title = stringResource(R.string.settings_screen_title),
         subtitle = stringResource(R.string.app_name),
         onBack = onBack,
@@ -576,7 +573,7 @@ internal fun GeneralSettingsScreen(
     } else {
         stringResource(R.string.settings_live_activity_unavailable)
     }
-    SettingsScaffold(
+    SubpageScaffold(
         title = stringResource(R.string.settings_general_title),
         subtitle = stringResource(R.string.settings_screen_title),
         onBack = onBack,
@@ -662,7 +659,7 @@ internal fun LanguageSettingsScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    SettingsScaffold(
+    SubpageScaffold(
         title = stringResource(R.string.settings_language_title),
         subtitle = stringResource(R.string.settings_general_title),
         onBack = onBack,
@@ -794,7 +791,7 @@ internal fun DownloadSettingsScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    SettingsScaffold(
+    SubpageScaffold(
         title = stringResource(R.string.settings_download_title),
         subtitle = stringResource(R.string.settings_screen_title),
         onBack = onBack,
@@ -1055,7 +1052,7 @@ internal fun AppearanceSettingsScreen(
     modifier: Modifier = Modifier,
 ) {
     val liquidGlassSupported = isLiquidGlassSupported()
-    SettingsScaffold(
+    SubpageScaffold(
         title = stringResource(R.string.settings_appearance_title),
         subtitle = stringResource(R.string.settings_screen_title),
         onBack = onBack,
@@ -1257,7 +1254,7 @@ internal fun NamingSettingsScreen(
         )
     }
 
-    SettingsScaffold(
+    SubpageScaffold(
         title = stringResource(R.string.settings_naming_title),
         subtitle = stringResource(R.string.settings_screen_title),
         onBack = onBack,
@@ -2425,7 +2422,7 @@ internal fun AboutSettingsScreen(
         ),
         label = "aboutIconBackgroundRotationValue",
     )
-    SettingsScaffold(
+    SubpageScaffold(
         title = stringResource(R.string.settings_about_title),
         subtitle = stringResource(R.string.app_name),
         onBack = onBack,
@@ -2838,7 +2835,7 @@ private fun DefaultDownloadQualityScreen(
         onDefaultDownloadQualityChange(quality)
     }
 
-    SettingsScaffold(
+    SubpageScaffold(
         title = stringResource(R.string.settings_default_download_quality),
         subtitle = stringResource(R.string.settings_download_title),
         onBack = onBack,
@@ -3617,7 +3614,7 @@ private fun OpenSourceLicensesScreen(
         Libs.Builder().withJson(json).build().libraries
     }
 
-    SettingsScaffold(
+    SubpageScaffold(
         title = stringResource(R.string.settings_opensource_licenses_title),
         subtitle = stringResource(R.string.settings_about_title),
         onBack = onBack,
@@ -3733,69 +3730,7 @@ private val licenseChipBaseColors = listOf(
     Color(0xFFD81B60),
 )
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-internal fun SettingsScaffold(
-    title: String,
-    subtitle: String,
-    onBack: () -> Unit,
-    modifier: Modifier = Modifier,
-    content: @Composable (PaddingValues) -> Unit,
-) {
-    // 所有设置页统一在内容滚回顶部后展开顶栏，与主页保持一致。
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .fillMaxSize()
-            .background(AppSurfaces.pageContainerColor),
-    ) {
-        androidx.compose.material3.Scaffold(
-            topBar = {
-                LargeFlexibleTopAppBar(
-                    title = {
-                        Text(
-                            text = title,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    },
-                    subtitle = { Text(subtitle) },
-                    navigationIcon = {
-                        FilledTonalIconButton(
-                            onClick = onBack,
-                            shapes = IconButtonDefaults.shapes(),
-                            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = AppSurfaces.cardContainerColor,
-                            ),
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_arrow_back_24),
-                                contentDescription = stringResource(R.string.settings_back),
-                            )
-                        }
-                    },
-                    colors = SettingsExpressiveDefaults.topBarColors,
-                    scrollBehavior = scrollBehavior,
-                )
-            },
-            containerColor = AppSurfaces.pageContainerColor,
-            modifier = modifier
-                .widthIn(max = SettingsExpressiveShapes.paneMaxWidth)
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
-        ) { innerPadding ->
-            content(innerPadding)
-        }
-    }
-}
-
 private object SettingsExpressiveDefaults {
-    val topBarColors: TopAppBarColors
-        @Composable
-        get() = TopAppBarDefaults.topAppBarColors(
-            containerColor = AppSurfaces.pageContainerColor,
-            scrolledContainerColor = AppSurfaces.pageContainerColor,
-        )
-
     val listItemColors: ListItemColors
         @OptIn(ExperimentalMaterial3ExpressiveApi::class)
         @Composable
@@ -3833,8 +3768,6 @@ private object SettingsExpressiveShapes {
     val cardShape: CornerBasedShape
         @OptIn(ExperimentalMaterial3ExpressiveApi::class)
         @Composable get() = MaterialTheme.shapes.largeIncreased
-
-    val paneMaxWidth = 600.dp
 
     @Composable
     fun groupShape(index: Int, items: Int): CornerBasedShape {

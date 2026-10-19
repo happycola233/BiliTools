@@ -50,6 +50,9 @@
     <string name="login_error_sms_request_first">ขอรหัสยืนยันก่อน</string>
     <string name="login_error_captcha_failed">ไม่สามารถโหลดการยืนยันได้ ลองอีกครั้ง</string>
     <string name="login_error_failed">การเข้าสู่ระบบล้มเหลว โปรดลองอีกครั้งในภายหลัง</string>
+    <string name="login_risk_title">ต้องยืนยันทาง SMS</string>
+    <string name="login_risk_message">การเข้าสู่ระบบครั้งนี้ต้องยืนยันตัวตนทาง SMS</string>
+    <string name="login_risk_action">ยืนยัน</string>
     <string name="login_cover_desc">ปกบัญชี</string>
     <string name="login_vip_badge_desc">ป้ายสมาชิกพรีเมียม</string>
     <string name="login_vip_label_desc">ป้ายสมาชิก</string>

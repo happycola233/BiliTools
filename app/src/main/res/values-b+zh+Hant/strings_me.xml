@@ -8,5 +8,4 @@
     <string name="me_favorite_entry_disabled_desc">登入後才可檢視哦~</string>
     <string name="me_watch_later_entry_disabled_desc">登入後才可檢視哦~</string>
     <string name="me_logout_summary">清除當前本機登入狀態</string>
-    <string name="me_login_screen_subtitle">切換登入方式並完成賬號驗證</string>
 </resources>

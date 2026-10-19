@@ -50,6 +50,9 @@
     <string name="login_error_sms_request_first">Önce bir doğrulama kodu isteyin</string>
     <string name="login_error_captcha_failed">Doğrulama yüklenemedi. Tekrar deneyin.</string>
     <string name="login_error_failed">Giriş başarısız oldu, lütfen daha sonra tekrar deneyin.</string>
+    <string name="login_risk_title">SMS doğrulaması gerekli</string>
+    <string name="login_risk_message">Bu girişin SMS ile doğrulanması gerekiyor.</string>
+    <string name="login_risk_action">Doğrula</string>
     <string name="login_cover_desc">Hesap kapağı</string>
     <string name="login_vip_badge_desc">Premium üyelik rozeti</string>
     <string name="login_vip_label_desc">Üyelik etiketi</string>

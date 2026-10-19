@@ -155,6 +155,7 @@ import com.happycola233.bilitools.data.model.VideoCodec
 import com.happycola233.bilitools.data.model.capabilities
 import com.happycola233.bilitools.ui.FloatingControlsDefaults
 import com.happycola233.bilitools.ui.LazyListScrollbar
+import com.happycola233.bilitools.ui.LeadingIconText
 import com.happycola233.bilitools.ui.PageScrollState
 import com.happycola233.bilitools.ui.TopErrorMessageHost
 import com.happycola233.bilitools.ui.UserIdentityLabel
@@ -743,25 +744,12 @@ private fun SearchInputBar(
             exit = fadeOut(animationSpec = motionScheme.fastEffectsSpec()) +
                 shrinkVertically(animationSpec = parseLayoutSizeSpec),
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 4.dp, top = 8.dp, end = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_error_24),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(16.dp),
-                )
-                Text(
-                    text = lastErrorMessage,
-                    style = ParseTextStyles.supporting,
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
+            LeadingIconText(
+                iconRes = R.drawable.ic_error_24,
+                text = lastErrorMessage,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(start = 4.dp, top = 8.dp, end = 4.dp),
+            )
         }
     }
 }

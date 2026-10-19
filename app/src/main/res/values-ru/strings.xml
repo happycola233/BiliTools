@@ -50,6 +50,9 @@
     <string name="login_error_sms_request_first">Сначала запросите код подтверждения</string>
     <string name="login_error_captcha_failed">Не удалось загрузить проверку. Попробуйте еще раз.</string>
     <string name="login_error_failed">Не удалось войти в систему. Повторите попытку позже.</string>
+    <string name="login_risk_title">Требуется подтверждение по СМС</string>
+    <string name="login_risk_message">Этот вход нужно подтвердить по СМС.</string>
+    <string name="login_risk_action">Подтвердить</string>
     <string name="login_cover_desc">Обложка аккаунта</string>
     <string name="login_vip_badge_desc">Значок премиум-членства</string>
     <string name="login_vip_label_desc">Метка участника</string>

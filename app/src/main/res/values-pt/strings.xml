@@ -50,6 +50,9 @@
     <string name="login_error_sms_request_first">Solicite primeiro um código de verificação</string>
     <string name="login_error_captcha_failed">Não foi possível carregar a verificação. Tente novamente.</string>
     <string name="login_error_failed">Falha no login, tente novamente mais tarde.</string>
+    <string name="login_risk_title">Verificação por SMS necessária</string>
+    <string name="login_risk_message">Este login precisa ser verificado por SMS.</string>
+    <string name="login_risk_action">Verificar</string>
     <string name="login_cover_desc">Capa da conta</string>
     <string name="login_vip_badge_desc">Selo de membro premium</string>
     <string name="login_vip_label_desc">Etiqueta de membro</string>

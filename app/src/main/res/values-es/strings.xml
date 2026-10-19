@@ -50,6 +50,9 @@
     <string name="login_error_sms_request_first">Solicite un código de verificación primero</string>
     <string name="login_error_captcha_failed">No se pudo cargar la verificación. Inténtelo de nuevo.</string>
     <string name="login_error_failed">Error al iniciar sesión, inténtelo de nuevo más tarde.</string>
+    <string name="login_risk_title">Se requiere verificación por SMS</string>
+    <string name="login_risk_message">Este inicio de sesión debe verificarse por SMS.</string>
+    <string name="login_risk_action">Verificar</string>
     <string name="login_cover_desc">Portada de la cuenta</string>
     <string name="login_vip_badge_desc">Insignia de membresía premium</string>
     <string name="login_vip_label_desc">Etiqueta de membresía</string>

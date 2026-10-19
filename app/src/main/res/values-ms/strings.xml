@@ -50,6 +50,9 @@
     <string name="login_error_sms_request_first">Minta kod pengesahan dahulu</string>
     <string name="login_error_captcha_failed">Tidak dapat memuatkan pengesahan. Cuba lagi.</string>
     <string name="login_error_failed">Log masuk gagal, sila cuba sebentar lagi.</string>
+    <string name="login_risk_title">Pengesahan SMS diperlukan</string>
+    <string name="login_risk_message">Log masuk ini perlu disahkan melalui SMS.</string>
+    <string name="login_risk_action">Sahkan</string>
     <string name="login_cover_desc">Gambar muka depan akaun</string>
     <string name="login_vip_badge_desc">Lencana keahlian premium</string>
     <string name="login_vip_label_desc">Label keahlian</string>

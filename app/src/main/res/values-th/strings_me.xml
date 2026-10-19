@@ -8,5 +8,4 @@
     <string name="me_favorite_entry_disabled_desc">เข้าสู่ระบบเพื่อดูรายการโปรดของคุณ</string>
     <string name="me_watch_later_entry_disabled_desc">เข้าสู่ระบบเพื่อดูรายการดูภายหลัง</string>
     <string name="me_logout_summary">ลบการเข้าสู่ระบบของคุณออกจากอุปกรณ์นี้</string>
-    <string name="me_login_screen_subtitle">เลือกวิธีการเข้าสู่ระบบและยืนยันบัญชีของคุณ</string>
 </resources>

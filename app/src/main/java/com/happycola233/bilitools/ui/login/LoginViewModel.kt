@@ -57,12 +57,16 @@ data class LoginUiState(
     val isRiskSmsMode: Boolean = false,
     val riskPrefillPhone: String? = null,
     val riskLockPhoneInput: Boolean = false,
+    /** 密码登录触发风控后等待用户确认的提示；非空时界面弹出「需要短信验证」对话框。 */
+    val riskVerificationPrompt: RiskVerificationPrompt? = null,
 )
+
+/** 风控确认提示，[message] 为服务端给出的说明，可能为空。 */
+data class RiskVerificationPrompt(val message: String?)
 
 sealed class LoginEvent {
     data class ShowCaptcha(val params: CaptchaParams) : LoginEvent()
     data class Message(val text: String) : LoginEvent()
-    data class RiskVerificationRequired(val message: String?) : LoginEvent()
 }
 
 private enum class CaptchaPurpose {
@@ -174,7 +178,11 @@ class LoginViewModel(
 
     fun openRiskSmsTab() {
         if (!_state.value.isRiskSmsMode) return
-        _state.update { it.copy(activeTab = LoginTab.Sms) }
+        _state.update { it.copy(activeTab = LoginTab.Sms, riskVerificationPrompt = null) }
+    }
+
+    fun dismissRiskVerification() {
+        _state.update { it.copy(riskVerificationPrompt = null) }
     }
 
     fun refreshQr() {
@@ -473,11 +481,11 @@ class LoginViewModel(
                                 isRiskSmsMode = true,
                                 riskPrefillPhone = prefillPhone,
                                 riskLockPhoneInput = !maskedPhone.isNullOrBlank(),
-                                // 风控说明由后续确认弹窗承载，避免同一内容再次显示为顶部错误横幅。
+                                // 风控说明由确认对话框承载，不同时作为错误提示显示
                                 errorText = null,
+                                riskVerificationPrompt = RiskVerificationPrompt(loginResult.message),
                             )
                         }
-                        _events.emit(LoginEvent.RiskVerificationRequired(loginResult.message))
                     }
                 }
             }.onFailure { err ->
@@ -566,12 +574,13 @@ class LoginViewModel(
                     QrLoginStatus.Expired -> R.string.login_status_expired
                     QrLoginStatus.Error -> R.string.login_status_failed_retry
                 }
+                // 轮询在切到密码或短信登录后仍在后台进行，这里不能清空 errorText，
+                // 否则那两种方式刚出现的报错会在下一次轮询时被立即抹掉
                 _state.update {
                     it.copy(
                         qrStatusRes = statusRes,
                         isLoggedIn = authRepository.isLoggedIn(),
                         currentMid = authRepository.getCachedMid(),
-                        errorText = null,
                     )
                 }
                 when (result.status) {
