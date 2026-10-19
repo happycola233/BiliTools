@@ -1,0 +1,66 @@
+# 推送到 main 或提交 PR 时运行全部单元测试；发布工作流（release.yml）打包前也会调用本工作流。
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+    # 只改文档时无需运行测试
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".github/ISSUE_TEMPLATE/**"
+      - "LICENSE"
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+# 同一分支或 PR 连续推送时取消尚未完成的旧运行。
+# 被 release.yml 调用时 github.workflow 为调用方名称，分组与日常 CI、release.yml 自身都不同，
+# 手动从 main 发版与推送 main 同时进行也不会互相取消
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+
+      # Robolectric 在测试运行时才从 Maven Central 下载各 SDK 版本的 android-all 运行环境（共约 1 GB），
+      # 不在 setup-gradle 的缓存范围内，需单独缓存；依赖版本变化时整体重建，避免旧版本的 jar 越积越多
+      - name: Cache Robolectric runtimes
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-${{ hashFiles('gradle/libs.versions.toml') }}
+
+      - name: Run unit tests
+        run: ./gradlew testDebugUnitTest
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: unit-test-reports
+          path: app/build/reports/tests/testDebugUnitTest/
+          retention-days: 7
+          # 重新运行失败的作业时覆盖上一次上传的同名报告，否则会因重名而上传失败
+          overwrite: true

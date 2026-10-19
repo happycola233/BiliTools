@@ -275,6 +275,9 @@ android {
     }
     testOptions {
         unitTests.isIncludeAndroidResources = true
+        // Robolectric 会为测试用到的每个 SDK 版本各建一套常驻沙箱，全部测试在同一进程中运行时
+        // 常驻堆约 750 MB，超出 Gradle 默认的 512 MB 上限会让测试进程中途内存溢出退出
+        unitTests.all { it.maxHeapSize = "2g" }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

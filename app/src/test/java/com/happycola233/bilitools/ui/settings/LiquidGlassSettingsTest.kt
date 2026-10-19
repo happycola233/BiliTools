@@ -17,6 +17,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.happycola233.bilitools.BiliToolsApp
+import com.happycola233.bilitools.R
 import com.happycola233.bilitools.data.AppThemeMode
 import com.happycola233.bilitools.data.SettingsRepository
 import com.happycola233.bilitools.ui.theme.BiliToolsTheme
@@ -58,7 +59,10 @@ class LiquidGlassSettingsTest {
     fun unsupportedDevicesKeepPreferencesAndHideBottomBarWidth() {
         val repository = showSettings(AppThemeMode.Light)
         compose.onNodeWithText("液态玻璃面板").performScrollTo()
-        compose.onNodeWithText("当前设备暂不支持液态玻璃，已自动使用 Material 风格面板。").assertExists()
+        // 说明文案按资源断言：只校验显示的是「不支持」提示，措辞调整不应让测试失效
+        val unavailableHint = RuntimeEnvironment.getApplication()
+            .getString(R.string.settings_liquid_glass_panels_unavailable_desc)
+        compose.onNodeWithText(unavailableHint).assertExists()
         compose.onNodeWithText("液态底栏宽度").assertDoesNotExist()
         assertTrue(repository.currentSettings().liquidBottomTabsEnabled)
         assertTrue(repository.currentSettings().liquidGlassPanelsEnabled)

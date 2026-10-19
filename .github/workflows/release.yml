@@ -1,5 +1,5 @@
-# 推送 v* 标签时构建签名的发布版 APK，并上传到该标签的 Release 草稿；
-# 手动运行（workflow_dispatch）只构建并上传为 Actions 产物，用于在打标签前验证签名与构建。
+# 推送 v* 标签时先运行全部单元测试，通过后构建签名的发布版 APK，并上传到该标签的 Release 草稿；
+# 手动运行（workflow_dispatch）同样先测试，再只构建并上传为 Actions 产物，用于在打标签前验证签名与构建。
 # 首次配置与发布步骤见 docs/发布流程.md。
 name: Release
 
@@ -22,8 +22,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # 与日常 CI 运行同一套单元测试；未全部通过时不构建安装包，也不会创建 Release 草稿
+  test:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+
   release:
     name: Build signed APKs
+    needs: test
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     # 签名密钥存放在 release 环境中，由环境的部署规则限制可读取密钥的分支与标签
