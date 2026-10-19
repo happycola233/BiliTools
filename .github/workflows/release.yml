@@ -12,6 +12,11 @@ on:
 permissions:
   contents: read
 
+# 显式指定 bash 以启用 pipefail，管道中任一命令失败都会让步骤失败
+defaults:
+  run:
+    shell: bash
+
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
@@ -84,7 +89,10 @@ jobs:
 
           apksigner="$(printf '%s\n' "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)/apksigner"
           for apk in BiliTools-"$apk_version"-*.apk; do
-            cert_sha256="$("$apksigner" verify --print-certs "$apk" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')"
+            # 不同版本 apksigner 的输出前缀不同（如「Signer #1 certificate」与「V2 Signer: certificate」），
+            # 只匹配共同部分；去重后应恰好剩下一个指纹，即所有签名方案都使用同一张证书
+            cert_sha256="$("$apksigner" verify --print-certs "$apk" \
+              | sed -n -E 's/^.*certificate SHA-256 digest: ([0-9a-f]{64})$/\1/p' | sort -u)"
             if [[ "$cert_sha256" != "$RELEASE_CERT_SHA256" ]]; then
               echo "::error::$apk 的签名证书指纹为 ${cert_sha256:-空}，与正式版不一致"
               exit 1
