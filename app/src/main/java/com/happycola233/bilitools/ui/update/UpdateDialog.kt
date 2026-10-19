@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.core.content.ContextCompat
 import androidx.compose.material3.Button
@@ -489,13 +490,16 @@ private fun ReleaseNotesCard(
                     .padding(24.dp),
             )
         } else {
-            MarkdownContent(
-                document = document,
-                imageUrlCandidates = imageUrlCandidates,
-                modifier = Modifier
-                    .verticalScroll(rememberScrollState(), enabled = scrollEnabled)
-                    .padding(20.dp),
-            )
+            // 说明文字可长按选中后复制。
+            SelectionContainer {
+                MarkdownContent(
+                    document = document,
+                    imageUrlCandidates = imageUrlCandidates,
+                    modifier = Modifier
+                        .verticalScroll(rememberScrollState(), enabled = scrollEnabled)
+                        .padding(20.dp),
+                )
+            }
         }
     }
 }
