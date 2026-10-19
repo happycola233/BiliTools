@@ -22,6 +22,10 @@ val appReleaseVersionCode = 16
 val appReleaseVersionName = "3.2"
 val releaseAbiSplits = listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
 
+// 发布签名由 CI（.github/workflows/release.yml）通过环境变量注入；
+// 本地未设置时不创建签名配置，仍通过 Android Studio 的「Generate Signed APK」向导签名。
+val releaseKeystorePath = providers.environmentVariable("BILITOOLS_RELEASE_STORE_FILE").orNull
+
 abstract class RenameReleaseApksTask : DefaultTask() {
     @get:Internal
     abstract val primaryMetadataFile: RegularFileProperty
@@ -226,6 +230,17 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        if (releaseKeystorePath != null) {
+            create("release") {
+                storeFile = file(releaseKeystorePath)
+                storePassword = providers.environmentVariable("BILITOOLS_RELEASE_STORE_PASSWORD").get()
+                keyAlias = providers.environmentVariable("BILITOOLS_RELEASE_KEY_ALIAS").get()
+                keyPassword = providers.environmentVariable("BILITOOLS_RELEASE_KEY_PASSWORD").get()
+            }
+        }
+    }
+
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
@@ -234,6 +249,7 @@ android {
         }
 
         release {
+            signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
