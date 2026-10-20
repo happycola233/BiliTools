@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.FlowRowScope
+import androidx.compose.foundation.layout.LayoutScopeMarker
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -88,6 +89,7 @@ import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -108,6 +110,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.LookaheadScope
+import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -135,6 +138,8 @@ import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.constrainHeight
+import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -180,6 +185,7 @@ private val optionsCardHorizontalPadding = 16.dp
 private val optionsCardVerticalPadding = 18.dp
 private val optionsCardTitleBottomSpacing = 18.dp
 private val optionsCardSectionSpacing = 12.dp
+private val optionsSectionItemSpacing = 8.dp
 private val compactSelectionHeight = 58.dp
 private val checkOptionMinHeight = 48.dp
 private val actionButtonLoadingIndicatorSize = 26.dp
@@ -641,12 +647,9 @@ private fun SearchInputBar(
     val hasError = !errorMessage.isNullOrBlank()
     val haptics = rememberAppHaptics()
     // 收起动画期间沿用最后一条提示，避免文字在退场时突然消失。
-    var lastErrorMessage by remember { mutableStateOf("") }
+    val displayedErrorMessage = rememberLastNonBlank(errorMessage)
     LaunchedEffect(errorMessage) {
-        if (!errorMessage.isNullOrBlank()) {
-            lastErrorMessage = errorMessage
-            haptics.reject()
-        }
+        if (!errorMessage.isNullOrBlank()) haptics.reject()
     }
     val motionScheme = MaterialTheme.motionScheme
     val borderColor by animateColorAsState(
@@ -746,7 +749,7 @@ private fun SearchInputBar(
         ) {
             LeadingIconText(
                 iconRes = R.drawable.ic_error_24,
-                text = lastErrorMessage,
+                text = displayedErrorMessage,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(start = 4.dp, top = 8.dp, end = 4.dp),
             )
@@ -2392,9 +2395,11 @@ private fun ParseOptionsCard(
                                             isMultiSelect = animatedState.isMultiSelect,
                                             onFormatChange = onFormatChange,
                                         )
-                                        AnimatedOptionsVisibility(visible = !animatedState.warning.isNullOrBlank()) {
+                                        // 收起动画期间沿用原提示，文字随动画淡出，而不是立刻变成空白。
+                                        val warningText = rememberLastNonBlank(animatedState.warning)
+                                        AnimatedItem(visible = !animatedState.warning.isNullOrBlank()) {
                                             HelperText(
-                                                text = animatedState.warning.orEmpty(),
+                                                text = warningText,
                                                 icon = painterResource(R.drawable.ic_info_24),
                                             )
                                         }
@@ -2465,7 +2470,7 @@ private fun ParseOptionsCard(
                                 )
                             }
                         }
-                        AnimatedOptionsVisibility(
+                        AnimatedItem(
                             visible = mediaCapabilities.supportsSubtitleExport && state.subtitleEnabled,
                         ) {
                             SubtitleSourcePicker(
@@ -2752,7 +2757,7 @@ private fun EmbeddingControls(
             if (state.selectedAudioId == AudioQualities.DOLBY_ATMOS && conversionSettings.convertAudioToMp3) {
                 HelperText(text = stringResource(R.string.parse_dolby_mp3_notice))
             }
-            AnimatedOptionsVisibility(visible = fromSubtitles && state.embedLyricsEnabled) {
+            AnimatedItem(visible = fromSubtitles && state.embedLyricsEnabled) {
                 SubtitleSourcePicker(
                     state = state,
                     selection = SubtitleLanguageSelection.Languages(setOfNotNull(state.embedLyricsLanguage)),
@@ -2781,7 +2786,7 @@ private fun EmbeddingControls(
         if (remuxFlv && state.embedSubtitlesEnabled) {
             HelperText(text = stringResource(R.string.parse_embed_subtitles_flv))
         }
-        AnimatedOptionsVisibility(visible = state.embedSubtitlesEnabled) {
+        AnimatedItem(visible = state.embedSubtitlesEnabled) {
             SubtitleSourcePicker(
                 state = state,
                 selection = state.embedSubtitleSelection,
@@ -2794,15 +2799,23 @@ private fun EmbeddingControls(
     }
 }
 
+/**
+ * 选项的展开、收起动画，只包含 [content] 本身，不含与相邻内容的间距。
+ *
+ * 不要直接放进 spacedBy 布局：父级间距不参与动画，下方内容会在动画首尾跳动。间距应放在
+ * [content] 内部随动画展开、收起；在 [OptionsSection] 中改用 [OptionsSectionScope.AnimatedItem]。
+ */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun AnimatedOptionsVisibility(
     visible: Boolean,
+    modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
     val fadeSpec = MaterialTheme.motionScheme.fastEffectsSpec<Float>()
     AnimatedVisibility(
         visible = visible,
+        modifier = modifier,
         enter =
             fadeIn(animationSpec = fadeSpec) +
                 expandVertically(
@@ -2818,6 +2831,20 @@ private fun AnimatedOptionsVisibility(
     ) {
         content()
     }
+}
+
+/**
+ * 返回最近一次非空白的 [text]。
+ *
+ * 文案清空的同时显隐动画才开始收起；退场内容用它继续显示原文案，文字随动画淡出，而不是第一帧就变成空白。
+ */
+@Composable
+private fun rememberLastNonBlank(text: String?): String {
+    var lastText by remember { mutableStateOf("") }
+    if (text.isNullOrBlank()) return lastText
+    // 组合提交后再记住，被放弃的组合不会留下从未显示过的文案。
+    SideEffect { lastText = text }
+    return text
 }
 
 @Composable
@@ -3492,18 +3519,68 @@ private fun ImageOptionChip(
     }
 }
 
+/**
+ * 选项分区：标题与各项内容以 [optionsSectionItemSpacing] 纵向排列。
+ *
+ * 不用 Arrangement.spacedBy：显隐动画作为 spacedBy 的子项时，它上方的间距不参与动画，会在展开的
+ * 第一帧整段出现、在收起结束移除节点时整段消失，下方内容随之跳动。需要显隐的内容改用
+ * [OptionsSectionScope.AnimatedItem]，由它把间距放进动画内部，这里不再为它插入间距。
+ */
 @Composable
 private fun OptionsSection(
     title: String,
-    content: @Composable ColumnScope.() -> Unit,
+    content: @Composable OptionsSectionScope.() -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = title,
-            color = MaterialTheme.colorScheme.primary,
-            style = ParseTextStyles.sectionLabel,
-        )
-        content()
+    Layout(
+        content = {
+            Text(
+                text = title,
+                color = MaterialTheme.colorScheme.primary,
+                style = ParseTextStyles.sectionLabel,
+            )
+            OptionsSectionScope.content()
+        },
+    ) { measurables, constraints ->
+        val spacing = optionsSectionItemSpacing.roundToPx()
+        val itemConstraints = constraints.copy(minWidth = 0, minHeight = 0)
+        val placeables = measurables.map { it.measure(itemConstraints) }
+        val tops = IntArray(placeables.size)
+        var height = 0
+        placeables.forEachIndexed { index, placeable ->
+            val spacingIncluded = measurables[index].layoutId == OptionsSectionScope.AnimatedItemLayoutId
+            if (index > 0 && !spacingIncluded) height += spacing
+            tops[index] = height
+            height += placeable.height
+        }
+        layout(
+            width = constraints.constrainWidth(placeables.maxOf { it.width }),
+            height = constraints.constrainHeight(height),
+        ) {
+            placeables.forEachIndexed { index, placeable -> placeable.placeRelative(0, tops[index]) }
+        }
+    }
+}
+
+/** [OptionsSection] 的内容作用域。 */
+@LayoutScopeMarker
+private object OptionsSectionScope {
+    /** 标记 [AnimatedItem]：它与上方内容的间距已放在动画内部。 */
+    object AnimatedItemLayoutId
+
+    /** 分区内随 [visible] 展开、收起的内容；与上方内容的间距随内容一起展开、收起。 */
+    @Composable
+    fun AnimatedItem(
+        visible: Boolean,
+        content: @Composable () -> Unit,
+    ) {
+        AnimatedOptionsVisibility(
+            visible = visible,
+            modifier = Modifier.layoutId(AnimatedItemLayoutId),
+        ) {
+            Box(modifier = Modifier.padding(top = optionsSectionItemSpacing)) {
+                content()
+            }
+        }
     }
 }
 

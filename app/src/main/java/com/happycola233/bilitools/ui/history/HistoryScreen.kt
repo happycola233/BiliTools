@@ -1172,6 +1172,9 @@ private fun HistoryEmptyState(
     }
 }
 
+/** 筛选弹窗中各分区的纵向间距。 */
+private val HISTORY_FILTER_SECTION_SPACING = 20.dp
+
 @OptIn(
     ExperimentalMaterial3Api::class,
     ExperimentalMaterial3ExpressiveApi::class,
@@ -1247,7 +1250,7 @@ private fun HistoryFilterBottomSheet(
         containerColor = HistoryExpressiveDefaults.pageContainerColor,
     ) {
         Column(
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+            verticalArrangement = Arrangement.spacedBy(HISTORY_FILTER_SECTION_SPACING),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
@@ -1274,49 +1277,55 @@ private fun HistoryFilterBottomSheet(
                 onSelect = { onDraftFilterChange(draftFilter.copy(duration = it)) },
             )
 
-            HistoryFilterToggleSection(
-                title = stringResource(R.string.history_filter_time),
-                options = timeOptions,
-                selected = draftFilter.time,
-                onSelect = { selection ->
-                    onDraftFilterChange(draftFilter.copy(time = selection))
-                },
-            )
+            // 自定义日期范围面板与「时间」分区合为一项，不直接作为 spacedBy 的子项：父级间距不参与显隐动画，
+            // 会在展开第一帧整段出现、在收起结束移除面板时整段消失，弹窗随之跳动。
+            // 因此面板与「时间」分区的间距放在面板内部，随面板一起展开、收起。
+            Column {
+                HistoryFilterToggleSection(
+                    title = stringResource(R.string.history_filter_time),
+                    options = timeOptions,
+                    selected = draftFilter.time,
+                    onSelect = { selection ->
+                        onDraftFilterChange(draftFilter.copy(time = selection))
+                    },
+                )
 
-            AnimatedVisibility(visible = draftFilter.time == HistoryTimeFilter.Custom) {
-                Surface(
-                    color = HistoryExpressiveDefaults.groupContainerColor,
-                    shape = MaterialTheme.shapes.large,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .animateContentSize(),
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
+                AnimatedVisibility(visible = draftFilter.time == HistoryTimeFilter.Custom) {
+                    Surface(
+                        color = HistoryExpressiveDefaults.groupContainerColor,
+                        shape = MaterialTheme.shapes.large,
+                        modifier = Modifier
+                            .padding(top = HISTORY_FILTER_SECTION_SPACING)
+                            .fillMaxWidth()
+                            .animateContentSize(),
                     ) {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                            modifier = Modifier.weight(1f),
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
                         ) {
-                            Text(
-                                text = stringResource(R.string.history_filter_custom_range_pick),
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Medium,
-                            )
-                            Text(
-                                text = formatHistoryRange(
-                                    startUtcMillis = draftFilter.customStartUtcMillis,
-                                    endUtcMillis = draftFilter.customEndUtcMillis,
-                                ),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.history_filter_custom_range_pick),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                                Text(
+                                    text = formatHistoryRange(
+                                        startUtcMillis = draftFilter.customStartUtcMillis,
+                                        endUtcMillis = draftFilter.customEndUtcMillis,
+                                    ),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
 
-                        OutlinedButton(onClick = onPickCustomRange) {
-                            Text(text = stringResource(R.string.history_filter_custom_range_pick))
+                            OutlinedButton(onClick = onPickCustomRange) {
+                                Text(text = stringResource(R.string.history_filter_custom_range_pick))
+                            }
                         }
                     }
                 }

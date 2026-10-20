@@ -275,9 +275,21 @@ android {
     }
     testOptions {
         unitTests.isIncludeAndroidResources = true
-        // Robolectric 会为测试用到的每个 SDK 版本各建一套常驻沙箱，全部测试在同一进程中运行时
-        // 常驻堆约 750 MB，超出 Gradle 默认的 512 MB 上限会让测试进程中途内存溢出退出
-        unitTests.all { it.maxHeapSize = "2g" }
+        unitTests.all { test ->
+            // Robolectric 会为测试用到的每个 SDK 版本各建一套常驻沙箱，全部测试在同一进程中运行时
+            // 常驻堆约 750 MB，超出 Gradle 默认的 512 MB 上限会让测试进程中途内存溢出退出
+            test.maxHeapSize = "2g"
+            // Windows 上测试进程退出时删不掉自己仍占用的原生库、字体与 ICU 数据：Robolectric 只在下一个测试进程
+            // 退出时限时代删，Conscrypt 的原生库则无人清理，残留在系统临时目录里日积月累会占满磁盘。
+            // 因此临时目录改放构建目录下，运行前清空上一轮的残留、成功结束后再清一次，此时测试进程均已退出
+            val testTmpDir = layout.buildDirectory.dir("tmp/${test.name}/jvm-tmp").get().asFile
+            test.systemProperty("java.io.tmpdir", testTmpDir.absolutePath)
+            test.doFirst {
+                testTmpDir.deleteRecursively()
+                testTmpDir.mkdirs()
+            }
+            test.doLast { testTmpDir.deleteRecursively() }
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

@@ -2797,7 +2797,7 @@ private fun defaultDownloadQualitySummary(quality: DefaultDownloadQualitySetting
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun DefaultDownloadQualityScreen(
+internal fun DefaultDownloadQualityScreen(
     settings: AppSettings,
     onDefaultDownloadQualityChange: (DefaultDownloadQualitySettings) -> Unit,
     onBack: () -> Unit,
@@ -2966,6 +2966,9 @@ private fun DefaultDownloadQualityScreen(
     }
 }
 
+/** 默认下载质量卡片内各项的纵向间距。 */
+private val DEFAULT_QUALITY_ITEM_SPACING = 8.dp
+
 @Composable
 private fun DefaultQualityCard(
     modifier: Modifier = Modifier,
@@ -2977,7 +2980,7 @@ private fun DefaultQualityCard(
         modifier = modifier.fillMaxWidth(),
     ) {
         Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(DEFAULT_QUALITY_ITEM_SPACING),
             modifier = Modifier.padding(16.dp),
             content = content,
         )
@@ -2995,25 +2998,32 @@ private fun DefaultQualityModeSection(
     onModeChange: (DownloadQualityMode) -> Unit,
     fixedContent: @Composable () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        DefaultQualitySectionTitle(title)
-        ConnectedToggleButtons(
-            options = modeOptions,
-            selected = modeOptions.firstOrNull { it.mode == mode } ?: modeOptions.first(),
-            onSelect = { onModeChange(it.mode) },
-        ) { option ->
-            Text(
-                text = stringResource(option.labelRes),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+    Column {
+        Column(verticalArrangement = Arrangement.spacedBy(DEFAULT_QUALITY_ITEM_SPACING)) {
+            DefaultQualitySectionTitle(title)
+            ConnectedToggleButtons(
+                options = modeOptions,
+                selected = modeOptions.firstOrNull { it.mode == mode } ?: modeOptions.first(),
+                onSelect = { onModeChange(it.mode) },
+            ) { option ->
+                Text(
+                    text = stringResource(option.labelRes),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
+        // 固定档位面板不能直接作为 spacedBy 的子项：父级间距不参与显隐动画，会在展开第一帧整段出现、
+        // 在收起结束移除面板时整段消失，下方卡片随之跳动。因此面板与按钮组的间距放在面板内部，随面板一起展开、收起。
         AnimatedVisibility(
             visible = mode == DownloadQualityMode.Fixed,
             enter = fadeIn() + expandVertically(),
             exit = shrinkVertically() + fadeOut(),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(DEFAULT_QUALITY_ITEM_SPACING),
+                modifier = Modifier.padding(top = DEFAULT_QUALITY_ITEM_SPACING),
+            ) {
                 Text(
                     text = fixedLabel,
                     style = MaterialTheme.typography.labelLarge,
