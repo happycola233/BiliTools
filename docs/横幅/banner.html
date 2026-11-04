@@ -1,0 +1,321 @@
+<!doctype html>
+<!--
+  README 顶部横幅模板。由同目录 render.py 以无头浏览器渲染，参数经查询串传入：
+  banner.html?lang=zh|en&theme=light|dark
+  画布 1280×640，与 GitHub 仓库社交预览图的推荐尺寸一致。
+
+  视觉语言取自应用本身：Material 3 Expressive 形状库（饼干、四叶草、花朵等）作为背景与图标容器，
+  填充色均为 docs/配色系统 内置配色的 primaryFixedDim，图标路径取自 app/src/main/res/drawable。
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<title>BiliTools banner</title>
+<style>
+  /* 与应用同款的 Google Sans Flex；中文回落到系统已安装的 Noto Sans SC */
+  @font-face {
+    font-family: "Google Sans Flex";
+    src: url("../../app/src/main/res/font/google_sans_flex.ttf");
+    font-weight: 1 1000;
+  }
+
+  /* 内置配色的填充色（primaryFixedDim），深浅模式同色，与应用内按钮一致 */
+  :root {
+    --periwinkle: #B1C2F2;
+    --seafoam: #A8E7D4;
+    --sakura: #F5AEBD;
+    --sand: #F2D48B;
+    --lilac: #D0BDF2;
+    --on-fill: #1A2033;
+  }
+  [data-theme="light"] {
+    --surface: #F5F4FA;
+    --chip: #FFFFFF;
+    --chip-border: rgba(76, 94, 139, 0.12);
+    --ink: #161A26;
+    --ink-muted: #565E78;
+    --halo-start: var(--periwinkle);
+    --halo-end: var(--lilac);
+    --flower: var(--sakura);
+    --clover: var(--seafoam);
+    --shape-opacity: 0.55;
+    --screen-ring: rgba(22, 26, 40, 0.08);
+    --screen-shadow: 0 30px 56px -22px rgba(40, 52, 100, 0.50), 0 10px 22px -12px rgba(40, 52, 100, 0.22);
+    --icon-ring: rgba(22, 26, 40, 0.06);
+  }
+  [data-theme="dark"] {
+    --surface: #111318;
+    --chip: #1D2027;
+    --chip-border: rgba(255, 255, 255, 0.07);
+    --ink: #F1F2F8;
+    --ink-muted: #A3A9BD;
+    --halo-start: #2B3656;
+    --halo-end: #362F54;
+    --flower: #4B2A38;
+    --clover: #1B3D35;
+    --shape-opacity: 1;
+    --screen-ring: rgba(255, 255, 255, 0.12);
+    --screen-shadow: 0 30px 60px -18px rgba(0, 0, 0, 0.80);
+    --icon-ring: rgba(255, 255, 255, 0);
+  }
+
+  html, body {
+    margin: 0;
+    width: 1280px;
+    height: 640px;
+    overflow: hidden;
+  }
+  body {
+    position: relative;
+    font-family: "Google Sans Flex", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    color: var(--ink);
+    background: var(--surface);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .shapes {
+    position: absolute;
+    inset: 0;
+    opacity: var(--shape-opacity);
+  }
+
+  /* 左侧文案 */
+  .copy {
+    position: absolute;
+    left: 80px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 620px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+  }
+  .app-icon {
+    width: 92px;
+    height: 92px;
+    flex: none;
+    border-radius: 28px;
+    box-shadow: 0 0 0 1px var(--icon-ring), 0 12px 28px -12px rgba(40, 52, 100, 0.45);
+  }
+  h1 {
+    margin: 0;
+    font-size: 72px;
+    line-height: 1;
+    font-weight: 600;
+    font-variation-settings: "ROND" 100;
+    letter-spacing: -1.2px;
+  }
+  .platform {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 4px 13px 5px;
+    border-radius: 999px;
+    background: var(--periwinkle);
+    color: var(--on-fill);
+    font-size: 15px;
+    font-weight: 600;
+    font-variation-settings: "ROND" 100;
+    letter-spacing: 0.3px;
+  }
+  .headline {
+    margin: 36px 0 0;
+    font-size: 33px;
+    line-height: 1.3;
+    font-weight: 650;
+  }
+  .desc {
+    margin: 12px 0 0;
+    font-size: 19px;
+    line-height: 1.6;
+    color: var(--ink-muted);
+    max-width: 530px;
+  }
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 30px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .chips li {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    height: 42px;
+    padding: 0 17px 0 6px;
+    box-sizing: border-box;
+    border-radius: 999px;
+    background: var(--chip);
+    border: 1px solid var(--chip-border);
+    font-size: 16px;
+    font-weight: 560;
+  }
+  .chips svg { width: 30px; height: 30px; flex: none; }
+
+  /* 右侧两台无边框手机，压在大号饼干形状上 */
+  .screen {
+    position: absolute;
+    width: 228px;
+    border-radius: 30px;
+    box-shadow: 0 0 0 1px var(--screen-ring), var(--screen-shadow);
+  }
+  .screen.primary { left: 758px; top: 48px; }
+  .screen.secondary { left: 1006px; top: 104px; }
+</style>
+</head>
+<body>
+  <svg class="shapes" viewBox="0 0 1280 640" aria-hidden="true"></svg>
+
+  <section class="copy">
+    <div class="brand">
+      <img class="app-icon" src="../../app/src/main/ic_launcher-playstore.png" alt="">
+      <div>
+        <h1>BiliTools</h1>
+        <span class="platform">for Android</span>
+      </div>
+    </div>
+    <p class="headline" data-text="headline"></p>
+    <p class="desc" data-text="desc"></p>
+    <ul class="chips"></ul>
+  </section>
+
+  <img class="screen primary" data-screen="02-anime" alt="">
+  <img class="screen secondary" data-screen="05-downloads" alt="">
+
+<script>
+  /*
+   * 以极坐标近似 Material 3 Expressive 形状库（androidx.graphics.shapes.MaterialShapes）：
+   * lobes 为饱满的瓣、收紧的瓣间凹口（Cookie / Clover / Flower），softness 决定凹口的圆角大小，越大越圆润。
+   */
+  const lobes = (count, depth, softness = 0.015) => angle => {
+    const wave = Math.sqrt(Math.cos(count * angle / 2) ** 2 + softness) / Math.sqrt(1 + softness);
+    return 1 - depth + depth * wave;
+  };
+  const SHAPES = {
+    cookie12: lobes(12, 0.06, 0.2),
+    cookie9: lobes(9, 0.12, 0.1),
+    cookie6: lobes(6, 0.12, 0.15),
+    cookie4: lobes(4, 0.2, 0.12),
+    clover4: lobes(4, 0.3, 0.12),
+    flower: lobes(8, 0.16, 0.1),
+  };
+
+  function shapePath(kind, cx, cy, radius, rotation = 0) {
+    const samples = 720;
+    const offset = (rotation - 90) * Math.PI / 180;
+    let path = '';
+    for (let i = 0; i < samples; i++) {
+      const angle = (i / samples) * Math.PI * 2;
+      const r = radius * SHAPES[kind](angle);
+      const x = cx + r * Math.cos(angle + offset);
+      const y = cy + r * Math.sin(angle + offset);
+      path += `${i ? 'L' : 'M'}${x.toFixed(2)} ${y.toFixed(2)}`;
+    }
+    return `${path}Z`;
+  }
+
+  // 应用内图标（Material Symbols），保留原始 viewBox
+  const ICONS = {
+    quality: { // ic_high_quality_24
+      viewBox: '0 -960 960 960',
+      paths: ['M590,-360v30q0,13 8.5,21.5T620,-300q13,0 21.5,-8.5T650,-330v-30h30q17,0 28.5,-11.5T720,-400v-160q0,-17 -11.5,-28.5T680,-600H560q-17,0 -28.5,11.5T520,-560v160q0,17 11.5,28.5T560,-360h30ZM300,-440h80v50q0,13 8.5,21.5T410,-360q13,0 21.5,-8.5T440,-390v-180q0,-13 -8.5,-21.5T410,-600q-13,0 -21.5,8.5T380,-570v70h-80v-70q0,-13 -8.5,-21.5T270,-600q-13,0 -21.5,8.5T240,-570v180q0,13 8.5,21.5T270,-360q13,0 21.5,-8.5T300,-390v-50ZM580,-420v-120h80v120h-80ZM160,-160q-33,0 -56.5,-23.5T80,-240v-480q0,-33 23.5,-56.5T160,-800h640q33,0 56.5,23.5T880,-720v480q0,33 -23.5,56.5T800,-160H160ZM160,-240h640v-480H160v480Z'],
+    },
+    audio: { // ic_graphic_eq_24
+      viewBox: '0 -960 960 960',
+      paths: ['M280-280v-400q0-17 11.5-28.5T320-720q17 0 28.5 11.5T360-680v400q0 17-11.5 28.5T320-240q-17 0-28.5-11.5T280-280Zm160 160v-720q0-17 11.5-28.5T480-880q17 0 28.5 11.5T520-840v720q0 17-11.5 28.5T480-80q-17 0-28.5-11.5T440-120ZM120-440v-80q0-17 11.5-28.5T160-560q17 0 28.5 11.5T200-520v80q0 17-11.5 28.5T160-400q-17 0-28.5-11.5T120-440Zm480 160v-400q0-17 11.5-28.5T640-720q17 0 28.5 11.5T680-680v400q0 17-11.5 28.5T640-240q-17 0-28.5-11.5T600-280Zm160-160v-80q0-17 11.5-28.5T800-560q17 0 28.5 11.5T840-520v80q0 17-11.5 28.5T800-400q-17 0-28.5-11.5T760-440Z'],
+    },
+    language: { // ic_language_rounded_24
+      viewBox: '0 -960 960 960',
+      paths: ['M325-111.5q-73-31.5-127.5-86t-86-127.5Q80-398 80-480.5t31.5-155q31.5-72.5 86-127t127.5-86Q398-880 480.5-880t155 31.5q72.5 31.5 127 86t86 127Q880-563 880-480.5T848.5-325q-31.5 73-86 127.5t-127 86Q563-80 480.5-80T325-111.5ZM480-162q26-36 45-75t31-83H404q12 44 31 83t45 75Zm-104-16q-18-33-31.5-68.5T322-320H204q29 50 72.5 87t99.5 55Zm208 0q56-18 99.5-55t72.5-87H638q-9 38-22.5 73.5T584-178ZM170-400h136q-3-20-4.5-39.5T300-480q0-21 1.5-40.5T306-560H170q-5 20-7.5 39.5T160-480q0 21 2.5 40.5T170-400Zm216 0h188q3-20 4.5-39.5T580-480q0-21-1.5-40.5T574-560H386q-3 20-4.5 39.5T380-480q0 21 1.5 40.5T386-400Zm268 0h136q5-20 7.5-39.5T800-480q0-21-2.5-40.5T790-560H654q3 20 4.5 39.5T660-480q0 21-1.5 40.5T654-400Zm-16-240h118q-29-50-72.5-87T584-782q18 33 31.5 68.5T638-640Zm-234 0h152q-12-44-31-83t-45-75q-26 36-45 75t-31 83Zm-200 0h118q9-38 22.5-73.5T376-782q-56 18-99.5 55T204-640Z'],
+    },
+    danmaku: { // ic_danmaku_24
+      viewBox: '0 0 24 24',
+      evenOdd: true,
+      paths: [
+        'M11.989,4.828c-.47,0 -.975,.004 -1.515,.012l-1.71,-2.566a1.008,1.008 0,0 0,-1.678 1.118l.999,1.5c-.681,.018 -1.403,.04 -2.164,.068a4.013,4.013 0,0 0,-3.83 3.44c-.165,1.15 -.245,2.545 -.245,4.185c0,1.965 .115,3.67 .35,5.116a4.012,4.012 0,0 0,3.763 3.363l.906,.046C8.075,21.173 9.3,21.205 12.054,21.205C14.808,21.205 16.033,21.173 17.243,21.11L18.149,21.064a4.012,4.012 0,0 0,3.763 -3.363C22.147,16.255 22.148,14.591 22.113,12.626c-.008,-.226 -.016,-.523 -.025,-.856v-.027c-.03,-1.118 -.073,-2.663 -.16,-3.276c-.273,-1.906 -1.783,-3.438 -3.74,-3.507c-.9,-.032 -1.743,-.058 -2.531,-.078l1.05,-1.46a1.008,1.008 0,0 0,-1.638 -1.177l-1.862,2.59c-.38,-.004 -.744,-.007 -1.088,-.007h-.13ZM3.821,12.585c0,-1.563 .076,-2.864 .225,-3.904c.14,-.977 .96,-1.713 1.945,-1.747c2.444,-.087 4.465,-.13 6.063,-.131c1.598,0 3.62,.044 6.064,.13c.96,.034 1.71,.81 1.855,1.814c.075,.524 .113,1.962 .141,3.065v.002c.01,.342 .017,.65 .025,.88C20.174,14.568 20.153,16.059 19.937,17.383a2.037,2.037 0,0 1,-1.91 1.708l-.915,.047C15.95,19.199 14.37,19.23 12.054,19.23C9.738,19.23 8.133,19.199 6.971,19.138l-.915,-.047a2.037,2.037 0,0 1,-1.91 -1.708c-.216,-1.324 -.325,-2.924 -.325,-4.798Z',
+        'M12.510,9.603h-1.32v4.631h2.222v.847h-2.618v1.078h2.618V18h1.123V16.159h2.694v-1.078h-2.695v-.847H16.8v-4.63h-1.276a8.59,8.59 0,0 0,.748 -1.42L15.183,7.8a14.232,14.232 0,0 1,-.814 1.804h-1.518l.693,-.308a8.862,8.862 0,0 0,-.814 -1.408l-1.045,.352c.297,.396 .572,.847 .825,1.364ZM8.33,13.167l.154,-1.485h1.98V8.294h-3.2v.98H9.33v1.43H7.472l-.308,3.453h2.277c0,1.166 -.044,1.925 -.12,2.277c-.078,.352 -.386,.528 -.936,.528c-.308,0 -.616,-.022 -.902,-.055l.297,1.067l.062,.005c.285,.02 .551,.04 .818,.04c1.001,-.067 1.562,-.419 1.694,-1.057c.11,-.638 .176,-1.903 .176,-3.795h-2.2ZM15.788,13.277v-.858h-1.254v.858h1.254ZM13.412,12.419v.858h-1.199v-.858h1.2ZM12.213,11.473h1.2v-.902h-1.2v.902ZM14.534,11.473v-.902h1.254v.902h-1.254Z',
+      ],
+    },
+    palette: { // ic_palette_24
+      viewBox: '0 0 24 24',
+      paths: ['M12,2C6.49,2 2,6.49 2,12s4.49,10 10,10c1.38,0 2.5,-1.12 2.5,-2.5c0,-0.61 -0.23,-1.2 -0.64,-1.67c-0.08,-0.1 -0.13,-0.21 -0.13,-0.33c0,-0.28 0.22,-0.5 0.5,-0.5H16c3.31,0 6,-2.69 6,-6C22,6.04 17.51,2 12,2zM17.5,13c-0.83,0 -1.5,-0.67 -1.5,-1.5c0,-0.83 0.67,-1.5 1.5,-1.5s1.5,0.67 1.5,1.5C19,12.33 18.33,13 17.5,13zM14.5,9C13.67,9 13,8.33 13,7.5C13,6.67 13.67,6 14.5,6S16,6.67 16,7.5C16,8.33 15.33,9 14.5,9zM5,11.5C5,10.67 5.67,10 6.5,10S8,10.67 8,11.5C8,12.33 7.33,13 6.5,13S5,12.33 5,11.5zM11,7.5C11,8.33 10.33,9 9.5,9S8,8.33 8,7.5C8,6.67 8.67,6 9.5,6S11,6.67 11,7.5z'],
+    },
+  };
+
+  const TEXT = {
+    zh: {
+      headline: '哔哩哔哩多媒体解析与下载工具',
+      desc: '视频、番剧、课程、音频与专栏，分享即可解析。最高 8K 画质与 Hi-Res 无损音质，弹幕、字幕与元数据一并保存。',
+      chips: ['8K · 杜比视界 · HDR', 'Hi-Res 无损', '13 种语言', '弹幕 · 字幕 · NFO', 'Material 3 Expressive'],
+    },
+    en: {
+      headline: 'Bilibili media parser & downloader',
+      desc: 'Parse videos, anime, courses, audio and articles right from the share menu. Up to 8K and Hi-Res lossless.',
+      chips: ['8K · Dolby Vision · HDR', 'Hi-Res lossless', '13 languages', 'Danmaku · Subtitles · NFO', 'Material 3 Expressive'],
+    },
+  };
+  // 与 TEXT.chips 一一对应：图标容器的形状、填充色与图标
+  const CHIP_STYLES = [
+    { shape: 'cookie9', fill: '--periwinkle', icon: 'quality' },
+    { shape: 'clover4', fill: '--seafoam', icon: 'audio' },
+    { shape: 'flower', fill: '--sand', icon: 'language' },
+    { shape: 'cookie6', fill: '--sakura', icon: 'danmaku' },
+    { shape: 'cookie4', fill: '--lilac', icon: 'palette' },
+  ];
+  // 背景形状：一枚大饼干（蓝紫渐变丁香）托住两台手机，右上角花朵、左下角四叶草
+  const BACKDROP = [
+    { shape: 'cookie12', fill: 'url(#halo)', cx: 996, cy: 330, r: 300, rotation: 0 },
+    { shape: 'flower', fill: 'var(--flower)', cx: 1226, cy: 66, r: 92, rotation: 10 },
+    { shape: 'clover4', fill: 'var(--clover)', cx: 720, cy: 570, r: 80, rotation: 20 },
+  ];
+
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const svgElement = (name, attributes) => {
+    const element = document.createElementNS(SVG_NS, name);
+    Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, value));
+    return element;
+  };
+
+  function chipIcon({ shape, fill, icon }) {
+    const svg = svgElement('svg', { viewBox: '0 0 30 30' });
+    svg.append(svgElement('path', { d: shapePath(shape, 15, 15, 15), fill: `var(${fill})` }));
+    const { viewBox, paths, evenOdd } = ICONS[icon];
+    const glyph = svgElement('svg', { x: 7, y: 7, width: 16, height: 16, viewBox });
+    paths.forEach(d => glyph.append(svgElement('path', {
+      d, fill: 'var(--on-fill)', ...(evenOdd ? { 'fill-rule': 'evenodd' } : {}),
+    })));
+    svg.append(glyph);
+    return svg;
+  }
+
+  const params = new URLSearchParams(location.search);
+  const lang = params.get('lang') === 'en' ? 'en' : 'zh';
+  const theme = params.get('theme') === 'dark' ? 'dark' : 'light';
+  const text = TEXT[lang];
+
+  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+  document.body.dataset.theme = theme;
+  const halo = svgElement('linearGradient', { id: 'halo', x1: 0, y1: 0, x2: 1, y2: 1 });
+  halo.append(
+    svgElement('stop', { offset: 0, 'stop-color': 'var(--halo-start)' }),
+    svgElement('stop', { offset: 1, 'stop-color': 'var(--halo-end)' }),
+  );
+  const defs = svgElement('defs', {});
+  defs.append(halo);
+  document.querySelector('.shapes').append(defs, ...BACKDROP.map(({ shape, fill, cx, cy, r, rotation }) =>
+    svgElement('path', { d: shapePath(shape, cx, cy, r, rotation), fill })));
+  document.querySelectorAll('[data-text]').forEach(node => { node.textContent = text[node.dataset.text]; });
+  document.querySelector('.chips').replaceChildren(...text.chips.map((label, index) => {
+    const chip = document.createElement('li');
+    chip.append(chipIcon(CHIP_STYLES[index]), label);
+    return chip;
+  }));
+  document.querySelectorAll('[data-screen]').forEach(img => {
+    img.src = `../assets/screenshots/${lang}/${img.dataset.screen}-${theme}.jpg`;
+  });
+</script>
+</body>
+</html>

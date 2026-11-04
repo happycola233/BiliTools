@@ -1,50 +1,46 @@
 <div align="center">
-  <img src="./docs/assets/BiliTools_icon_rounded.png" width="112" alt="BiliTools Logo" />
-  <h1>BiliTools for Android</h1>
-  <p>
-    <a href="./README.en.md"><img src="https://img.shields.io/badge/Read_in-English-B1C2F2?style=for-the-badge&labelColor=4C5E8B" alt="Read in English" /></a>
-  </p>
-  <p><strong>面向 Android 的哔哩哔哩多媒体解析与下载工具，支持视频、番剧、课程、音频与专栏解析，可自选音画质、导出弹幕与字幕，并保存媒体元数据。</strong></p>
-  <p>Material 3 Expressive · 液态玻璃 · 十三套原创配色 · 开源免费</p>
-  <!-- 徽标取色：依次为蓝紫、薄荷、丁香、天蓝、青苹；左侧取浅色主题 colorPrimary，右侧取 colorPrimaryFixedDim。 -->
-  <p>
-    <a href="https://github.com/happycola233/BiliTools/releases/latest"><img src="https://img.shields.io/github/v/release/happycola233/BiliTools?style=for-the-badge&logo=github&logoColor=white&label=Release&color=B1C2F2&labelColor=4C5E8B" alt="Latest release"></a>
-    <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-A8E7D4.svg?style=for-the-badge&logo=gnu&logoColor=white&labelColor=246A5A" alt="License"></a>
-    <a href="https://kotlinlang.org"><img src="https://img.shields.io/badge/Kotlin-2.4-D0BDF2.svg?style=for-the-badge&logo=kotlin&logoColor=white&labelColor=675688" alt="Kotlin"></a>
-    <a href="https://m3.material.io/blog/building-with-m3-expressive"><img src="https://img.shields.io/badge/Material%203-Expressive-A3D8F2.svg?style=for-the-badge&logo=materialdesign&logoColor=white&labelColor=28667E" alt="Material 3 Expressive"></a>
-    <a href="https://www.android.com"><img src="https://img.shields.io/badge/Android-10%2B-B7E6BA.svg?style=for-the-badge&logo=android&logoColor=white&labelColor=3C6944" alt="Android 10+"></a>
-  </p>
 
-  <p>
-    <a href="#-应用截图">应用截图</a> ·
-    <a href="#-内容解析">解析</a> ·
-    <a href="#-下载与导出">下载与导出</a> ·
-    <a href="#-账号与个人内容">账号</a> ·
-    <a href="#️-设置">设置</a> ·
-    <a href="#界面设计">设计</a> ·
-    <a href="#-配色系统">配色系统</a> ·
-    <a href="#-安装">安装</a> ·
-    <a href="#️-构建">构建</a>
-  </p>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./docs/assets/banner/banner-zh-dark.webp">
+  <img src="./docs/assets/banner/banner-zh-light.webp" width="100%" alt="BiliTools for Android：哔哩哔哩多媒体解析与下载工具">
+</picture>
+
+<br/>
+<br/>
+
+<!-- 徽标取色：依次为蓝紫、樱粉、薄荷、丁香、天蓝、青苹；左侧取浅色主题 colorPrimary，右侧取 colorPrimaryFixedDim。 -->
+<p>
+  <a href="https://github.com/happycola233/BiliTools/releases/latest"><img src="https://img.shields.io/github/v/release/happycola233/BiliTools?style=flat-square&logo=github&logoColor=white&label=Release&color=B1C2F2&labelColor=4C5E8B" alt="最新版本"></a>
+  <a href="https://github.com/happycola233/BiliTools/releases"><img src="https://img.shields.io/github/downloads/happycola233/BiliTools/total?style=flat-square&logo=android&logoColor=white&label=Downloads&color=F5AEBD&labelColor=894D5C" alt="下载量"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-A8E7D4?style=flat-square&logo=gnu&logoColor=white&labelColor=246A5A" alt="开源协议"></a>
+  <a href="https://kotlinlang.org"><img src="https://img.shields.io/badge/Kotlin-2.4-D0BDF2?style=flat-square&logo=kotlin&logoColor=white&labelColor=675688" alt="Kotlin"></a>
+  <a href="https://m3.material.io/blog/building-with-m3-expressive"><img src="https://img.shields.io/badge/Material%203-Expressive-A3D8F2?style=flat-square&logo=materialdesign&logoColor=white&labelColor=28667E" alt="Material 3 Expressive"></a>
+  <a href="https://www.android.com"><img src="https://img.shields.io/badge/Android-10%2B-B7E6BA?style=flat-square&logo=android&logoColor=white&labelColor=3C6944" alt="Android 10+"></a>
+</p>
+
+<p>
+  <b>简体中文</b> · <a href="./README.en.md">English</a>
+</p>
+
+<p>
+  <a href="https://github.com/happycola233/BiliTools/releases/latest"><b>下载最新版</b></a> ·
+  <a href="https://github.com/happycola233/BiliTools/releases">更新日志</a> ·
+  <a href="https://github.com/happycola233/BiliTools/issues">问题反馈</a>
+</p>
+
 </div>
 
-<br/>
+BiliTools 是一款面向 Android 的哔哩哔哩多媒体解析与下载工具。在 B 站或任意应用中选择「分享 → BiliTools」，或直接粘贴链接，即可解析视频、番剧、课程、音频与专栏；按需选择最高 8K、杜比视界与 Hi-Res 无损音质，并一并保存字幕、弹幕、AI 总结与 NFO 元数据。界面采用 Material 3 Expressive 与液态玻璃设计，内置 13 种界面语言与 13 套原创配色，开源免费。
 
-### 🔍 多类型内容解析
+## ✨ 功能亮点
 
-输入链接或 AV / BV、SS / EP / MD、AU / AM、CV / RL、UID 等标识，识别视频、番剧、课程、音频、歌单、收藏夹、专栏图文与用户空间。
-
-**通过分享菜单即可直接解析下载，无需切换应用。**
-
-### 📥 媒体下载与内容导出
-
-支持最高 8K、杜比视界、HDR 与 Hi-Res 无损音频；可按需导出字幕、AI 总结、当前与历史弹幕、NFO 元数据、封面海报与图文 Markdown。
-
-### 🎨 原生界面与个性化配色
-
-采用 Material 3 Expressive 设计，与液态玻璃有机结合。提供十三套原创配色，支持浅色、深色与 AMOLED 纯黑模式。
-
-<br/>
+- **分享即解析**：在其他应用中「分享 → BiliTools」，弹出的快捷面板里即可完成解析与下载，无需切换应用。
+- **全类型内容**：稿件视频、番剧影视、课堂课程、音频与歌单、专栏与图文、收藏夹、稍后再看与用户空间，支持合集与批量下载。
+- **高规格音画质**：最高 8K、杜比视界与 HDR，Hi-Res 无损与杜比全景声；可选 AVC、HEVC、AV1 编码。
+- **完整导出**：字幕、AI 总结、当前与历史弹幕（XML / ASS）、NFO 元数据、封面海报与图文 Markdown，还能为音视频文件写入标题、艺术家与封面等标签。
+- **13 种界面语言**：简体中文、繁體中文、English、日本語等 13 种语言随应用内置，切换即时生效；阿拉伯语采用从右到左布局。
+- **Material 3 Expressive × 液态玻璃**：13 套原创配色与动态取色，支持浅色、深色与 AMOLED 纯黑主题。
+- **数据留在本机**：登录凭证、设置与下载记录仅保存在本地；诊断报告由你预览后自行分享，不会自动上传。
 
 ## 📸 应用截图
 
@@ -58,10 +54,10 @@
     <td align="center"><b>详细信息</b></td>
   </tr>
   <tr>
-    <td><picture><source media="(prefers-color-scheme: dark)" srcset="./docs/assets/screenshots/01-解析_深色.jpg"><img src="./docs/assets/screenshots/01-解析_浅色.jpg" width="220" alt="解析页"></picture></td>
-    <td><picture><source media="(prefers-color-scheme: dark)" srcset="./docs/assets/screenshots/02-解析-番剧_深色.jpg"><img src="./docs/assets/screenshots/02-解析-番剧_浅色.jpg" width="220" alt="番剧解析与选集"></picture></td>
-    <td><picture><source media="(prefers-color-scheme: dark)" srcset="./docs/assets/screenshots/03-解析-下载选项_深色.jpg"><img src="./docs/assets/screenshots/03-解析-下载选项_浅色.jpg" width="220" alt="下载与导出面板"></picture></td>
-    <td><picture><source media="(prefers-color-scheme: dark)" srcset="./docs/assets/screenshots/04-解析-详细信息_深色.jpg"><img src="./docs/assets/screenshots/04-解析-详细信息_浅色.jpg" width="220" alt="详细信息"></picture></td>
+    <td><picture><source media="(prefers-color-scheme: dark)" srcset="./docs/assets/screenshots/zh/01-parse-dark.jpg"><img src="./docs/assets/screenshots/zh/01-parse-light.jpg" width="200" alt="解析页"></picture></td>
+    <td><picture><source media="(prefers-color-scheme: dark)" srcset="./docs/assets/screenshots/zh/02-anime-dark.jpg"><img src="./docs/assets/screenshots/zh/02-anime-light.jpg" width="200" alt="番剧解析与选集"></picture></td>
+    <td><picture><source media="(prefers-color-scheme: dark)" srcset="./docs/assets/screenshots/zh/03-download-options-dark.jpg"><img src="./docs/assets/screenshots/zh/03-download-options-light.jpg" width="200" alt="下载与导出面板"></picture></td>
+    <td><picture><source media="(prefers-color-scheme: dark)" srcset="./docs/assets/screenshots/zh/04-details-dark.jpg"><img src="./docs/assets/screenshots/zh/04-details-light.jpg" width="200" alt="详细信息"></picture></td>
   </tr>
   <tr>
     <td align="center"><b>下载任务</b></td>
@@ -70,26 +66,19 @@
     <td align="center"><b>设置</b></td>
   </tr>
   <tr>
-    <td><picture><source media="(prefers-color-scheme: dark)" srcset="./docs/assets/screenshots/05-下载_深色.jpg"><img src="./docs/assets/screenshots/05-下载_浅色.jpg" width="220" alt="下载任务页"></picture></td>
-    <td><picture><source media="(prefers-color-scheme: dark)" srcset="./docs/assets/screenshots/06-历史记录_深色.jpg"><img src="./docs/assets/screenshots/06-历史记录_浅色.jpg" width="220" alt="历史记录"></picture></td>
-    <td><picture><source media="(prefers-color-scheme: dark)" srcset="./docs/assets/screenshots/07-我_深色.jpg"><img src="./docs/assets/screenshots/07-我_浅色.jpg" width="220" alt="我页"></picture></td>
-    <td><picture><source media="(prefers-color-scheme: dark)" srcset="./docs/assets/screenshots/08-设置_深色.jpg"><img src="./docs/assets/screenshots/08-设置_浅色.jpg" width="220" alt="设置"></picture></td>
-  </tr>
-  <tr>
-    <td align="center"><b>设置 · 通用</b></td>
-    <td align="center"><b>设置 · 下载</b></td>
-    <td align="center"><b>设置 · 命名</b></td>
-    <td align="center"><b>设置 · 外观</b></td>
-  </tr>
-  <tr>
-    <td><picture><source media="(prefers-color-scheme: dark)" srcset="./docs/assets/screenshots/09-设置-通用_深色.jpg"><img src="./docs/assets/screenshots/09-设置-通用_浅色.jpg" width="220" alt="通用设置"></picture></td>
-    <td><picture><source media="(prefers-color-scheme: dark)" srcset="./docs/assets/screenshots/10-设置-下载_深色.jpg"><img src="./docs/assets/screenshots/10-设置-下载_浅色.jpg" width="220" alt="下载设置"></picture></td>
-    <td><picture><source media="(prefers-color-scheme: dark)" srcset="./docs/assets/screenshots/11-设置-命名_深色.jpg"><img src="./docs/assets/screenshots/11-设置-命名_浅色.jpg" width="220" alt="命名设置"></picture></td>
-    <td><picture><source media="(prefers-color-scheme: dark)" srcset="./docs/assets/screenshots/12-设置-外观_深色.jpg"><img src="./docs/assets/screenshots/12-设置-外观_浅色.jpg" width="220" alt="外观设置"></picture></td>
+    <td><picture><source media="(prefers-color-scheme: dark)" srcset="./docs/assets/screenshots/zh/05-downloads-dark.jpg"><img src="./docs/assets/screenshots/zh/05-downloads-light.jpg" width="200" alt="下载任务页"></picture></td>
+    <td><picture><source media="(prefers-color-scheme: dark)" srcset="./docs/assets/screenshots/zh/06-history-dark.jpg"><img src="./docs/assets/screenshots/zh/06-history-light.jpg" width="200" alt="历史记录"></picture></td>
+    <td><picture><source media="(prefers-color-scheme: dark)" srcset="./docs/assets/screenshots/zh/07-me-dark.jpg"><img src="./docs/assets/screenshots/zh/07-me-light.jpg" width="200" alt="我页"></picture></td>
+    <td><picture><source media="(prefers-color-scheme: dark)" srcset="./docs/assets/screenshots/zh/08-settings-dark.jpg"><img src="./docs/assets/screenshots/zh/08-settings-light.jpg" width="200" alt="设置"></picture></td>
   </tr>
 </table>
 
-<br/>
+## 📦 安装
+
+前往 [Releases](https://github.com/happycola233/BiliTools/releases/latest) 下载最新 APK。提供 `arm64-v8a`、`armeabi-v7a`、`x86`、`x86_64` 及通用包，主流手机建议选择 **arm64-v8a**。
+
+- **系统要求**：Android 10（API 29）及以上。
+- **应用内更新**：在「设置 → 关于」点击「检查更新」，即可下载适合当前设备的安装包。
 
 ## 🔍 内容解析
 
@@ -172,9 +161,18 @@
 - **历史记录**：按分类（视频 / 直播 / 专栏）与时间浏览，查看观看进度；可搜索关键词，或按时长（10 分钟以下至 60 分钟以上）、时间范围与设备（PC / 手机 / 平板 / TV）筛选。支持跳转页码或滚动查看更多记录，可从视频、番剧、课程与专栏记录直接进入解析页面；直播记录仅供浏览。
 - **退出登录**：登录凭证保存在本机，退出登录后会清除本地登录状态。
 
-## ⚙️ 设置
+## 🌐 多语言
 
-在「设置 → 通用 → 语言」中，可选择简体中文、繁体中文、英语、日语、西班牙语、葡萄牙语、阿拉伯语、俄语、土耳其语、泰语、马来语、越南语和印尼语。默认跟随系统，所有语言随应用提供，切换无需下载语言包。
+BiliTools 的界面支持以下 13 种语言，可在「设置 → 通用 → 语言」中切换：
+
+> 简体中文 · 繁體中文 · English · 日本語 · Español · Português · اللغة العربية · Русский · Türkçe · ไทย · Bahasa Melayu · Tiếng Việt · Bahasa Indonesia
+
+- **默认跟随系统**：首次启动使用系统语言；Android 13 及以上也可在系统设置的「应用语言」中单独切换。
+- **即时切换**：所有语言随应用提供，无需下载语言包；切换即时生效，无需重启应用，已解析的内容也会保留。
+- **从右到左布局**：阿拉伯语下，间距、对齐、返回箭头、导航动画与底栏拖动方向均随布局方向镜像。
+- **内容保持原文**：视频标题、简介、分类等 B 站内容与已保存的文件名保持原样，不随界面语言改变。
+
+## ⚙️ 设置
 
 - **通用**：选择应用语言与触感反馈强度（关闭 / 轻量 / 完整），开启或关闭 Live Update 通知与小电视弹跳启动动画；Live Update 图标可选圆形白底的 BiliTools（默认）或下载箭头。部分系统会将通知卡片中的彩色图标统一着色，BiliTools 可能显示为实心圆；可切换为下载箭头。
 - **下载**：设置默认分辨率与音质（最高 / 最低 / 固定档位）和视频编码，调整最大同时下载数量（1 至 5）与保存位置；设置文件元数据、弹幕转 ASS、音频转 MP3、视频转 MP4，以及移动网络下载前确认和相册隐藏选项。
@@ -182,7 +180,12 @@
 - **外观**：选择跟随系统、浅色或深色模式，使用动态取色或十三套内置配色；可开启纯黑主题，分别切换液态玻璃底栏和面板，并调整液态底栏宽度。
 - **关于**：查看版本并检查更新，更新时自动匹配适合设备的安装包（GitHub Releases，支持镜像加速）；可一键生成本地诊断报告，预览后分享或自行保存；失败下载和异常退出后也可直接反馈。诊断记录保存用于排查问题的应用运行和错误信息，保留最近 7 天（最多 3 MB），写入前隐藏登录凭据、IP 与账号 UID，不自动上传。支持清除诊断记录，查看开源许可证及免责声明。
 
-### 命名模板说明
+<a id="命名模板说明"></a>
+
+<details>
+<summary><b>命名模板说明</b></summary>
+
+<br/>
 
 命名模板支持三十余个变量与可选片段。稿件视频的默认文件名模板为：
 
@@ -197,9 +200,9 @@
 
 `{? … }` 内任一变量为空时，整个可选片段及其中的括号、空格与连接符一并省略。
 
-<a id="界面设计"></a>
+</details>
 
-## ✨ 设计：Material 3 Expressive × 液态玻璃
+## 🎨 设计：Material 3 Expressive × 液态玻璃
 
 - **Material 3 Expressive**：采用 Expressive 主题与动效，包含形状变换的加载指示器、连接式按钮组、展开式悬浮操作菜单、拆分按钮，以及随滚动折叠的大标题栏。
 - **液态玻璃**：底部导航采用透明、模糊与折射效果，支持拖动选中项切换页面与调整底栏宽度。下载任务的打开与分享菜单、批量管理操作栏采用相同的玻璃效果。在「设置 → 外观」中可分别开关「液态玻璃底栏」与「液态玻璃面板」，两项默认开启；关闭后使用 Material 风格，布局保持一致。Android 13 以下或未启用硬件加速时自动使用 Material 风格，实心背景跟随配色，深色与纯黑模式补充细描边。
@@ -224,6 +227,11 @@ BiliTools 提供十三套原创 Material 3 配色，可在「设置 → 外观�
 
 [动态取色](https://developer.android.com/develop/ui/compose/designsystems/material3#dynamic_color)默认开启，在 Android 12 及以上系统中让界面配色随系统壁纸变化。关闭后恢复上次手动选择的内置配色；从未手动选择过时，默认使用**蓝紫**。切换时界面布局保持不变，动态配色的颜色由系统决定。
 
+<details>
+<summary><b>配色设计细节</b></summary>
+
+<br/>
+
 各套内置配色保持一致的明暗层次与阅读体验：
 
 - **柔和且深浅一致的填充色**：主按钮、选中胶囊与滑条已选段采用明亮、饱和度适中的主题色，浅色模式下也保持轻盈。它们在切换明暗模式时保持同色，与设置页色块一致，对应 `primaryFixedDim` 颜色角色。配色以最大 sRGB 通道为基准调整明度，并限制彩度与明度上限，使冷暖色的视觉强度更加均衡。
@@ -236,12 +244,7 @@ BiliTools 提供十三套原创 Material 3 配色，可在「设置 → 外观�
 
 生成器、回归校验（对比度、层次分离度、角色一致性）与设计说明见 [`docs/配色系统/`](./docs/配色系统/README.md)。
 
-## 📦 安装
-
-前往 [Releases](https://github.com/happycola233/BiliTools/releases/latest) 下载最新 APK。提供 `arm64-v8a`、`armeabi-v7a`、`x86`、`x86_64` 及通用包，主流手机建议选择 **arm64-v8a**。
-
-- **系统要求**：Android 10（API 29）及以上。
-- **应用内更新**：在「设置 → 关于」点击「检查更新」，即可下载适合当前设备的安装包。
+</details>
 
 ## 🛠️ 构建
 
@@ -255,8 +258,6 @@ cd BiliTools
 
 Windows 环境使用 `gradlew.bat assembleDebug`。
 
-### 技术栈
-
 | 分类 | 核心技术与依赖库 |
 |---|---|
 | 语言与架构 | Kotlin 2.4 · Jetpack Compose 1.12 · Material 3 1.5.0-alpha27（Expressive）· Navigation 3 |
@@ -264,6 +265,14 @@ Windows 环境使用 `gradlew.bat assembleDebug`。
 | 媒体处理 | FFmpeg-Kit 6.1（合并、转码与封装）· JAudiotagger 3（媒体标签写入）· 内置弹幕解析与 ASS 转换 |
 | 界面视觉 | Backdrop（液态玻璃模糊）· Material Color Utilities（调色板生成） |
 | 目标平台 | minSdk 29 · targetSdk 36 · compileSdk 37 |
+
+## 🙏 致谢
+
+- [btjawa/BiliTools](https://github.com/btjawa/BiliTools)：桌面端 BiliTools，本项目的功能行为参考。
+- [SocialSisterYi/bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)：哔哩哔哩 API 收集整理。
+- [Kyant0/AndroidLiquidGlass](https://github.com/Kyant0/AndroidLiquidGlass)：液态玻璃效果（Backdrop）。
+- [JamaisMagic/ffmpeg-kit-16KB](https://github.com/JamaisMagic/ffmpeg-kit-16KB)：适配 16 KB 页面大小的 FFmpegKit 构建。
+- [material-foundation/material-color-utilities](https://github.com/material-foundation/material-color-utilities)：Material 配色生成。
 
 ## ⚠️ 免责声明
 
