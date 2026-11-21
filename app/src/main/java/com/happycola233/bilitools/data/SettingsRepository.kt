@@ -192,6 +192,20 @@ enum class TopLevelFolderMode(val value: String) {
     Disabled("disabled"),
     ;
 
+    /**
+     * [itemFolderNames] 是这一批条目按顺序各自渲染出的项目文件夹名，模板为空的条目对应空串。
+     *
+     * 自动模式要保证一次下多个条目时整批收在同一个文件夹里：整批本来就共用同一个
+     * 非空项目文件夹（如番剧整季、多 P 稿件）时不再多套一层；项目文件夹模板为空时
+     * 条目会直接落进下载根目录，同样需要顶层文件夹收纳。
+     */
+    fun createsTopLevelFolder(itemFolderNames: List<String>): Boolean = when (this) {
+        Auto -> itemFolderNames.size > 1 &&
+            itemFolderNames.distinct().singleOrNull()?.isNotBlank() != true
+        Enabled -> true
+        Disabled -> false
+    }
+
     companion object {
         fun fromValue(value: String?): TopLevelFolderMode {
             return entries.firstOrNull { it.value == value } ?: Auto

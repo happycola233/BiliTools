@@ -33,7 +33,6 @@ import com.happycola233.bilitools.data.OpusRepository
 import com.happycola233.bilitools.data.RememberedDownloadPreferences
 import com.happycola233.bilitools.data.RememberedDownloadQuality
 import com.happycola233.bilitools.data.SettingsRepository
-import com.happycola233.bilitools.data.TopLevelFolderMode
 import com.happycola233.bilitools.data.model.AudioStream
 import com.happycola233.bilitools.data.model.DownloadMediaParams
 import com.happycola233.bilitools.data.buildEmbeddedMetadata
@@ -2513,17 +2512,12 @@ class ParseViewModel(
             downTimeEpochSeconds = System.currentTimeMillis() / 1000L,
             downloadRoot = settingsRepository.downloadRootRelativePath(),
         )
-        val itemFolderCount = items
-            .mapIndexed { index, item -> resolveItemFolderName(info, item, session, index + 1) }
-            .filter { it.isNotBlank() }
-            .distinct()
-            .size
-        val useTopLevelFolder = when (session.settings.topLevelFolderMode) {
-            TopLevelFolderMode.Auto -> itemFolderCount > 1
-            TopLevelFolderMode.Enabled -> true
-            TopLevelFolderMode.Disabled -> false
+        val itemFolderNames = items.mapIndexed { index, item ->
+            resolveItemFolderName(info, item, session, index + 1).trim()
         }
-        if (!useTopLevelFolder) return session
+        if (!session.settings.topLevelFolderMode.createsTopLevelFolder(itemFolderNames)) {
+            return session
+        }
 
         val entryShape = NamingShape.ofEntry(info.type)
         val context = NamingContextFactory.forEntry(
