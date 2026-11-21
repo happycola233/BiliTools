@@ -41,7 +41,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.input.KeyboardActionHandler
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.TextObfuscationMode
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -59,6 +64,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.SecureTextField
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.ToggleButton
@@ -73,7 +79,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
@@ -88,8 +93,6 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -168,23 +171,22 @@ private fun LoginScreen(
     onDismissRiskVerification: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var account by rememberSaveable { mutableStateOf("") }
-    var password by rememberSaveable { mutableStateOf("") }
-    var phone by rememberSaveable { mutableStateOf("") }
-    var smsCode by rememberSaveable { mutableStateOf("") }
+    // 修改输入即视为在纠正上一次的错误，提示随之收起
+    val clearError = { if (state.errorText != null) onDismissError() }
+    val account = rememberTextFieldState(onTextChanged = { clearError() })
+    val password = rememberTextFieldState(onTextChanged = { clearError() })
+    val phone = rememberTextFieldState(onTextChanged = { clearError() })
+    val smsCode = rememberTextFieldState(onTextChanged = { clearError() })
 
     LaunchedEffect(Unit) {
         onPrepareLogin()
     }
     LaunchedEffect(state.isRiskSmsMode, state.riskPrefillPhone) {
         val prefillPhone = state.riskPrefillPhone.orEmpty()
-        if (state.isRiskSmsMode && prefillPhone.isNotBlank() && phone != prefillPhone) {
-            phone = prefillPhone
+        if (state.isRiskSmsMode && prefillPhone.isNotBlank() && phone.text.toString() != prefillPhone) {
+            phone.setTextAndPlaceCursorAtEnd(prefillPhone)
         }
     }
-
-    // 修改输入即视为在纠正上一次的错误，提示随之收起
-    val clearError = { if (state.errorText != null) onDismissError() }
 
     SubpageScaffold(
         title = stringResource(R.string.login_title),
@@ -209,28 +211,18 @@ private fun LoginScreen(
                 password = password,
                 phone = phone,
                 smsCode = smsCode,
-                onAccountChange = {
-                    account = it
-                    clearError()
-                },
-                onPasswordChange = {
-                    password = it
-                    clearError()
-                },
-                onPhoneChange = {
-                    phone = it
-                    clearError()
-                },
-                onSmsCodeChange = {
-                    smsCode = it
-                    clearError()
-                },
                 onTabChange = onTabChange,
                 onRefreshQr = onRefreshQr,
-                onRequestPasswordLogin = { onRequestPasswordLogin(account.trim(), password) },
-                onRequestSmsCode = { onRequestSmsCode(state.selectedCountryId, phone.trim()) },
+                onRequestPasswordLogin = {
+                    onRequestPasswordLogin(account.text.trim().toString(), password.text.toString())
+                },
+                onRequestSmsCode = { onRequestSmsCode(state.selectedCountryId, phone.text.trim().toString()) },
                 onLoginWithSms = {
-                    onLoginWithSms(state.selectedCountryId, phone.trim(), smsCode.trim())
+                    onLoginWithSms(
+                        state.selectedCountryId,
+                        phone.text.trim().toString(),
+                        smsCode.text.trim().toString(),
+                    )
                 },
                 onSetCountryId = onSetCountryId,
             )
@@ -250,14 +242,10 @@ private fun LoginScreen(
 @Composable
 private fun LoginPanelCard(
     state: LoginUiState,
-    account: String,
-    password: String,
-    phone: String,
-    smsCode: String,
-    onAccountChange: (String) -> Unit,
-    onPasswordChange: (String) -> Unit,
-    onPhoneChange: (String) -> Unit,
-    onSmsCodeChange: (String) -> Unit,
+    account: TextFieldState,
+    password: TextFieldState,
+    phone: TextFieldState,
+    smsCode: TextFieldState,
     onTabChange: (LoginTab) -> Unit,
     onRefreshQr: () -> Unit,
     onRequestPasswordLogin: () -> Unit,
@@ -313,16 +301,12 @@ private fun LoginPanelCard(
                         password = password,
                         isLoggingIn = state.isLoggingIn,
                         errorText = state.errorText,
-                        onAccountChange = onAccountChange,
-                        onPasswordChange = onPasswordChange,
                         onLogin = onRequestPasswordLogin,
                     )
                     LoginTab.Sms -> SmsLoginPanel(
                         state = state,
                         phone = phone,
                         smsCode = smsCode,
-                        onPhoneChange = onPhoneChange,
-                        onSmsCodeChange = onSmsCodeChange,
                         onRequestSmsCode = onRequestSmsCode,
                         onLogin = onLoginWithSms,
                         onSetCountryId = onSetCountryId,
@@ -581,19 +565,17 @@ private fun QrStatusBadge(@DrawableRes iconRes: Int) {
 
 @Composable
 private fun PasswordLoginPanel(
-    account: String,
-    password: String,
+    account: TextFieldState,
+    password: TextFieldState,
     isLoggingIn: Boolean,
     errorText: String?,
-    onAccountChange: (String) -> Unit,
-    onPasswordChange: (String) -> Unit,
     onLogin: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val focusManager = LocalFocusManager.current
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
     val enabled = !isLoggingIn
-    val canSubmit = enabled && account.isNotBlank() && password.isNotBlank()
+    val canSubmit = enabled && account.text.isNotBlank() && password.text.isNotBlank()
     val submit = {
         focusManager.clearFocus()
         onLogin()
@@ -604,34 +586,25 @@ private fun PasswordLoginPanel(
         modifier = modifier.fillMaxWidth(),
     ) {
         LoginTextField(
-            value = account,
-            onValueChange = onAccountChange,
+            state = account,
             placeholder = stringResource(R.string.login_account_hint),
             enabled = enabled,
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Email,
                 imeAction = ImeAction.Next,
             ),
-            keyboardActions = KeyboardActions(
-                onNext = { focusManager.moveFocus(FocusDirection.Next) },
-            ),
         )
         Column {
             LoginTextField(
-                value = password,
-                onValueChange = onPasswordChange,
+                state = password,
                 placeholder = stringResource(R.string.login_password_hint),
                 enabled = enabled,
-                visualTransformation = if (passwordVisible) {
-                    VisualTransformation.None
-                } else {
-                    PasswordVisualTransformation()
-                },
+                obfuscationMode = if (passwordVisible) TextObfuscationMode.Visible else TextObfuscationMode.System,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Password,
                     imeAction = ImeAction.Done,
                 ),
-                keyboardActions = KeyboardActions(onDone = { if (canSubmit) submit() }),
+                onKeyboardAction = { if (canSubmit) submit() },
                 trailing = {
                     IconButton(
                         onClick = { passwordVisible = !passwordVisible },
@@ -664,10 +637,8 @@ private fun PasswordLoginPanel(
 @Composable
 private fun SmsLoginPanel(
     state: LoginUiState,
-    phone: String,
-    smsCode: String,
-    onPhoneChange: (String) -> Unit,
-    onSmsCodeChange: (String) -> Unit,
+    phone: TextFieldState,
+    smsCode: TextFieldState,
     onRequestSmsCode: () -> Unit,
     onLogin: () -> Unit,
     onSetCountryId: (Int) -> Unit,
@@ -678,7 +649,7 @@ private fun SmsLoginPanel(
     val lockContactInput = state.isRiskSmsMode && state.riskLockPhoneInput
     val selectedCountryLabel = state.countries.firstOrNull { it.id == state.selectedCountryId }?.label
         ?: "+${state.selectedCountryId}"
-    val canSubmit = !state.isLoggingIn && phone.isNotBlank() && smsCode.isNotBlank()
+    val canSubmit = !state.isLoggingIn && phone.text.isNotBlank() && smsCode.text.isNotBlank()
     val submit = {
         focusManager.clearFocus()
         onLogin()
@@ -689,16 +660,12 @@ private fun SmsLoginPanel(
         modifier = modifier.fillMaxWidth(),
     ) {
         LoginTextField(
-            value = phone,
-            onValueChange = onPhoneChange,
+            state = phone,
             placeholder = stringResource(R.string.login_phone_hint),
             enabled = !lockContactInput,
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Phone,
                 imeAction = ImeAction.Next,
-            ),
-            keyboardActions = KeyboardActions(
-                onNext = { focusManager.moveFocus(FocusDirection.Next) },
             ),
             leading = {
                 CountryCodePicker(
@@ -712,14 +679,13 @@ private fun SmsLoginPanel(
         )
         Column {
             LoginTextField(
-                value = smsCode,
-                onValueChange = onSmsCodeChange,
+                state = smsCode,
                 placeholder = stringResource(R.string.login_sms_code_hint),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Number,
                     imeAction = ImeAction.Done,
                 ),
-                keyboardActions = KeyboardActions(onDone = { if (canSubmit) submit() }),
+                onKeyboardAction = { if (canSubmit) submit() },
                 trailing = {
                     LoginFieldDivider()
                     SendSmsCodeButton(
@@ -745,14 +711,14 @@ private fun SmsLoginPanel(
  */
 @Composable
 private fun LoginTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
+    state: TextFieldState,
     placeholder: String,
     keyboardOptions: KeyboardOptions,
     modifier: Modifier = Modifier,
-    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    onKeyboardAction: KeyboardActionHandler? = null,
     enabled: Boolean = true,
-    visualTransformation: VisualTransformation = VisualTransformation.None,
+    // 非空时作为密码框，按该模式遮蔽输入内容
+    obfuscationMode: TextObfuscationMode? = null,
     leading: (@Composable RowScope.() -> Unit)? = null,
     trailing: (@Composable RowScope.() -> Unit)? = null,
 ) {
@@ -780,33 +746,47 @@ private fun LoginTextField(
             .border(width = 1.dp, color = borderColor, shape = shape),
     ) {
         leading?.invoke(this)
-        TextField(
-            value = value,
-            onValueChange = onValueChange,
-            placeholder = {
-                Text(
-                    text = placeholder,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            },
-            singleLine = true,
-            enabled = enabled,
-            visualTransformation = visualTransformation,
-            keyboardOptions = keyboardOptions,
-            keyboardActions = keyboardActions,
-            interactionSource = interactionSource,
-            // 底色与描边由外层统一绘制，这里只保留文字、占位提示与光标
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                disabledContainerColor = Color.Transparent,
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent,
-                disabledIndicatorColor = Color.Transparent,
-            ),
-            modifier = Modifier.weight(1f),
+        val placeholderText: @Composable () -> Unit = {
+            Text(
+                text = placeholder,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        // 底色与描边由外层统一绘制，这里只保留文字、占位提示与光标
+        val colors = TextFieldDefaults.colors(
+            focusedContainerColor = Color.Transparent,
+            unfocusedContainerColor = Color.Transparent,
+            disabledContainerColor = Color.Transparent,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+            disabledIndicatorColor = Color.Transparent,
         )
+        if (obfuscationMode == null) {
+            TextField(
+                state = state,
+                placeholder = placeholderText,
+                lineLimits = TextFieldLineLimits.SingleLine,
+                enabled = enabled,
+                keyboardOptions = keyboardOptions,
+                onKeyboardAction = onKeyboardAction,
+                interactionSource = interactionSource,
+                colors = colors,
+                modifier = Modifier.weight(1f),
+            )
+        } else {
+            SecureTextField(
+                state = state,
+                placeholder = placeholderText,
+                textObfuscationMode = obfuscationMode,
+                enabled = enabled,
+                keyboardOptions = keyboardOptions,
+                onKeyboardAction = onKeyboardAction,
+                interactionSource = interactionSource,
+                colors = colors,
+                modifier = Modifier.weight(1f),
+            )
+        }
         trailing?.invoke(this)
     }
 }

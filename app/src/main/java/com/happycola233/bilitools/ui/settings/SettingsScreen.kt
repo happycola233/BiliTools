@@ -81,6 +81,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.SliderState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -3471,11 +3472,14 @@ private fun ExpressiveSliderListItem(
         },
         supportingContent = {
             val sliderColors = AppAccents.sliderColors()
+            // 不设 steps，滑块位置完全由上面的 position 驱动
+            val sliderState = remember(valueRange) { SliderState(value = position.value, trackRange = valueRange) }
+            sliderState.value = position.value
             Column {
                 Text(description)
                 Slider(
+                    state = sliderState,
                     colors = sliderColors,
-                    value = position.value,
                     onValueChange = { raw ->
                         dragging = true
                         scope.launch { position.snapTo(raw) }
@@ -3486,7 +3490,6 @@ private fun ExpressiveSliderListItem(
                             onValueChange(snapped)
                         }
                     },
-                    valueRange = valueRange,
                     onValueChangeFinished = {
                         dragging = false
                         scope.launch { position.animateTo(snapToStep(position.value), snapSpec) }

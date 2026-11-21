@@ -198,6 +198,8 @@ class DampedDragAnimationTest {
         advance(512)
         // 基准来自 1317782 的原始实现：按住 512ms 后，以 16ms 一帧慢拖、快拖、顶住边缘、
         // 反向拖动和停留。锁定位置及速度曲线，防止调度顺序或边缘去重悄悄改变 Q 弹手感。
+        // Compose 1.14 起 VelocityTracker 在 Android 上改由系统框架计算，速度列按同一实现重新采样；
+        // 位置列未变，仍与原始实现逐帧一致。
         val trajectory = javaClass.getResourceAsStream("/liquidtabs/legacy-drag-trajectory.csv")!!
             .bufferedReader().use { it.readLines().drop(1) }
         trajectory.forEachIndexed { frame, row ->

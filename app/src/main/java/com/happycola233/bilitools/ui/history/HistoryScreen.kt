@@ -29,9 +29,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
@@ -108,6 +111,7 @@ import com.happycola233.bilitools.data.AppSettings
 import com.happycola233.bilitools.data.model.HistoryItem
 import com.happycola233.bilitools.data.model.HistoryTab
 import com.happycola233.bilitools.ui.AppDatePickerDialog
+import com.happycola233.bilitools.ui.DigitsOnlyInput
 import com.happycola233.bilitools.ui.LazyListScrollbar
 import com.happycola233.bilitools.ui.PageScrollState
 import com.happycola233.bilitools.ui.UserIdentityLabel
@@ -155,10 +159,12 @@ fun BiliToolsHistoryContent(
     BiliToolsTheme(settings = settings) {
         val context = LocalContext.current
         val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-        var pageInput by rememberSaveable { mutableStateOf(state.page.toString()) }
+        val pageInput = rememberTextFieldState(state.page.toString())
         var pageInputFocused by remember { mutableStateOf(false) }
         var filterSheetVisible by rememberSaveable { mutableStateOf(false) }
         var draftFilter by remember { mutableStateOf(state.filter) }
+        // 关键词单独编辑，打开筛选面板时从当前筛选载入，应用时再并入 draftFilter
+        val draftKeyword = rememberTextFieldState(state.filter.keyword)
         var showDateRangePicker by rememberSaveable { mutableStateOf(false) }
         var lastToastError by rememberSaveable { mutableStateOf<String?>(null) }
         val focusManager = LocalFocusManager.current
@@ -166,7 +172,7 @@ fun BiliToolsHistoryContent(
 
         LaunchedEffect(state.page, pageInputFocused) {
             if (!pageInputFocused) {
-                pageInput = state.page.toString()
+                pageInput.setTextAndPlaceCursorAtEnd(state.page.toString())
             }
         }
 
@@ -183,11 +189,11 @@ fun BiliToolsHistoryContent(
 
         fun submitPageInput(clearFocusAfterSubmit: Boolean) {
             val maxPage = state.totalPages.takeIf { it > 0 } ?: Int.MAX_VALUE
-            val targetPage = pageInput.trim().toIntOrNull()?.coerceIn(1, maxPage)
+            val targetPage = pageInput.text.toString().toIntOrNull()?.coerceIn(1, maxPage)
             if (targetPage != null) {
                 onGoToPage(targetPage)
             } else {
-                pageInput = state.page.toString()
+                pageInput.setTextAndPlaceCursorAtEnd(state.page.toString())
             }
             if (clearFocusAfterSubmit) {
                 keyboardController?.hide()
@@ -259,6 +265,7 @@ fun BiliToolsHistoryContent(
                                     FilledTonalIconButton(
                                         onClick = {
                                             draftFilter = state.filter
+                                            draftKeyword.setTextAndPlaceCursorAtEnd(state.filter.keyword)
                                             filterSheetVisible = true
                                         },
                                         enabled = !state.loading,
@@ -296,9 +303,6 @@ fun BiliToolsHistoryContent(
                                         canGoNext = state.canGoNext,
                                         loading = state.loading,
                                         pageInput = pageInput,
-                                        onPageInputChange = { input ->
-                                            pageInput = input.filter(Char::isDigit)
-                                        },
                                         onPageInputFocusChange = { focused ->
                                             if (pageInputFocused && !focused) {
                                                 submitPageInput(clearFocusAfterSubmit = false)
@@ -355,6 +359,7 @@ fun BiliToolsHistoryContent(
             if (filterSheetVisible) {
                 HistoryFilterBottomSheet(
                     draftFilter = draftFilter,
+                    keyword = draftKeyword,
                     onDraftFilterChange = { draftFilter = it },
                     onDismiss = { filterSheetVisible = false },
                     onReset = {
@@ -363,7 +368,7 @@ fun BiliToolsHistoryContent(
                         filterSheetVisible = false
                     },
                     onApply = {
-                        onApplyFilter(draftFilter)
+                        onApplyFilter(draftFilter.copy(keyword = draftKeyword.text.toString()))
                         filterSheetVisible = false
                     },
                     onPickCustomRange = { showDateRangePicker = true },
@@ -806,8 +811,7 @@ private fun HistoryPagerCard(
     canGoPrev: Boolean,
     canGoNext: Boolean,
     loading: Boolean,
-    pageInput: String,
-    onPageInputChange: (String) -> Unit,
+    pageInput: TextFieldState,
     onPageInputFocusChange: (Boolean) -> Unit,
     onSubmitPage: () -> Unit,
     onPrev: () -> Unit,
@@ -856,10 +860,10 @@ private fun HistoryPagerCard(
                     .onFocusChanged { onPageInputFocusChange(it.isFocused) },
             ) {
                 BasicTextField(
-                    value = pageInput,
-                    onValueChange = onPageInputChange,
+                    state = pageInput,
                     enabled = !loading,
-                    singleLine = true,
+                    inputTransformation = DigitsOnlyInput,
+                    lineLimits = TextFieldLineLimits.SingleLine,
                     textStyle = MaterialTheme.typography.titleSmall.copy(
                         textAlign = TextAlign.Center,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -868,12 +872,12 @@ private fun HistoryPagerCard(
                         keyboardType = KeyboardType.Number,
                         imeAction = ImeAction.Done,
                     ),
-                    keyboardActions = KeyboardActions(onDone = { onSubmitPage() }),
+                    onKeyboardAction = { onSubmitPage() },
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                     modifier = Modifier
                         .fillMaxSize()
                         .wrapContentHeight(Alignment.CenterVertically),
-                    decorationBox = { innerTextField ->
+                    decorator = { innerTextField ->
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier
@@ -1182,6 +1186,7 @@ private val HISTORY_FILTER_SECTION_SPACING = 20.dp
 @Composable
 private fun HistoryFilterBottomSheet(
     draftFilter: HistoryFilter,
+    keyword: TextFieldState,
     onDraftFilterChange: (HistoryFilter) -> Unit,
     onDismiss: () -> Unit,
     onReset: () -> Unit,
@@ -1263,10 +1268,9 @@ private fun HistoryFilterBottomSheet(
             )
 
             OutlinedTextField(
-                value = draftFilter.keyword,
-                onValueChange = { onDraftFilterChange(draftFilter.copy(keyword = it)) },
+                state = keyword,
                 label = { Text(text = stringResource(R.string.history_keyword)) },
-                singleLine = true,
+                lineLimits = TextFieldLineLimits.SingleLine,
                 modifier = Modifier.fillMaxWidth(),
             )
 

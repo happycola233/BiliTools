@@ -11,7 +11,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
@@ -125,14 +124,17 @@ internal fun Modifier.downloadsPanelSurface(
     )
 }
 
-/** 阻止悬浮控件未处理的触摸继续落到其背后的页面。 */
+/**
+ * 阻止悬浮控件未处理的触摸继续落到其背后的页面。
+ *
+ * 只需成为指针命中目标：同层兄弟节点按 Z 序命中，上层命中后背后的页面与遮罩不再收到事件。
+ * 这里不能消费事件——Final 阶段由父及子分发，父节点先消费会让内部按钮把按下与抬起之间的
+ * 移动事件判定为已被拦截，从而取消点击。
+ */
 internal fun Modifier.blockTouchThrough(): Modifier {
     return pointerInput(Unit) {
         awaitPointerEventScope {
-            while (true) {
-                val event = awaitPointerEvent(PointerEventPass.Final)
-                event.changes.forEach { it.consume() }
-            }
+            while (true) awaitPointerEvent()
         }
     }
 }

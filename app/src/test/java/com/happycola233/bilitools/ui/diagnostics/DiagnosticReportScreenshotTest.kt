@@ -3,6 +3,7 @@ package com.happycola233.bilitools.ui.diagnostics
 import android.graphics.Bitmap
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -92,7 +93,7 @@ class DiagnosticReportScreenshotTest {
                                     onFeedback = { screen = 1 }, onClearDiagnostics = { clearCalls++ }, onBack = {},
                                 )
                                 1 -> DiagnosticReportSheet(
-                                    description = "", onDescriptionChange = {}, report = report,
+                                    description = rememberTextFieldState(), report = report,
                                     expanded = expanded, busy = false, onTogglePreview = { expanded = !expanded },
                                     onShare = {}, onSave = {}, onGitHub = {}, onDismiss = {},
                                 )

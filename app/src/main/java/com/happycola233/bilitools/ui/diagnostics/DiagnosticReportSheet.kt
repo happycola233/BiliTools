@@ -9,6 +9,9 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -54,8 +57,9 @@ fun DiagnosticReportHost(focusTaskId: Long? = null, onDismiss: () -> Unit) {
     val settings by context.appContainer.settingsRepository.settings.collectAsState()
     val scope = rememberCoroutineScope()
     val uriHandler = LocalUriHandler.current
-    var description by rememberSaveable { mutableStateOf("") }
     var expanded by rememberSaveable { mutableStateOf(false) }
+    // 预览按生成时的描述拼成，描述一改就收起，避免展示过期内容
+    val description = rememberTextFieldState(onTextChanged = { expanded = false })
     var report by remember { mutableStateOf<DiagnosticReport?>(null) }
     var busy by remember { mutableStateOf(false) }
     var pendingSavePath by rememberSaveable { mutableStateOf<String?>(null) }
@@ -83,7 +87,7 @@ fun DiagnosticReportHost(focusTaskId: Long? = null, onDismiss: () -> Unit) {
         scope.launch {
             busy = true
             try {
-                val prepared = repository.prepare(description, focusTaskId)
+                val prepared = repository.prepare(description.text.toString(), focusTaskId)
                 report = prepared.report
                 when (action) {
                     "share" -> {
@@ -111,7 +115,6 @@ fun DiagnosticReportHost(focusTaskId: Long? = null, onDismiss: () -> Unit) {
     BiliToolsTheme(settings) {
         DiagnosticReportSheet(
             description = description,
-            onDescriptionChange = { description = it; expanded = false },
             report = report,
             expanded = expanded,
             busy = busy,
@@ -133,8 +136,7 @@ fun DiagnosticReportHost(focusTaskId: Long? = null, onDismiss: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun DiagnosticReportSheet(
-    description: String,
-    onDescriptionChange: (String) -> Unit,
+    description: TextFieldState,
     report: DiagnosticReport?,
     expanded: Boolean,
     busy: Boolean,
@@ -190,7 +192,7 @@ internal fun DiagnosticReportSheet(
                 )
             }
             OutlinedTextField(
-                value = description, onValueChange = onDescriptionChange,
+                state = description,
                 label = { Text(stringResource(R.string.diagnostic_problem)) },
                 placeholder = { Text(stringResource(R.string.diagnostic_problem_hint)) },
                 shape = MaterialTheme.shapes.large,
@@ -198,7 +200,8 @@ internal fun DiagnosticReportSheet(
                 colors = OutlinedTextFieldDefaults.colors(
                     unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
                 ),
-                modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 5,
+                lineLimits = TextFieldLineLimits.MultiLine(minHeightInLines = 2, maxHeightInLines = 5),
+                modifier = Modifier.fillMaxWidth(),
             )
             DiagnosticReportPreview(report, expanded, busy, onTogglePreview)
         }

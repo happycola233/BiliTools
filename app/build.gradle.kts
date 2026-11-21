@@ -216,7 +216,7 @@ android {
     namespace = "com.happycola233.bilitools"
     compileSdk {
         version = release(37) {
-            minorApiLevel = 0
+            minorApiLevel = 2
         }
     }
 

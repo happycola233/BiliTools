@@ -53,8 +53,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonGroup
@@ -160,6 +163,7 @@ import com.happycola233.bilitools.data.model.OutputType
 import com.happycola233.bilitools.data.model.StreamFormat
 import com.happycola233.bilitools.data.model.VideoCodec
 import com.happycola233.bilitools.data.model.capabilities
+import com.happycola233.bilitools.ui.DigitsOnlyInput
 import com.happycola233.bilitools.ui.FloatingControlsDefaults
 import com.happycola233.bilitools.ui.LazyListScrollbar
 import com.happycola233.bilitools.ui.LeadingIconText
@@ -168,7 +172,9 @@ import com.happycola233.bilitools.ui.TopErrorMessageHost
 import com.happycola233.bilitools.ui.UserIdentityLabel
 import com.happycola233.bilitools.ui.longPressAction
 import com.happycola233.bilitools.ui.mainBottomBarBottomInset
+import com.happycola233.bilitools.ui.digitsOnlyInput
 import com.happycola233.bilitools.ui.rememberContainedScroll
+import com.happycola233.bilitools.ui.rememberSyncedTextFieldState
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import com.happycola233.bilitools.ui.theme.AppAccents
 import com.happycola233.bilitools.ui.theme.AppSurfaces
@@ -190,6 +196,7 @@ private val optionsCardSectionSpacing = 12.dp
 private val optionsSectionItemSpacing = 8.dp
 private val compactSelectionHeight = 58.dp
 private val checkOptionMinHeight = 48.dp
+private val DanmakuHourInput = digitsOnlyInput(maxLength = 2)
 private val actionButtonLoadingIndicatorSize = 26.dp
 private val imageOptionChipHeight = 48.dp
 private val imageOptionChipCornerRadius = 12.dp
@@ -647,6 +654,7 @@ private fun SearchInputBar(
     onPaste: () -> Unit,
     onDone: () -> Unit,
 ) {
+    val inputState = rememberSyncedTextFieldState(value, onValueChange)
     val textStyle = ParseTextStyles.body.copy(color = MaterialTheme.colorScheme.onSurface)
     val hasError = !errorMessage.isNullOrBlank()
     val haptics = rememberAppHaptics()
@@ -697,12 +705,11 @@ private fun SearchInputBar(
                     modifier = Modifier.size(22.dp),
                 )
                 BasicTextField(
-                    value = value,
-                    onValueChange = onValueChange,
+                    state = inputState,
                     modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 14.dp),
-                    singleLine = true,
+                    lineLimits = TextFieldLineLimits.SingleLine,
                     textStyle = textStyle,
                     // BasicTextField 不写 cursorBrush 会回落到 Compose 默认的纯黑，深色模式下看不见
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
@@ -710,9 +717,9 @@ private fun SearchInputBar(
                         keyboardType = KeyboardType.Uri,
                         imeAction = ImeAction.Done,
                     ),
-                    keyboardActions = KeyboardActions(onDone = { onDone() }),
-                    decorationBox = { innerTextField ->
-                        if (value.isBlank()) {
+                    onKeyboardAction = { onDone() },
+                    decorator = { innerTextField ->
+                        if (inputState.text.isBlank()) {
                             Text(
                                 text = stringResource(R.string.parse_hint),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -2045,9 +2052,9 @@ private fun PageNavigator(
     onLoadPage: (Int) -> Unit,
 ) {
     val haptics = rememberAppHaptics()
-    var pageText by rememberSaveable { mutableStateOf(pageIndex.toString()) }
+    val pageText = rememberTextFieldState(pageIndex.toString())
     LaunchedEffect(pageIndex) {
-        pageText = pageIndex.toString()
+        pageText.setTextAndPlaceCursorAtEnd(pageIndex.toString())
     }
     val pageSummary = if (totalPages != null && totalPages > 0) {
         stringResource(R.string.parse_page_status_with_pages, pageIndex, totalPages)
@@ -2071,11 +2078,10 @@ private fun PageNavigator(
             Text(stringResource(R.string.parse_page_prev))
         }
         PageNumberField(
-            value = pageText,
+            state = pageText,
             enabled = !loading,
-            onValueChange = { pageText = it.filter(Char::isDigit) },
             onCommit = {
-                pageText.toIntOrNull()?.let { page ->
+                pageText.text.toString().toIntOrNull()?.let { page ->
                     haptics.confirm()
                     onLoadPage(page)
                 }
@@ -2103,9 +2109,8 @@ private fun PageNavigator(
 
 @Composable
 private fun PageNumberField(
-    value: String,
+    state: TextFieldState,
     enabled: Boolean,
-    onValueChange: (String) -> Unit,
     onCommit: () -> Unit,
 ) {
     val fieldLabel = stringResource(R.string.parse_page_nav_label)
@@ -2123,13 +2128,13 @@ private fun PageNumberField(
     ) {
         Box(contentAlignment = Alignment.Center) {
             BasicTextField(
-                value = value,
-                onValueChange = onValueChange,
+                state = state,
                 modifier = Modifier
                     .fillMaxWidth()
                     .semantics { contentDescription = fieldLabel },
                 enabled = enabled,
-                singleLine = true,
+                inputTransformation = DigitsOnlyInput,
+                lineLimits = TextFieldLineLimits.SingleLine,
                 textStyle = ParseTextStyles.body.copy(
                     color = textColor,
                     textAlign = TextAlign.Center,
@@ -2139,7 +2144,7 @@ private fun PageNumberField(
                     keyboardType = KeyboardType.Number,
                     imeAction = ImeAction.Done,
                 ),
-                keyboardActions = KeyboardActions(onDone = { onCommit() }),
+                onKeyboardAction = { onCommit() },
             )
         }
     }
@@ -2573,23 +2578,20 @@ private fun ParseOptionsCard(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             OutlinedTextField(
-                                value = state.danmakuDate,
-                                onValueChange = onDanmakuDateChange,
+                                state = rememberSyncedTextFieldState(state.danmakuDate, onDanmakuDateChange),
                                 modifier = Modifier.weight(1f),
                                 label = { Text(stringResource(R.string.parse_danmaku_date)) },
                                 enabled = controlsEnabled && state.danmakuHistoryEnabled,
-                                singleLine = true,
+                                lineLimits = TextFieldLineLimits.SingleLine,
                                 shape = RoundedCornerShape(controlCornerRadius),
                             )
                             OutlinedTextField(
-                                value = state.danmakuHour,
-                                onValueChange = { value ->
-                                    onDanmakuHourChange(value.filter(Char::isDigit).take(2))
-                                },
+                                state = rememberSyncedTextFieldState(state.danmakuHour, onDanmakuHourChange),
                                 modifier = Modifier.weight(1f),
                                 label = { Text(stringResource(R.string.parse_danmaku_hour)) },
                                 enabled = controlsEnabled && state.danmakuHistoryEnabled,
-                                singleLine = true,
+                                inputTransformation = DanmakuHourInput,
+                                lineLimits = TextFieldLineLimits.SingleLine,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 shape = RoundedCornerShape(controlCornerRadius),
                             )

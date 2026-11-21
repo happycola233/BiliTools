@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularWavyProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.WavyProgressIndicatorDefaults
 import androidx.compose.runtime.getValue
@@ -17,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.MotionDurationScale
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.ComposeUiTestConfig
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -38,12 +38,11 @@ import org.robolectric.annotation.GraphicsMode
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "zh-rCN-w411dp-h891dp")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 class DownloadsGroupProgressIndicatorTest {
     private val motionDurationScale = object : MotionDurationScale {
         override var scaleFactor = 1f
     }
-    @get:Rule val compose = createComposeRule(effectContext = motionDurationScale)
+    @get:Rule val compose = createComposeRule(ComposeUiTestConfig(effectContext = motionDurationScale))
 
     @Test fun lightDeterminatePauseKeepsWavePhase() = verifyPauseResume(AppThemeMode.Light, resolvedCount = 2)
     @Test fun darkDeterminatePauseKeepsWavePhase() = verifyPauseResume(AppThemeMode.Dark, resolvedCount = 2)

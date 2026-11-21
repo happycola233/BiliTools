@@ -248,7 +248,7 @@ BiliTools 提供十三套原创 Material 3 配色，可在「设置 → 外观�
 
 ## 🛠️ 构建
 
-需要 JDK 17 或以上版本与 Android SDK Platform 37，依赖由 Gradle 自动解析。
+需要 JDK 17 或以上版本与 Android SDK Platform 37.2，依赖由 Gradle 自动解析。
 
 ```bash
 git clone https://github.com/happycola233/BiliTools.git
@@ -264,7 +264,7 @@ Windows 环境使用 `gradlew.bat assembleDebug`。
 | 网络与数据 | OkHttp 5 · Moshi · Coil 3 |
 | 媒体处理 | FFmpeg-Kit 6.1（合并、转码与封装）· JAudiotagger 3（媒体标签写入）· 内置弹幕解析与 ASS 转换 |
 | 界面视觉 | Backdrop（液态玻璃模糊）· Material Color Utilities（调色板生成） |
-| 目标平台 | minSdk 29 · targetSdk 36 · compileSdk 37 |
+| 目标平台 | minSdk 29 · targetSdk 36 · compileSdk 37.2 |
 
 ## 🙏 致谢
 

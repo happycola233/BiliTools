@@ -268,7 +268,7 @@ The generator, regression checks for contrast, layer separation, and role consis
 
 ## 🛠️ Building
 
-Requires JDK 17 or later and Android SDK Platform 37. Gradle resolves dependencies automatically.
+Requires JDK 17 or later and Android SDK Platform 37.2. Gradle resolves dependencies automatically.
 
 ```bash
 git clone https://github.com/happycola233/BiliTools.git
@@ -284,7 +284,7 @@ On Windows, use `gradlew.bat assembleDebug`.
 | Networking and data | OkHttp 5 · Moshi · Coil 3 |
 | Media processing | FFmpeg-Kit 6.1 for merging, transcoding, and muxing · JAudiotagger 3 for media tags · Built-in danmaku parsing and ASS conversion |
 | Interface effects | Backdrop for liquid glass blur · Material Color Utilities for palette generation |
-| Target platform | minSdk 29 · targetSdk 36 · compileSdk 37 |
+| Target platform | minSdk 29 · targetSdk 36 · compileSdk 37.2 |
 
 ## 🙏 Acknowledgments
 
