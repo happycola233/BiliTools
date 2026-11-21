@@ -77,6 +77,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -88,6 +89,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -588,6 +590,7 @@ private fun PasswordLoginPanel(
         LoginTextField(
             state = account,
             placeholder = stringResource(R.string.login_account_hint),
+            contentType = ContentType.Username,
             enabled = enabled,
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Email,
@@ -598,6 +601,7 @@ private fun PasswordLoginPanel(
             LoginTextField(
                 state = password,
                 placeholder = stringResource(R.string.login_password_hint),
+                contentType = ContentType.Password,
                 enabled = enabled,
                 obfuscationMode = if (passwordVisible) TextObfuscationMode.Visible else TextObfuscationMode.System,
                 keyboardOptions = KeyboardOptions(
@@ -662,6 +666,8 @@ private fun SmsLoginPanel(
         LoginTextField(
             state = phone,
             placeholder = stringResource(R.string.login_phone_hint),
+            // 区号由左侧选择器单独提供，框内只填不带区号的本地号码
+            contentType = ContentType.PhoneNumberNational,
             enabled = !lockContactInput,
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Phone,
@@ -681,6 +687,7 @@ private fun SmsLoginPanel(
             LoginTextField(
                 state = smsCode,
                 placeholder = stringResource(R.string.login_sms_code_hint),
+                contentType = ContentType.SmsOtpCode,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Number,
                     imeAction = ImeAction.Done,
@@ -708,11 +715,15 @@ private fun SmsLoginPanel(
 /**
  * 登录表单输入框：卡片内嵌层底色加 `outlineVariant` 细描边，与解析页链接输入框是同一套样式；
  * 聚焦时描边换成主色。区号选择、获取验证码这类附属操作放进框内两端，用细分隔线与输入区隔开。
+ *
+ * [contentType] 告诉系统自动填充服务这个框该填什么：键盘类型只影响输入法，自动填充服务
+ * 只认这个标记，缺了它就不会为该框提供账号密码或短信验证码。
  */
 @Composable
 private fun LoginTextField(
     state: TextFieldState,
     placeholder: String,
+    contentType: ContentType,
     keyboardOptions: KeyboardOptions,
     modifier: Modifier = Modifier,
     onKeyboardAction: KeyboardActionHandler? = null,
@@ -762,6 +773,9 @@ private fun LoginTextField(
             unfocusedIndicatorColor = Color.Transparent,
             disabledIndicatorColor = Color.Transparent,
         )
+        val fieldModifier = Modifier
+            .weight(1f)
+            .semantics { this.contentType = contentType }
         if (obfuscationMode == null) {
             TextField(
                 state = state,
@@ -772,7 +786,7 @@ private fun LoginTextField(
                 onKeyboardAction = onKeyboardAction,
                 interactionSource = interactionSource,
                 colors = colors,
-                modifier = Modifier.weight(1f),
+                modifier = fieldModifier,
             )
         } else {
             SecureTextField(
@@ -784,7 +798,7 @@ private fun LoginTextField(
                 onKeyboardAction = onKeyboardAction,
                 interactionSource = interactionSource,
                 colors = colors,
-                modifier = Modifier.weight(1f),
+                modifier = fieldModifier,
             )
         }
         trailing?.invoke(this)
