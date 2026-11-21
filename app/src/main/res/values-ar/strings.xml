@@ -402,6 +402,8 @@
     <string name="parse_clear_all">مسح</string>
     <string name="parse_notice_download_started">بدأ التنزيل</string>
     <string name="parse_notice_download_started_partial">بدأ التنزيل. المنشورات غير المتاحة: %1$d</string>
+    <string name="parse_download_adding">جارٍ إضافة التنزيلات</string>
+    <string name="parse_download_adding_progress">جارٍ الإضافة %1$d/%2$d</string>
     <string name="parse_mobile_confirm_title">هل تريد التنزيل عبر بيانات الهاتف المحمول؟</string>
     <string name="parse_mobile_confirm_message">أنت تستخدم بيانات الجوال. قد يؤدي التنزيل إلى فرض رسوم على البيانات. هل تريد المتابعة؟</string>
     <string name="parse_mobile_confirm_action">تنزيل</string>

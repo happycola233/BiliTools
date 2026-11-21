@@ -382,6 +382,8 @@
     <string name="parse_clear_all">Kosongkan</string>
     <string name="parse_notice_download_started">Pengunduhan dimulai</string>
     <string name="parse_notice_download_started_partial">Pengunduhan dimulai. Postingan yang tidak tersedia: %1$d</string>
+    <string name="parse_download_adding">Menambahkan unduhan</string>
+    <string name="parse_download_adding_progress">Menambahkan %1$d/%2$d</string>
     <string name="parse_mobile_confirm_title">Unduh melalui data seluler?</string>
     <string name="parse_mobile_confirm_message">Anda menggunakan data seluler. Pengunduhan mungkin dikenakan biaya data. Lanjutkan?</string>
     <string name="parse_mobile_confirm_action">Unduh</string>

@@ -282,6 +282,15 @@ data class DownloadEnqueueResult(
     val failedItems: Int = 0,
 )
 
+/**
+ * 点击下载后逐个解析取流并加入下载任务的进度。首个任务加入后下载即已开始，其余条目在后台继续添加。
+ * [totalCount] 在展开合集分 P 之前未知。
+ */
+data class DownloadSubmissionProgress(
+    val addedCount: Int = 0,
+    val totalCount: Int? = null,
+)
+
 internal data class DefaultParseContentSelection(
     val outputType: OutputType?,
     val opusContentEnabled: Boolean,
@@ -327,7 +336,7 @@ data class ParseUiState(
     val loading: Boolean = false,
     val streamLoading: Boolean = false,
     val collectionModeLoading: Boolean = false,
-    val downloadStarting: Boolean = false,
+    val downloadSubmission: DownloadSubmissionProgress? = null,
     val subtitleCopying: Boolean = false,
     val aiSummaryCopying: Boolean = false,
     val error: String? = null,
@@ -410,6 +419,9 @@ data class ParseUiState(
 
     val isMultiSelect: Boolean
         get() = selectedItemIndices.size > 1
+
+    val downloadSubmitting: Boolean
+        get() = downloadSubmission != null
 
     val opusImagesEffectivelyEnabled: Boolean
         get() = opusImagesEnabled && (isMultiSelect || opusImagesAvailable != false)
@@ -1440,7 +1452,7 @@ class ParseViewModel(
         viewModelScope.launch {
             _state.update {
                 it.copy(
-                    downloadStarting = true,
+                    downloadSubmission = DownloadSubmissionProgress(),
                     error = null,
                     notice = null,
                 )
@@ -1448,8 +1460,9 @@ class ParseViewModel(
             val enqueueResult = runCatching {
                 withContext(Dispatchers.IO) {
                     downloadRepository.ensureLoaded()
-                    downloadRepository.withNotificationSubmission {
+                    downloadRepository.submitDownloads {
                         val targets = buildDownloadTargets(snapshot, info, selectedIndices)
+                        updateDownloadSubmission { it.copy(totalCount = targets.size) }
                         var queuedGroups = 0
                         var failedItems = 0
                         var firstFailure: Throwable? = null
@@ -1473,11 +1486,13 @@ class ParseViewModel(
                             )
                         }
                         if (preparedTargets.isEmpty()) {
-                            return@withNotificationSubmission DownloadEnqueueResult(
+                            return@submitDownloads DownloadEnqueueResult(
                                 queuedGroups = 0,
                                 failedItems = failedItems,
                             ) to firstFailure
                         }
+                        // 读取失败的图文不会加入，进度只计实际要添加的条目。
+                        updateDownloadSubmission { it.copy(totalCount = preparedTargets.size) }
                         val namingSession = createNamingSession(
                             info = info,
                             items = preparedTargets.map(PreparedDownloadTarget::item),
@@ -1757,6 +1772,20 @@ class ParseViewModel(
                                 includeCollectionNfo = !sharesFolderWithEarlierItem,
                             )
                             queuedGroups += 1
+                            // 首个条目加入后下载就已开始，立即提示，不等其余条目全部加入。
+                            // 读取失败的图文在此之前已全部确定，提示中的数量就是最终结果。
+                            val startedNotice = when {
+                                queuedGroups > 1 -> null
+                                failedItems > 0 ->
+                                    strings.get(R.string.parse_notice_download_started_partial, failedItems)
+                                else -> strings.get(R.string.parse_notice_download_started)
+                            }
+                            _state.update { state ->
+                                state.copy(
+                                    downloadSubmission = state.downloadSubmission?.copy(addedCount = queuedGroups),
+                                    notice = startedNotice ?: state.notice,
+                                )
+                            }
                         }
                         DownloadEnqueueResult(queuedGroups = queuedGroups, failedItems = failedItems) to firstFailure
                     }
@@ -1765,17 +1794,13 @@ class ParseViewModel(
             enqueueResult.fold(
                 onSuccess = { (result, firstFailure) ->
                     if (result.queuedGroups > 0) {
-                        val notice = if (result.failedItems > 0) {
-                            strings.get(R.string.parse_notice_download_started_partial, result.failedItems)
-                        } else {
-                            strings.get(R.string.parse_notice_download_started)
-                        }
-                        _state.update { it.copy(downloadStarting = false, notice = notice, error = null) }
+                        // 取流失败等逐条错误已在添加过程中提示，这里不清除。
+                        _state.update { it.copy(downloadSubmission = null) }
                         eventChannel.send(ParseEvent.DownloadQueued(result))
                     } else {
                         _state.update {
                             it.copy(
-                                downloadStarting = false,
+                                downloadSubmission = null,
                                 error = firstFailure?.let(::mapError)
                                     ?: strings.get(R.string.parse_error_failed),
                             )
@@ -1785,10 +1810,14 @@ class ParseViewModel(
                 onFailure = { error ->
                     if (error is CancellationException) throw error
                     logFailure("enqueue", error)
-                    _state.update { it.copy(downloadStarting = false, error = mapError(error)) }
+                    _state.update { it.copy(downloadSubmission = null, error = mapError(error)) }
                 },
             )
         }
+    }
+
+    private fun updateDownloadSubmission(transform: (DownloadSubmissionProgress) -> DownloadSubmissionProgress) {
+        _state.update { state -> state.copy(downloadSubmission = state.downloadSubmission?.let(transform)) }
     }
 
     private suspend fun resolveSelectedOpusDocuments(

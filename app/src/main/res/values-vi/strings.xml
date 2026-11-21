@@ -382,6 +382,8 @@
     <string name="parse_clear_all">Xóa hết</string>
     <string name="parse_notice_download_started">Đã bắt đầu tải xuống</string>
     <string name="parse_notice_download_started_partial">Đã bắt đầu tải xuống. Bài đăng không có sẵn: %1$d</string>
+    <string name="parse_download_adding">Đang thêm tác vụ tải xuống</string>
+    <string name="parse_download_adding_progress">Đang thêm %1$d/%2$d</string>
     <string name="parse_mobile_confirm_title">Tải xuống qua dữ liệu di động?</string>
     <string name="parse_mobile_confirm_message">Bạn đang sử dụng dữ liệu di động. Việc tải xuống có thể phải chịu phí dữ liệu. Tiếp tục?</string>
     <string name="parse_mobile_confirm_action">Tải xuống</string>

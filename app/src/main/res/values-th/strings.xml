@@ -382,6 +382,8 @@
     <string name="parse_clear_all">ล้าง</string>
     <string name="parse_notice_download_started">ดาวน์โหลดเริ่มต้นแล้ว</string>
     <string name="parse_notice_download_started_partial">เริ่มต้นการดาวน์โหลด โพสต์ที่ไม่พร้อมใช้งาน: %1$d</string>
+    <string name="parse_download_adding">กำลังเพิ่มรายการดาวน์โหลด</string>
+    <string name="parse_download_adding_progress">กำลังเพิ่ม %1$d/%2$d</string>
     <string name="parse_mobile_confirm_title">ดาวน์โหลดผ่านข้อมูลมือถือหรือไม่</string>
     <string name="parse_mobile_confirm_message">คุณกำลังใช้ข้อมูลมือถือ การดาวน์โหลดอาจมีค่าบริการข้อมูล ดำเนินการต่อ?</string>
     <string name="parse_mobile_confirm_action">ดาวน์โหลด</string>

@@ -387,6 +387,8 @@
     <string name="parse_clear_all">Borrar</string>
     <string name="parse_notice_download_started">Descarga iniciada</string>
     <string name="parse_notice_download_started_partial">Descarga iniciada. Publicaciones no disponibles: %1$d</string>
+    <string name="parse_download_adding">Añadiendo descargas</string>
+    <string name="parse_download_adding_progress">Añadiendo %1$d/%2$d</string>
     <string name="parse_mobile_confirm_title">¿Descargar con datos móviles?</string>
     <string name="parse_mobile_confirm_message">Está utilizando datos móviles. La descarga puede generar cargos por datos. ¿Continuar?</string>
     <string name="parse_mobile_confirm_action">Descargar</string>

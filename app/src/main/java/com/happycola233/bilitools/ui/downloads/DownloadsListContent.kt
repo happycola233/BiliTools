@@ -328,7 +328,9 @@ private fun buildDownloadsSections(
     groups: List<DownloadGroup>,
     collapsedSections: Set<DownloadSectionType>,
 ): List<DownloadsSectionUi> {
-    val (completedGroups, downloadingGroups) = groups.partition { it.isCompleted }
+    val (completed, downloading) = groups.partition { it.isCompleted }
+    val downloadingGroups = DownloadSectionType.Downloading.arrange(downloading)
+    val completedGroups = DownloadSectionType.Downloaded.arrange(completed)
     val totalSpeed = downloadingGroups.sumOf { group ->
         group.tasks.sumOf { task ->
             if (task.status == DownloadStatus.Running) task.speedBytesPerSec else 0L

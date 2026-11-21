@@ -382,6 +382,8 @@
     <string name="parse_clear_all">クリア</string>
     <string name="parse_notice_download_started">ダウンロードが開始されました</string>
     <string name="parse_notice_download_started_partial">ダウンロードを開始しました。%1$d 件の投稿は一時的に読み込めません</string>
+    <string name="parse_download_adding">ダウンロードを追加中</string>
+    <string name="parse_download_adding_progress">追加中 %1$d/%2$d</string>
     <string name="parse_mobile_confirm_title">モバイルデータ経由でダウンロードしますか？</string>
     <string name="parse_mobile_confirm_message">モバイルデータ通信を使用中です。ダウンロードを続けると通信料が発生する場合があります。続行しますか？</string>
     <string name="parse_mobile_confirm_action">ダウンロード</string>

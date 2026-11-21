@@ -3,6 +3,7 @@ package com.happycola233.bilitools.ui.parse
 import android.content.Intent
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.animateColorAsState
@@ -67,11 +68,12 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -399,11 +401,12 @@ fun ParseScreenContent(
     val downloadEnabled = !state.loading &&
         !state.collectionModeLoading &&
         !state.streamLoading &&
-        !state.downloadStarting &&
+        !state.downloadSubmitting &&
         !state.awaitingSubtitleCatalog &&
         hasSelection &&
         streamReady
-    val quickActionVisible = info != null && hasSelection
+    // 添加期间即使取消勾选或解析了新链接，也要继续显示进度直到添加结束。
+    val quickActionVisible = (info != null && hasSelection) || state.downloadSubmitting
     // 页面全出血绘制，内容从主界面底栏后方滚过，滚动与悬浮控件需预留底栏净空；外部下载入口无底栏
     val mainBarBottomInset = if (externalMode) 0.dp else mainBottomBarBottomInset()
 
@@ -529,6 +532,7 @@ fun ParseScreenContent(
         ) {
             QuickActionFab(
                 enabled = downloadEnabled,
+                submission = state.downloadSubmission,
                 bottomPadding = if (externalMode) {
                     FloatingControlsDefaults.ExternalEntryBottomPadding
                 } else {
@@ -2289,7 +2293,7 @@ private fun ParseOptionsCard(
     val copyEnabledBase = state.selectedItemIndices.isNotEmpty() &&
         controlsEnabled &&
         !state.streamLoading &&
-        !state.downloadStarting &&
+        !state.downloadSubmitting &&
         !state.subtitleCopying &&
         !state.aiSummaryCopying
     val collectionAvailable = !info.nfo.showTitle.isNullOrBlank() &&
@@ -3162,9 +3166,15 @@ private fun ExpressiveActionButton(
     }
 }
 
+/**
+ * 解析页的下载按钮。点击后立刻转为加载动画，表示正在逐个加入下载任务；多个条目时向左展开显示
+ * 添加进度。全部加入前不响应点击，避免重复添加。
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun QuickActionFab(
     enabled: Boolean,
+    submission: DownloadSubmissionProgress?,
     bottomPadding: Dp,
     onDownload: () -> Unit,
 ) {
@@ -3175,12 +3185,59 @@ private fun QuickActionFab(
         targetValue = if (pressed) 0.88f else 1f,
         animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
     )
-    FloatingActionButton(
+    val totalCount = submission?.totalCount
+    // 显示正在添加第几项：首项加入前即为第 1 项，最后一项加入后按钮随即收起。
+    val progressText = if (submission != null && totalCount != null && totalCount > 1) {
+        stringResource(
+            R.string.parse_download_adding_progress,
+            (submission.addedCount + 1).coerceAtMost(totalCount),
+            totalCount,
+        )
+    } else {
+        null
+    }
+    // 收起动画播放时进度已清空，沿用最后一次的文案，让文字随按钮一起收起而不是先消失。
+    val lastProgressText = remember { arrayOf("") }
+    if (progressText != null) lastProgressText[0] = progressText
+    val addingDescription = progressText ?: stringResource(R.string.parse_download_adding)
+
+    ExtendedFloatingActionButton(
+        text = {
+            Text(
+                text = lastProgressText[0],
+                style = LocalTextStyle.current.copy(fontFeatureSettings = "tnum"),
+                maxLines = 1,
+            )
+        },
+        icon = {
+            Crossfade(
+                targetState = submission != null,
+                animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
+                label = "parseDownloadFabIcon",
+            ) { adding ->
+                if (adding) {
+                    LoadingIndicator(
+                        modifier = Modifier
+                            .size(actionButtonLoadingIndicatorSize)
+                            // 展开后的文字不参与无障碍朗读，进度由加载动画播报。
+                            .semantics { contentDescription = addingDescription },
+                        color = AppAccents.onFloatingActionContainer,
+                    )
+                } else {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_save_alt_24),
+                        contentDescription = stringResource(R.string.parse_download),
+                        modifier = Modifier.graphicsLayer(alpha = if (enabled) 1f else 0.42f),
+                    )
+                }
+            }
+        },
         onClick = {
-            if (!enabled) return@FloatingActionButton
+            if (!enabled) return@ExtendedFloatingActionButton
             haptics.confirm()
             onDownload()
         },
+        expanded = progressText != null,
         modifier = Modifier
             .padding(
                 end = FloatingControlsDefaults.EdgePadding,
@@ -3190,17 +3247,11 @@ private fun QuickActionFab(
                 scaleX = scale
                 scaleY = scale
             },
+        shape = FloatingActionButtonDefaults.extendedFabShape,
         containerColor = AppAccents.floatingActionContainer,
         contentColor = AppAccents.onFloatingActionContainer,
-        shape = FloatingActionButtonDefaults.shape,
         interactionSource = interactionSource,
-    ) {
-        Icon(
-            painter = painterResource(R.drawable.ic_save_alt_24),
-            contentDescription = stringResource(R.string.parse_download),
-            modifier = Modifier.graphicsLayer(alpha = if (enabled) 1f else 0.42f),
-        )
-    }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

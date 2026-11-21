@@ -54,9 +54,10 @@ class DownloadsTopBarScrollTest {
         verifySwipeHold(AppThemeMode.Dark, nearListStart = true)
 
     private fun verifySwipeHold(mode: AppThemeMode, nearListStart: Boolean = false) {
+        // 已完成分区最近的在上方：1 号组最新，列表自上而下为 1..40。
         val groups = (1L..40L).map { id ->
             DownloadGroup(
-                id = id, title = "下载组 $id", subtitle = null, createdAt = id,
+                id = id, title = "下载组 $id", subtitle = null, createdAt = 100 - id,
                 tasks = listOf(DownloadItem(
                     id = id, groupId = id, taskType = DownloadTaskType.Video,
                     title = "视频", fileName = "video.mp4", url = "",

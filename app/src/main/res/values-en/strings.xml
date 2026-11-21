@@ -386,6 +386,8 @@
     <string name="parse_clear_all">Clear</string>
     <string name="parse_notice_download_started">Download started</string>
     <string name="parse_notice_download_started_partial">Download started. Unavailable posts: %1$d</string>
+    <string name="parse_download_adding">Adding downloads</string>
+    <string name="parse_download_adding_progress">Adding %1$d/%2$d</string>
     <string name="parse_mobile_confirm_title">Download over mobile data?</string>
     <string name="parse_mobile_confirm_message">You are using mobile data. Downloading may incur data charges. Continue?</string>
     <string name="parse_mobile_confirm_action">Download</string>

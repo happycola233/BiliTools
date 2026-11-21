@@ -387,6 +387,8 @@
     <string name="parse_clear_all">Limpar</string>
     <string name="parse_notice_download_started">Download iniciado</string>
     <string name="parse_notice_download_started_partial">Download iniciado. Postagens indisponíveis: %1$d</string>
+    <string name="parse_download_adding">Adicionando downloads</string>
+    <string name="parse_download_adding_progress">Adicionando %1$d/%2$d</string>
     <string name="parse_mobile_confirm_title">Baixar por dados móveis?</string>
     <string name="parse_mobile_confirm_message">Você está usando dados móveis. O download pode incorrer em cobrança de dados. Continuar?</string>
     <string name="parse_mobile_confirm_action">Baixar</string>

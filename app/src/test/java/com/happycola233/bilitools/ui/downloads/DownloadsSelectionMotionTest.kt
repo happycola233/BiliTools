@@ -69,9 +69,10 @@ class DownloadsSelectionMotionTest {
         mode: AppThemeMode, fontScale: Float = 1f, wrapping: Boolean = false,
         direction: LayoutDirection = LayoutDirection.Ltr,
     ) {
+        // 下载中分区按加入先后排列：1 号组最早加入，列表自上而下为 1..3。
         val groups = (1L..3L).map { id ->
             DownloadGroup(
-                id = id, title = if (wrapping) "测".repeat(12) + id else "下载组 $id", subtitle = null, bvid = null, createdAt = 100 - id,
+                id = id, title = if (wrapping) "测".repeat(12) + id else "下载组 $id", subtitle = null, bvid = null, createdAt = id,
                 tasks = listOf(DownloadItem(
                     id = id, groupId = id, taskType = DownloadTaskType.Video, title = "视频", fileName = "video.mp4", url = "",
                     status = DownloadStatus.Paused, progress = 40, userPaused = true,

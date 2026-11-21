@@ -382,6 +382,8 @@
     <string name="parse_clear_all">清空</string>
     <string name="parse_notice_download_started">已開始下載</string>
     <string name="parse_notice_download_started_partial">已開始下載，%1$d 條圖文暫時無法讀取</string>
+    <string name="parse_download_adding">正在新增下載任務</string>
+    <string name="parse_download_adding_progress">正在新增 %1$d/%2$d</string>
     <string name="parse_mobile_confirm_title">當前使用行動網路</string>
     <string name="parse_mobile_confirm_message">你正在使用行動網路，繼續下載可能產生流量費用。是否繼續？</string>
     <string name="parse_mobile_confirm_action">繼續下載</string>

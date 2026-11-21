@@ -399,6 +399,8 @@
     <string name="parse_clear_all">清空</string>
     <string name="parse_notice_download_started">已开始下载</string>
     <string name="parse_notice_download_started_partial">已开始下载，%1$d 条图文暂时无法读取</string>
+    <string name="parse_download_adding">正在添加下载任务</string>
+    <string name="parse_download_adding_progress">正在添加 %1$d/%2$d</string>
     <string name="parse_mobile_confirm_title">当前使用移动网络</string>
     <string name="parse_mobile_confirm_message">你正在使用移动网络，继续下载可能产生流量费用。是否继续？</string>
     <string name="parse_mobile_confirm_action">继续下载</string>

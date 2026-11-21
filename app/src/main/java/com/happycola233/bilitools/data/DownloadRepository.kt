@@ -52,6 +52,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -194,18 +195,23 @@ class DownloadRepository(
         }
     }
 
-    /** 提交期间仍可能创建字幕等子任务，不能在中间的空队列上提前报告完成。 */
-    suspend fun <T> withNotificationSubmission(block: suspend () -> T): T {
+    /**
+     * 执行一次批量添加下载任务。提交期间仍可能创建字幕等子任务，不能在中间的空队列上提前报告完成。
+     *
+     * 提交在仓库自己的作用域里执行：发起页面中途被销毁（如 Android 11 及以下在主界面按返回键退出）时，
+     * 只是调用方不再等待结果，已经开始的添加仍会全部完成，不会只加入前几项。
+     */
+    suspend fun <T> submitDownloads(block: suspend () -> T): T = scope.async {
         synchronized(lock) { notificationSession.beginSubmission() }
         updateGroups()
-        return try {
+        try {
             block()
         } finally {
             synchronized(lock) { notificationSession.endSubmission() }
             updateGroups()
             schedulePersist()
         }
-    }
+    }.await()
 
     internal fun markNotificationCompletionReported(state: DownloadNotificationState) {
         synchronized(lock) {

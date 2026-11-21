@@ -4,7 +4,12 @@ import com.happycola233.bilitools.BiliToolsApp
 import com.happycola233.bilitools.data.model.DownloadItem
 import com.happycola233.bilitools.data.model.DownloadStatus
 import com.happycola233.bilitools.data.model.DownloadTaskType
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -101,12 +106,30 @@ class DownloadNotificationRepositoryTest {
 
     @Test fun failedSubmissionAlwaysExitsPreparingState() = runBlocking {
         runCatching {
-            repository.withNotificationSubmission<Unit> {
+            repository.submitDownloads<Unit> {
                 assertTrue(repository.notificationState.value.isPreparing)
                 error("submission failed")
             }
         }
         assertFalse(repository.notificationState.value.isPreparing)
         assertFalse(repository.notificationState.value.hasForegroundWork)
+    }
+
+    @Test fun submissionFinishesAfterCallerIsCancelled() = runBlocking {
+        val release = CompletableDeferred<Unit>()
+        val finished = CompletableDeferred<Unit>()
+        // 模拟解析页在添加途中被销毁：调用方被取消，已经开始的添加仍要全部完成。
+        val caller = launch {
+            repository.submitDownloads {
+                release.await()
+                finished.complete(Unit)
+            }
+        }
+        withTimeout(5_000) { repository.notificationState.first { it.isPreparing } }
+        caller.cancelAndJoin()
+        release.complete(Unit)
+        withTimeout(5_000) { finished.await() }
+        withTimeout(5_000) { repository.notificationState.first { !it.isPreparing } }
+        Unit
     }
 }
