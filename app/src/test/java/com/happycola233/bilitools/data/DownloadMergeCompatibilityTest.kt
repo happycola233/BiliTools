@@ -63,7 +63,7 @@ class DownloadMergeCompatibilityTest {
         val cookies = CookieStore(context)
         val bili = BiliHttpClient(cookies)
         val signer = WbiSigner(bili)
-        repository = DownloadRepository(context, cookies, settings,
+        repository = DownloadRepository(context, settings,
             MediaRepository(bili, signer, cookies, OpusRepository(bili, cookies)),
             ExtrasRepository(bili, signer), ExportRepository(context, settings))
         // 调度暂停，仅手动调用真实的重试准备与合并保存，避免任何网络请求。

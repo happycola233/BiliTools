@@ -105,7 +105,7 @@ class DownloadOutputSaveTest {
             val exports = ExportRepository(context, settings)
             exports.outputStorage.adoptLegacy(provider.uri(1).toString(), "Download/BiliTools", "Download/BiliTools", "clip.m4a", "old")
             repository = DownloadRepository(
-                context, cookies, settings, MediaRepository(bili, signer, cookies, OpusRepository(bili, cookies)),
+                context, settings, MediaRepository(bili, signer, cookies, OpusRepository(bili, cookies)),
                 ExtrasRepository(bili, signer), exports,
             )
             ReflectionHelpers.getField<CoroutineScope>(repository, "scope").cancel()

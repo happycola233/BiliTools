@@ -59,7 +59,7 @@ class DownloadDeletionSafetyTest {
         val cookies = CookieStore(context)
         val bili = BiliHttpClient(cookies)
         val signer = WbiSigner(bili)
-        return DownloadRepository(context, cookies, settings,
+        return DownloadRepository(context, settings,
             MediaRepository(bili, signer, cookies, OpusRepository(bili, cookies)),
             ExtrasRepository(bili, signer), exports).also {
             ReflectionHelpers.getField<CoroutineScope>(it, "scope").cancel()

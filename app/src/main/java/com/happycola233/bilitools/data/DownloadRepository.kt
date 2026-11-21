@@ -19,7 +19,6 @@ import com.happycola233.bilitools.core.BiliHttpException
 import com.happycola233.bilitools.core.MediaProcessingEngine
 import com.happycola233.bilitools.core.naming.NamingRenderer
 import com.happycola233.bilitools.data.model.AudioStream
-import com.happycola233.bilitools.core.CookieStore
 import com.happycola233.bilitools.core.NetworkDiagnosticInterceptor
 import com.happycola233.bilitools.data.model.DownloadEmbeddedMetadata
 import com.happycola233.bilitools.data.model.DownloadEmbedding
@@ -76,7 +75,6 @@ import java.util.concurrent.atomic.AtomicLong
 
 class DownloadRepository(
     private val context: Context,
-    private val cookieStore: CookieStore,
     private val settingsRepository: SettingsRepository,
     private val mediaRepository: MediaRepository,
     private val extrasRepository: ExtrasRepository,
@@ -97,29 +95,21 @@ class DownloadRepository(
     private val _notificationState = MutableStateFlow(DownloadNotificationState())
     val notificationState: StateFlow<DownloadNotificationState> = _notificationState.asStateFlow()
 
+    /**
+     * 媒体流与字幕、封面等附属资源的下载客户端。
+     *
+     * 取流接口给出的地址自带签名，下载不需要登录态；候选地址里还可能有第三方设备承载的
+     * PCDN 节点，所以这里既不发送账号 Cookie，也不采纳响应里的 Set-Cookie。
+     */
     private val httpClient by lazy {
         OkHttpClient.Builder()
             .addInterceptor { chain ->
-                val cookie = cookieStore.cookieHeader()
                 val request = chain.request().newBuilder()
                     .header("User-Agent", BiliHttpClient.USER_AGENT)
                     .header("Referer", "https://www.bilibili.com/")
                     .header("Origin", "https://www.bilibili.com")
-                    .apply {
-                        if (cookie.isNotBlank()) {
-                            header("Cookie", cookie)
-                        }
-                    }
                     .build()
                 chain.proceed(request)
-            }
-            .addInterceptor { chain ->
-                val response = chain.proceed(chain.request())
-                cookieStore.updateFromHeaders(response.headers)
-                if (response.header(BILI_STATUS_CODE_HEADER)?.toIntOrNull() == LOGIN_REQUIRED_CODE) {
-                    cookieStore.invalidateLogin()
-                }
-                response
             }
             .addInterceptor(
                 NetworkDiagnosticInterceptor(
@@ -4022,8 +4012,6 @@ class DownloadRepository(
 
     companion object {
         private const val TAG = "DownloadRepository"
-        private const val BILI_STATUS_CODE_HEADER = "bili-status-code"
-        private const val LOGIN_REQUIRED_CODE = -101
         private const val PROGRESS_UPDATE_INTERVAL_MS = 300L
         private const val PERSIST_DELAY_MS = 1000L
         private const val STORE_VERSION = 3

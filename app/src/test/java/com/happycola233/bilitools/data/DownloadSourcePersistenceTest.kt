@@ -107,7 +107,7 @@ class DownloadSourcePersistenceTest {
         val bili = BiliHttpClient(cookies)
         val signer = WbiSigner(bili)
         return DownloadRepository(
-            context, cookies, settings, MediaRepository(bili, signer, cookies, OpusRepository(bili, cookies)),
+            context, settings, MediaRepository(bili, signer, cookies, OpusRepository(bili, cookies)),
             ExtrasRepository(bili, signer), ExportRepository(context, settings),
         ).also {
             // 只测试真实入队、序列化和恢复，暂停后台调度，避免发起外部下载。

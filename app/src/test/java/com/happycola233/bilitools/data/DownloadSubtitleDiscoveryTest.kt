@@ -191,7 +191,7 @@ class DownloadSubtitleDiscoveryTest {
             ReflectionHelpers.setField(signer, "cachedMixinKey", "fixture")
             ReflectionHelpers.setField(signer, "lastUpdateMs", System.currentTimeMillis())
             repository = DownloadRepository(
-                context, cookies, settings, MediaRepository(bili, signer, cookies, OpusRepository(bili, cookies)),
+                context, settings, MediaRepository(bili, signer, cookies, OpusRepository(bili, cookies)),
                 ExtrasRepository(bili, signer), ExportRepository(context, settings),
             )
             ReflectionHelpers.getField<CoroutineScope>(repository, "scope").cancel()

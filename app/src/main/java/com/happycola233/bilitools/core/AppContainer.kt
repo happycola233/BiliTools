@@ -38,7 +38,6 @@ class AppContainer(context: Context) {
     val downloadRepository by lazy {
         DownloadRepository(
             appContext,
-            cookieStore,
             settingsRepository,
             mediaRepository,
             extrasRepository,
