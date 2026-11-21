@@ -288,6 +288,66 @@ class ResumableDownloaderTest {
         assertTrue(target.tempFile.delete())
     }
 
+    @Test fun aSlowButWorkingNodeIsLeftForAFasterBackupWithoutCorruption() = runBlocking(Dispatchers.IO) {
+        val content = ByteArray(512 * 1024) { (it % 253).toByte() }
+        val primary = server().apply {
+            enqueue(MockResponse.Builder().body(Buffer().write(content))
+                .throttleBody(8 * 1024, 100, TimeUnit.MILLISECONDS).build())
+        }
+        val backup = rangeServer(content)
+        val target = target(primary.url("/video").toString(), backup.url("/video").toString())
+        val failures = mutableListOf<String>()
+
+        ResumableDownloader(client(), slowSourcePolicy = fastPolicy).download(
+            target,
+            onFailure = { _, _, failure -> failures += failure.stage },
+        ) { _, _, _, _ -> }
+
+        assertArrayEquals(content, target.tempFile.readBytes())
+        assertEquals(listOf(ResumableDownloader.STAGE_SLOW), failures)
+        assertEquals(1, primary.requestCount)
+        val offset = backup.takeRequest().headers["Range"]!!.removePrefix("bytes=").removeSuffix("-").toLong()
+        assertTrue(offset in 1 until content.size.toLong())
+    }
+
+    @Test fun whenEveryNodeIsSlowTheDownloadSettlesInsteadOfSwitchingForever() = runBlocking(Dispatchers.IO) {
+        val content = ByteArray(192 * 1024) { (it % 241).toByte() }
+        val throttle = 8 * 1024L
+        val primary = rangeServer(content, throttle)
+        val backup = rangeServer(content, throttle)
+        val target = target(primary.url("/video").toString(), backup.url("/video").toString())
+        val failures = mutableListOf<String>()
+
+        ResumableDownloader(client(), slowSourcePolicy = fastPolicy).download(
+            target,
+            onFailure = { _, _, failure -> failures += failure.stage },
+        ) { _, _, _, _ -> }
+
+        assertArrayEquals(content, target.tempFile.readBytes())
+        assertEquals(listOf(ResumableDownloader.STAGE_SLOW), failures)
+        assertEquals(1, primary.requestCount)
+        assertEquals(1, backup.requestCount)
+    }
+
+    /** 毫秒级的测速参数，让慢节点在一秒内就能被识别；节流后的节点约 80 KB/s，远低于下限。 */
+    private val fastPolicy = SlowSourcePolicy(graceMillis = 200, windowMillis = 500, floorBytesPerSec = 200_000)
+
+    /** 按 Range 返回 206 的节点；[throttleBytesPer100Ms] 为空时不限速。 */
+    private fun rangeServer(content: ByteArray, throttleBytesPer100Ms: Long? = null) = server().apply {
+        dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val offset = request.headers["Range"]?.removePrefix("bytes=")?.removeSuffix("-")?.toInt() ?: 0
+                return MockResponse.Builder().code(206)
+                    .addHeader("Content-Range", "bytes $offset-${content.lastIndex}/${content.size}")
+                    .body(Buffer().write(content, offset, content.size - offset))
+                    .apply {
+                        throttleBytesPer100Ms?.let { throttleBody(it, 100, TimeUnit.MILLISECONDS) }
+                    }
+                    .build()
+            }
+        }
+    }
+
     private fun server() = MockWebServer().also { it.start(); servers += it }
 
     private fun client() = OkHttpClient.Builder()

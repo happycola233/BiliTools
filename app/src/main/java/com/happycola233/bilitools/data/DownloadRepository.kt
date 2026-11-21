@@ -1636,14 +1636,16 @@ class DownloadRepository(
         failure: DownloadSourceFailure,
     ) {
         val params = tasks[id]?.mediaParams
-        Log.w(
-            TAG,
-            "[download-source] taskId=$id, part=$part, attempt=$attempt, " +
-                "host=${url.toHttpUrlOrNull()?.host}, stage=${failure.stage}, " +
-                "offset=${target.tempFile.length()}, quality=${params?.resolutionId}, " +
-                "codec=${params?.codecType}, audio=${params?.audioQualityId}",
-            failure,
-        )
+        val message = "[download-source] taskId=$id, part=$part, attempt=$attempt, " +
+            "host=${url.toHttpUrlOrNull()?.host}, stage=${failure.stage}, " +
+            "offset=${target.tempFile.length()}, quality=${params?.resolutionId}, " +
+            "codec=${params?.codecType}, audio=${params?.audioQualityId}"
+        if (failure.stage == ResumableDownloader.STAGE_SLOW) {
+            // 按速度换源是正常调度，不是故障，只记录测得的速度。
+            Log.i(TAG, "$message, reason=${failure.message}")
+        } else {
+            Log.w(TAG, message, failure)
+        }
     }
 
     private suspend fun prepareManagedRetry(id: Long): ResumableState? {
