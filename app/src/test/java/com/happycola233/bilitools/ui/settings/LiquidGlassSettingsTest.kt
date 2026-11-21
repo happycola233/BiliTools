@@ -110,7 +110,6 @@ class LiquidGlassSettingsTest {
                     onLiquidBottomTabsChange = repository::setLiquidBottomTabsEnabled,
                     onLiquidGlassPanelsChange = repository::setLiquidGlassPanelsEnabled,
                     onLiquidBarWidthChange = repository::setLiquidBarWidthFraction,
-                    onGlassDebugChange = {},
                     onBack = {},
                 )
             }

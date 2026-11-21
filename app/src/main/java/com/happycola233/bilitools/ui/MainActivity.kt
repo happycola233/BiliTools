@@ -43,6 +43,8 @@ class MainActivity : AppCompatActivity() {
         // 启动页背景色必须在 installSplashScreen() 把主题切到 postSplashScreenTheme 之前读取。
         val splashBackgroundColor = resolveSplashScreenBackgroundColor()
         val splashScreen = installSplashScreen()
+        // 只统计真正的打开，旋转屏幕等配置变化导致的重建不算
+        if (savedInstanceState == null) applicationContext.appContainer.easterEggRepository.recordAppLaunch()
         val playLaunchSplashAnimation = savedInstanceState == null &&
             applicationContext.appContainer.settingsRepository
                 .currentSettings().launchSplashAnimationEnabled

@@ -1,10 +1,13 @@
 package com.happycola233.bilitools.ui.settings
 
+import android.os.SystemClock
 import android.os.Build
 import android.text.format.Formatter
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -15,14 +18,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.Easing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -74,7 +70,6 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -88,7 +83,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
-import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -111,11 +105,12 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -170,7 +165,7 @@ import com.happycola233.bilitools.data.TopLevelFolderMode
 import com.happycola233.bilitools.ui.AppAlertDialog
 import com.happycola233.bilitools.ui.SubpageScaffold
 import com.happycola233.bilitools.ui.diagnostics.ClearDiagnosticRecordsDialog
-import com.happycola233.bilitools.ui.BiliTvLaunchMotion
+import com.happycola233.bilitools.ui.eggs.rememberEasterEggCopy
 import com.happycola233.bilitools.ui.haptics.rememberAppHaptics
 import com.happycola233.bilitools.ui.displayNameRes
 import com.happycola233.bilitools.ui.isLiquidGlassSupported
@@ -191,7 +186,6 @@ import java.time.format.FormatStyle
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -232,12 +226,14 @@ fun BiliToolsSettingsContent(
     onRestoreNamingDefaults: () -> Unit,
     onBlackThemeChange: (Boolean) -> Unit,
     onLaunchSplashAnimationChange: (Boolean) -> Unit,
+    onHomeTipsChange: (Boolean) -> Unit,
     onResetDismissedConfirmations: () -> Unit,
     onLiquidBottomTabsChange: (Boolean) -> Unit,
     onLiquidGlassPanelsChange: (Boolean) -> Unit,
     onLiquidBarWidthChange: (Float) -> Unit,
     onHapticFeedbackLevelChange: (HapticFeedbackLevel) -> Unit,
     onGlassDebugChange: (Boolean) -> Unit,
+    onDeveloperOptionsChange: (Boolean) -> Unit,
     onFeedback: () -> Unit,
     onClearDiagnostics: () -> Unit,
     selectedLanguage: AppLanguage,
@@ -267,6 +263,7 @@ fun BiliToolsSettingsContent(
             entryProvider = entryProvider {
                 entry<SettingsDestination.Main> {
                     MainSettingsScreen(
+                        developerOptionsEnabled = settings.developerOptionsEnabled,
                         onBack = onExit,
                         onNavigate = onNavigate,
                         modifier = modifier,
@@ -281,6 +278,7 @@ fun BiliToolsSettingsContent(
                         onLiveUpdateIconChange = onLiveUpdateIconChange,
                         onHapticFeedbackLevelChange = onHapticFeedbackLevelChange,
                         onLaunchSplashAnimationChange = onLaunchSplashAnimationChange,
+                        onHomeTipsChange = onHomeTipsChange,
                         onResetDismissedConfirmations = onResetDismissedConfirmations,
                         selectedLanguage = selectedLanguage,
                         onOpenLanguage = { onNavigate(SettingsDestination.Language) },
@@ -369,7 +367,6 @@ fun BiliToolsSettingsContent(
                         onLiquidBottomTabsChange = onLiquidBottomTabsChange,
                         onLiquidGlassPanelsChange = onLiquidGlassPanelsChange,
                         onLiquidBarWidthChange = onLiquidBarWidthChange,
-                        onGlassDebugChange = onGlassDebugChange,
                         onBack = onNavigateBack,
                         modifier = modifier,
                     )
@@ -379,6 +376,8 @@ fun BiliToolsSettingsContent(
                     AboutSettingsScreen(
                         versionName = versionName,
                         versionCode = versionCode,
+                        developerOptionsEnabled = settings.developerOptionsEnabled,
+                        onEnableDeveloperOptions = { onDeveloperOptionsChange(true) },
                         updateCheckState = updateCheckState,
                         onCheckUpdate = onCheckUpdate,
                         onOpenSourceLicenses = {
@@ -386,6 +385,20 @@ fun BiliToolsSettingsContent(
                         },
                         onFeedback = onFeedback,
                         onClearDiagnostics = onClearDiagnostics,
+                        onBack = onNavigateBack,
+                        modifier = modifier,
+                    )
+                }
+
+                entry<SettingsDestination.Developer> {
+                    DeveloperSettingsScreen(
+                        settings = settings,
+                        onDeveloperOptionsChange = { enabled ->
+                            onDeveloperOptionsChange(enabled)
+                            // 关掉后这一页的入口随之消失，直接退回设置首页
+                            if (!enabled) onNavigateBack()
+                        },
+                        onGlassDebugChange = onGlassDebugChange,
                         onBack = onNavigateBack,
                         modifier = modifier,
                     )
@@ -451,6 +464,7 @@ private data class ColorSchemeOption(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun MainSettingsScreen(
+    developerOptionsEnabled: Boolean,
     onBack: () -> Unit,
     onNavigate: (SettingsDestination) -> Unit,
     modifier: Modifier = Modifier,
@@ -481,6 +495,14 @@ private fun MainSettingsScreen(
                 titleRes = R.string.settings_appearance_title,
                 summaryRes = R.string.settings_appearance_summary,
             ),
+        )
+    }
+    val developerEntry = remember {
+        SettingsEntry(
+            destination = SettingsDestination.Developer,
+            iconRes = R.drawable.ic_code_24,
+            titleRes = R.string.settings_developer_title,
+            summaryRes = R.string.settings_developer_summary,
         )
     }
     val aboutEntry = remember {
@@ -532,6 +554,22 @@ private fun MainSettingsScreen(
 
             item { Spacer(Modifier.height(12.dp)) }
 
+            if (developerOptionsEnabled) {
+                item {
+                    ClickableListItem(
+                        items = 1,
+                        index = 0,
+                        leadingContent = { SettingsItemIcon(developerEntry.iconRes) },
+                        content = { SettingsItemTitle(stringResource(developerEntry.titleRes)) },
+                        supportingContent = { Text(stringResource(developerEntry.summaryRes)) },
+                        trailingContent = { SettingsItemIcon(R.drawable.ic_chevron_right_24) },
+                        onClick = { onNavigate(developerEntry.destination) },
+                    )
+                }
+
+                item { Spacer(Modifier.height(12.dp)) }
+            }
+
             item {
                 ClickableListItem(
                     items = 1,
@@ -562,6 +600,7 @@ internal fun GeneralSettingsScreen(
     onLiveUpdateIconChange: (LiveUpdateIcon) -> Unit,
     onHapticFeedbackLevelChange: (HapticFeedbackLevel) -> Unit,
     onLaunchSplashAnimationChange: (Boolean) -> Unit,
+    onHomeTipsChange: (Boolean) -> Unit,
     onResetDismissedConfirmations: () -> Unit,
     selectedLanguage: AppLanguage,
     onOpenLanguage: () -> Unit,
@@ -574,6 +613,9 @@ internal fun GeneralSettingsScreen(
     } else {
         stringResource(R.string.settings_live_activity_unavailable)
     }
+    // 首页小贴士只有简中、繁中、英文有文案，其他语言不显示这个开关
+    val homeTipsAvailable = rememberEasterEggCopy() != null
+    val groupItems = if (homeTipsAvailable) 5 else 4
     SubpageScaffold(
         title = stringResource(R.string.settings_general_title),
         subtitle = stringResource(R.string.settings_screen_title),
@@ -590,7 +632,7 @@ internal fun GeneralSettingsScreen(
             item { Spacer(Modifier.height(14.dp)) }
             item {
                 ClickableListItem(
-                    items = 4,
+                    items = groupItems,
                     index = 0,
                     leadingContent = { SettingsItemIcon(R.drawable.ic_language_rounded_24) },
                     content = { SettingsItemTitle(stringResource(R.string.settings_language_title)) },
@@ -602,7 +644,7 @@ internal fun GeneralSettingsScreen(
             item {
                 HapticFeedbackPickerListItem(
                     level = settings.hapticFeedbackLevel,
-                    items = 4,
+                    items = groupItems,
                     index = 1,
                     onLevelChange = onHapticFeedbackLevelChange,
                 )
@@ -613,10 +655,23 @@ internal fun GeneralSettingsScreen(
                     iconRes = R.drawable.ic_animation_24,
                     title = stringResource(R.string.settings_launch_splash_animation),
                     description = stringResource(R.string.settings_launch_splash_animation_desc),
-                    items = 4,
+                    items = groupItems,
                     index = 2,
                     onCheckedChange = onLaunchSplashAnimationChange,
                 )
+            }
+            if (homeTipsAvailable) {
+                item {
+                    ExpressiveSwitchListItem(
+                        checked = settings.homeTipsEnabled,
+                        iconRes = R.drawable.ic_lightbulb_24,
+                        title = stringResource(R.string.settings_home_tips),
+                        description = stringResource(R.string.settings_home_tips_desc),
+                        items = groupItems,
+                        index = 3,
+                        onCheckedChange = onHomeTipsChange,
+                    )
+                }
             }
             item {
                 ExpressiveSwitchListItem(
@@ -625,8 +680,8 @@ internal fun GeneralSettingsScreen(
                     title = stringResource(R.string.settings_live_activity_style_notification),
                     description = liveUpdateDescription,
                     enabled = liveUpdateSupported,
-                    items = 4,
-                    index = 3,
+                    items = groupItems,
+                    index = groupItems - 1,
                     onCheckedChange = onLiveActivityStyleNotificationChange,
                     bottomContent = {
                         LiveUpdateIconPicker(
@@ -1048,7 +1103,6 @@ internal fun AppearanceSettingsScreen(
     onLiquidBottomTabsChange: (Boolean) -> Unit,
     onLiquidGlassPanelsChange: (Boolean) -> Unit,
     onLiquidBarWidthChange: (Float) -> Unit,
-    onGlassDebugChange: (Boolean) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -1103,7 +1157,7 @@ internal fun AppearanceSettingsScreen(
 
             // 开关保存用户偏好；只有实际使用液态底栏时才显示宽度调节。
             val liquidBarWidthVisible = settings.liquidBottomTabsEnabled && liquidGlassSupported
-            val liquidGroupItems = if (liquidBarWidthVisible) 4 else 3
+            val liquidGroupItems = if (liquidBarWidthVisible) 3 else 2
 
             item {
                 // 宽度项与开关共用列表项，间距也参与收展，避免隐藏后留下额外空隙。
@@ -1154,18 +1208,6 @@ internal fun AppearanceSettingsScreen(
                     items = liquidGroupItems,
                     index = if (liquidBarWidthVisible) 2 else 1,
                     onCheckedChange = onLiquidGlassPanelsChange,
-                )
-            }
-
-            item {
-                ExpressiveSwitchListItem(
-                    checked = settings.downloadsGlassDebugEnabled,
-                    iconRes = R.drawable.ic_blur_on_24,
-                    title = stringResource(R.string.settings_downloads_glass_debug),
-                    description = stringResource(R.string.settings_downloads_glass_debug_desc),
-                    items = liquidGroupItems,
-                    index = liquidGroupItems - 1,
-                    onCheckedChange = onGlassDebugChange,
                 )
             }
 
@@ -2396,6 +2438,8 @@ private fun namingTokenPreviewLabel(token: NamingToken): String {
 internal fun AboutSettingsScreen(
     versionName: String,
     versionCode: Long,
+    developerOptionsEnabled: Boolean,
+    onEnableDeveloperOptions: () -> Unit,
     updateCheckState: UpdateCheckUiState,
     onCheckUpdate: () -> Unit,
     onOpenSourceLicenses: () -> Unit,
@@ -2408,21 +2452,34 @@ internal fun AboutSettingsScreen(
     var showClearDiagnostics by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
-    val appIconPainter = painterResource(R.drawable.bilitools_app_icon)
-    val iconBackgroundRotation by rememberInfiniteTransition(
-        label = "aboutIconBackgroundRotation",
-    ).animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = 24000,
-                easing = LinearEasing,
-            ),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "aboutIconBackgroundRotationValue",
+    val resources = LocalResources.current
+    val haptics = rememberAppHaptics()
+    val mascotController = rememberAboutMascotController(
+        copy = rememberEasterEggCopy()?.mascot,
+        haptics = haptics,
     )
+    val developerTaps = remember { DeveloperOptionsTapCounter() }
+    val toastHolder = remember { ToastHolder() }
+    val onVersionTap = {
+        when (val outcome = developerTaps.tap(SystemClock.uptimeMillis(), developerOptionsEnabled)) {
+            DeveloperTapOutcome.None -> Unit
+            is DeveloperTapOutcome.StepsAway -> toastHolder.show(
+                context,
+                resources.getQuantityString(
+                    R.plurals.developer_options_steps_away,
+                    outcome.steps,
+                    outcome.steps,
+                ),
+            )
+            DeveloperTapOutcome.Unlocked -> {
+                haptics.confirm()
+                onEnableDeveloperOptions()
+                toastHolder.show(context, resources.getString(R.string.developer_options_enabled))
+            }
+            DeveloperTapOutcome.AlreadyEnabled ->
+                toastHolder.show(context, resources.getString(R.string.developer_options_already_enabled))
+        }
+    }
     SubpageScaffold(
         title = stringResource(R.string.settings_about_title),
         subtitle = stringResource(R.string.app_name),
@@ -2439,8 +2496,10 @@ internal fun AboutSettingsScreen(
             item { Spacer(Modifier.height(14.dp)) }
 
             item {
+                // 小电视可以被拖出卡片，整张卡片要盖在后面的列表项之上
                 Box(
                     modifier = Modifier
+                        .zIndex(1f)
                         .fillMaxWidth()
                         .background(
                             SettingsExpressiveDefaults.listItemColors.containerColor,
@@ -2451,9 +2510,11 @@ internal fun AboutSettingsScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(16.dp),
                     ) {
-                        AnimatedAboutAppIcon(
-                            painter = appIconPainter,
-                            backgroundRotation = iconBackgroundRotation,
+                        AboutMascotIcon(
+                            controller = mascotController,
+                            contentDescription = stringResource(R.string.app_name),
+                            // 被拖出来时要盖在右侧的文字和按钮之上
+                            modifier = Modifier.zIndex(1f),
                         )
                         Spacer(Modifier.width(16.dp))
                         Column(Modifier.weight(1f)) {
@@ -2464,13 +2525,40 @@ internal fun AboutSettingsScreen(
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface,
                             )
-                            Text(
-                                text = androidx.core.text.BidiFormatter.getInstance()
-                                    .unicodeWrap("$versionName ($versionCode)", androidx.core.text.TextDirectionHeuristicsCompat.LTR),
-                                style = MaterialTheme.typography.labelLarge,
-                                fontFamily = BiliToolsFonts.googleSansFlexRond100,
-                                color = MaterialTheme.colorScheme.primary,
-                            )
+                            // 小电视说话时，台词暂时顶替版本号这一行
+                            AnimatedContent(
+                                targetState = mascotController.speech,
+                                transitionSpec = {
+                                    (fadeIn() + slideInVertically { it / 2 })
+                                        .togetherWith(fadeOut() + slideOutVertically { -it / 2 })
+                                },
+                                contentAlignment = Alignment.CenterStart,
+                                label = "aboutHeaderSpeech",
+                            ) { speech ->
+                                if (speech != null) {
+                                    Text(
+                                        text = speech,
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                } else {
+                                    // 与系统「版本号」一样，连点可开启开发者选项
+                                    Text(
+                                        text = androidx.core.text.BidiFormatter.getInstance()
+                                            .unicodeWrap("$versionName ($versionCode)", androidx.core.text.TextDirectionHeuristicsCompat.LTR),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontFamily = BiliToolsFonts.googleSansFlexRond100,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null,
+                                            onClick = onVersionTap,
+                                        ),
+                                    )
+                                }
+                            }
                         }
                         Spacer(Modifier.width(8.dp))
                         FilledTonalIconButton(
@@ -2492,7 +2580,7 @@ internal fun AboutSettingsScreen(
 
             item {
                 ClickableListItem(
-                    items = 3,
+                    items = 4,
                     index = 0,
                     leadingContent = { SettingsItemIcon(R.drawable.ic_update_24) },
                     content = {
@@ -2510,8 +2598,20 @@ internal fun AboutSettingsScreen(
 
             item {
                 ClickableListItem(
-                    items = 3,
+                    items = 4,
                     index = 1,
+                    leadingContent = { SettingsItemIcon(R.drawable.ic_language_rounded_24) },
+                    content = { SettingsItemTitle(stringResource(R.string.settings_about_website)) },
+                    supportingContent = { Text(stringResource(R.string.settings_about_website_host)) },
+                    trailingContent = { SettingsItemIcon(R.drawable.ic_open_in_new_24) },
+                    onClick = { uriHandler.openUri(OFFICIAL_WEBSITE_URL) },
+                )
+            }
+
+            item {
+                ClickableListItem(
+                    items = 4,
+                    index = 2,
                     leadingContent = { SettingsItemIcon(R.drawable.ic_gavel_24) },
                     content = {
                         SettingsItemTitle(stringResource(R.string.settings_license_title))
@@ -2523,8 +2623,8 @@ internal fun AboutSettingsScreen(
 
             item {
                 ClickableListItem(
-                    items = 3,
-                    index = 2,
+                    items = 4,
+                    index = 3,
                     leadingContent = { SettingsItemIcon(R.drawable.ic_code_24) },
                     content = {
                         SettingsItemTitle(stringResource(R.string.settings_opensource_licenses_title))
@@ -2599,157 +2699,6 @@ internal fun AboutSettingsScreen(
             onDismiss = { showClearDiagnostics = false },
         )
     }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun AnimatedAboutAppIcon(
-    painter: Painter,
-    backgroundRotation: Float,
-    modifier: Modifier = Modifier,
-) {
-    val density = LocalDensity.current
-    val appName = stringResource(R.string.app_name)
-    val interactionSource = remember { MutableInteractionSource() }
-    var hopRequest by remember { mutableStateOf(0) }
-    val iconHopState = remember { AboutIconHopState() }
-
-    LaunchedEffect(hopRequest) {
-        if (hopRequest == 0) return@LaunchedEffect
-
-        iconHopState.snapTo(aboutIconRestTarget)
-        iconHopState.animateTo(
-            target = aboutIconSquashTarget,
-            durationMillis = BiliTvLaunchMotion.SQUASH_DURATION_MILLIS,
-            easing = aboutIconStandardEasing,
-        )
-        iconHopState.animateTo(
-            target = aboutIconJumpTarget,
-            durationMillis = BiliTvLaunchMotion.JUMP_DURATION_MILLIS,
-            easing = aboutIconEmphasizedEasing,
-        )
-        iconHopState.animateTo(
-            target = aboutIconRestTarget,
-            durationMillis = BiliTvLaunchMotion.SETTLE_DURATION_MILLIS,
-            easing = aboutIconSettleEasing,
-        )
-    }
-
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = modifier
-            .size(64.dp)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClickLabel = appName,
-                role = Role.Button,
-            ) {
-                hopRequest += 1
-            }
-            .semantics { contentDescription = appName },
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer { rotationZ = backgroundRotation }
-                .background(
-                    color = Color.White,
-                    shape = MaterialShapes.Cookie9Sided.toShape(),
-                ),
-        )
-        Image(
-            painter = painter,
-            contentDescription = null,
-            modifier = Modifier
-                .size(46.dp)
-                .graphicsLayer {
-                    translationY = with(density) {
-                        iconHopState.translationYDp.value.dp.toPx()
-                    }
-                    scaleX = iconHopState.scaleX.value
-                    scaleY = iconHopState.scaleY.value
-                    rotationZ = iconHopState.rotationDegrees.value
-                },
-        )
-    }
-}
-
-private class AboutIconHopState {
-    val translationYDp = Animatable(0f)
-    val scaleX = Animatable(1f)
-    val scaleY = Animatable(1f)
-    val rotationDegrees = Animatable(0f)
-
-    suspend fun snapTo(target: AboutIconHopTarget) {
-        translationYDp.snapTo(target.translationYDp)
-        scaleX.snapTo(target.scaleX)
-        scaleY.snapTo(target.scaleY)
-        rotationDegrees.snapTo(target.rotationDegrees)
-    }
-
-    suspend fun animateTo(
-        target: AboutIconHopTarget,
-        durationMillis: Int,
-        easing: Easing,
-    ) {
-        val animationSpec = tween<Float>(
-            durationMillis = durationMillis,
-            easing = easing,
-        )
-        coroutineScope {
-            launch { translationYDp.animateTo(target.translationYDp, animationSpec) }
-            launch { scaleX.animateTo(target.scaleX, animationSpec) }
-            launch { scaleY.animateTo(target.scaleY, animationSpec) }
-            launch { rotationDegrees.animateTo(target.rotationDegrees, animationSpec) }
-        }
-    }
-}
-
-private data class AboutIconHopTarget(
-    val translationYDp: Float,
-    val scaleX: Float,
-    val scaleY: Float,
-    val rotationDegrees: Float,
-)
-
-private val aboutIconRestTarget = AboutIconHopTarget(
-    translationYDp = 0f,
-    scaleX = 1f,
-    scaleY = 1f,
-    rotationDegrees = 0f,
-)
-
-private val aboutIconSquashTarget = AboutIconHopTarget(
-    translationYDp = BiliTvLaunchMotion.ICON_SQUASH_OFFSET_DP,
-    scaleX = BiliTvLaunchMotion.ICON_SQUASH_SCALE_X,
-    scaleY = BiliTvLaunchMotion.ICON_SQUASH_SCALE_Y,
-    rotationDegrees = BiliTvLaunchMotion.ICON_SQUASH_ROTATION_DEGREES,
-)
-
-private val aboutIconJumpTarget = AboutIconHopTarget(
-    translationYDp = BiliTvLaunchMotion.ICON_JUMP_OFFSET_DP,
-    scaleX = BiliTvLaunchMotion.ICON_JUMP_SCALE_X,
-    scaleY = BiliTvLaunchMotion.ICON_JUMP_SCALE_Y,
-    rotationDegrees = BiliTvLaunchMotion.ICON_JUMP_ROTATION_DEGREES,
-)
-
-private val aboutIconStandardEasing = CubicBezierEasing(
-    BiliTvLaunchMotion.STANDARD_EASE_X1,
-    BiliTvLaunchMotion.STANDARD_EASE_Y1,
-    BiliTvLaunchMotion.STANDARD_EASE_X2,
-    BiliTvLaunchMotion.STANDARD_EASE_Y2,
-)
-
-private val aboutIconEmphasizedEasing = CubicBezierEasing(
-    BiliTvLaunchMotion.EMPHASIZED_EASE_X1,
-    BiliTvLaunchMotion.EMPHASIZED_EASE_Y1,
-    BiliTvLaunchMotion.EMPHASIZED_EASE_X2,
-    BiliTvLaunchMotion.EMPHASIZED_EASE_Y2,
-)
-
-private val aboutIconSettleEasing = Easing { fraction ->
-    BiliTvLaunchMotion.settleOvershoot(fraction)
 }
 
 @Composable
@@ -3742,6 +3691,8 @@ private val licenseChipBaseColors = listOf(
     Color(0xFFF57C00),
     Color(0xFFD81B60),
 )
+
+private const val OFFICIAL_WEBSITE_URL = "https://bilitools.happycola.top"
 
 private object SettingsExpressiveDefaults {
     val listItemColors: ListItemColors

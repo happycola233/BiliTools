@@ -584,4 +584,18 @@
     <string name="diagnostic_clear_confirm">清除</string>
     <string name="diagnostic_privacy">僅儲存在本機，由你選擇分享。不記錄密碼、Cookie 等登入憑證，帳號 UID 已隱藏。</string>
     <string name="diagnostic_close">關閉診斷報告</string>
+    <string name="settings_home_tips">首頁小貼士</string>
+    <string name="settings_home_tips_desc">首頁閒置時，小電視會說些實用技巧和趣話，點一下換一句。</string>
+    <string name="home_tip_next_action">換一句</string>
+    <string name="home_tip_parse_action">解析這部影片</string>
+    <string name="settings_developer_title">開發人員選項</string>
+    <string name="settings_developer_summary">偵錯與實驗性功能</string>
+    <string name="settings_developer_toggle">使用開發人員選項</string>
+    <string name="settings_developer_toggle_desc">關閉後設定中不再顯示此項，在「關於」中連點版本號可重新開啟。</string>
+    <string name="developer_options_enabled">你現在已成為開發人員！</string>
+    <string name="developer_options_already_enabled">你已經是開發人員，不需要再進行這項操作。</string>
+    <string name="settings_about_website">官方網站</string>
+    <plurals name="developer_options_steps_away">
+        <item quantity="other">只要再點 %1$d 次，即可成為開發人員。</item>
+    </plurals>
 </resources>

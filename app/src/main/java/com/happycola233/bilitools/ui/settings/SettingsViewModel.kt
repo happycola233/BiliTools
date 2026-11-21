@@ -27,6 +27,7 @@ sealed class SettingsDestination : NavKey {
     data object Naming : SettingsDestination()
     data object Appearance : SettingsDestination()
     data object About : SettingsDestination()
+    data object Developer : SettingsDestination()
     data object OpenSourceLicenses : SettingsDestination()
 }
 
@@ -111,6 +112,14 @@ class SettingsViewModel(
 
     fun setLaunchSplashAnimationEnabled(enabled: Boolean) {
         settingsRepository.setLaunchSplashAnimationEnabled(enabled)
+    }
+
+    fun setHomeTipsEnabled(enabled: Boolean) {
+        settingsRepository.setHomeTipsEnabled(enabled)
+    }
+
+    fun setDeveloperOptionsEnabled(enabled: Boolean) {
+        settingsRepository.setDeveloperOptionsEnabled(enabled)
     }
 
     fun setLiquidBottomTabsEnabled(enabled: Boolean) {

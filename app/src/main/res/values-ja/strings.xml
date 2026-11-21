@@ -584,4 +584,18 @@
     <string name="diagnostic_clear_confirm">消去</string>
     <string name="diagnostic_privacy">端末内に保存され、共有は自分で選べます。パスワードやCookieなどのログイン情報は含まれず、アカウントUIDは非表示です。</string>
     <string name="diagnostic_close">診断レポートを閉じる</string>
+    <string name="settings_home_tips">ホームのヒント</string>
+    <string name="settings_home_tips_desc">ホームが空いているとき、小さなテレビが使い方のヒントや小ネタを話します。タップすると次の話に変わります。</string>
+    <string name="home_tip_next_action">次のヒント</string>
+    <string name="home_tip_parse_action">この動画を解析</string>
+    <string name="settings_developer_title">開発者向けオプション</string>
+    <string name="settings_developer_summary">デバッグと試験運用中の機能</string>
+    <string name="settings_developer_toggle">開発者向けオプションを使用</string>
+    <string name="settings_developer_toggle_desc">オフにすると設定に表示されなくなります。「アプリについて」でバージョン番号を連続してタップすると再びオンにできます。</string>
+    <string name="developer_options_enabled">これでデベロッパーになりました！</string>
+    <string name="developer_options_already_enabled">その必要はありません。デベロッパー モードはすでに有効です。</string>
+    <string name="settings_about_website">公式サイト</string>
+    <plurals name="developer_options_steps_away">
+        <item quantity="other">デベロッパーになるまであと %1$d ステップです。</item>
+    </plurals>
 </resources>

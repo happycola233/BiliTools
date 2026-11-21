@@ -76,6 +76,7 @@ class LiveUpdateIconSettingsTest {
                     onLiveUpdateIconChange = repository::setLiveUpdateIcon,
                     onHapticFeedbackLevelChange = repository::setHapticFeedbackLevel,
                     onLaunchSplashAnimationChange = repository::setLaunchSplashAnimationEnabled,
+                    onHomeTipsChange = repository::setHomeTipsEnabled,
                     onResetDismissedConfirmations = repository::resetDismissedConfirmations,
                     selectedLanguage = AppLanguage.System,
                     onOpenLanguage = {},

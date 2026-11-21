@@ -604,4 +604,23 @@
     <string name="diagnostic_clear_confirm">مسح</string>
     <string name="diagnostic_privacy">يُحفظ محليًا وتختار أنت مشاركته. تُستبعد كلمات المرور وملفات تعريف الارتباط وبيانات الدخول، ويُخفى معرّف حسابك UID.</string>
     <string name="diagnostic_close">إغلاق تقرير التشخيص</string>
+    <string name="settings_home_tips">نصائح الصفحة الرئيسية</string>
+    <string name="settings_home_tips_desc">عندما تكون الصفحة الرئيسية خاملة، يشارك التلفاز الصغير نصائح وطرائف. انقر عليه لعرض نصيحة أخرى.</string>
+    <string name="home_tip_next_action">النصيحة التالية</string>
+    <string name="home_tip_parse_action">تحليل هذا الفيديو</string>
+    <string name="settings_developer_title">خيارات المطوّرين</string>
+    <string name="settings_developer_summary">التصحيح والميزات التجريبية</string>
+    <string name="settings_developer_toggle">استخدام خيارات المطوّرين</string>
+    <string name="settings_developer_toggle_desc">عند الإيقاف، يُخفى هذا العنصر من الإعدادات. انقر على رقم الإصدار في «حول التطبيق» عدة مرات لإعادة تفعيله.</string>
+    <string name="developer_options_enabled">أصبحت الآن مطوّرًا!</string>
+    <string name="developer_options_already_enabled">لا حاجة لذلك، أنت مطوّر بالفعل.</string>
+    <string name="settings_about_website">الموقع الرسمي</string>
+    <plurals name="developer_options_steps_away">
+        <item quantity="zero">أنت على بُعد %1$d خطوة من أن تصبح مطوّرًا.</item>
+        <item quantity="one">أنت على بُعد خطوة واحدة من أن تصبح مطوّرًا.</item>
+        <item quantity="two">أنت على بُعد خطوتين من أن تصبح مطوّرًا.</item>
+        <item quantity="few">أنت على بُعد %1$d خطوات من أن تصبح مطوّرًا.</item>
+        <item quantity="many">أنت على بُعد %1$d خطوة من أن تصبح مطوّرًا.</item>
+        <item quantity="other">أنت على بُعد %1$d خطوة من أن تصبح مطوّرًا.</item>
+    </plurals>
 </resources>

@@ -589,4 +589,20 @@
     <string name="diagnostic_clear_confirm">Limpar</string>
     <string name="diagnostic_privacy">Salvo localmente; você decide quando compartilhar. Senhas, cookies e outras credenciais não são incluídos. O UID da conta fica oculto.</string>
     <string name="diagnostic_close">Fechar relatório de diagnóstico</string>
+    <string name="settings_home_tips">Dicas na página inicial</string>
+    <string name="settings_home_tips_desc">Quando a página inicial está ociosa, a pequena TV compartilha dicas e piadas. Toque nela para ver outra.</string>
+    <string name="home_tip_next_action">Próxima dica</string>
+    <string name="home_tip_parse_action">Analisar este vídeo</string>
+    <string name="settings_developer_title">Opções do desenvolvedor</string>
+    <string name="settings_developer_summary">Depuração e recursos experimentais</string>
+    <string name="settings_developer_toggle">Usar opções do desenvolvedor</string>
+    <string name="settings_developer_toggle_desc">Quando desativado, este item deixa de aparecer em Configurações. Toque várias vezes no número da versão em \"Sobre\" para reativá-lo.</string>
+    <string name="developer_options_enabled">Agora você é um desenvolvedor!</string>
+    <string name="developer_options_already_enabled">Não é necessário, você já é um desenvolvedor.</string>
+    <string name="settings_about_website">Site oficial</string>
+    <plurals name="developer_options_steps_away">
+        <item quantity="one">Falta %1$d etapa para você se tornar um desenvolvedor.</item>
+        <item quantity="many">Faltam %1$d etapas para você se tornar um desenvolvedor.</item>
+        <item quantity="other">Faltam %1$d etapas para você se tornar um desenvolvedor.</item>
+    </plurals>
 </resources>

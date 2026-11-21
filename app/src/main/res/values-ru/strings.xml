@@ -596,4 +596,21 @@
     <string name="diagnostic_clear_confirm">Очистить</string>
     <string name="diagnostic_privacy">Хранится на устройстве; отправка — по вашему выбору. Пароли, cookie и другие данные для входа не включаются. UID аккаунта скрыт.</string>
     <string name="diagnostic_close">Закрыть отчёт диагностики</string>
+    <string name="settings_home_tips">Советы на главной</string>
+    <string name="settings_home_tips_desc">Когда главная страница простаивает, маленький телевизор делится советами и шутками. Нажмите, чтобы увидеть следующий.</string>
+    <string name="home_tip_next_action">Следующий совет</string>
+    <string name="home_tip_parse_action">Разобрать это видео</string>
+    <string name="settings_developer_title">Параметры разработчика</string>
+    <string name="settings_developer_summary">Отладка и экспериментальные функции</string>
+    <string name="settings_developer_toggle">Использовать параметры разработчика</string>
+    <string name="settings_developer_toggle_desc">Если отключить, этот пункт исчезнет из настроек. Чтобы включить его снова, несколько раз нажмите на номер версии в разделе «О приложении».</string>
+    <string name="developer_options_enabled">Вы стали разработчиком!</string>
+    <string name="developer_options_already_enabled">Не нужно, вы уже разработчик.</string>
+    <string name="settings_about_website">Официальный сайт</string>
+    <plurals name="developer_options_steps_away">
+        <item quantity="one">До статуса разработчика остался %1$d шаг.</item>
+        <item quantity="few">До статуса разработчика осталось %1$d шага.</item>
+        <item quantity="many">До статуса разработчика осталось %1$d шагов.</item>
+        <item quantity="other">До статуса разработчика осталось %1$d шага.</item>
+    </plurals>
 </resources>

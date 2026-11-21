@@ -584,4 +584,18 @@
     <string name="diagnostic_clear_confirm">Kosongkan</string>
     <string name="diagnostic_privacy">Disimpan pada peranti; anda memilih bila untuk berkongsi. Kata laluan, kuki dan kelayakan log masuk dikecualikan. UID akaun disembunyikan.</string>
     <string name="diagnostic_close">Tutup laporan diagnostik</string>
+    <string name="settings_home_tips">Petua halaman utama</string>
+    <string name="settings_home_tips_desc">Apabila halaman utama melahu, TV kecil akan berkongsi petua dan jenaka. Ketik untuk yang seterusnya.</string>
+    <string name="home_tip_next_action">Petua seterusnya</string>
+    <string name="home_tip_parse_action">Huraikan video ini</string>
+    <string name="settings_developer_title">Pilihan pembangun</string>
+    <string name="settings_developer_summary">Penyahpepijatan dan ciri percubaan</string>
+    <string name="settings_developer_toggle">Gunakan pilihan pembangun</string>
+    <string name="settings_developer_toggle_desc">Apabila dimatikan, item ini tidak lagi dipaparkan dalam Tetapan. Ketik nombor versi dalam Mengenai berulang kali untuk menghidupkannya semula.</string>
+    <string name="developer_options_enabled">Anda kini seorang pembangun!</string>
+    <string name="developer_options_already_enabled">Tidak perlu, anda sudah pun seorang pembangun.</string>
+    <string name="settings_about_website">Laman web rasmi</string>
+    <plurals name="developer_options_steps_away">
+        <item quantity="other">Tinggal %1$d langkah lagi untuk menjadi pembangun.</item>
+    </plurals>
 </resources>

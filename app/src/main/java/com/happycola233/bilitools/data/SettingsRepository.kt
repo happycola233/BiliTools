@@ -65,6 +65,8 @@ data class AppSettings(
     val themeColor: AppThemeColor = AppThemeColor.Dynamic,
     val darkModePureBlack: Boolean = true,
     val launchSplashAnimationEnabled: Boolean = true,
+    /** 首页没有解析结果时，小电视在输入框下方说一句话 */
+    val homeTipsEnabled: Boolean = true,
     val liquidBottomTabsEnabled: Boolean = true,
     val liquidGlassPanelsEnabled: Boolean = true,
     val liquidBarWidthFraction: Float = SettingsRepository.DEFAULT_LIQUID_BAR_WIDTH_FRACTION,
@@ -82,6 +84,8 @@ data class AppSettings(
     val confirmDownloadRecordRemoval: Boolean = true,
     val confirmDownloadedFileDeletion: Boolean = true,
     val hideDownloadedVideosInSystemAlbum: Boolean = false,
+    /** 连点关于页版本号解锁，解锁后设置首页出现「开发者选项」 */
+    val developerOptionsEnabled: Boolean = false,
     val downloadsGlassDebugEnabled: Boolean = false,
     val downloadsGlassCornerRadiusDp: Float = SettingsRepository.DEFAULT_DOWNLOADS_GLASS_CORNER_RADIUS_DP,
     val downloadsGlassBlurRadiusDp: Float = SettingsRepository.DEFAULT_DOWNLOADS_GLASS_BLUR_RADIUS_DP,
@@ -431,6 +435,26 @@ class SettingsRepository(context: Context) {
         _settings.value = current.copy(launchSplashAnimationEnabled = enabled)
     }
 
+    fun setHomeTipsEnabled(enabled: Boolean) {
+        val current = _settings.value
+        if (current.homeTipsEnabled == enabled) return
+        prefs.edit().putBoolean(KEY_HOME_TIPS_ENABLED, enabled).apply()
+        _settings.value = current.copy(homeTipsEnabled = enabled)
+    }
+
+    /** 关闭开发者选项时一并关掉其中的调试开关，避免藏起来的调试效果仍在生效 */
+    fun setDeveloperOptionsEnabled(enabled: Boolean) {
+        val current = _settings.value
+        if (current.developerOptionsEnabled == enabled) return
+        val editor = prefs.edit().putBoolean(KEY_DEVELOPER_OPTIONS_ENABLED, enabled)
+        if (!enabled) editor.putBoolean(KEY_DOWNLOADS_GLASS_DEBUG_ENABLED, false)
+        editor.apply()
+        _settings.value = current.copy(
+            developerOptionsEnabled = enabled,
+            downloadsGlassDebugEnabled = current.downloadsGlassDebugEnabled && enabled,
+        )
+    }
+
     fun setLiquidBottomTabsEnabled(enabled: Boolean) {
         val current = _settings.value
         if (current.liquidBottomTabsEnabled == enabled) return
@@ -770,6 +794,12 @@ class SettingsRepository(context: Context) {
                 KEY_LAUNCH_SPLASH_ANIMATION_ENABLED,
                 true,
             ),
+            homeTipsEnabled = prefs.getBoolean(KEY_HOME_TIPS_ENABLED, true),
+            // 玻璃调试开关原本直接摆在外观页；已经打开过它的用户升级后默认保留开发者选项入口
+            developerOptionsEnabled = prefs.getBoolean(
+                KEY_DEVELOPER_OPTIONS_ENABLED,
+                prefs.getBoolean(KEY_DOWNLOADS_GLASS_DEBUG_ENABLED, false),
+            ),
             liquidBottomTabsEnabled = prefs.getBoolean(
                 KEY_LIQUID_BOTTOM_TABS_ENABLED,
                 true,
@@ -1088,6 +1118,8 @@ class SettingsRepository(context: Context) {
         private const val CURRENT_SETTINGS_MIGRATION_VERSION =
             MIGRATION_VERSION_V3_0_ENABLE_PURE_BLACK
         private const val KEY_LAUNCH_SPLASH_ANIMATION_ENABLED = "launch_splash_animation_enabled"
+        private const val KEY_HOME_TIPS_ENABLED = "home_tips_enabled"
+        private const val KEY_DEVELOPER_OPTIONS_ENABLED = "developer_options_enabled"
         private const val KEY_LIQUID_BOTTOM_TABS_ENABLED = "liquid_bottom_tabs_enabled"
         private const val KEY_LIQUID_GLASS_PANELS_ENABLED = "liquid_glass_panels_enabled"
         private const val KEY_LIQUID_BAR_WIDTH_FRACTION = "liquid_bar_width_fraction"

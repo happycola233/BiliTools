@@ -61,6 +61,10 @@ import coil3.load
 import coil3.request.error
 import coil3.request.fallback
 import com.happycola233.bilitools.R
+import com.happycola233.bilitools.data.ProfileEggCopy
+import com.happycola233.bilitools.ui.eggs.EggTapTooltip
+import com.happycola233.bilitools.ui.eggs.formatEggCopy
+import com.happycola233.bilitools.ui.eggs.rememberEasterEggCopy
 import com.happycola233.bilitools.data.model.UserInfo
 import com.happycola233.bilitools.ui.AppAlertDialog
 import com.happycola233.bilitools.ui.mainBottomBarBottomInset
@@ -317,6 +321,7 @@ private fun ProfileCard(
 ) {
     val sign = remember(userInfo.sign) { sanitizeSign(userInfo.sign) }
     val showVipBadge = remember(userInfo) { shouldShowVipBadge(userInfo) }
+    val profileEggs = rememberEasterEggCopy()?.profile
 
     Surface(
         color = AppSurfaces.cardContainerColor,
@@ -388,10 +393,12 @@ private fun ProfileCard(
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f, fill = false),
                             )
-                            LevelBadge(
-                                level = userInfo.level,
-                                isSeniorMember = userInfo.isSeniorMember,
-                            )
+                            EggTapTooltip(text = profileEggs?.let { levelEggText(userInfo, it) }) {
+                                LevelBadge(
+                                    level = userInfo.level,
+                                    isSeniorMember = userInfo.isSeniorMember,
+                                )
+                            }
                             VipLabel(userInfo = userInfo)
                         }
 
@@ -424,21 +431,28 @@ private fun ProfileCard(
                         value = formatUserCount(userInfo.following ?: 0),
                         modifier = Modifier.weight(1f),
                     )
-                    ProfileStat(
-                        label = stringResource(R.string.login_stat_follower),
-                        value = formatUserCount(userInfo.follower ?: 0),
-                        modifier = Modifier.weight(1f),
-                    )
+                    // 粉丝过千才有回应
+                    Box(Modifier.weight(1f)) {
+                        EggTapTooltip(text = profileEggs?.followerLine(userInfo.follower?.toLong() ?: 0L)) {
+                            ProfileStat(
+                                label = stringResource(R.string.login_stat_follower),
+                                value = formatUserCount(userInfo.follower ?: 0),
+                            )
+                        }
+                    }
                     ProfileStat(
                         label = stringResource(R.string.login_stat_dynamic),
                         value = formatUserCount(userInfo.dynamic ?: 0),
                         modifier = Modifier.weight(1f),
                     )
-                    ProfileStat(
-                        label = stringResource(R.string.login_stat_coins),
-                        value = formatCoins(userInfo.coins),
-                        modifier = Modifier.weight(1f),
-                    )
+                    Box(Modifier.weight(1f)) {
+                        EggTapTooltip(text = profileEggs?.coins) {
+                            ProfileStat(
+                                label = stringResource(R.string.login_stat_coins),
+                                value = formatCoins(userInfo.coins),
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -469,6 +483,19 @@ private fun ProfileLoadingCard(
         }
     }
 }
+
+/** 点等级徽章时的回应：硬核会员、六级、零级各有一句，其余提示离六级还差几级 */
+private fun levelEggText(userInfo: UserInfo, copy: ProfileEggCopy): String? {
+    if (userInfo.isSeniorMember) return copy.levelSenior
+    val level = userInfo.level ?: return null
+    return when {
+        level >= MAX_USER_LEVEL -> copy.levelMax
+        level <= 0 -> copy.levelZero
+        else -> copy.levelOther.formatEggCopy(MAX_USER_LEVEL - level)
+    }
+}
+
+private const val MAX_USER_LEVEL = 6
 
 @Composable
 private fun LevelBadge(

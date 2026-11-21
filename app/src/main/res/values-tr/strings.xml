@@ -588,4 +588,19 @@
     <string name="diagnostic_clear_confirm">Temizle</string>
     <string name="diagnostic_privacy">Cihazda saklanır; paylaşmak sizin seçiminizdir. Parolalar, çerezler ve diğer giriş bilgileri dahil edilmez. Hesap UID bilgisi gizlenir.</string>
     <string name="diagnostic_close">Tanılama raporunu kapat</string>
+    <string name="settings_home_tips">Ana sayfa ipuçları</string>
+    <string name="settings_home_tips_desc">Ana sayfa boştayken küçük TV ipuçları ve espriler paylaşır. Başka biri için ona dokunun.</string>
+    <string name="home_tip_next_action">Sonraki ipucu</string>
+    <string name="home_tip_parse_action">Bu videoyu ayrıştır</string>
+    <string name="settings_developer_title">Geliştirici seçenekleri</string>
+    <string name="settings_developer_summary">Hata ayıklama ve deneysel özellikler</string>
+    <string name="settings_developer_toggle">Geliştirici seçeneklerini kullan</string>
+    <string name="settings_developer_toggle_desc">Kapatıldığında bu öğe Ayarlar\'da gösterilmez. Yeniden açmak için Hakkında bölümündeki sürüm numarasına art arda dokunun.</string>
+    <string name="developer_options_enabled">Artık bir geliştiricisiniz!</string>
+    <string name="developer_options_already_enabled">Gerek yok, zaten geliştiricisiniz.</string>
+    <string name="settings_about_website">Resmî web sitesi</string>
+    <plurals name="developer_options_steps_away">
+        <item quantity="one">Geliştirici olmanıza %1$d adım kaldı.</item>
+        <item quantity="other">Geliştirici olmanıza %1$d adım kaldı.</item>
+    </plurals>
 </resources>

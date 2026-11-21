@@ -16,6 +16,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -41,6 +43,7 @@ import com.happycola233.bilitools.data.AppSettings
 import com.happycola233.bilitools.data.ReleaseInfo
 import com.happycola233.bilitools.data.UpdateCheckResult
 import com.happycola233.bilitools.ui.downloads.DownloadsRoute
+import com.happycola233.bilitools.ui.eggs.EggCalendar
 import com.happycola233.bilitools.ui.downloads.DownloadsRouteUiState
 import com.happycola233.bilitools.ui.downloads.DownloadsSelectAllButton
 import com.happycola233.bilitools.ui.downloads.DownloadsSelectionCloseButton
@@ -60,7 +63,13 @@ import com.happycola233.bilitools.ui.update.UpdateDialogContent
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import java.time.LocalDateTime
 import kotlin.math.roundToInt
+
+/** 当前页面是否正显示在屏幕上；不可见的常驻页面据此暂停装饰性的循环动画 */
+internal val LocalMainTabActive = compositionLocalOf { true }
+
+private const val APRIL_FOOLS_APP_NAME = "BiliFools"
 
 private const val TAB_PARSE = 0
 private const val TAB_DOWNLOADS = 1
@@ -162,6 +171,7 @@ private fun MainContentLayer(
 ) {
     val selectedIndex = selectedTabIndex()
     val focusManager = LocalFocusManager.current
+    val isAprilFools = remember { EggCalendar.isAprilFools(LocalDateTime.now()) }
     val downloadsSelecting = selectedIndex == TAB_DOWNLOADS && downloadsRouteState.selectionMode
 
     LaunchedEffect(selectedIndex) {
@@ -221,6 +231,8 @@ private fun MainContentLayer(
                 downloadsSelecting -> pluralStringResource(R.plurals.downloads_selection_title, selectedCount, selectedCount)
                 selectedIndex == TAB_DOWNLOADS -> stringResource(R.string.nav_downloads)
                 selectedIndex == TAB_ME -> stringResource(R.string.nav_me)
+                // 愚人节当天首页标题改叫 BiliFools
+                isAprilFools -> APRIL_FOOLS_APP_NAME
                 else -> stringResource(R.string.app_name)
             },
             state = scrollBehavior.state,
@@ -269,7 +281,7 @@ private fun MainTabHost(
             .fillMaxSize()
             .tabPlacement(active),
     ) {
-        content()
+        CompositionLocalProvider(LocalMainTabActive provides active, content = content)
     }
 }
 

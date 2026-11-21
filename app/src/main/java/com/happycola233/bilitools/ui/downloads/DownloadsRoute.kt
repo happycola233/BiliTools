@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.unit.Dp
 import com.happycola233.bilitools.R
+import com.happycola233.bilitools.ui.LocalMainTabActive
 import com.happycola233.bilitools.core.AppLog as Log
 import com.happycola233.bilitools.core.appContainer
 import com.happycola233.bilitools.data.AppSettings
@@ -169,7 +170,10 @@ internal fun DownloadsRoute(
         ))
     }
 
+    val celebrationTrigger = rememberDownloadCelebrationTrigger(groups, visible = LocalMainTabActive.current)
+
     DownloadsScreenContent(
+        celebrationTrigger = celebrationTrigger,
         groups = groups,
         selectionMode = routeState.selectionMode,
         selectedGroupIds = routeState.selectedGroupIds,

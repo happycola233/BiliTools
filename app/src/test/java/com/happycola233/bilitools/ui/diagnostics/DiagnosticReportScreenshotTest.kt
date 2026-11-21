@@ -88,6 +88,7 @@ class DiagnosticReportScreenshotTest {
                             when (screen) {
                                 0 -> AboutSettingsScreen(
                                     versionName = "3.0", versionCode = 14,
+                                    developerOptionsEnabled = false, onEnableDeveloperOptions = {},
                                     updateCheckState = UpdateCheckUiState.UpToDate,
                                     onCheckUpdate = {}, onOpenSourceLicenses = {},
                                     onFeedback = { screen = 1 }, onClearDiagnostics = { clearCalls++ }, onBack = {},

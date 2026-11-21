@@ -584,4 +584,18 @@
     <string name="diagnostic_clear_confirm">ล้าง</string>
     <string name="diagnostic_privacy">เก็บในอุปกรณ์และแชร์เมื่อคุณเลือก ไม่รวมรหัสผ่าน คุกกี้ หรือข้อมูลเข้าสู่ระบบอื่น ๆ และซ่อน UID ของบัญชี</string>
     <string name="diagnostic_close">ปิดรายงานการวินิจฉัย</string>
+    <string name="settings_home_tips">เคล็ดลับหน้าแรก</string>
+    <string name="settings_home_tips_desc">เมื่อหน้าแรกว่างอยู่ ทีวีจิ๋วจะเล่าเคล็ดลับและเรื่องขำ ๆ แตะเพื่อดูอันถัดไป</string>
+    <string name="home_tip_next_action">เคล็ดลับถัดไป</string>
+    <string name="home_tip_parse_action">แยกวิเคราะห์วิดีโอนี้</string>
+    <string name="settings_developer_title">ตัวเลือกสำหรับนักพัฒนาซอฟต์แวร์</string>
+    <string name="settings_developer_summary">การแก้ไขข้อบกพร่องและฟีเจอร์ทดลอง</string>
+    <string name="settings_developer_toggle">ใช้ตัวเลือกสำหรับนักพัฒนาซอฟต์แวร์</string>
+    <string name="settings_developer_toggle_desc">เมื่อปิด รายการนี้จะไม่แสดงในการตั้งค่า แตะหมายเลขเวอร์ชันใน \"เกี่ยวกับ\" ติดกันหลายครั้งเพื่อเปิดอีกครั้ง</string>
+    <string name="developer_options_enabled">ตอนนี้คุณเป็นนักพัฒนาซอฟต์แวร์แล้ว!</string>
+    <string name="developer_options_already_enabled">ไม่จำเป็น คุณเป็นนักพัฒนาซอฟต์แวร์อยู่แล้ว</string>
+    <string name="settings_about_website">เว็บไซต์ทางการ</string>
+    <plurals name="developer_options_steps_away">
+        <item quantity="other">อีก %1$d ขั้นตอนคุณก็จะเป็นนักพัฒนาซอฟต์แวร์</item>
+    </plurals>
 </resources>

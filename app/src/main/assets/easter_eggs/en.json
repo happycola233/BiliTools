@@ -1,0 +1,101 @@
+{
+  "tips": [
+    "Share a video from the Bilibili app to BiliTools to download it without switching apps.",
+    "b23.tv short links work too. Just paste them in.",
+    "AV, BV, EP, SS, AU, CV, UID… one box handles them all.",
+    "Danmaku can be converted to ASS subtitles for your local player.",
+    "Not happy with file names? Build your own with naming templates in Settings.",
+    "When a server gets slow, BiliTools switches to another one and keeps going.",
+    "Subtitles and lyrics can be embedded right into the file.",
+    "Log in to unlock higher video and audio quality.",
+    "In Downloads, long-press a task and drag up or down to select a whole run.",
+    "Favorites, Watch Later and creator uploads can all be parsed in one go.",
+    "This line contains no useful information. Enjoy.",
+    "Tap me for another one. And another. …You really have time today.",
+    "The little TV is glowing its best today.",
+    "The little TV's antennas are for catching danmaku.",
+    "The little TV in Settings → About seems ticklish.",
+    "Try holding the little TV in Settings → About.",
+    "The little TV in Settings → About can be dragged around. Let go and it bounces back.",
+    "Type “cheers” into the box and see what happens.",
+    "Rumor has it the version number in Settings → About likes being tapped.",
+    "Guess when you'll see this line again?",
+    "Quick question: do you remember the previous line?",
+    "Welcome back! The little TV missed you.",
+    "Congratulations on finding a perfectly ordinary line.",
+    "There's no easter egg in this line. Really.",
+    "The last 1% of a download always takes the longest. It's science.",
+    "This line is not available in your region due to copyright restrictions.",
+    "Thanks for reading this far. Happy downloading!",
+    "Loading something funny… Failed. Tap again later.",
+    "Try typing “2233” into the box, too.",
+    "Tap Parse a few times with the box empty and see what it finds.",
+    "Tap your level or coins on the Me page. They have something to say."
+  ],
+  "rickrollTip": "Rumor says this video holds BiliTools' ultimate secret. Tap to parse.",
+  "lateNightTips": [
+    "It's late. The video will still be here tomorrow.",
+    "One more download, then bed?",
+    "The little TV is getting sleepy.",
+    "Up late watching videos? Drink some water tomorrow.",
+    "Only you and the creators are still awake at this hour."
+  ],
+  "aprilFoolsTips": [
+    "16K 480 fps Dolby Vision unlocked (not really).",
+    "BiliTools is now officially BiliFools.",
+    "Download speed boosted by 1000%. Please imagine the progress bar.",
+    "The little TV is working upside down today."
+  ],
+  "dateTips": {
+    "06-26": "Happy birthday, bilibili! ( ゜- ゜)つロ Cheers~",
+    "10-24": "Happy 1024 Programmers' Day. Even bugs get the day off."
+  },
+  "appBirthday": "BiliTools turns %1$d today. Thanks for sticking around!",
+  "launchMilestones": {
+    "100": "Our 100th meeting! Thanks for coming back.",
+    "233": "Launch #233. On Bilibili, that's a laugh: 233333",
+    "666": "Launch #666. Nice.",
+    "1000": "1,000 launches! You and the little TV are old friends now.",
+    "2333": "Launch #2,333… Did you pin me to your home screen?"
+  },
+  "downloadMilestones": {
+    "1": "Your first download is done. Welcome aboard!",
+    "100": "100 downloads done. Early signs of digital hoarding.",
+    "1000": "1,000 downloads! Maybe it's time for another hard drive."
+  },
+  "downloadTerabyte": "Over 1 TB downloaded. The little TV is getting full.",
+  "cheers": "( ゜- ゜)つロ Cheers~",
+  "parseAir": "Parsing air… Result: air (lossless).",
+  "result": {
+    "developer": "It's the developer! Thanks for stopping by.",
+    "founder": "You found Bishi, the founder of the site.",
+    "firstUpload": "av2 · Greetings from 2009",
+    "treasure": "A legendary classic of the site.",
+    "vintage": "This video is %1$d years old. Nostalgia unlocked.",
+    "fresh": "Fresh out of the oven. The uploader may not have read the comments yet."
+  },
+  "mascot": {
+    "pokes": {
+      "5": "Hm?",
+      "8": "Stop poking!",
+      "12": "Aaaah—",
+      "15": "So dizzy…"
+    },
+    "signal": "Searching for signal…",
+    "drag": "Put me down—"
+  },
+  "profile": {
+    "levelMax": "Level 6. Respect.",
+    "levelSenior": "A hardcore member. Respect.",
+    "levelZero": "Pass the quiz to become a full member.",
+    "levelOther": "Keep going, level 6 is in sight!",
+    "coins": "Next time, maybe.",
+    "followers": {
+      "1000": "Over a thousand followers. People are noticing!",
+      "10000": "Ten thousand followers! That's quite a crowd.",
+      "100000": "A hundred thousand followers. The little TV bows to you.",
+      "1000000": "A million followers?! Can the little TV get an autograph?"
+    }
+  },
+  "loginWait": "I've waited so long the flowers wilted… Scan me?"
+}

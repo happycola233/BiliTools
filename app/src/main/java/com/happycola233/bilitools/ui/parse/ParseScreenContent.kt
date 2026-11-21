@@ -151,6 +151,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.happycola233.bilitools.R
+import com.happycola233.bilitools.ui.eggs.ResultEggSticker
 import com.happycola233.bilitools.core.AudioQualities
 import com.happycola233.bilitools.core.BiliImageUrls
 import com.happycola233.bilitools.data.model.MediaCapabilities
@@ -395,6 +396,10 @@ fun ParseScreenContent(
     onAppendPage: () -> Unit = {},
     onVisiblePageChange: (Int) -> Unit = {},
     onPageScrollHandled: (Int) -> Unit = {},
+    /** 还没有解析结果时显示在输入卡下方的内容（首页小电视）；外部下载入口不传 */
+    idleContent: (@Composable () -> Unit)? = null,
+    /** 结果卡当前条目对应的封面贴纸文案，没有彩蛋时返回 null */
+    resultEggText: (MediaInfo, MediaItem?) -> String? = { _, _ -> null },
 ) {
     val info = state.mediaInfo
     val item = state.items.getOrNull(state.selectedItemIndex)
@@ -445,12 +450,19 @@ fun ParseScreenContent(
                 )
             }
 
+            if (info == null && idleContent != null) {
+                item(key = "idle") {
+                    Box(Modifier.animateItem()) { idleContent() }
+                }
+            }
+
             if (info != null) {
                 item(key = "video") {
                     ParseResultCard(
                         state = state,
                         info = info,
                         selectedItem = item,
+                        eggText = resultEggText(info, item),
                         onSectionChange = onSectionChange,
                         onCollectionModeChange = onCollectionModeChange,
                         onOpenUpper = onOpenUpper,
@@ -773,6 +785,7 @@ private fun ParseResultCard(
     state: ParseUiState,
     info: MediaInfo,
     selectedItem: MediaItem?,
+    eggText: String?,
     onSectionChange: (Long) -> Unit,
     onCollectionModeChange: (Boolean) -> Unit,
     onOpenUpper: (Long) -> Unit,
@@ -791,12 +804,20 @@ private fun ParseResultCard(
     }
 
     ParseCard {
-        CoverImage(
-            coverUrl = display.coverUrl,
-            onCopy = { url ->
-                onCopyResultContent(ParseResultCopyTarget.CoverUrl, url)
-            },
-        )
+        Box {
+            CoverImage(
+                coverUrl = display.coverUrl,
+                onCopy = { url ->
+                    onCopyResultContent(ParseResultCopyTarget.CoverUrl, url)
+                },
+            )
+            ResultEggSticker(
+                text = eggText,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(10.dp),
+            )
+        }
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),

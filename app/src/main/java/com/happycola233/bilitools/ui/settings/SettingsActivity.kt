@@ -186,11 +186,13 @@ class SettingsActivity : AppCompatActivity() {
                     }
                 },
                 onLaunchSplashAnimationChange = viewModel::setLaunchSplashAnimationEnabled,
+                onHomeTipsChange = viewModel::setHomeTipsEnabled,
                 onLiquidBottomTabsChange = viewModel::setLiquidBottomTabsEnabled,
                 onLiquidGlassPanelsChange = viewModel::setLiquidGlassPanelsEnabled,
                 onLiquidBarWidthChange = viewModel::setLiquidBarWidthFraction,
                 onHapticFeedbackLevelChange = viewModel::setHapticFeedbackLevel,
                 onGlassDebugChange = viewModel::setDownloadsGlassDebugEnabled,
+                onDeveloperOptionsChange = viewModel::setDeveloperOptionsEnabled,
                 onFeedback = { showDiagnosticReport = true },
                 onClearDiagnostics = {
                     scope.launch {

@@ -613,4 +613,18 @@
     <string name="diagnostic_clear_confirm">清除</string>
     <string name="diagnostic_privacy">仅本机保存，由你选择分享。密码、Cookie 等登录凭据不写入，账号 UID 已隐藏。</string>
     <string name="diagnostic_close">关闭诊断报告</string>
+    <string name="settings_home_tips">首页小贴士</string>
+    <string name="settings_home_tips_desc">首页空闲时，小电视会说些实用技巧和趣话，点一下换一句。</string>
+    <string name="home_tip_next_action">换一句</string>
+    <string name="home_tip_parse_action">解析这个视频</string>
+    <string name="settings_developer_title">开发者选项</string>
+    <string name="settings_developer_summary">调试与实验性功能</string>
+    <string name="settings_developer_toggle">使用开发者选项</string>
+    <string name="settings_developer_toggle_desc">关闭后设置中不再显示此项，在「关于」中连点版本号可重新开启。</string>
+    <string name="developer_options_enabled">您现在处于开发者模式！</string>
+    <string name="developer_options_already_enabled">您已处于开发者模式，无需进行此操作。</string>
+    <string name="settings_about_website">官方网站</string>
+    <plurals name="developer_options_steps_away">
+        <item quantity="other">只需再点 %1$d 次，即可进入开发者模式。</item>
+    </plurals>
 </resources>

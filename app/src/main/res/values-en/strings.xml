@@ -588,4 +588,19 @@
     <string name="diagnostic_clear_confirm">Clear</string>
     <string name="diagnostic_privacy">Stored locally; you choose when to share. Passwords, cookies, and other login credentials are excluded. Your account UID is hidden.</string>
     <string name="diagnostic_close">Close diagnostic report</string>
+    <string name="settings_home_tips">Home tips</string>
+    <string name="settings_home_tips_desc">When the home page is idle, the little TV shares tips and jokes. Tap it for another one.</string>
+    <string name="home_tip_next_action">Next tip</string>
+    <string name="home_tip_parse_action">Parse this video</string>
+    <string name="settings_developer_title">Developer options</string>
+    <string name="settings_developer_summary">Debugging and experimental features</string>
+    <string name="settings_developer_toggle">Use developer options</string>
+    <string name="settings_developer_toggle_desc">When off, this entry is hidden from Settings. Tap the version number in About repeatedly to turn it back on.</string>
+    <string name="developer_options_enabled">You are now a developer!</string>
+    <string name="developer_options_already_enabled">No need, you are already a developer.</string>
+    <string name="settings_about_website">Official website</string>
+    <plurals name="developer_options_steps_away">
+        <item quantity="one">You are now %1$d step away from being a developer.</item>
+        <item quantity="other">You are now %1$d steps away from being a developer.</item>
+    </plurals>
 </resources>

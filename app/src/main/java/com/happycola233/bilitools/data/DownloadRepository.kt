@@ -80,6 +80,8 @@ class DownloadRepository(
     private val mediaRepository: MediaRepository,
     private val extrasRepository: ExtrasRepository,
     private val exportRepository: ExportRepository,
+    /** 一个音视频文件保存成功后回调，参数是成品大小（字节），供彩蛋统计累计下载量 */
+    private val onMediaSaved: (Long) -> Unit = {},
 ) {
     private val strings = StringProvider(context)
     private val messageCatalog = DownloadMessageCatalog(context)
@@ -1521,6 +1523,7 @@ class DownloadRepository(
             )
             downloadStates.remove(id)
             persistState()
+            onMediaSaved(tasks[id]?.outputBytes ?: state.totalBytes)
             Log.i(
                 TAG,
                 "[save-chain] managed download marked success, taskId=$id, file=${startItem.fileName}, localUri=$uri",

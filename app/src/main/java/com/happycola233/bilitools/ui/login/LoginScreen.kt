@@ -75,6 +75,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
@@ -99,6 +100,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.happycola233.bilitools.R
+import com.happycola233.bilitools.ui.eggs.rememberEasterEggCopy
 import com.happycola233.bilitools.data.AppSettings
 import com.happycola233.bilitools.ui.AppAlertDialog
 import com.happycola233.bilitools.ui.LeadingIconText
@@ -392,6 +394,9 @@ private fun LoginMethodSelector(
 }
 
 /** 二维码区域的展示状态，由轮询状态推导，决定二维码之上叠加什么徽标。 */
+/** 二维码有效期约三分钟，等到第二分钟还没扫才出声 */
+private const val QR_WAIT_EGG_MILLIS = 120_000L
+
 private enum class QrTileState {
     /** 正在生成：显示加载指示，旧二维码（如有）淡到几乎不可见。 */
     Generating,
@@ -434,16 +439,29 @@ private fun QrLoginPanel(
             onRefresh = onRefreshQr,
         )
         Spacer(Modifier.height(16.dp))
+        // 同一张二维码等了很久还没人扫，状态文字换成一句催促
+        val waitingEgg = rememberEasterEggCopy()?.loginWait
+        var waitedTooLong by remember { mutableStateOf(false) }
+        LaunchedEffect(state.qrBitmap, tileState) {
+            waitedTooLong = false
+            if (tileState == QrTileState.Ready) {
+                delay(QR_WAIT_EGG_MILLIS)
+                waitedTooLong = true
+            }
+        }
+        val statusEgg = waitingEgg?.takeIf {
+            waitedTooLong && state.qrStatusRes == R.string.login_status_waiting
+        }
         AnimatedContent(
-            targetState = state.qrStatusRes,
+            targetState = state.qrStatusRes to statusEgg,
             transitionSpec = {
                 fadeIn(motionScheme.defaultEffectsSpec())
                     .togetherWith(fadeOut(motionScheme.fastEffectsSpec()))
             },
             label = "qrLoginStatus",
-        ) { statusRes ->
+        ) { (statusRes, egg) ->
             Text(
-                text = stringResource(statusRes),
+                text = egg ?: stringResource(statusRes),
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (statusRes == R.string.login_status_scanned) {
                     MaterialTheme.colorScheme.primary

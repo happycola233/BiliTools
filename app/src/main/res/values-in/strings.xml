@@ -584,4 +584,18 @@
     <string name="diagnostic_clear_confirm">Hapus</string>
     <string name="diagnostic_privacy">Disimpan di perangkat; Anda yang memilih untuk berbagi. Kata sandi, cookie, dan kredensial masuk lainnya tidak disertakan. UID akun disembunyikan.</string>
     <string name="diagnostic_close">Tutup laporan diagnostik</string>
+    <string name="settings_home_tips">Tips beranda</string>
+    <string name="settings_home_tips_desc">Saat beranda sedang senggang, TV kecil akan membagikan tips dan candaan. Ketuk untuk melihat yang lain.</string>
+    <string name="home_tip_next_action">Tips berikutnya</string>
+    <string name="home_tip_parse_action">Analisis video ini</string>
+    <string name="settings_developer_title">Opsi developer</string>
+    <string name="settings_developer_summary">Debugging dan fitur eksperimental</string>
+    <string name="settings_developer_toggle">Gunakan opsi developer</string>
+    <string name="settings_developer_toggle_desc">Jika dinonaktifkan, item ini tidak lagi ditampilkan di Pengaturan. Ketuk nomor versi di Tentang berulang kali untuk mengaktifkannya kembali.</string>
+    <string name="developer_options_enabled">Sekarang Anda adalah developer!</string>
+    <string name="developer_options_already_enabled">Tidak perlu, Anda sudah menjadi developer.</string>
+    <string name="settings_about_website">Situs web resmi</string>
+    <plurals name="developer_options_steps_away">
+        <item quantity="other">Tinggal %1$d langkah lagi untuk menjadi developer.</item>
+    </plurals>
 </resources>

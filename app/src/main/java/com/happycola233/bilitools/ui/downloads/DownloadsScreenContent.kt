@@ -85,6 +85,7 @@ import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import androidx.core.text.HtmlCompat
 import com.happycola233.bilitools.R
+import com.happycola233.bilitools.ui.eggs.ConfettiBurst
 import com.happycola233.bilitools.data.model.DownloadGroup
 import com.happycola233.bilitools.data.model.DownloadItem
 import com.happycola233.bilitools.ui.AppAlertDialog
@@ -190,6 +191,8 @@ fun DownloadsScreenContent(
     onBarGlassSurfaceAlphaChange: (Float) -> Unit,
     onBarGlassReset: () -> Unit,
     modifier: Modifier = Modifier,
+    /** 每自增一次撒一把庆祝彩纸，见 [rememberDownloadCelebrationTrigger] */
+    celebrationTrigger: Int = 0,
 ) {
     val backdrop = rememberLayerBackdrop()
     val selectionMotion = rememberDownloadsSelectionMotion(selectionMode)
@@ -318,6 +321,12 @@ fun DownloadsScreenContent(
                 onClearAll = onClearAll,
             )
         }
+
+        ConfettiBurst(
+            trigger = celebrationTrigger,
+            colors = celebrationColors,
+            modifier = Modifier.matchParentSize(),
+        )
 
         DownloadsDeleteDialog(
             dialogState = dialogState,

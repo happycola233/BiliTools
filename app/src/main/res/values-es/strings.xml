@@ -589,4 +589,20 @@
     <string name="diagnostic_clear_confirm">Borrar</string>
     <string name="diagnostic_privacy">Se guarda localmente; usted decide cuándo compartirlo. No incluye contraseñas, cookies ni otras credenciales. El UID de su cuenta se oculta.</string>
     <string name="diagnostic_close">Cerrar informe de diagnóstico</string>
+    <string name="settings_home_tips">Consejos en el inicio</string>
+    <string name="settings_home_tips_desc">Cuando la página de inicio está inactiva, la pequeña tele comparte trucos y bromas. Tócala para ver otro.</string>
+    <string name="home_tip_next_action">Siguiente consejo</string>
+    <string name="home_tip_parse_action">Analizar este vídeo</string>
+    <string name="settings_developer_title">Opciones para desarrolladores</string>
+    <string name="settings_developer_summary">Depuración y funciones experimentales</string>
+    <string name="settings_developer_toggle">Usar opciones para desarrolladores</string>
+    <string name="settings_developer_toggle_desc">Si se desactiva, esta opción deja de mostrarse en Ajustes. Toca varias veces el número de versión en «Acerca de» para volver a activarla.</string>
+    <string name="developer_options_enabled">¡Ahora eres desarrollador!</string>
+    <string name="developer_options_already_enabled">No es necesario, ya eres desarrollador.</string>
+    <string name="settings_about_website">Sitio web oficial</string>
+    <plurals name="developer_options_steps_away">
+        <item quantity="one">Estás a %1$d paso de ser desarrollador.</item>
+        <item quantity="many">Estás a %1$d pasos de ser desarrollador.</item>
+        <item quantity="other">Estás a %1$d pasos de ser desarrollador.</item>
+    </plurals>
 </resources>

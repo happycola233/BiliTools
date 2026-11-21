@@ -40,6 +40,12 @@ import com.happycola233.bilitools.core.appContainer
 import com.happycola233.bilitools.ui.AppAlertDialog
 import com.happycola233.bilitools.ui.copyTextToClipboard
 import com.happycola233.bilitools.ui.copyTextWithFeedback
+import com.happycola233.bilitools.ui.LocalMainTabActive
+import com.happycola233.bilitools.ui.eggs.HomeTipBanner
+import com.happycola233.bilitools.ui.eggs.ResultEgg
+import com.happycola233.bilitools.ui.eggs.rememberEasterEggCopy
+import com.happycola233.bilitools.ui.eggs.rememberHomeTipController
+import com.happycola233.bilitools.ui.eggs.text
 import kotlinx.coroutines.flow.collect
 
 /**
@@ -100,6 +106,18 @@ fun ParseRoute(
 
     RefreshLoginStateOnStart(viewModel)
 
+    val eggCopy = rememberEasterEggCopy()
+    val tipController = eggCopy
+        ?.takeIf { settings.homeTipsEnabled && !externalMode }
+        ?.let { copy ->
+            rememberHomeTipController(
+                copy = copy,
+                takeMilestone = context.applicationContext.appContainer.easterEggRepository::takePendingMilestone,
+            )
+        }
+    val tabActive = LocalMainTabActive.current
+    val hasResult = state.mediaInfo != null
+
     val copyPreview = state.copyPreview
     ParseScreenContent(
         state = state,
@@ -118,7 +136,11 @@ fun ParseRoute(
         onPaste = {
             context.readClipboardText()?.let(viewModel::setInputText)
         },
-        onParse = viewModel::parse,
+        onParse = { input ->
+            // 小电视在场时先看看是不是彩蛋口令
+            val intercepted = !hasResult && tipController?.interceptParse(input) == true
+            if (!intercepted) viewModel.parse(input)
+        },
         onMediaTypeChange = viewModel::setMediaType,
         onDownload = onDownload@{
             if (!viewModel.validateDownload()) return@onDownload
@@ -188,6 +210,21 @@ fun ParseRoute(
         onCopyCurrentAiSummary = context::copyCurrentAiSummary,
         onCopyAllAiSummaries = context::copyAllAiSummaries,
         onDismissError = viewModel::clearError,
+        idleContent = tipController?.let { controller ->
+            {
+                HomeTipBanner(
+                    controller = controller,
+                    loading = state.loading,
+                    active = tabActive,
+                    onParseTarget = viewModel::parse,
+                )
+            }
+        },
+        resultEggText = { info, item ->
+            eggCopy?.let { copy ->
+                ResultEgg.detect(info, item, System.currentTimeMillis() / 1_000)?.text(copy.result)
+            }
+        },
     )
 
     if (showCellularConfirmation) {

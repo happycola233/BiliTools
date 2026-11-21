@@ -3,6 +3,7 @@ package com.happycola233.bilitools.core
 import android.content.Context
 import com.happycola233.bilitools.data.AuthRepository
 import com.happycola233.bilitools.data.DownloadRepository
+import com.happycola233.bilitools.data.EasterEggRepository
 import com.happycola233.bilitools.data.ExportRepository
 import com.happycola233.bilitools.data.ExtrasRepository
 import com.happycola233.bilitools.data.DiagnosticReportRepository
@@ -20,6 +21,7 @@ class AppContainer(context: Context) {
     private val appContext = context.applicationContext
     val strings by lazy { StringProvider(appContext) }
     val settingsRepository by lazy { SettingsRepository(appContext) }
+    val easterEggRepository by lazy { EasterEggRepository(appContext) }
     val diagnosticLogStore by lazy { DiagnosticLogStore(appContext, LogRedactor { cookieStore.getCookie("DedeUserID") }) }
     val diagnosticExitHistory by lazy { DiagnosticExitHistory(appContext) }
     val cookieStore by lazy { CookieStore(appContext) }
@@ -42,6 +44,7 @@ class AppContainer(context: Context) {
             mediaRepository,
             extrasRepository,
             exportRepository,
+            onMediaSaved = easterEggRepository::recordMediaDownloaded,
         )
     }
     val exportRepository by lazy { ExportRepository(appContext, settingsRepository) }
