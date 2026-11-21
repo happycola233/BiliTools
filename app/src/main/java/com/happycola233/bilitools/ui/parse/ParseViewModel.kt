@@ -20,6 +20,7 @@ import com.happycola233.bilitools.core.naming.NamingStreamInfo
 import com.happycola233.bilitools.core.naming.NamingTemplateScope
 import com.happycola233.bilitools.data.AuthRepository
 import com.happycola233.bilitools.data.DefaultDownloadVideoCodec
+import com.happycola233.bilitools.data.DownloadFolderBatch
 import com.happycola233.bilitools.data.DownloadNamingSettings
 import com.happycola233.bilitools.data.DownloadPreferenceGroup
 import com.happycola233.bilitools.data.DownloadRepository
@@ -1481,6 +1482,7 @@ class ParseViewModel(
                             info = info,
                             items = preparedTargets.map(PreparedDownloadTarget::item),
                         )
+                        val folderBatch = DownloadFolderBatch()
                         val metadataDetailsCache = mutableMapOf<String, MediaInfo>()
                         val conversionSettings = settingsRepository.currentSettings()
                         preparedTargets.forEachIndexed { batchIndex, preparedTarget ->
@@ -1523,6 +1525,7 @@ class ParseViewModel(
                                 info = info,
                                 item = metadataItem,
                             )
+                            val sharesFolderWithEarlierItem = folderBatch.hasResolved(requestedGroupRelativePath)
                             val groupId = downloadRepository.createGroup(
                                 groupLabel.title,
                                 groupLabel.subtitle,
@@ -1531,6 +1534,7 @@ class ParseViewModel(
                                 relativePath = requestedGroupRelativePath,
                                 sourceMetadata = embeddedMetadata,
                                 downloadRoot = namingSession.downloadRoot,
+                                folderBatch = folderBatch,
                             )
 
                             val outputType = snapshot.outputType
@@ -1749,6 +1753,8 @@ class ParseViewModel(
                                 namingSession = namingSession,
                                 batchOrdinal = batchOrdinal,
                                 groupId = groupId,
+                                // 合集 NFO 固定叫 tvshow.nfo，同一个文件夹只需要一份。
+                                includeCollectionNfo = !sharesFolderWithEarlierItem,
                             )
                             queuedGroups += 1
                         }
@@ -1934,6 +1940,7 @@ class ParseViewModel(
         namingSession: NamingSession,
         batchOrdinal: Int,
         groupId: Long,
+        includeCollectionNfo: Boolean,
     ) {
         val capabilities = item.type.capabilities
 
@@ -2034,7 +2041,7 @@ class ParseViewModel(
             }
         }
 
-        if (snapshot.nfoCollectionEnabled && capabilities.supportsNfoExport) {
+        if (includeCollectionNfo && snapshot.nfoCollectionEnabled && capabilities.supportsNfoExport) {
             val taskTitle = strings.get(R.string.parse_nfo_collection)
             if (isCollectionNfoAvailable(info)) {
                 downloadRepository.enqueueExtraTask(

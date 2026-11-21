@@ -303,13 +303,15 @@ class DownloadRepository(
         relativePath: String? = null,
         sourceMetadata: DownloadEmbeddedMetadata? = null,
         downloadRoot: String = settingsRepository.downloadRootRelativePath(),
+        folderBatch: DownloadFolderBatch? = null,
     ): Long {
         check(ensureLoaded()) { strings.get(R.string.download_history_unavailable) }
         val root = requireNotNull(DownloadPaths.normalize(downloadRoot))
         val id = groupIds.incrementAndGet()
-        val resolvedRelativePath = relativePath?.takeIf { it.isNotBlank() }?.let(
-            { resolveRequestedGroupRelativePath(it, root) },
-        ) ?: run {
+        val resolvedRelativePath = relativePath?.takeIf { it.isNotBlank() }?.let { requested ->
+            folderBatch?.resolve(requested) { resolveRequestedGroupRelativePath(it, root) }
+                ?: resolveRequestedGroupRelativePath(requested, root)
+        } ?: run {
             val folderName = buildGroupFolderName(
                 title = title,
                 bvid = bvid,
