@@ -18,8 +18,8 @@ plugins {
     alias(libs.plugins.aboutlibraries.android)
 }
 
-val appReleaseVersionCode = 17
-val appReleaseVersionName = "3.3"
+val appReleaseVersionCode = 18
+val appReleaseVersionName = "4.0"
 val releaseAbiSplits = listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
 
 // 发布签名由 CI（.github/workflows/release.yml）通过环境变量注入；
